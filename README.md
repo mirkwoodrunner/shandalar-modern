@@ -1,26 +1,33 @@
-# Shandalar Project Overview
+# Project Vision
 
-Welcome to the Shandalar project repository! This project aims to provide a modern implementation of the classic Magic: The Gathering game "Shandalar". It is built to enhance user experience and functionality while maintaining the nostalgic elements of the original game.
+The goal of Shandalar Modern is to provide a modern gaming experience based on the classic Shandalar card game. This project aims to enhance gameplay, introduce new features, and maintain the essence of what made Shandalar beloved by its fans.
 
-## Purpose
-The primary goal of this repository is to serve as a foundation for ongoing development, maintenance, and contribution to the Shandalar project. Whether you're a developer looking to contribute or a player interested in the game’s mechanics, this repository contains all the necessary resources you need.
+# Architecture
 
-## Documentation
-You can find the project's documentation at [Shandalar Documentation](link-to-documentation). This includes guides on installation, gameplay mechanics, and contribution guidelines.
+The project follows a modular architecture that separates the game engine from the user interface. This allows for flexibility in updating components independently and facilitates the integration of new features without disrupting existing functionality.
 
-## Project Structure
-The repository is organized as follows:
-- **src/**: Contains the source code for the project.
-- **docs/**: Holds all documentation files.
-- **assets/**: Includes images and other assets used in the project.
-- **tests/**: Contains unit and integration tests to ensure code quality.
-- **README.md**: This file, providing an overview of the project.
+# Documentation Structure
 
-## Getting Started
-To get started with the Shandalar project, follow these steps:
-1. Clone the repository: `git clone <repository-url>`
-2. Navigate into the project directory: `cd shandalar-modern`
-3. Install the required dependencies: `npm install` (or however the project is set up)
-4. Run the project: `npm start` (adjust based on your setup)
+The documentation is organized as follows:
 
-Feel free to contribute and help us improve the Shandalar experience! 
+- **Getting Started**: Installation and setup instructions.
+- **Gameplay Mechanics**: Detailed explanations of game rules and mechanics.
+- **API Reference**: Comprehensive details of the game's API for developers.
+- **Contributing**: Guidelines for contributing to the project, including coding standards and submission processes.
+
+# Key Principles
+
+1. **Clarity**: Code and documentation should be easy to read and understand.
+2. **Modularity**: Components of the project should be independent and reusable.
+3. **Community Driven**: Encourage contributions and feedback from the community.
+4. **Testing**: Prioritize testing to ensure stability and reliability of the game.
+
+# AI Coordination Guidelines
+
+- Collaborate with AI tools responsibly to augment gameplay experiences.
+- Maintain transparency about AI functionalities and their implications for players.
+- Ensure AI enhancements align with the project's vision of enhancing player experience while preserving fairness.
+
+## How to Use This README
+
+This README serves as a comprehensive guide to understanding and interacting with the Shandalar Modern project. Developers, contributors, and players should refer to this document for clarity on project goals and operational guidelines.
