@@ -1,32 +1,65 @@
-# Shandalar Systems Document
+# Shandalar Systems Document (v1.0)
 
 ## Overview
 
-This document defines the core mechanical systems of Shandalar. It serves as the authoritative reference for how gameplay is simulated, including combat, encounters, progression, and game state management.
+This document defines the complete mechanical ruleset and system architecture for Shandalar.
 
-It prioritizes unambiguous rules, deterministic resolution, and clear data structures over narrative or design intent.
+It is the authoritative specification for:
+- gameplay simulation rules
+- combat resolution
+- AI decision structure
+- world generation logic
+- state mutation authority
+
+This document is designed to be **implementation-agnostic but execution-precise**, meaning:
+- It does not describe UI or narrative intent
+- It defines exact system behavior and boundaries
+- It ensures deterministic simulation when implemented
 
 ---
 
-# 1. Core Gameplay Loop
+# 1. Core Architecture Principle
 
-Shandalar is structured around a repeating roguelike loop:
+Shandalar is built on a strict separation of concerns:
 
-1. World Map Exploration
-2. Encounter Trigger (combat, event, merchant, etc.)
-3. Encounter Resolution
-4. Reward / Consequence Processing
-5. Deck Modification (cards added, removed, or transformed)
-6. Player Progression (health, resources, unlocks)
-7. Repeat until win/loss condition is met
+## 1.1 Simulation Kernel
+
+> DuelCore.js is the single source of truth for all game state mutation.
+
+Only DuelCore may:
+- mutate GameState
+- advance turns
+- resolve combat
+- apply effects
+- execute stack (LIFO) resolution
+
+All other systems are non-authoritative.
+
+---
+
+## 1.2 System Layers
+
+### Layer 1 — Engine (Authoritative Simulation)
+- DuelCore.js (combat + turn engine)
+- AI.js (decision generation only)
+- MapGenerator.js (world grid math)
+
+### Layer 2 — Rules Definition
+- rulesets.js (Classic vs Modern rule modes)
+- keywords.js (evergreen ability definitions)
+- cards.js (static card data definitions)
+
+### Layer 3 — Application Bridge
+- useDuel.js (React ↔ Engine adapter)
+
+### Layer 4 — Presentation
+- React UI components
 
 ---
 
 # 2. Game State Model
 
-The game operates on a centralized GameState object.
-
-## 2.1 GameState Structure
+## 2.1 GameState (central simulation object)
 
 ```json
 GameState {
@@ -35,9 +68,12 @@ GameState {
   encounter: EncounterState | null,
   rngSeed: number,
   turnNumber: number,
-  phase: string
+  phase: string,
+  stack: GameAction[]
 }
 ```
+
+---
 
 ## 2.2 PlayerState
 
@@ -54,6 +90,8 @@ PlayerState {
 }
 ```
 
+---
+
 ## 2.3 ManaPool
 
 ```json
@@ -69,68 +107,61 @@ ManaPool {
 
 ---
 
-# 3. Turn Structure System
+# 3. Turn System
 
-Each encounter uses a deterministic turn-based system.
+Each turn is fully deterministic and processed in order:
 
 ## 3.1 Turn Phases
 
-1. Start Phase
-   - Untap / reset effects
-2. Draw Phase
-   - Player draws 1 card
-3. Resource Phase
-   - Player gains 1 mana (default unless modified)
-4. Main Phase
-   - Player may play cards
+1. Untap Phase
+   - untap permanents (if applicable)
+
+2. Upkeep Phase
+   - Specific to task referencing the upkeep Phase
+
+3. Draw Phase
+   - active player draws 1 card
+
+4. First Main Phase
+   - player may play cards (via GameActions)
+
 5. Combat Phase
-   - Attackers declared and resolved
-6. End Phase
-   - Cleanup and effect expiration
+   - attackers declared
+   - blockers assigned
+   - damage resolved via DuelCore
+
+6. Second Main Phase
+   - player may play cards (via GameActions)
+
+7. End Phase
+   - cleanup effects
+   - expire temporary modifiers
 
 ---
 
-# 4. Card System
+# 4. Action & Stack System (LIFO Core)
 
-## 4.1 Card Structure
+## 4.1 GameAction Structure
+
+All gameplay events are represented as actions:
 
 ```json
-Card {
-  id: string,
-  name: string,
-  type: "creature" | "spell" | "artifact" | "enchantment",
-  cost: ManaCost,
-  power?: number,
-  toughness?: number,
-  effects: Effect[]
+GameAction {
+  type: string,
+  payload: object,
+  source: string,
+  timestamp: number
 }
 ```
 
-## 4.2 ManaCost
+---
 
-```json
-ManaCost {
-  generic: number,
-  colored: {
-    white: number,
-    blue: number,
-    black: number,
-    red: number,
-    green: number
-  }
-}
-```
+## 4.2 Stack Rules
 
-## 4.3 Zones
-
-Cards exist in one of the following zones:
-- Deck
-- Hand
-- Battlefield
-- Graveyard
-- Exile
-
-All zone transitions must be explicit.
+- All actions are pushed into a LIFO stack
+- DuelCore resolves actions in reverse order
+- Resolution is deterministic and seed-based
+- No action resolves outside DuelCore
 
 ---
 
@@ -138,12 +169,14 @@ All zone transitions must be explicit.
 
 ## 5.1 Combat Flow
 
-1. Player declares attackers
-2. Defender assigns blockers
-3. Damage assignment step
+Combat is resolved entirely by DuelCore:
+
+1. Attack declaration phase
+2. Block assignment phase
+3. Damage assignment calculation
 4. Simultaneous damage resolution
-5. State-based effects applied
-6. Dead creatures move to graveyard
+5. State-based effect cleanup
+6. Death processing (move to graveyard)
 
 ---
 
@@ -151,145 +184,219 @@ All zone transitions must be explicit.
 
 - Damage is applied simultaneously
 - A creature is destroyed if damage ≥ toughness
-- Excess damage does not carry over unless specified
+- Excess damage does NOT carry over unless explicitly defined by keyword or effect
 - Unblocked attackers deal damage directly to player
 
 ---
 
-## 5.3 Priority Rules
+## 5.3 Timing Rules
 
-- Player acts first unless encounter specifies otherwise
-- AI decisions are deterministic given GameState + rngSeed
-
----
-
-# 6. Encounter System
-
-## 6.1 Encounter Types
-
-- Combat Encounter
-- Event Encounter
-- Merchant Encounter
-- Boss Encounter
+- All combat steps are atomic within DuelCore
+- No external system may interrupt resolution
+- AI decisions occur before execution only
 
 ---
 
-## 6.2 Encounter Generation
+# 6. AI System
 
-Encounters are generated using:
-- Region data
-- Player power level
-- Weighted random tables
-- RNG seed
+## 6.1 AI Role Definition
 
----
+AI.js is a **decision generator only**.
 
-## 6.3 EncounterState
+It is responsible for:
+- evaluating GameState snapshots
+- selecting optimal actions
+- producing GameAction objects
 
-```json
-EncounterState {
-  type: string,
-  enemies: Enemy[],
-  rewards: RewardTable,
-  metadata: object
-}
-```
+It is NOT responsible for:
+- applying rules
+- resolving outcomes
+- mutating state
 
 ---
 
-# 7. Enemy AI System
+## 6.2 AI Decision Model
 
-## 7.1 AI Decision Model
+AI behavior follows:
 
-AI decisions are based on:
-- Board state
-- Available resources
-- Priority rules
-- Deterministic scoring function
-
----
-
-## 7.2 AI Priority Rules
-
-1. Play highest-impact card available
-2. Remove threats if lethal risk exists
-3. Develop board otherwise
-4. Attack if favorable
+1. Evaluate board state
+2. Score possible actions
+3. Select highest value action
+4. Emit GameAction list to DuelCore
 
 ---
 
-# 8. World System
+## 6.3 AI Constraints
 
-## 8.1 World Structure
+- AI must be deterministic given GameState + rngSeed
+- AI must not simulate combat outcomes directly
+- AI must not mutate state
+- AI must not bypass DuelCore stack
 
-```json
-WorldState {
-  regions: Region[],
-  currentRegion: string,
-  playerPosition: NodeId
-}
-```
+---
 
-## 8.2 Node Types
+# 7. World System
+
+## 7.1 World Grid
+
+MapGenerator.js defines a fixed coordinate system:
+
+- Grid size: 32 x 22
+- Each cell represents a node in overworld space
+
+---
+
+## 7.2 Node Types
+
 - Combat
 - Event
-- Shop
+- Merchant
 - Boss
-- Safe zone
+- Empty / Travel
 
 ---
 
-# 9. Progression System
+## 7.3 Generation Rules
 
-## 9.1 Deck Evolution
-- Card rewards
-- Card removal (limited)
-- Card upgrades (optional)
-
-## 9.2 Difficulty Scaling
-- Region progression
-- Player strength heuristics
-- Optional adaptive scaling
+- Map generation is deterministic from rngSeed
+- Node placement is mathematically derived
+- No runtime randomness outside seed system
 
 ---
 
-# 10. RNG System
+# 8. Ruleset System
 
-- All randomness must use GameState.rngSeed
-- No unseeded randomness allowed
-- Must support deterministic replay
+## 8.1 Purpose
 
----
+rulesets.js defines global rule behavior variations:
 
-# 11. Edge Cases
-
-## 11.1 Empty Deck
-- Shuffle graveyard into deck
-- If graveyard empty: deal 1 damage to player
-
-## 11.2 Simultaneous Death
-- All lethal damage resolves simultaneously
-- State-based effects applied after resolution
-
-## 11.3 Infinite Loops
-- Hard cap of 20 iterations per effect chain
+- Classic ruleset (original MTG-inspired behavior)
+- Modern ruleset (updated mechanics and simplifications)
 
 ---
 
-# 12. System Priority
+## 8.2 Scope of Influence
 
-1. SYSTEMS.md
-2. Code implementation
-3. Encounter overrides
-4. Debug rules
+rulesets may modify:
+- turn structure rules
+- resource generation behavior
+- keyword interpretation
+- combat edge cases
 
 ---
 
-# 13. Non-Goals
+## 8.3 Constraints
 
-This document does NOT define:
-- Narrative content
-- UI/UX design
-- Art direction
-- Flavor text
-```
+- rulesets do NOT directly mutate GameState
+- rulesets are read-only configuration layers for DuelCore
+
+---
+
+# 9. Keyword System
+
+keywords.js defines reusable mechanical primitives:
+
+Examples:
+- flying
+- trample
+- first strike
+- haste
+
+## Rules:
+- Keywords are stateless definitions
+- Keywords are interpreted by DuelCore during resolution
+- Keywords do not contain logic that mutates state directly
+
+---
+
+# 10. Card System
+
+cards.js defines immutable card templates:
+
+Each card contains:
+- cost
+- type
+- power/toughness (if applicable)
+- keyword references
+- effect definitions
+
+Cards are instantiated into gameplay objects by DuelCore.
+
+---
+
+# 11. Engine Bridge System (React Integration)
+
+## 11.1 useDuel.js Role
+
+useDuel.js is a **pure adapter layer**.
+
+It:
+- subscribes to DuelCore state updates
+- dispatches player actions to DuelCore
+- provides UI-friendly state access
+
+It must NOT:
+- resolve rules
+- calculate outcomes
+- store authoritative state
+
+---
+
+# 12. Determinism System
+
+All gameplay must be fully deterministic:
+
+- All randomness derived from rngSeed
+- No Math.random usage in gameplay systems
+- AI decisions must be reproducible
+- Map generation must be reproducible
+
+---
+
+# 13. System Authority Hierarchy
+
+In order of precedence:
+
+1. DuelCore.js (absolute authority)
+2. SYSTEMS.md (design truth)
+3. rulesets.js (mode modifiers)
+4. keywords.js (mechanic definitions)
+5. cards.js (static data)
+6. UI layer (non-authoritative)
+
+---
+
+# 14. Anti-Drift Rules
+
+The following are forbidden outside DuelCore:
+
+- mutating GameState
+- resolving combat outcomes
+- advancing turn state
+- executing stack logic
+
+The following are forbidden in AI.js:
+
+- state mutation
+- rule enforcement
+- outcome resolution
+
+The following are forbidden in UI:
+
+- gameplay simulation
+- deterministic logic execution
+
+---
+
+# 15. Non-Goals
+
+This system does NOT define:
+- UI layout or styling
+- narrative content
+- visual effects
+- audio design
+- player emotional design
+
+---
+
+# End of SYSTEMS v1.0
