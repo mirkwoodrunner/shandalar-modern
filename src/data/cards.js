@@ -363,5 +363,26 @@ export const CARD_DB = [
   {id:"library_of_alexandria",name:"Library of Alexandria",type:"Land",color:"",cmc:0,cost:"",text:"T: Add C. T: Draw a card. Activate only if you have exactly seven cards in hand.",produces:["C"],rarity:"R",activated:{cost:"T",effect:"draw1"}},
 ];
 
-// Helper to quickly find a card by ID
-export const getCard = (id) => CARD_DB.find(c => c.id === id);
+// OLD Helper to quickly find a card by ID
+// export const getCard = (id) => CARD_DB.find(c => c.id === id);
+
+// --- Utility Helpers ---
+
+/**
+ * Finds a card definition by ID. 
+ * Replaces the old 'cDef' for better clarity in the new architecture.
+ */
+export const getCardDef = id => CARD_DB.find(c => c.id === id) || null;
+
+// Type Checkers
+export const isLand = c => c?.type === "Land";
+export const isCre  = c => c?.type?.startsWith("Creature");
+export const isInst = c => c?.type === "Instant";
+export const isSor  = c => c?.type === "Sorcery"; // Fixed typo 'isSort' to 'isSor'
+export const isArt  = c => c?.type === "Artifact";
+export const isEnch = c => c?.type?.startsWith("Enchantment");
+
+/**
+ * Checks if a card is a Permanent (stays on the battlefield)
+ */
+export const isPerm = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
