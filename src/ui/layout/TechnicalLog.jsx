@@ -79,4 +79,6 @@ scrollbarWidth: “thin”,
 );
 }
 
-export default { OverworldLog, DuelLog };
+export const OWLog = DuelLog;
+
+export default { OverworldLog, DuelLog, OWLog };
