@@ -8,22 +8,22 @@
 //   ✗ Cannot simulate combat outcomes
 //   ✗ Cannot bypass DuelCore
 //
-// This hook’s ONLY job:
+// This hook's ONLY job:
 //   - Dispatch GameAction objects to DuelCore via useReducer
 //   - Subscribe to GameState updates
 //   - Expose UI-safe derived state
 
-import { useReducer, useCallback } from ‘react’;
-import { duelReducer, buildDuelState } from ‘../engine/DuelCore.js’;
+import { useReducer, useCallback } from 'react';
+import { duelReducer, buildDuelState } from '../engine/DuelCore.js';
 
 /**
 
 - Initialize and manage a duel game state.
 - 
-- @param {string[]}  pDeckIds    - Player’s deck card IDs
+- @param {string[]}  pDeckIds    - Player's deck card IDs
 - @param {string}    oppArchKey  - Opponent archetype key
 - @param {object}    ruleset     - Ruleset config from rulesets.js
-- @param {number}    [overworldHP] - Player’s HP from overworld (or undefined = use ruleset default)
+- @param {number}    [overworldHP] - Player's HP from overworld (or undefined = use ruleset default)
 - @param {object}    [castleMod]   - Castle modifier if applicable
 - @param {boolean}   [anteEnabled] - Whether ante is active
   */
@@ -32,57 +32,57 @@ import { duelReducer, buildDuelState } from ‘../engine/DuelCore.js’;
   const [state, dispatch] = useReducer(duelReducer, initialState);
 
 // ── Action dispatchers ─────────────────────────────────────────────────────
-// Each wrapper validates nothing — that is DuelCore’s job.
+// Each wrapper validates nothing — that is DuelCore's job.
 // These are thin wrappers that construct GameAction objects.
 
 const tapLand = useCallback((iid, mana) =>
-dispatch({ type: “TAP_LAND”, who: “p”, iid, mana }), []);
+dispatch({ type: "TAP_LAND", who: "p", iid, mana }), []);
 
 const tapArtifactMana = useCallback((iid) =>
-dispatch({ type: “TAP_ART_MANA”, who: “p”, iid }), []);
+dispatch({ type: "TAP_ART_MANA", who: "p", iid }), []);
 
 const playLand = useCallback((iid) =>
-dispatch({ type: “PLAY_LAND”, who: “p”, iid }), []);
+dispatch({ type: "PLAY_LAND", who: "p", iid }), []);
 
 const castSpell = useCallback((iid, tgt = null, xVal = 1) =>
-dispatch({ type: “CAST_SPELL”, who: “p”, iid, tgt, xVal }), []);
+dispatch({ type: "CAST_SPELL", who: "p", iid, tgt, xVal }), []);
 
 const resolveStack = useCallback(() =>
-dispatch({ type: “RESOLVE_STACK” }), []);
+dispatch({ type: "RESOLVE_STACK" }), []);
 
 const declareAttacker = useCallback((iid) =>
-dispatch({ type: “DECLARE_ATTACKER”, iid }), []);
+dispatch({ type: "DECLARE_ATTACKER", iid }), []);
 
 const declareBlocker = useCallback((blId, attId) =>
-dispatch({ type: “DECLARE_BLOCKER”, blId, attId }), []);
+dispatch({ type: "DECLARE_BLOCKER", blId, attId }), []);
 
 const advancePhase = useCallback(() =>
-dispatch({ type: “ADVANCE_PHASE” }), []);
+dispatch({ type: "ADVANCE_PHASE" }), []);
 
 const selectCard = useCallback((iid) =>
-dispatch({ type: “SEL_CARD”, iid }), []);
+dispatch({ type: "SEL_CARD", iid }), []);
 
 const selectTarget = useCallback((iid) =>
-dispatch({ type: “SEL_TGT”, iid }), []);
+dispatch({ type: "SEL_TGT", iid }), []);
 
 const setX = useCallback((val) =>
-dispatch({ type: “SET_X”, val }), []);
+dispatch({ type: "SET_X", val }), []);
 
 const mulligan = useCallback(() =>
-dispatch({ type: “MULLIGAN”, who: “p” }), []);
+dispatch({ type: "MULLIGAN", who: "p" }), []);
 
 const activateAbility = useCallback((iid, tgt = null, chosenColor = null) =>
-dispatch({ type: “ACTIVATE_ABILITY”, iid, tgt, chosenColor }), []);
+dispatch({ type: "ACTIVATE_ABILITY", iid, tgt, chosenColor }), []);
 
 const chooseLotusColor = useCallback((color) =>
-dispatch({ type: “CHOOSE_LOTUS_COLOR”, color }), []);
+dispatch({ type: "CHOOSE_LOTUS_COLOR", color }), []);
 
 const setPendingLotus = useCallback(() =>
-dispatch({ type: “SET_PENDING_LOTUS” }), []);
+dispatch({ type: "SET_PENDING_LOTUS" }), []);
 
 /** Dispatch all AI actions at once (produced by AI.js). */
 const applyAiActions = useCallback((acts) =>
-dispatch({ type: “AI_ACTS”, acts }), []);
+dispatch({ type: "AI_ACTS", acts }), []);
 
 return {
 state,
