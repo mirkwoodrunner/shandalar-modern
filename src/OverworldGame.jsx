@@ -9,12 +9,11 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from ‘reac
 import {
 generateMap, findPath, revealAround,
 TERRAIN, COLORS, MAGE_NAMES, MAGE_ARCHS, CASTLE_MODIFIERS,
-MANA_HEX, MANA_SYM,
+MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE,
 } from ‘./engine/MapGenerator.js’;
 import { isLand } from ‘./engine/DuelCore.js’;
-import { CARD_DB, POWERED_NINE_IDS } from ‘./data/cards.js’;
-import { RULESETS } from ‘./data/rulesets.js’;
-import { ARCHETYPES } from ‘./data/archetypes.js’;
+import { ARCHETYPES, CARD_DB } from ‘./data/cards.js’;
+import RULESETS from ‘./data/rulesets.js’;
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from ‘./ui/overworld/WorldMap.jsx’;
@@ -27,8 +26,6 @@ import DuelScreen from ‘./DuelScreen.jsx’;
 // ─────────────────────────────────────────────────────────────────────────────
 
 const mkId = () => Math.random().toString(36).slice(2, 9);
-
-const DUNGEON_ARCHS = [‘WHITE_WEENIE’, ‘BLUE_CONTROL’, ‘BLACK_REANIMATOR’, ‘RED_BURN’, ‘GREEN_STOMPY’];
 
 const ART_REWARD = { W: ‘ward’, U: ‘stone’, B: ‘amulet’, R: ‘focus’, G: ‘boots’ };
 
@@ -46,14 +43,6 @@ U: { hp: 18, maxHP: 18, gold: 50,  deckIds: [‘counterspell’,‘merfolk_pearl
 B: { hp: 18, maxHP: 18, gold: 35,  deckIds: [‘dark_ritual’,‘hypnotic_specter’,‘sengir_vampire’,‘terror’,‘demonic_tutor’,‘mind_twist’,…Array(9).fill(‘swamp’)] },
 R: { hp: 20, maxHP: 20, gold: 40,  deckIds: [‘lightning_bolt’,‘chain_lightning’,‘fireball’,‘goblin_king’,‘shivan_dragon’,‘lava_axe’,…Array(9).fill(‘mountain’)] },
 G: { hp: 22, maxHP: 22, gold: 30,  deckIds: [‘llanowar_elves’,‘fyndhorn_elves’,‘craw_wurm’,‘force_of_nature’,‘giant_growth’,‘stream_of_life’,…Array(9).fill(‘forest’)] },
-};
-
-const MONSTER_TABLE = {
-PLAINS:   [{ name: ‘Pegasus Cavalry’,  archKey: ‘WHITE_WEENIE’,      tier: 1 }, { name: ‘Knight of the Keep’, archKey: ‘WHITE_WEENIE’,      tier: 2 }],
-FOREST:   [{ name: ‘Forest Spider’,    archKey: ‘GREEN_STOMPY’,       tier: 1 }, { name: ‘Elder Druid’,        archKey: ‘GREEN_STOMPY’,       tier: 2 }],
-SWAMP:    [{ name: ‘Risen Zombie’,     archKey: ‘BLACK_REANIMATOR’,   tier: 1 }, { name: ‘Shadow Specter’,     archKey: ‘BLACK_REANIMATOR’,   tier: 2 }],
-MOUNTAIN: [{ name: ‘Goblin Raider’,    archKey: ‘RED_BURN’,           tier: 1 }, { name: ‘Mountain Ogre’,      archKey: ‘RED_BURN’,           tier: 2 }],
-ISLAND:   [{ name: ‘Sea Serpent’,      archKey: ‘BLUE_CONTROL’,       tier: 1 }, { name: ‘Tidal Sorcerer’,     archKey: ‘BLUE_CONTROL’,       tier: 2 }],
 };
 
 const MINION_NAMES = {
@@ -394,7 +383,7 @@ if (ctx === 'dungeon') {
       // More rooms remain — relaunch immediately
       const newProg = { ...prog, room: nextRoom };
       setDungeonProg(newProg);
-      const nextArch = DUNGEON_ARCHS[Math.floor(Math.random() * DUNGEON_ARCHS.length)];
+      const nextArch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
       addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further…`, 'event');
       setDuelCfg({
         pDeckIds: deck.map(c => c.id).filter(Boolean),
@@ -574,7 +563,7 @@ addLog(`You descend into ${dg.name}. Modifier: ${dg.mod.name}.`, ‘event’);
 const prog = { tile: activeTile, room: 0, totalRooms: dg.rooms, mod: dg.mod, entryHP: player.hp };
 setDungeonProg(prog);
 setModal(null);
-const arch = DUNGEON_ARCHS[Math.floor(Math.random() * DUNGEON_ARCHS.length)];
+const arch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
 launchDuel(arch, player.hp, ‘dungeon’, dg.mod);
 }, [activeTile, player.hp, launchDuel, addLog]);
 
