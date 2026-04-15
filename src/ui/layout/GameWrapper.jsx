@@ -72,7 +72,9 @@ backgroundImage: “radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,tran
                 borderRadius:8, boxShadow:sel?`0 0 16px ${hx}50`:"none",
                 transition:"all .2s", transform:sel?"translateY(-4px)":"none",
               }}>
-                <div style={{ fontSize:38, marginBottom:6, textAlign:"center", color:hx, lineHeight:1 }}>{MANA_SYM[c]}</div>
+                <div style={{ fontSize: 40, marginBottom: 8, lineHeight: 1 }}>
+                  {MANA_SYM[c]}
+                </div>
                 <div style={{ fontSize:11, fontFamily:"'Cinzel',serif", color:sel?hx:"#6a5030", marginBottom:3 }}>{m.name}</div>
                 <div style={{ fontSize:8, color:"#5a4020", lineHeight:1.4 }}>{m.label}</div>
                 <div style={{ marginTop:6, fontSize:9, color:sel?hx:"#4a3010" }}>♥{m.hp} ⚙{m.gold}g</div>
