@@ -1,6 +1,6 @@
 // src/OverworldGame.jsx
 // Overworld assembler. Wires MapGenerator, all UI sub-components, and DuelScreen.
-// Per MECHANICS_INDEX.md §7.2 — presentation coordinator only.
+// Per MECHANICS_INDEX.md §7.2 - presentation coordinator only.
 // All map logic lives in MapGenerator.js; duel logic in DuelCore.js.
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -30,7 +30,7 @@ const mkId = () => Math.random().toString(36).slice(2, 9);
 const ART_REWARD = { W: 'ward', U: 'stone', B: 'amulet', R: 'focus', G: 'boots' };
 
 const OW_ARTS = [
-{ id: 'boots',  name: 'Magical Boots',  icon: '👢', desc: 'Movement cost –1 per tile (min 1).',      owned: false },
+{ id: 'boots',  name: 'Magical Boots',  icon: '👢', desc: 'Movement cost -1 per tile (min 1).',      owned: false },
 { id: 'amulet', name: 'Amulet of Life', icon: '💎', desc: 'Maximum HP +5.',                           owned: false },
 { id: 'focus',  name: "Mage's Focus",   icon: '🔮', desc: 'Draw 1 extra card at duel start.',         owned: false },
 { id: 'ward',   name: "Arzakon's Ward", icon: '🛡', desc: 'Mana link threshold raised to 5.',         owned: false },
@@ -38,11 +38,11 @@ const OW_ARTS = [
 ];
 
 const START_DECKS = {
-W: { hp: 22, maxHP: 22, gold: 40,  deckIds: ['savannah_lions','white_knight','serra_angel','swords','healing_salve','wog',…Array(9).fill('plains')] },
-U: { hp: 18, maxHP: 18, gold: 50,  deckIds: ['counterspell','merfolk_pearl','air_elemental','ancestral','unsummon','braingeyser',…Array(9).fill('island')] },
-B: { hp: 18, maxHP: 18, gold: 35,  deckIds: ['dark_ritual','hypnotic_specter','sengir_vampire','terror','demonic_tutor','mind_twist',…Array(9).fill('swamp')] },
-R: { hp: 20, maxHP: 20, gold: 40,  deckIds: ['lightning_bolt','chain_lightning','fireball','goblin_king','shivan_dragon','lava_axe',…Array(9).fill('mountain')] },
-G: { hp: 22, maxHP: 22, gold: 30,  deckIds: ['llanowar_elves','fyndhorn_elves','craw_wurm','force_of_nature','giant_growth','stream_of_life',…Array(9).fill('forest')] },
+W: { hp: 22, maxHP: 22, gold: 40,  deckIds: ['savannah_lions','white_knight','serra_angel','swords','healing_salve','wog',...Array(9).fill('plains')] },
+U: { hp: 18, maxHP: 18, gold: 50,  deckIds: ['counterspell','merfolk_pearl','air_elemental','ancestral','unsummon','braingeyser',...Array(9).fill('island')] },
+B: { hp: 18, maxHP: 18, gold: 35,  deckIds: ['dark_ritual','hypnotic_specter','sengir_vampire','terror','demonic_tutor','mind_twist',...Array(9).fill('swamp')] },
+R: { hp: 20, maxHP: 20, gold: 40,  deckIds: ['lightning_bolt','chain_lightning','fireball','goblin_king','shivan_dragon','lava_axe',...Array(9).fill('mountain')] },
+G: { hp: 22, maxHP: 22, gold: 30,  deckIds: ['llanowar_elves','fyndhorn_elves','craw_wurm','force_of_nature','giant_growth','stream_of_life',...Array(9).fill('forest')] },
 };
 
 const MINION_NAMES = {
@@ -64,7 +64,7 @@ if (!found) {
 console.error(`[OverworldGame] Missing card in CARD_DB: "${id}"`);
 return null;
 }
-return { …found, iid: mkId() };
+return { ...found, iid: mkId() };
 }).filter(Boolean);
 }
 
@@ -75,8 +75,8 @@ return { …found, iid: mkId() };
 /**
 
 - @param {object} startConfig  { color: "W"|"U"|"B"|"R"|"G", name: string, seed: number }
-- @param {function} onQuit     () => void — returns to title
-- @param {function} onScore    (data) => void — hands off to ScoreScreen
+- @param {function} onQuit     () => void - returns to title
+- @param {function} onScore    (data) => void - hands off to ScoreScreen
   */
   export default function OverworldGame({ startConfig, onQuit, onScore }) {
   const { color, name, seed } = startConfig;
@@ -100,7 +100,7 @@ gold: startDef.gold, gems: 0,
 });
 const [deck, setDeck]         = useState(() => buildDeck(startDef.deckIds));
 const [binder, setBinder]     = useState([]);
-const [artifacts, setArtifacts] = useState([…OW_ARTS]);
+const [artifacts, setArtifacts] = useState([...OW_ARTS]);
 
 // ── World pressure ───────────────────────────────────────────────────────
 const [manaLinks, setManaLinks]       = useState({ W:0, U:0, B:0, R:0, G:0 });
@@ -146,7 +146,7 @@ const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDef
 // ─────────────────────────────────────────────────────────────────────────
 
 const addLog = useCallback((text, type = 'info') => {
-setLog(prev => […prev.slice(-80), { text, type }]);
+setLog(prev => [...prev.slice(-80), { text, type }]);
 }, []);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ const handleRespondAlert = useCallback((ev) => {
 // Rush toward the threatened town (path to it)
 const path = findPath(tiles, pos.x, pos.y, ev.tx, ev.ty);
 if (path?.length) doMove(path[0].x, path[0].y);
-// Dismiss the event — player is now en route
+// Dismiss the event - player is now en route
 setMlEvents(prev => prev.filter(e => e.id !== ev.id));
 addLog(`Rushing to ${ev.townName}!`, 'info');
 // Defending a town before the minion arrives counts as a town saved
@@ -303,7 +303,7 @@ overworldHP,
 castleMod,
 anteEnabled,
 context,
-…extraData,
+...extraData,
 });
 }, [deck, ruleset, anteEnabled]);
 
@@ -380,11 +380,11 @@ if (ctx === 'dungeon') {
     const prog = dungeonProg;
     const nextRoom = prog.room + 1;
     if (nextRoom < prog.totalRooms) {
-      // More rooms remain — relaunch immediately
+      // More rooms remain - relaunch immediately
       const newProg = { ...prog, room: nextRoom };
       setDungeonProg(newProg);
       const nextArch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
-      addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further…`, 'event');
+      addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further...`, 'event');
       setDuelCfg({
         pDeckIds: deck.map(c => c.id).filter(Boolean),
         oppArchKey: nextArch,
@@ -396,7 +396,7 @@ if (ctx === 'dungeon') {
       });
       return; // skip clearing duelCfg
     } else {
-      // Final room cleared — grant loot
+      // Final room cleared - grant loot
       setDungeonsCleared(dc => dc + 1);
       const gold = 20 + Math.floor(Math.random() * 40);
       setPlayer(p => ({ ...p, gold: p.gold + gold }));
@@ -413,7 +413,7 @@ if (ctx === 'dungeon') {
       setDungeonProg(null);
     }
   } else {
-    // Lost in dungeon — clear progress, HP already depleted
+    // Lost in dungeon - clear progress, HP already depleted
     addLog(`Fled the dungeon. Progress lost.`, 'danger');
     setDungeonProg(null);
   }
@@ -472,38 +472,38 @@ context: 'arzakon',
 
 const handleBuy = useCallback((card, price) => {
 if (player.gold < price) { addLog('Not enough gold.', 'warn'); return; }
-setPlayer(p => ({ …p, gold: p.gold - price }));
-setBinder(b => […b, { …card, iid: mkId() }]);
+setPlayer(p => ({ ...p, gold: p.gold - price }));
+setBinder(b => [...b, { ...card, iid: mkId() }]);
 addLog(`Purchased ${card.name} for ${price}g. Added to binder.`, 'success');
 }, [player.gold, addLog]);
 
 const handleSell = useCallback((card, price) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
-setPlayer(p => ({ …p, gold: p.gold + price }));
+setPlayer(p => ({ ...p, gold: p.gold + price }));
 addLog(`Sold ${card.name} for ${price}g.`, 'success');
 }, [addLog]);
 
 const handleRest = useCallback((cost) => {
 if (player.gold < cost) { addLog('Not enough gold for the inn.', 'warn'); return; }
-setPlayer(p => ({ …p, hp: p.maxHP, gold: p.gold - cost }));
-addLog(`Rested at the inn — full HP restored. –${cost}g.`, 'success');
+setPlayer(p => ({ ...p, hp: p.maxHP, gold: p.gold - cost }));
+addLog(`Rested at the inn - full HP restored. -${cost}g.`, 'success');
 }, [player.gold, addLog]);
 
 const handleSage = useCallback(() => {
 if (player.gold < 25) { addLog('Need 25g for the sage.', 'warn'); return; }
 // Scrying Stone: free first reveal per town visit
 const cost = hasStone ? 0 : 25;
-if (cost > 0) setPlayer(p => ({ …p, gold: p.gold - cost }));
+if (cost > 0) setPlayer(p => ({ ...p, gold: p.gold - cost }));
 const dgs = [];
 tiles.forEach(row => row.forEach(t => { if (t.structure === 'DUNGEON' && !t.revealed) dgs.push(t); }));
 if (dgs.length) {
 const d = dgs[Math.floor(Math.random() * dgs.length)];
 setTiles(prev => {
-const n = prev.map(r => […r]);
-n[d.y][d.x] = { …n[d.y][d.x], revealed: true };
+const n = prev.map(r => [...r]);
+n[d.y][d.x] = { ...n[d.y][d.x], revealed: true };
 return n;
 });
-const costStr = cost === 0 ? '(free — Scrying Stone)' : `–${cost}g`;
+const costStr = cost === 0 ? '(free - Scrying Stone)' : `-${cost}g`;
 addLog(`The sage reveals ${d.dungeonData.name}. ${costStr}`, 'success');
 } else {
 addLog('No unknown dungeons remain to reveal.', 'info');
@@ -517,8 +517,8 @@ if (commons.length < 3) { addLog('Need 3 commons to trade.', 'warn'); return; }
 const rm = commons.slice(0, 3);
 const pool = CARD_DB.filter(c => c.rarity === 'U' && !isLand(c));
 if (!pool.length) return;
-const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
+const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
 addLog(`Traded 3 commons → ${reward.name}.`, 'success');
 } else if (rarity === 'U') {
 const uncs = binder.filter(c => c.rarity === 'U');
@@ -526,8 +526,8 @@ if (uncs.length < 5) { addLog('Need 5 uncommons to trade.', 'warn'); return; }
 const rm = uncs.slice(0, 5);
 const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
-const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
+const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
 addLog(`Traded 5 uncommons → ${reward.name}.`, 'success');
 }
 }, [binder, addLog]);
@@ -537,18 +537,18 @@ if (type === 'rare') {
 if (player.gems < 3) { addLog('Need 3◆ for a rare.', 'warn'); return; }
 const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
-const r = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b, r]);
-setPlayer(p => ({ …p, gems: p.gems - 3 }));
-addLog(`Gem merchant: received ${r.name}. –3◆`, 'success');
+const r = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b, r]);
+setPlayer(p => ({ ...p, gems: p.gems - 3 }));
+addLog(`Gem merchant: received ${r.name}. -3◆`, 'success');
 } else if (type === 'hp') {
 if (player.gems < 5) { addLog('Need 5◆ for max HP upgrade.', 'warn'); return; }
-setPlayer(p => ({ …p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
-addLog('Max HP +5. –5◆', 'success');
+setPlayer(p => ({ ...p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
+addLog('Max HP +5. -5◆', 'success');
 } else if (type === 'heal') {
 if (player.gems < 2) { addLog('Need 2◆ for a full heal.', 'warn'); return; }
-setPlayer(p => ({ …p, hp: p.maxHP, gems: p.gems - 2 }));
-addLog('Fully healed. –2◆', 'success');
+setPlayer(p => ({ ...p, hp: p.maxHP, gems: p.gems - 2 }));
+addLog('Fully healed. -2◆', 'success');
 }
 }, [player.gems, addLog]);
 
@@ -585,20 +585,20 @@ launchDuel(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
 // ─────────────────────────────────────────────────────────────────────────
 
 const handleSwap = useCallback((deckCard, binderCard) => {
-setDeck(d => d.map(c => c.iid === deckCard.iid ? { …binderCard, iid: deckCard.iid } : c));
-setBinder(b => b.map(c => c.iid === binderCard.iid ? { …deckCard, iid: binderCard.iid } : c));
+setDeck(d => d.map(c => c.iid === deckCard.iid ? { ...binderCard, iid: deckCard.iid } : c));
+setBinder(b => b.map(c => c.iid === binderCard.iid ? { ...deckCard, iid: binderCard.iid } : c));
 addLog(`Swapped ${deckCard.name} ↔ ${binderCard.name}.`, 'info');
 }, [addLog]);
 
 const handleMoveToDeck = useCallback((card) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
-setDeck(d => […d, { …card, iid: card.iid || mkId() }]);
+setDeck(d => [...d, { ...card, iid: card.iid || mkId() }]);
 addLog(`Added ${card.name} to deck.`, 'info');
 }, [addLog]);
 
 const handleMoveToBinder = useCallback((card) => {
 setDeck(d => d.filter(c => c.iid !== card.iid));
-setBinder(b => […b, { …card, iid: card.iid || mkId() }]);
+setBinder(b => [...b, { ...card, iid: card.iid || mkId() }]);
 addLog(`Moved ${card.name} to binder.`, 'info');
 }, [addLog]);
 
@@ -634,12 +634,12 @@ return () => clearTimeout(t);
 }, [gameLost]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // ─────────────────────────────────────────────────────────────────────────
-// RENDER — DUEL BRIDGE
+// RENDER - DUEL BRIDGE
 // ─────────────────────────────────────────────────────────────────────────
 if (duelCfg) {
 return (
 <DuelScreen
-key={JSON.stringify({ …duelCfg, _ts: Date.now() })}
+key={JSON.stringify({ ...duelCfg, _ts: Date.now() })}
 config={duelCfg}
 onDuelEnd={handleDuelEnd}
 />
@@ -647,7 +647,7 @@ onDuelEnd={handleDuelEnd}
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// RENDER — OVERWORLD
+// RENDER - OVERWORLD
 // ─────────────────────────────────────────────────────────────────────────
 return (
 <div style={{
@@ -669,7 +669,7 @@ fontFamily: "'Crimson Text', serif",
       <div style={{ fontSize: 40 }}>💀</div>
       <div style={{ fontSize: 24, fontFamily: "'Cinzel',serif", color: '#e04040' }}>The Plane Falls</div>
       <div style={{ fontSize: 12, color: '#a06040', fontStyle: 'italic' }}>
-        Arzakon's mana links have consumed Shandalar…
+        Arzakon's mana links have consumed Shandalar...
       </div>
     </div>
   )}
@@ -708,7 +708,7 @@ fontFamily: "'Crimson Text', serif",
           cursor: 'pointer', fontSize: 12, fontFamily: "'Cinzel',serif",
         }}
       >
-        Prepare further…
+        Prepare further...
       </button>
     </div>
   )}
@@ -857,7 +857,7 @@ fontFamily: "'Crimson Text', serif",
               {c.name.slice(0, 10)}
             </div>
           ))}
-          {deck.length > 10 && <div style={{ fontSize: 8, color: '#6a5020' }}>+{deck.length - 10}…</div>}
+          {deck.length > 10 && <div style={{ fontSize: 8, color: '#6a5020' }}>+{deck.length - 10}...</div>}
         </div>
         <div style={{ fontSize: 10, color: '#8a6030', fontFamily: "'Cinzel',serif", marginBottom: 4 }}>
           BINDER ({binder.length})

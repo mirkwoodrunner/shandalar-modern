@@ -1,5 +1,5 @@
 // src/data/rulesets.js
-// Ruleset definitions — read-only configuration for DuelCore.
+// Ruleset definitions - read-only configuration for DuelCore.
 // Per SYSTEMS.md §8 and MECHANICS_INDEX.md §4.1
 //
 // CONSTRAINTS (ENGINE_CONTRACT_SPEC.md):
@@ -10,8 +10,8 @@
 export const RULESETS = {
 CLASSIC: {
 id: "CLASSIC",
-name: "Classic (Alpha–4th Ed.)",
-description: "Original 1993–1995 rules. Mana burn, banding, batch stack, 7-card mulligan (no free).",
+name: "Classic (Alpha-4th Ed.)",
+description: "Original 1993-1995 rules. Mana burn, banding, batch stack, 7-card mulligan (no free).",
 manaBurn: true,
 freeMulligan: false,
 londonMulligan: false,

@@ -46,7 +46,7 @@ ARZ: { name:"Dominion",        desc:"Arzakon commands all five colors. The final
 
 export const DUNGEON_MODIFIERS = [
 { id:"POWER_STRUGGLE", name:"Power Struggle",  desc:"Each turn a random card swaps between hands.", icon:"⇄" },
-{ id:"CURSED_GROUND",  name:"Cursed Ground",   desc:"All creatures enter with a –1/–1 counter.",   icon:"☠" },
+{ id:"CURSED_GROUND",  name:"Cursed Ground",   desc:"All creatures enter with a -1/-1 counter.",   icon:"☠" },
 { id:"MANA_SURGE",     name:"Mana Surge",      desc:"Both players gain +1 mana each turn.",         icon:"⚡" },
 { id:"SILENCE",        name:"Silence",         desc:"No instants may be cast.",                     icon:"🤫" },
 { id:"TWILIGHT",       name:"Eternal Twilight", desc:"No creatures may attack until turn 3.",        icon:"🌘" },
@@ -107,7 +107,7 @@ const GUILD_QUESTS = [
 ];
 
 // ─── SEEDED RNG ────────────────────────────────────────────────────────────────
-// mulberry32 — deterministic, reproducible.
+// mulberry32 - deterministic, reproducible.
 // All randomness in map generation must use this. Never Math.random().
 
 export function makeRng(seed) {
@@ -128,7 +128,7 @@ return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 - Returns { tiles, startX, startY }
 - 
 - Per SYSTEMS.md §7 and GDD.md §3.1:
-- - 8–10 towns, 6–8 dungeons, 5 mage castles (one per quadrant)
+- - 8-10 towns, 6-8 dungeons, 5 mage castles (one per quadrant)
 - - Fog of war: 5×5 reveal box centered on player
 - - Player starts near center on a non-water, non-structure tile
     */
@@ -189,15 +189,15 @@ if (ok) return { x, y };
 return null;
 };
 
-// ── Towns (8–10) ─────────────────────────────────────────────────────────
-const townNames = […TOWN_POOL].sort(() => rng() - 0.5);
+// ── Towns (8-10) ─────────────────────────────────────────────────────────
+const townNames = [...TOWN_POOL].sort(() => rng() - 0.5);
 const townCount = 8 + Math.floor(rng() * 3);
 for (let i = 0; i < townCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 3);
 if (!p) continue;
 claim(p.x, p.y);
 const stock = shopCardPool.length
-? […shopCardPool].sort(() => rng() - 0.5).slice(0, 6 + Math.floor(rng() * 5))
+? [...shopCardPool].sort(() => rng() - 0.5).slice(0, 6 + Math.floor(rng() * 5))
 : [];
 tiles[p.y][p.x].structure = "TOWN";
 tiles[p.y][p.x].townData = {
@@ -210,8 +210,8 @@ questDone: false,
 };
 }
 
-// ── Dungeons (6–8) ───────────────────────────────────────────────────────
-const dungeonNames = […DUNGEON_POOL].sort(() => rng() - 0.5);
+// ── Dungeons (6-8) ───────────────────────────────────────────────────────
+const dungeonNames = [...DUNGEON_POOL].sort(() => rng() - 0.5);
 const dungeonCount = 6 + Math.floor(rng() * 3);
 for (let i = 0; i < dungeonCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 4);
@@ -229,7 +229,7 @@ loot: [], // populated by caller with rare cards
 };
 }
 
-// ── Mage Castles (5 — one per quadrant + center) ──────────────────────────
+// ── Mage Castles (5 - one per quadrant + center) ──────────────────────────
 const quads = [
 { x1:1,        x2:MAP_W/2-2, y1:1,        y2:MAP_H/2-2 },
 { x1:MAP_W/2+2,x2:MAP_W-2,   y1:1,        y2:MAP_H/2-2 },
@@ -237,7 +237,7 @@ const quads = [
 { x1:MAP_W/2+2,x2:MAP_W-2,   y1:MAP_H/2+2,y2:MAP_H-2   },
 { x1:MAP_W/2-3,x2:MAP_W/2+3, y1:MAP_H/2-3,y2:MAP_H/2+3 },
 ];
-[…COLORS].sort(() => rng() - 0.5).forEach((color, i) => {
+[...COLORS].sort(() => rng() - 0.5).forEach((color, i) => {
 const q = quads[i];
 const p = spot(q.x1, q.x2, q.y1, q.y2, 5);
 if (!p) return;
@@ -298,7 +298,7 @@ if (visited.has(key)) continue;
 const t = tiles[ny]?.[nx];
 if (!t || !t.revealed || t.terrain === TERRAIN.WATER) continue;
 visited.add(key);
-queue.push({ x: nx, y: ny, path: […path, { x: nx, y: ny }] });
+queue.push({ x: nx, y: ny, path: [...path, { x: nx, y: ny }] });
 }
 }
 return null;
@@ -310,11 +310,11 @@ return null;
 - Returns new tiles array (immutable update).
   */
   export function revealAround(tiles, cx, cy) {
-  const next = tiles.map(row => […row]);
+  const next = tiles.map(row => [...row]);
   for (let dy = -2; dy <= 2; dy++) {
   for (let dx = -2; dx <= 2; dx++) {
   if (next[cy + dy]?.[cx + dx]) {
-  next[cy + dy][cx + dx] = { …next[cy + dy][cx + dx], revealed: true };
+  next[cy + dy][cx + dx] = { ...next[cy + dy][cx + dx], revealed: true };
   }
   }
   }

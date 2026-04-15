@@ -1,7 +1,7 @@
 // src/DuelScreen.jsx
 // Assembler component for the duel UI.
 // Wires engine (useDuel / AI) to all duel UI sub-components.
-// Per MECHANICS_INDEX.md §8.1 — this is a presentation coordinator only.
+// Per MECHANICS_INDEX.md §8.1 - this is a presentation coordinator only.
 // All game logic lives in DuelCore.js; all decisions live in AI.js.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -65,7 +65,7 @@ import { Tooltip } from './ui/shared/Tooltip.jsx';
   config.anteEnabled ?? false
   );
 
-// ── Local UI state (presentation only — NOT game state) ───────────────────
+// ── Local UI state (presentation only - NOT game state) ───────────────────
 const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
@@ -140,7 +140,7 @@ if (zone === 'pBf') {
     declareAttacker(card.iid);
     return;
   }
-  // Pending activated ability — this creature is the target
+  // Pending activated ability - this creature is the target
   if (pendingActivate) {
     activateAbility(pendingActivate.iid, card.iid);
     setPendingActivate(null);
@@ -161,7 +161,7 @@ if (zone === 'oBf') {
     selectTarget(null);
     return;
   }
-  // Pending activated ability — opponent creature is target
+  // Pending activated ability - opponent creature is target
   if (pendingActivate) {
     activateAbility(pendingActivate.iid, card.iid);
     setPendingActivate(null);
@@ -214,13 +214,13 @@ if (effect === 'addMana3Any') {
   setPendingActivate(card);
   return;
 }
-// Abilities that need a target — enter pending mode
+// Abilities that need a target - enter pending mode
 if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].includes(effect)) {
   setPendingActivate(card);
   selectCard(card.iid);
   return;
 }
-// No target needed — fire immediately
+// No target needed - fire immediately
 activateAbility(card.iid, null);
 ```
 
@@ -281,7 +281,7 @@ fontFamily: "'Crimson Text',serif",
           {s.over.winner === 'p' ? 'Victory!' : 'Defeat'}
         </div>
         <div style={{ fontSize: 12, color: '#a08060', marginBottom: 16 }}>{s.over.reason}</div>
-        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld…</div>
+        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld...</div>
       </div>
     </div>
   )}
@@ -302,7 +302,7 @@ fontFamily: "'Crimson Text',serif",
         {s.castleMod.name}
       </span>
       <span style={{ fontSize: 10, color: '#a07040', fontStyle: 'italic' }}>
-        — {s.castleMod.desc}
+        - {s.castleMod.desc}
       </span>
     </div>
   )}
@@ -351,7 +351,7 @@ fontFamily: "'Crimson Text',serif",
         )}
         {s.active === 'o' && (
           <span style={{ fontSize: 10, color: '#9090dd', animation: 'pulse 1s infinite', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-            Opp thinking…
+            Opp thinking...
           </span>
         )}
       </div>
@@ -615,7 +615,7 @@ fontFamily: "'Crimson Text',serif",
 /**
 
 - Resolve a sensible default target for a spell when the player hasn't
-- explicitly clicked one. DuelCore will validate — this is just a UX convenience.
+- explicitly clicked one. DuelCore will validate - this is just a UX convenience.
   */
   function resolveDefaultTarget(card, state) {
   const { effect } = card;
