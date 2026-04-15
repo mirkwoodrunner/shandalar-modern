@@ -1,5 +1,5 @@
 // src/engine/AI.js
-// AI decision generator — produces GameAction objects for DuelCore to execute.
+// AI decision generator - produces GameAction objects for DuelCore to execute.
 // Per SYSTEMS.md §6 and MECHANICS_INDEX.md §2.1
 //
 // STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md §5):
@@ -48,13 +48,12 @@ state.o.bf.filter(c => isLand(c) && !c.tapped).length +
 const currentMana = Object.values(state.o.mana).reduce((a, b) => a + b, 0);
 const maxAffordable = currentMana + availableLandCount;
 
-```
 const nonLands = state.o.hand.filter(c => !isLand(c));
 const sorted = [...nonLands].sort((a, b) => strat === "aggro" ? b.cmc - a.cmc : a.cmc - b.cmc);
 const bestSpell = sorted.find(c => c.cmc <= maxAffordable) || null;
 
 if (bestSpell) {
-  // Simulate tapping — build virtual mana pool, tap minimum required
+  // Simulate tapping - build virtual mana pool, tap minimum required
   const vPool = { ...state.o.mana };
   const req = parseMana(bestSpell.cost);
 
@@ -82,7 +81,7 @@ if (bestSpell) {
         vPool[cl] = (vPool[cl] || 0) + 1;
       }
     }
-    // Tap generic lands — stop as soon as we can afford the spell
+    // Tap generic lands - stop as soon as we can afford the spell
     for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped)) {
       if (vCanPay()) break;
       const m = l.produces?.[0] || "C";
@@ -97,7 +96,7 @@ if (bestSpell) {
   else if (["destroy","exileCreature","bounce"].includes(bestSpell.effect)) {
     const threats = state.p.bf.filter(isCre);
     if (threats.length) tgt = threats.reduce((a, b) => getPow(a, state) > getPow(b, state) ? a : b).iid;
-    else tgt = null; // no valid creature target — skip
+    else tgt = null; // no valid creature target - skip
   }
   else if (["draw3","tutor","drawX","gainLifeX","gainLife3"].includes(bestSpell.effect)) tgt = "o";
 
@@ -106,11 +105,10 @@ if (bestSpell) {
     acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal: 3 });
   }
 }
-```
 
 }
 
-// ── 3. Declare attackers — always attack with all eligible creatures ───────
+// ── 3. Declare attackers - always attack with all eligible creatures ───────
 // Per GDD Bug B9 fix: simplified AI always attacks.
 if (state.phase === "DECLARE_ATTACKERS" && state.active === "o") {
 const eligible = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
@@ -124,7 +122,6 @@ if (state.phase === "DECLARE_BLOCKERS" && state.active === "p") {
 const canBlock = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.attacking);
 const alreadyBlocking = new Set();
 
-```
 for (const attId of state.attackers) {
   const att = getBF(state, attId);
   if (!att) continue;
@@ -143,7 +140,6 @@ for (const attId of state.attackers) {
     acts.push({ type: "DECLARE_BLOCKER", blId: chosen.iid, attId });
   }
 }
-```
 
 }
 

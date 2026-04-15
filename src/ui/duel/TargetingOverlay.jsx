@@ -1,11 +1,11 @@
 // src/ui/duel/TargetingOverlay.jsx
 // Action bar: cast button, X input, stack display, phase nav, combat prompts,
 // Black Lotus color picker modal, and activated-ability target prompt.
-// Presentation only — dispatches via callbacks. Per MECHANICS_INDEX.md §7.1
+// Presentation only - dispatches via callbacks. Per MECHANICS_INDEX.md §7.1
 
-import React from ‘react’;
-import { isCre, isLand, canPay } from ‘../../engine/DuelCore.js’;
-import { thmOf, CCOLOR, Cost } from ‘../shared/Card.jsx’;
+import React from 'react';
+import { isCre, isLand, canPay } from '../../engine/DuelCore.js';
+import { thmOf, CCOLOR, Cost } from '../shared/Card.jsx';
 
 // ─── ACTION BAR ───────────────────────────────────────────────────────────────
 
@@ -19,19 +19,18 @@ pendingActivate,
 onCancelActivate,
 }) {
 const selDef  = state.p.hand.find(c => c.iid === state.selCard);
-const inMain  = state.phase === “MAIN1” || state.phase === “MAIN2”;
-const isMyTurn = state.active === “p”;
+const inMain  = state.phase === "MAIN1" || state.phase === "MAIN2";
+const isMyTurn = state.active === "p";
 
 return (
 <div style={{
-flexShrink: 0, padding: “6px 14px”,
-background: “rgba(0,0,0,.7)”,
-borderBottom: “1px solid rgba(200,160,40,.2)”,
-borderTop:    “1px solid rgba(200,160,40,.15)”,
-display: “flex”, alignItems: “center”, gap: 8, minHeight: 44,
+flexShrink: 0, padding: "6px 14px",
+background: "rgba(0,0,0,.7)",
+borderBottom: "1px solid rgba(200,160,40,.2)",
+borderTop:    "1px solid rgba(200,160,40,.15)",
+display: "flex", alignItems: "center", gap: 8, minHeight: 44,
 }}>
 
-```
   {/* Cast / Play button */}
   {isMyTurn && inMain && selDef && (
     <button onClick={onCast} style={{
@@ -119,12 +118,11 @@ display: “flex”, alignItems: “center”, gap: 8, minHeight: 44,
     )}
     {!isMyTurn && (
       <span style={{ fontSize:11, color:"#6a5a30", padding:"6px 12px", fontFamily:"'Cinzel',serif", fontStyle:"italic" }}>
-        Opponent's turn…
+        Opponent's turn...
       </span>
     )}
   </div>
 </div>
-```
 
 );
 }
@@ -132,32 +130,32 @@ display: “flex”, alignItems: “center”, gap: 8, minHeight: 44,
 // ─── BLACK LOTUS COLOR PICKER ─────────────────────────────────────────────────
 
 export function LotusColorPicker({ onChoose, onCancel }) {
-const colors = [“W”,“U”,“B”,“R”,“G”];
-const bg = { W:”#f9f0d0”, U:”#3366bb”, B:”#6633aa”, R:”#bb3311”, G:”#226611” };
-const label = { W:“W”, U:“U”, B:“B”, R:“R”, G:“G” };
+const colors = ["W","U","B","R","G"];
+const bg = { W:"#f9f0d0", U:"#3366bb", B:"#6633aa", R:"#bb3311", G:"#226611" };
+const label = { W:"W", U:"U", B:"B", R:"R", G:"G" };
 
 return (
 <div style={{
-position:“fixed”, inset:0, background:“rgba(0,0,0,.85)”,
-display:“flex”, alignItems:“center”, justifyContent:“center”, zIndex:600,
+position:"fixed", inset:0, background:"rgba(0,0,0,.85)",
+display:"flex", alignItems:"center", justifyContent:"center", zIndex:600,
 }}>
 <div style={{
-background:“linear-gradient(160deg,#1a1010,#0a0808)”,
-border:“2px solid rgba(200,160,40,.5)”, borderRadius:10,
-padding:24, textAlign:“center”,
-boxShadow:“0 0 60px rgba(0,0,0,.9)”,
+background:"linear-gradient(160deg,#1a1010,#0a0808)",
+border:"2px solid rgba(200,160,40,.5)", borderRadius:10,
+padding:24, textAlign:"center",
+boxShadow:"0 0 60px rgba(0,0,0,.9)",
 }}>
-<div style={{ fontSize:18, fontFamily:”‘Cinzel’,serif”, color:”#f0c040”, marginBottom:6 }}>⚫ Black Lotus</div>
-<div style={{ fontSize:12, color:”#a09060”, marginBottom:18, fontFamily:”‘Crimson Text’,serif”, fontStyle:“italic” }}>
+<div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#f0c040", marginBottom:6 }}>⚫ Black Lotus</div>
+<div style={{ fontSize:12, color:"#a09060", marginBottom:18, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
 Choose which color of mana to add (×3).
 </div>
-<div style={{ display:“flex”, gap:12, justifyContent:“center” }}>
+<div style={{ display:"flex", gap:12, justifyContent:"center" }}>
 {colors.map(col => (
 <button key={col} onClick={() => onChoose(col)} style={{
-width:52, height:52, borderRadius:“50%”,
-background: bg[col], border:“2px solid rgba(255,255,255,.3)”,
-cursor:“pointer”, fontSize:18, fontWeight:700,
-color: col === “W” ? “#333” : “#fff”,
+width:52, height:52, borderRadius:"50%",
+background: bg[col], border:"2px solid rgba(255,255,255,.3)",
+cursor:"pointer", fontSize:18, fontWeight:700,
+color: col === "W" ? "#333" : "#fff",
 boxShadow:`0 0 12px ${bg[col]}60`,
 }}>
 {label[col]}
@@ -165,9 +163,9 @@ boxShadow:`0 0 12px ${bg[col]}60`,
 ))}
 </div>
 <button onClick={onCancel} style={{
-marginTop:16, background:“transparent”, border:“1px solid #5a3020”,
-color:”#806040”, padding:“5px 14px”, borderRadius:4, cursor:“pointer”,
-fontSize:11, fontFamily:”‘Cinzel’,serif”,
+marginTop:16, background:"transparent", border:"1px solid #5a3020",
+color:"#806040", padding:"5px 14px", borderRadius:4, cursor:"pointer",
+fontSize:11, fontFamily:"'Cinzel',serif",
 }}>Cancel</button>
 </div>
 </div>

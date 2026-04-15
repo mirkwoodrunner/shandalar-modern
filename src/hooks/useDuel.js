@@ -32,7 +32,7 @@ import { duelReducer, buildDuelState } from '../engine/DuelCore.js';
   const [state, dispatch] = useReducer(duelReducer, initialState);
 
 // ── Action dispatchers ─────────────────────────────────────────────────────
-// Each wrapper validates nothing — that is DuelCore's job.
+// Each wrapper validates nothing - that is DuelCore's job.
 // These are thin wrappers that construct GameAction objects.
 
 const tapLand = useCallback((iid, mana) =>
