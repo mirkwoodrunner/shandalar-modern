@@ -29,6 +29,7 @@ canPay, parseMana,
   */
   export function aiDecide(state) {
   const acts = [];
+  console.log(“[AI] state.phase =”, state.phase, “  state.active =”, state.active);
   const arch = state.oppArch || ARCHETYPES.RED_BURN;
   const strat = arch.strategy;
   const inMain = (state.phase === “MAIN1” || state.phase === “MAIN2”) && state.active === “o”;
@@ -73,20 +74,27 @@ if (bestSpell) {
   }
 
   if (!vCanPay()) {
+    // Track virtually-tapped land iids to prevent double-tapping the same land
+    const vTapped = new Set();
+
     // Tap colored lands matching spell requirements
     const neededColors = ["W","U","B","R","G"].filter(cl => (req[cl]||0) > 0);
     for (const cl of neededColors) {
       for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped && c.produces?.includes(cl))) {
         if ((vPool[cl]||0) >= (req[cl]||0)) break;
+        if (vTapped.has(l.iid)) continue;
         acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: cl });
+        vTapped.add(l.iid);
         vPool[cl] = (vPool[cl] || 0) + 1;
       }
     }
     // Tap generic lands — stop as soon as we can afford the spell
-    for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped)) {
+    // Exclude lands already virtually tapped in the colored pass above
+    for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped && !vTapped.has(c.iid))) {
       if (vCanPay()) break;
       const m = l.produces?.[0] || "C";
       acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: m });
+      vTapped.add(l.iid);
       vPool[m] = (vPool[m] || 0) + 1;
     }
   }
