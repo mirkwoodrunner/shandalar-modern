@@ -924,13 +924,14 @@ case "DECLARE_ATTACKER": {
 }
 
 case "DECLARE_BLOCKER": {
-  const bl = s.o.bf.find(x => x.iid === action.blId);
+  const bw = s.active === "p" ? "o" : "p"; // blocker is always the non-active (defending) player
+  const bl = s[bw].bf.find(x => x.iid === action.blId);
   const att = getBF(s, action.attId);
   if (!bl || !att || !s.attackers.includes(action.attId) || !canBlockDuel(bl, att)) return s;
   const already = s.blockers[action.blId] === action.attId;
   const nb = { ...s.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
-  return { ...s, blockers: nb, o: { ...s.o, bf: s.o.bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
+  return { ...s, blockers: nb, [bw]: { ...s[bw], bf: s[bw].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
 }
 
 case "ADVANCE_PHASE": return advPhase(s);
