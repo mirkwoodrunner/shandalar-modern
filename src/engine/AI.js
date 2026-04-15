@@ -48,65 +48,74 @@ state.o.bf.filter(c => isLand(c) && !c.tapped).length +
 const currentMana = Object.values(state.o.mana).reduce((a, b) => a + b, 0);
 const maxAffordable = currentMana + availableLandCount;
 
-```
 const nonLands = state.o.hand.filter(c => !isLand(c));
 const sorted = [...nonLands].sort((a, b) => strat === "aggro" ? b.cmc - a.cmc : a.cmc - b.cmc);
 const bestSpell = sorted.find(c => c.cmc <= maxAffordable) || null;
 
+// No castable spell — do not tap any lands to avoid mana burn.
 if (bestSpell) {
-  // Simulate tapping — build virtual mana pool, tap minimum required
-  const vPool = { ...state.o.mana };
-  const req = parseMana(bestSpell.cost);
-
-  const vCanPay = () => {
-    const a = { ...vPool };
-    for (const c of ["W","U","B","R","G","C"]) { if (a[c] < (req[c]||0)) return false; a[c] -= req[c]||0; }
-    return Object.values(a).reduce((s,v) => s+v, 0) >= (req.generic||0);
-  };
-
-  // Tap artifact mana sources first
-  for (const c of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
-    if (vCanPay()) break;
-    acts.push({ type: "TAP_ART_MANA", who: "o", iid: c.iid });
-    const ms = c.activated.mana || "C";
-    for (const ch of ms) if ("WUBRGC".includes(ch)) vPool[ch] = (vPool[ch] || 0) + 1;
-  }
-
-  if (!vCanPay()) {
-    // Tap colored lands matching spell requirements
-    const neededColors = ["W","U","B","R","G"].filter(cl => (req[cl]||0) > 0);
-    for (const cl of neededColors) {
-      for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped && c.produces?.includes(cl))) {
-        if ((vPool[cl]||0) >= (req[cl]||0)) break;
-        acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: cl });
-        vPool[cl] = (vPool[cl] || 0) + 1;
-      }
-    }
-    // Tap generic lands — stop as soon as we can afford the spell
-    for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped)) {
-      if (vCanPay()) break;
-      const m = l.produces?.[0] || "C";
-      acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: m });
-      vPool[m] = (vPool[m] || 0) + 1;
-    }
-  }
-
-  // Choose target for the spell
+  // Resolve target BEFORE tapping. If no valid target exists, skip
+  // the spell entirely so we never tap lands that would burn unused.
   let tgt = null;
   if (["damage3","damage5","damageX","psionicBlast"].includes(bestSpell.effect)) tgt = "p";
   else if (["destroy","exileCreature","bounce"].includes(bestSpell.effect)) {
     const threats = state.p.bf.filter(isCre);
     if (threats.length) tgt = threats.reduce((a, b) => getPow(a, state) > getPow(b, state) ? a : b).iid;
-    else tgt = null; // no valid creature target — skip
+    // else tgt stays null — no valid creature target
   }
   else if (["draw3","tutor","drawX","gainLifeX","gainLife3"].includes(bestSpell.effect)) tgt = "o";
 
   const needsCreatureTarget = ["destroy","exileCreature","bounce"].includes(bestSpell.effect);
-  if (!needsCreatureTarget || tgt) {
+  const canCast = !needsCreatureTarget || tgt !== null;
+
+  // Only tap if we know the spell will actually be cast.
+  if (canCast) {
+    // Simulate tapping — build virtual mana pool, tap minimum required.
+    // tappedIids tracks lands virtually tapped so the generic loop below
+    // never double-emits TAP_LAND for a land already handled above.
+    const vPool = { ...state.o.mana };
+    const req = parseMana(bestSpell.cost);
+    const tappedIids = new Set();
+
+    const vCanPay = () => {
+      const a = { ...vPool };
+      for (const c of ["W","U","B","R","G","C"]) { if (a[c] < (req[c]||0)) return false; a[c] -= req[c]||0; }
+      return Object.values(a).reduce((s,v) => s+v, 0) >= (req.generic||0);
+    };
+
+    // Tap artifact mana sources first
+    for (const c of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
+      if (vCanPay()) break;
+      acts.push({ type: "TAP_ART_MANA", who: "o", iid: c.iid });
+      const ms = c.activated.mana || "C";
+      for (const ch of ms) if ("WUBRGC".includes(ch)) vPool[ch] = (vPool[ch] || 0) + 1;
+    }
+
+    if (!vCanPay()) {
+      // Tap colored lands matching spell requirements
+      const neededColors = ["W","U","B","R","G"].filter(cl => (req[cl]||0) > 0);
+      for (const cl of neededColors) {
+        for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped && !tappedIids.has(c.iid) && c.produces?.includes(cl))) {
+          if ((vPool[cl]||0) >= (req[cl]||0)) break;
+          tappedIids.add(l.iid);
+          acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: cl });
+          vPool[cl] = (vPool[cl] || 0) + 1;
+        }
+      }
+      // Tap generic lands — stop as soon as we can afford the spell.
+      // Exclude lands already virtually tapped above.
+      for (const l of state.o.bf.filter(c => isLand(c) && !c.tapped && !tappedIids.has(c.iid))) {
+        if (vCanPay()) break;
+        const m = l.produces?.[0] || "C";
+        tappedIids.add(l.iid);
+        acts.push({ type: "TAP_LAND", who: "o", iid: l.iid, mana: m });
+        vPool[m] = (vPool[m] || 0) + 1;
+      }
+    }
+
     acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal: 3 });
   }
 }
-```
 
 }
 
