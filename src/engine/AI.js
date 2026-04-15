@@ -29,7 +29,6 @@ canPay, parseMana,
   */
   export function aiDecide(state) {
   const acts = [];
-  console.log(“[AI] state.phase =”, state.phase, “  state.active =”, state.active);
   const arch = state.oppArch || ARCHETYPES.RED_BURN;
   const strat = arch.strategy;
   const inMain = (state.phase === “MAIN1” || state.phase === “MAIN2”) && state.active === “o”;
