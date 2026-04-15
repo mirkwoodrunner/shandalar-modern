@@ -29,7 +29,6 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
 }}>
 <style>{`@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} } @keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:1} } @keyframes wizPulse { 0%,100%{box-shadow:0 0 10px rgba(255,240,100,.8)} 50%{box-shadow:0 0 22px rgba(255,240,100,1)} } @keyframes alertDrop { from{transform:translateX(-50%) translateY(-18px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} } @keyframes phaseGlow { 0%,100%{box-shadow:0 0 6px rgba(200,160,40,.4)} 50%{box-shadow:0 0 14px rgba(200,160,40,.8)} } @keyframes stackIn { from{transform:translateX(36px);opacity:0} to{transform:none;opacity:1} } @keyframes scoreReveal { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} } @keyframes damageFlash { 0%{filter:none;transform:translateX(0)} 20%{filter:brightness(2.5) saturate(.2);transform:translateX(-3px)} 60%{transform:translateX(2px)} 100%{filter:none;transform:translateX(0)} } @keyframes healFlash { 0%,100%{filter:none;transform:scale(1)} 50%{filter:brightness(1.5) hue-rotate(100deg);transform:scale(1.05)} } ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:#080502} ::-webkit-scrollbar-thumb{background:#4a3010;border-radius:3px}`}</style>
 
-```
   <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:"linear-gradient(90deg,transparent,rgba(200,160,40,.6),transparent)" }} />
 
   <div style={{ textAlign:"center", maxWidth:620, padding:"0 20px" }}>
@@ -118,7 +117,6 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
     ALPHA-FOURTH EDITION · CLASSIC RULES
   </div>
 </div>
-```
 
 );
 }

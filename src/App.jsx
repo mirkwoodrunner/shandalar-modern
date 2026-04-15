@@ -17,8 +17,8 @@ import RULESETS from './data/rulesets.js';
 // ── UI ──────────────────────────────────────────────────────────────────────
 import { TitleScreen } from './ui/layout/GameWrapper.jsx';
 import { ScoreScreen } from './ui/overworld/EncounterModal.jsx';
-import DuelScreen from './DuelScreen.jsx'; // assembled below — see note
-import OverworldGame from './OverworldGame.jsx'; // assembled below — see note
+import DuelScreen from './DuelScreen.jsx'; // assembled below - see note
+import OverworldGame from './OverworldGame.jsx'; // assembled below - see note
 
 // ─── NOTE ─────────────────────────────────────────────────────────────────────
 // DuelScreen and OverworldGame are large compound components that wire the engine
@@ -48,7 +48,7 @@ return <ScoreScreen stats={scoreData} onNewGame={handleNewGame} />;
 }
 
 if (screen === "game" && startConfig) {
-// Lazy-load OverworldGame — if it exists
+// Lazy-load OverworldGame - if it exists
 try {
 return <OverworldGame startConfig={startConfig} onQuit={handleQuit} onScore={handleScore} />;
 } catch {

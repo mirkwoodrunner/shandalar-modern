@@ -87,7 +87,6 @@ useEffect(() => {
 if (state.over) return;
 if (state.active !== 'o' || aiRef.current) return;
 
-```
 aiRef.current = true;
 
 const thinkTimer = setTimeout(() => {
@@ -102,7 +101,6 @@ const thinkTimer = setTimeout(() => {
 }, 500 + Math.random() * 350);
 
 return () => clearTimeout(thinkTimer);
-```
 
 }, [state.phase, state.active, state.turn, state.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -116,7 +114,6 @@ const handleTipLeave = useCallback(() => setTooltip(null), []);
 const handleCardClick = useCallback((card, zone) => {
 if (state.over) return;
 
-```
 // ── HAND ────────────────────────────────────────────────────────────────
 if (zone === 'hand') {
   selectCard(state.selCard === card.iid ? null : card.iid);
@@ -171,7 +168,6 @@ if (zone === 'oBf') {
   selectTarget(card.iid);
   return;
 }
-```
 
 }, [
 state.over, state.selCard, state.selTgt, state.phase,
@@ -185,7 +181,6 @@ const handleCast = useCallback(() => {
 const card = state.p.hand.find(c => c.iid === state.selCard);
 if (!card) return;
 
-```
 if (isLand(card)) {
   playLand(card.iid);
   selectCard(null);
@@ -197,7 +192,6 @@ const tgt = state.selTgt || resolveDefaultTarget(card, state);
 castSpell(card.iid, tgt, state.xVal);
 selectCard(null);
 selectTarget(null);
-```
 
 }, [state, playLand, castSpell, selectCard, selectTarget]);
 
@@ -206,7 +200,6 @@ const handleActivate = useCallback((card) => {
 if (!card.activated) return;
 const { effect } = card.activated;
 
-```
 // Black Lotus needs a color choice modal
 if (effect === 'addMana3Any') {
   setShowLotus(true);
@@ -222,7 +215,6 @@ if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].include
 }
 // No target needed - fire immediately
 activateAbility(card.iid, null);
-```
 
 }, [activateAbility, selectCard]);
 
@@ -262,7 +254,6 @@ overflow: 'hidden',
 fontFamily: "'Crimson Text',serif",
 }}>
 
-```
   {/* ── GAME OVER OVERLAY ─────────────────────────────────────────────── */}
   {s.over && (
     <div style={{
@@ -603,7 +594,6 @@ fontFamily: "'Crimson Text',serif",
     <Tooltip card={tooltip.card} state={s} pos={tooltip.pos} />
   )}
 </div>
-```
 
 );
 }
