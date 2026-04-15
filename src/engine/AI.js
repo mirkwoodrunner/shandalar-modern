@@ -83,11 +83,16 @@ if (bestSpell) {
       return Object.values(a).reduce((s,v) => s+v, 0) >= (req.generic||0);
     };
 
-    // Tap artifact mana sources first
-    for (const c of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
+    // Tap artifact/creature mana sources first.
+    // RULE 3: skip summoning-sick creatures.
+    // RULE 4: only tap if the card actually produces mana.
+    for (const c of state.o.bf.filter(c =>
+      !isLand(c) && !c.tapped && !c.summoningSick &&
+      (c.activated?.effect?.startsWith("addMana") || c.produces?.length > 0)
+    )) {
       if (vCanPay()) break;
       acts.push({ type: "TAP_ART_MANA", who: "o", iid: c.iid });
-      const ms = c.activated.mana || "C";
+      const ms = c.activated?.mana || c.produces?.join("") || "C";
       for (const ch of ms) if ("WUBRGC".includes(ch)) vPool[ch] = (vPool[ch] || 0) + 1;
     }
 

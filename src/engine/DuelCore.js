@@ -857,13 +857,17 @@ let s = state;
 switch (action.type) {
 
 ```
-case "TAP_LAND":
+case "TAP_LAND": {
+  const card = s[action.who]?.bf.find(x => x.iid === action.iid);
+  if (card?.summoningSick) return s;
   return applyOvergrowthTap(s, action.who, action.iid, action.mana);
+}
 
 case "TAP_ART_MANA": {
   const w = action.who;
   const c = s[w].bf.find(x => x.iid === action.iid);
   if (!c || c.tapped || !c.activated?.effect?.startsWith("addMana")) return s;
+  if (c.summoningSick) return s;
   const ms = c.activated.mana || "";
   s = { ...s, [w]: { ...s[w], bf: s[w].bf.map(x => x.iid === action.iid ? { ...x, tapped: true } : x) } };
   const mp = { ...s[w].mana };
