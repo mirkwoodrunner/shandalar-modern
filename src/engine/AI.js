@@ -50,7 +50,22 @@ const maxAffordable = currentMana + availableLandCount;
 
 const nonLands = state.o.hand.filter(c => !isLand(c));
 const sorted = [...nonLands].sort((a, b) => strat === "aggro" ? b.cmc - a.cmc : a.cmc - b.cmc);
-const bestSpell = sorted.find(c => c.cmc <= maxAffordable) || null;
+
+// For addMana spells (e.g. Dark Ritual): only cast if there's a non-addMana spell
+// in hand that would become castable with the generated mana. Without a follow-up,
+// the extra mana sits unspent and burns at phase end.
+const addManaEffects = new Set(["addMana", "addManaAny", "addMana3Any"]);
+const bestSpell = sorted.find(c => {
+  if (c.cmc > maxAffordable) return false;
+  if (addManaEffects.has(c.effect)) {
+    const otherSpells = nonLands.filter(f => f.iid !== c.iid && !addManaEffects.has(f.effect));
+    if (!otherSpells.length) return false; // nothing to spend the generated mana on
+    const netGain = (Array.isArray(c.mana) ? c.mana.length : 1) - (c.cmc || 1);
+    const postCastMax = maxAffordable + netGain;
+    return otherSpells.some(f => f.cmc <= postCastMax);
+  }
+  return true;
+}) || null;
 
 // No castable spell — do not tap any lands to avoid mana burn.
 if (bestSpell) {
@@ -83,6 +98,9 @@ if (bestSpell) {
       return Object.values(a).reduce((s,v) => s+v, 0) >= (req.generic||0);
     };
 
+    // Record acts length so we can roll back tap actions if the simulation fails.
+    const preCastActsLen = acts.length;
+
     // Tap artifact mana sources first
     for (const c of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
       if (vCanPay()) break;
@@ -113,7 +131,13 @@ if (bestSpell) {
       }
     }
 
-    acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal: 3 });
+    if (vCanPay()) {
+      acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal: 3 });
+    } else {
+      // Virtual simulation came up short (e.g. newly played land not yet in state.o.bf).
+      // Roll back all tap actions added in this block to prevent stranded mana from burning.
+      acts.length = preCastActsLen;
+    }
   }
 }
 
