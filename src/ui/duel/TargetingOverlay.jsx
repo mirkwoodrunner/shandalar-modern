@@ -174,4 +174,50 @@ fontSize:11, fontFamily:”‘Cinzel’,serif”,
 );
 }
 
-export default { ActionBar, LotusColorPicker };
+// ─── BIRDS OF PARADISE COLOR PICKER ──────────────────────────────────────────
+
+export function BopColorPicker({ onChoose, onCancel }) {
+  const colors = ["W","U","B","R","G"];
+  const bg = { W:"#f9f0d0", U:"#3366bb", B:"#6633aa", R:"#bb3311", G:"#226611" };
+
+  return (
+    <div style={{
+      position:"fixed", inset:0, background:"rgba(0,0,0,.85)",
+      display:"flex", alignItems:"center", justifyContent:"center", zIndex:600,
+    }}>
+      <div style={{
+        background:"linear-gradient(160deg,#0e1a0e,#080f08)",
+        border:"2px solid rgba(100,200,80,.4)", borderRadius:10,
+        padding:24, textAlign:"center",
+        boxShadow:"0 0 60px rgba(0,0,0,.9)",
+      }}>
+        <div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#80ee60", marginBottom:6 }}>
+          🦜 Birds of Paradise
+        </div>
+        <div style={{ fontSize:12, color:"#80a060", marginBottom:18, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
+          Choose which color of mana to add (×1).
+        </div>
+        <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
+          {colors.map(col => (
+            <button key={col} onClick={() => onChoose(col)} style={{
+              width:52, height:52, borderRadius:"50%",
+              background: bg[col], border:"2px solid rgba(255,255,255,.3)",
+              cursor:"pointer", fontSize:18, fontWeight:700,
+              color: col === "W" ? "#333" : "#fff",
+              boxShadow:`0 0 12px ${bg[col]}60`,
+            }}>
+              {col}
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} style={{
+          marginTop:16, background:"transparent", border:"1px solid #2a5020",
+          color:"#608040", padding:"5px 14px", borderRadius:4, cursor:"pointer",
+          fontSize:11, fontFamily:"'Cinzel',serif",
+        }}>Cancel (adds G)</button>
+      </div>
+    </div>
+  );
+}
+
+export default { ActionBar, LotusColorPicker, BopColorPicker };

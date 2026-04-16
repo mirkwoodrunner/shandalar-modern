@@ -15,7 +15,7 @@ import { isLand, isInst, isArt, isCre, canPay } from ‘./engine/DuelCore.js’;
 import { OpponentBattlefield, PlayerBattlefield } from ‘./ui/duel/Battlefield.jsx’;
 import { Hand } from ‘./ui/duel/Hand.jsx’;
 import { PhaseBar, ManaPoolDisplay } from ‘./ui/duel/ManaPanel.jsx’;
-import { ActionBar, LotusColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
+import { ActionBar, LotusColorPicker, BopColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
 import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 
@@ -41,6 +41,7 @@ import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
   // ── Engine state via useDuel bridge ────────────────────────────────────────
   const {
   state,
+  dispatch,
   tapLand,
   tapArtifactMana,
   playLand,
@@ -69,7 +70,13 @@ import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
+const [showBop, setShowBop]               = useState(false);
 const aiRef = useRef(false);
+
+// ── Sync BopColorPicker with engine pendingBop flag ───────────────────────
+useEffect(() => {
+if (state.pendingBop) setShowBop(true);
+}, [state.pendingBop]);
 
 // ── Game-over handler ──────────────────────────────────────────────────────
 useEffect(() => {
@@ -194,6 +201,7 @@ if (isLand(card)) {
 
 // Resolve target: damage spells default to opponent; draw/life to self
 const tgt = state.selTgt || resolveDefaultTarget(card, state);
+if (card.effect === 'enchantCreature' && !tgt) return; // must select a creature first
 castSpell(card.iid, tgt, state.xVal);
 selectCard(null);
 selectTarget(null);
@@ -207,6 +215,11 @@ if (!card.activated) return;
 const { effect } = card.activated;
 
 ```
+// Birds of Paradise needs a color choice modal
+if (effect === 'addManaAny') {
+  activateAbility(card.iid, null); // DuelCore taps bird + sets pendingBop
+  return;
+}
 // Black Lotus needs a color choice modal
 if (effect === 'addMana3Any') {
   setShowLotus(true);
@@ -237,6 +250,16 @@ const handleLotusCancel = useCallback(() => {
 setShowLotus(false);
 setPendingActivate(null);
 }, []);
+
+const handleBopChoose = useCallback((color) => {
+dispatch({ type: 'CHOOSE_BOP_COLOR', color });
+setShowBop(false);
+}, [dispatch]);
+
+const handleBopCancel = useCallback(() => {
+dispatch({ type: 'CHOOSE_BOP_COLOR', color: 'G' }); // default Green on cancel
+setShowBop(false);
+}, [dispatch]);
 
 // ── Cancel pending activate ────────────────────────────────────────────────
 const handleCancelActivate = useCallback(() => {
@@ -596,6 +619,11 @@ fontFamily: “‘Crimson Text’,serif”,
   {/* Black Lotus color picker */}
   {showLotus && (
     <LotusColorPicker onChoose={handleLotusChoose} onCancel={handleLotusCancel} />
+  )}
+
+  {/* Birds of Paradise color picker */}
+  {showBop && (
+    <BopColorPicker onChoose={handleBopChoose} onCancel={handleBopCancel} />
   )}
 
   {/* Hover tooltip */}
