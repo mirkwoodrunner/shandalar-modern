@@ -55,8 +55,12 @@ const sorted = [...nonLands].sort((a, b) => strat === "aggro" ? b.cmc - a.cmc : 
 // in hand that would become castable with the generated mana. Without a follow-up,
 // the extra mana sits unspent and burns at phase end.
 const addManaEffects = new Set(["addMana", "addManaAny", "addMana3Any"]);
+// AI always resolves X spells with X=3. Account for this in the budget check so
+// the AI doesn't try to cast Fireball/Mind Twist when it only has 1 mana.
+const AI_X = 3;
 const bestSpell = sorted.find(c => {
-  if (c.cmc > maxAffordable) return false;
+  const xCost = c.cost?.includes('X') ? AI_X : 0;
+  if ((c.cmc + xCost) > maxAffordable) return false;
   if (addManaEffects.has(c.effect)) {
     const otherSpells = nonLands.filter(f => f.iid !== c.iid && !addManaEffects.has(f.effect));
     if (!otherSpells.length) return false; // nothing to spend the generated mana on
@@ -89,7 +93,8 @@ if (bestSpell) {
     // tappedIids tracks lands virtually tapped so the generic loop below
     // never double-emits TAP_LAND for a land already handled above.
     const vPool = { ...state.o.mana };
-    const req = parseMana(bestSpell.cost);
+    // Pass AI_X so vCanPay correctly requires mana for X spells (e.g. Fireball, Mind Twist).
+    const req = parseMana(bestSpell.cost, bestSpell.cost?.includes('X') ? AI_X : 0);
     const tappedIids = new Set();
 
     const vCanPay = () => {
@@ -102,10 +107,10 @@ if (bestSpell) {
     const preCastActsLen = acts.length;
 
     // Tap artifact mana sources first
-    for (const c of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
+    for (const artSrc of state.o.bf.filter(c => !isLand(c) && !c.tapped && c.activated?.effect?.startsWith("addMana"))) {
       if (vCanPay()) break;
-      acts.push({ type: "TAP_ART_MANA", who: "o", iid: c.iid });
-      const ms = c.activated.mana || "C";
+      acts.push({ type: "TAP_ART_MANA", who: "o", iid: artSrc.iid });
+      const ms = artSrc.activated.mana || "C";
       for (const ch of ms) if ("WUBRGC".includes(ch)) vPool[ch] = (vPool[ch] || 0) + 1;
     }
 
