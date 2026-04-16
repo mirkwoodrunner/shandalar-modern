@@ -291,8 +291,9 @@ return (
 <div style={{ fontSize:11, color:”#c08050” }}>{mod?.desc}</div>
 </div>
 {defeated ? (
-<div style={{ textAlign:“center”, padding:10 }}>
-<div style={{ fontSize:13, color:”#60a060”, fontFamily:”‘Cinzel’,serif” }}>✓ Defeated. {mage}’s power is broken.</div>
+<div style={{ textAlign:”center”, padding:10 }}>
+<div style={{ fontSize:13, color:”#60a060”, fontFamily:”’Cinzel’,serif”, marginBottom:14 }}>✓ Defeated. {mage}’s power is broken.</div>
+<button onClick={onClose} style={{ background:”transparent”, border:”1px solid #2a5020”, color:”#608040”, padding:”9px 22px”, borderRadius:5, cursor:”pointer”, fontFamily:”’Cinzel’,serif”, fontSize:12 }}>← Leave</button>
 </div>
 ) : (
 <div style={{ display:“flex”, gap:10 }}>
