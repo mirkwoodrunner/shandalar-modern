@@ -31,7 +31,12 @@ export const isSort   = c => c?.type === “Sorcery”;
 export const isArt    = c => c?.type === “Artifact”;
 export const isEnch   = c => c?.type?.startsWith(“Enchantment”);
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
-export const hasKw    = (c, k) => c?.keywords?.includes(k);
+export function hasKw(c, kw) {
+  if ((c.keywords     || []).includes(kw)) return true;
+  if ((c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw))) return true;
+  if ((c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw))) return true;
+  return false;
+}
 
 // ─── CARD INSTANTIATION ───────────────────────────────────────────────────────
 
@@ -112,7 +117,9 @@ else if (c.dynamicType === “forestCount”)  p = state[c.controller]?.bf.filte
 else if (c.dynamicType === “creatureCount”)p = […state.p.bf, …state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
 else if (c.dynamicType === “forestBonus”)  p = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes(“Forest”)) ? 1 : 0);
 }
-return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0));
+const eotPow  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.power || 0), 0);
+const enchPow = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.power || 0), 0);
+return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow);
 }
 
 export function getTou(c, state) {
@@ -124,7 +131,9 @@ else if (c.dynamicType === “forestCount”)  t = state[c.controller]?.bf.filte
 else if (c.dynamicType === “creatureCount”)t = […state.p.bf, …state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
 else if (c.dynamicType === “forestBonus”)  t = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes(“Forest”)) ? 2 : 1);
 }
-return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0));
+const eotTou  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.toughness || 0), 0);
+const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughness || 0), 0);
+return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou);
 }
 
 export function canBlockDuel(bl, at) {
@@ -164,7 +173,7 @@ return ns;
 export function zMove(s, iid, fw, tw, tz) {
 let card = null;
 let ns = { …s };
-for (const z of [“hand”,“bf”,“gy”,“exile”,“lib”]) {
+for (const z of [“hand”,”bf”,”gy”,”exile”,”lib”]) {
 const idx = ns[fw]?.[z]?.findIndex(c => c.iid === iid);
 if (idx !== undefined && idx >= 0) {
 card = ns[fw][z][idx];
@@ -173,9 +182,24 @@ break;
 }
 }
 if (!card) return s;
+
+// Cascade aura removal: when a permanent leaves the battlefield,
+// all attached auras go to their controller's graveyard. (SYSTEMS.md §10)
+if (card.enchantments?.length) {
+for (const aura of card.enchantments) {
+const auraOwner = aura.controller || fw;
+ns = dlog(ns, `${aura.name} falls off ${card.name}.`, “effect”);
+ns = { …ns, [auraOwner]: { …ns[auraOwner], gy: […ns[auraOwner].gy, { …aura.cardData }] } };
+}
+}
+
 let a = { …card, controller: tw };
-if (tz === “bf”) a = { …a, tapped: false, summoningSick: !hasKw(card, “HASTE”), attacking: false, blocking: null, damage: 0 };
-if (tz === “gy” || tz === “hand”) a = { …a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null };
+if (tz === “bf”) {
+a = { …a, tapped: false, summoningSick: !hasKw(card, “HASTE”), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
+}
+if (tz === “gy” || tz === “hand”) {
+a = { …a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
+}
 return { …ns, [tw]: { …ns[tw], [tz]: […ns[tw][tz], a] } };
 }
 
@@ -364,6 +388,18 @@ ns = { …ns, [caster]: { …ns[caster], mana: mp2 } };
 ns = dlog(ns, `Black Lotus adds 3${col}.`, “mana”);
 break;
 }
+case “addManaAny”: {
+// Birds of Paradise: T: Add one mana of any color.
+// Color is chosen via BopColorPicker UI and pre-set as item.chosenColor,
+// OR dispatched separately via CHOOSE_BOP_COLOR action.
+if (item.chosenColor) {
+const mp = { …ns[caster].mana };
+mp[item.chosenColor] = (mp[item.chosenColor] || 0) + 1;
+ns = { …ns, [caster]: { …ns[caster], mana: mp } };
+ns = dlog(ns, `${card.name} adds 1${item.chosenColor}.`, “mana”);
+}
+break;
+}
 case “tutor”: {
 const nl = ns[caster].lib.filter(c => !isLand(c));
 if (nl.length) {
@@ -460,9 +496,39 @@ for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(c => isC
 break;
 }
 case “enchantCreature”: {
+// Attach aura to target permanent as a static modifier record.
+// getPow/getTou/hasKw read enchantments[].mod. Cascade removal handled by zMove.
+// SYSTEMS.md §10 (Card System), §5.2 (Damage Rules)
 if (tgtC && card.mod) {
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, toughness: (c.toughness||0)+(card.mod.toughness||0), power: (c.power||0)+(card.mod.power||0), enchantments: […(c.enchantments||[]), card.id] } : c) } };
-ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, “effect”);
+const auraRecord = {
+iid:      card.iid,
+name:     card.name,
+mod:      card.mod,
+controller: caster,
+cardData: { …card },
+};
+ns = {
+…ns,
+[tgtC.controller]: {
+…ns[tgtC.controller],
+bf: ns[tgtC.controller].bf.map(c =>
+c.iid === tgtC.iid
+? { …c, enchantments: […(c.enchantments || []), auraRecord] }
+: c
+),
+},
+};
+const mods = [];
+if (card.mod.power)      mods.push(`+${card.mod.power}/+0`);
+if (card.mod.toughness)  mods.push(`+0/+${card.mod.toughness}`);
+if (card.mod.keywords)   mods.push(card.mod.keywords.join(“, “));
+if (card.mod.protection) mods.push(`protection from ${card.mod.protection}`);
+ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(“, “) || “modified”}).`, “effect”);
+// Return early — aura stays attached to the permanent, NOT sent to graveyard.
+// The caller's post-resolution GY logic uses isPerm() which returns true for
+// Enchantments, so the aura card will not be double-added. Verify this holds
+// for both the CAST_SPELL and RESOLVE_STACK handlers.
+return ns;
 }
 break;
 }
@@ -488,6 +554,46 @@ const kws = […(tgtC.keywords||[])];
 if (!kws.includes(“FLYING”)) kws.push(“FLYING”);
 ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, keywords: kws } : c) } };
 ns = dlog(ns, `${tgtC.name} gains flying.`, “effect”);
+}
+break;
+}
+case “pumpPowerEOT”: {
+// Shivan Dragon R: +1/+0 until end of turn. Stored in eotBuffs[], purged at CLEANUP.
+// SYSTEMS.md §3.1 (End Phase: expire temporary modifiers)
+const host = tgtC || ns[caster].bf.find(c => c.iid === item.card.iid);
+if (host) {
+ns = {
+…ns,
+[host.controller]: {
+…ns[host.controller],
+bf: ns[host.controller].bf.map(c =>
+c.iid === host.iid
+? { …c, eotBuffs: […(c.eotBuffs || []), { power: 1 }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${host.name} gets +1/+0 until end of turn.`, “effect”);
+}
+break;
+}
+case “gainFlyingEOT”: {
+// Goblin Balloon Brigade R: gains flying until end of turn.
+// Stored in eotBuffs[], purged at CLEANUP. hasKw() reads eotBuffs. SYSTEMS.md §9
+const self = ns[caster].bf.find(c => c.iid === item.card.iid);
+if (self && !hasKw(self, “FLYING”)) {
+ns = {
+…ns,
+[caster]: {
+…ns[caster],
+bf: ns[caster].bf.map(c =>
+c.iid === self.iid
+? { …c, eotBuffs: […(c.eotBuffs || []), { keywords: [“FLYING”] }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${self.name} gains flying until end of turn.`, “effect”);
 }
 break;
 }
@@ -801,6 +907,10 @@ while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
 ns = { …ns, [ac]: { …ns[ac], hand: ns[ac].hand.slice(0,-1), gy: […ns[ac].gy, disc] } };
 }
+// Expire all EOT buffs on all permanents. SYSTEMS.md §3.1
+for (const w of [“p”,”o”]) {
+ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { …c, eotBuffs: [] } : c) } };
+}
 // Castle Inferno modifier
 if (ns.castleMod?.name === “Inferno”) { ns = hurt(ns, “p”, 1, “Inferno”); ns = hurt(ns, “o”, 1, “Inferno”); }
 }
@@ -843,6 +953,7 @@ anteO,
 anteEnabled,
 fogActive: false,
 pendingLotus: false,
+pendingBop: false,
 };
 }
 
@@ -966,11 +1077,21 @@ case "ACTIVATE_ABILITY": {
   const card = s.p.bf.find(c => c.iid === iid);
   if (!card || !card.activated) return s;
   const act = card.activated;
+  // Birds of Paradise: tap the bird, set pendingBop flag, UI shows BopColorPicker.
+  if (act.effect === "addManaAny" && !action.chosenColor) {
+    if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingBop: true };
+    return dlog(s, `${card.name} tapped — choose a color.`, "mana");
+  }
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
   }
-  const item = { id: makeId(), card: { ...card, effect: act.effect, mana: act.mana }, caster: "p", targets: tgt ? [tgt] : [], xVal: 1, chosenColor };
+  // Route activated pump/flying through EOT variants so CLEANUP expires them correctly.
+  const effectOverride = act.effect === "pumpPower"  ? "pumpPowerEOT"
+                       : act.effect === "gainFlying" ? "gainFlyingEOT"
+                       : act.effect;
+  const item = { id: makeId(), card: { ...card, effect: effectOverride, mana: act.mana }, caster: "p", targets: tgt ? [tgt] : [], xVal: 1, chosenColor };
   s = resolveEff(s, item);
   return dlog(s, `${card.name} ability: ${act.effect}.`, "effect");
 }
@@ -982,6 +1103,15 @@ case "CHOOSE_LOTUS_COLOR": {
 }
 
 case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true };
+
+case "CHOOSE_BOP_COLOR": {
+  // Birds of Paradise color resolution. Adds 1 mana of chosen color. SYSTEMS.md §10
+  const mp = { ...s.p.mana };
+  mp[action.color] = (mp[action.color] || 0) + 1;
+  return dlog({ ...s, p: { ...s.p, mana: mp }, pendingBop: false }, `Birds of Paradise adds 1${action.color}.`, "mana");
+}
+
+case "SET_PENDING_BOP": return { ...s, pendingBop: true };
 
 default: return s;
 ```

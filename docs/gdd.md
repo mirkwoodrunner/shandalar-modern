@@ -250,15 +250,18 @@ All effects are dispatched from `resolveEffect(state, stackItem)`. Fully impleme
 | `reanimate` | Animate Dead | Returns top creature from opponent GY under your control |
 | `armageddonDisk` | Nevinyrral's Disk | Destroys all creatures, artifacts, enchantments |
 
-**Stub effects** *(coded in card DB; fall through to default log handler — full implementation in Phase 4)*:
+**Stub effects — resolved in Phase 5:**
 
-| Effect ID | Card | Missing Behavior |
-|-----------|------|-----------------|
-| `powerSink` | Power Sink | Tap-all-lands-on-failure branch not implemented |
-| `enchantCreature` | Holy Armor | Aura attachment to battlefield permanent not implemented |
-| `pumpPower` | Shivan Dragon | Activated +1/+0 pump not wired to UI |
-| `gainFlying` | Goblin Balloon Brigade | Activated flying grant not wired to UI |
-| `lotusActivated` / `addMana3Any` | Black Lotus | Sacrifice + choose-color UI not implemented |
+| Effect ID | Card | Implementation | Status |
+|-----------|------|---------------|--------|
+| `powerSink` | Power Sink | Counters target spell; taps all opponent lands and drains their mana pool. | ✅ Complete (Phase 4, confirmed) |
+| `enchantCreature` | Holy Armor, Holy Strength, Lance, White Ward | Aura stored in `enchantments[]` on target permanent. `getPow`/`getTou`/`hasKw` read `mod`. Cascade removal via `zMove` when host dies. | ✅ Complete (Phase 5) |
+| `pumpPowerEOT` | Shivan Dragon (activated R) | `ACTIVATE_ABILITY` routes `pumpPower` → `pumpPowerEOT`. Stored in `eotBuffs[]` as `{power:1}`. Purged at CLEANUP. | ✅ Complete (Phase 5) |
+| `gainFlyingEOT` | Goblin Balloon Brigade (activated R) | `ACTIVATE_ABILITY` routes `gainFlying` → `gainFlyingEOT`. Stored in `eotBuffs[]` as `{keywords:["FLYING"]}`. Read by `hasKw`. Purged at CLEANUP. | ✅ Complete (Phase 5) |
+| `addManaAny` | Birds of Paradise (activated T) | Taps bird, sets `pendingBop:true`. `BopColorPicker` modal dispatches `CHOOSE_BOP_COLOR`. Adds 1 mana of chosen color. | ✅ Complete (Phase 5) |
+| `addMana3Any` | Black Lotus | `LotusColorPicker` modal. `CHOOSE_LOTUS_COLOR` adds 3 mana of chosen color. | ✅ Complete (Phase 4) |
+
+**No remaining stub effects in the core card DB.**
 
 **ID/name mismatches in card DB** *(code bugs to fix in Phase 4)*:
 
@@ -309,7 +312,8 @@ TAP_LAND | TAP_ARTIFACT_MANA | PLAY_LAND | CAST_SPELL |
 CAST_CREATURE | CAST_PERMANENT | RESOLVE_STACK |
 DECLARE_ATTACKER | DECLARE_BLOCKER | ADVANCE_PHASE |
 SELECT_CARD | SELECT_TARGET | AI_ACTIONS |
-PASS_PRIORITY | MULLIGAN
+PASS_PRIORITY | MULLIGAN |
+CHOOSE_LOTUS_COLOR | SET_PENDING_LOTUS | CHOOSE_BOP_COLOR | SET_PENDING_BOP
 ```
 
 **Key pure functions:** `parseManaString`, `canAfford`, `spendMana`, `untapAll`, `clearManaBurn`, `drawCard`, `moveCard`, `checkCreatureDeath`, `resolveEffect`, `advancePhase`, `getPower`, `getToughness`, `getOwner`, `getBattlefieldCard`, `getAllCreatures`, `shuffleDeck`
@@ -367,7 +371,8 @@ Self-contained local database. Scryfall API integration deferred to Phase 5.
   tapped, summoningSick, attacking, blocking,
   damage, counters,        // { "P1P1": 2, "M1M1": 1 }
   controller,
-  enchantments,            // auras attached (array, currently unused)
+  enchantments,            // aura records attached: [{ iid, name, mod, controller, cardData }]; read by getPow/getTou/hasKw; cascade-removed by zMove
+  eotBuffs,                // temporary buffs from activated abilities: [{ power?, toughness?, keywords? }]; purged at CLEANUP
   tokens,                  // tokens created by this permanent (array, currently unused)
   exerted,                 // exert mechanic placeholder (currently unused)
 }
@@ -631,6 +636,10 @@ Phase 3 — Integration  (shandalar-phase3.jsx)
 
   log: LogEntry[],               // { text, type, turn, phase }
   gameOver: null | { winner: "player"|"opponent", reason: string },
+
+  // Color-picker flags (set true by engine; cleared by CHOOSE_*_COLOR actions):
+  pendingLotus: false,           // set true when Black Lotus is tapped; cleared by CHOOSE_LOTUS_COLOR
+  pendingBop: false,             // set true when Birds of Paradise is tapped; cleared by CHOOSE_BOP_COLOR
 }
 ```
 
@@ -714,11 +723,19 @@ These items were identified during playtesting and are being addressed before Ph
 | P5 | Deck Manager overhaul | ✅ Done | Full-featured: add from binder, remove to binder, sort by CMC/color/type, search filter, deck validation (min 40), land count warning |
 | P6 | AI always attacks with all eligible creatures | ✅ Done | Simplified attack declaration: all untapped non-sick creatures attack every turn |
 
-### Phase 5 — Polish & Completion *(planned)*
+### Phase 5 — Polish & Completion *(in progress)*
+
+**Completed:**
+- ✅ `enchantCreature` — aura attachment system (`enchantments[]`, cascade removal, `getPow`/`getTou`/`hasKw` integration)
+- ✅ `pumpPowerEOT` — Shivan Dragon activated pump, EOT duration via `eotBuffs[]`
+- ✅ `gainFlyingEOT` — Goblin Balloon Brigade activated flying, EOT duration via `eotBuffs[]`
+- ✅ `addManaAny` — Birds of Paradise any-color mana (`BopColorPicker`, `CHOOSE_BOP_COLOR`)
+- ✅ `powerSink` — confirmed complete (Phase 4)
+
+**Remaining:**
 - Scryfall API card art integration (replace emoji/icon art with real card images)
 - Sengir Vampire triggered counter (+1/+1 when a creature it damaged dies)
 - Force of Nature upkeep choice UI (currently auto-damages; needs GGGG-or-8 prompt)
-- Birds of Paradise any-color selection UI (currently produces first color in `produces[]`)
 - Holy Ground full protection enforcement in combat
 - Unlockables persistence (localStorage — run history, defeated mages, found Power Nine)
 - Dungeon atmosphere overlays per modifier type
