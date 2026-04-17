@@ -219,6 +219,7 @@ flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden",
 export function HandCard({ card, state, selected, playable, onClick }) {
 const { bg, bd } = thmOf(card);
 const ca = CCOLOR[card.color] || "#aaa";
+const sm = false;
 
 return (
 <div
