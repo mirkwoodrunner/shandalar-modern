@@ -4,20 +4,20 @@
 // Per MECHANICS_INDEX.md §8.1 — this is a presentation coordinator only.
 // All game logic lives in DuelCore.js; all decisions live in AI.js.
 
-import React, { useState, useEffect, useRef, useCallback } from ‘react’;
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── Engine / hooks ───────────────────────────────────────────────────────────
-import { useDuel } from ‘./hooks/useDuel.js’;
-import { aiDecide } from ‘./engine/AI.js’;
-import { isLand, isInst, isArt, isCre, canPay } from ‘./engine/DuelCore.js’;
+import { useDuel } from './hooks/useDuel.js';
+import { aiDecide } from './engine/AI.js';
+import { isLand, isInst, isArt, isCre, canPay } from './engine/DuelCore.js';
 
 // ── UI sub-components ────────────────────────────────────────────────────────
-import { OpponentBattlefield, PlayerBattlefield } from ‘./ui/duel/Battlefield.jsx’;
-import { Hand } from ‘./ui/duel/Hand.jsx’;
-import { PhaseBar, ManaPoolDisplay } from ‘./ui/duel/ManaPanel.jsx’;
-import { ActionBar, LotusColorPicker, BopColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
-import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
-import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
+import { OpponentBattlefield, PlayerBattlefield } from './ui/duel/Battlefield.jsx';
+import { Hand } from './ui/duel/Hand.jsx';
+import { PhaseBar, ManaPoolDisplay } from './ui/duel/ManaPanel.jsx';
+import { ActionBar, LotusColorPicker, BopColorPicker } from './ui/duel/TargetingOverlay.jsx';
+import { DuelLog } from './ui/layout/TechnicalLog.jsx';
+import { Tooltip } from './ui/shared/Tooltip.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DUEL SCREEN
@@ -32,10 +32,10 @@ import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 - @param {number}   [config.overworldHP]- Player HP carried from overworld
 - @param {object}   [config.castleMod]  - Castle modifier if applicable
 - @param {boolean}  [config.anteEnabled]- Whether ante is active
-- @param {string}   [config.context]    - “monster” | “castle” | “dungeon” | “arzakon”
+- @param {string}   [config.context]    - "monster" | "castle" | "dungeon" | "arzakon"
 - 
 - @param {function} onDuelEnd(outcome, duelState)
-- outcome: “win” | “lose” | “forfeit”
+- outcome: "win" | "lose" | "forfeit"
   */
   export default function DuelScreen({ config, onDuelEnd }) {
   // ── Engine state via useDuel bridge ────────────────────────────────────────
@@ -82,7 +82,7 @@ if (state.pendingBop) setShowBop(true);
 useEffect(() => {
 if (!state.over) return;
 const timer = setTimeout(() => {
-onDuelEnd(state.over.winner === ‘p’ ? ‘win’ : ‘lose’, state);
+onDuelEnd(state.over.winner === 'p' ? 'win' : 'lose', state);
 }, 900);
 return () => clearTimeout(timer);
 }, [state.over]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,7 +92,7 @@ return () => clearTimeout(timer);
 // AI produces GameAction[] → dispatched via applyAiActions → DuelCore executes.
 useEffect(() => {
 if (state.over) return;
-if (state.active !== ‘o’ || aiRef.current) return;
+if (state.active !== 'o' || aiRef.current) return;
 
 ```
 aiRef.current = true;
@@ -278,11 +278,11 @@ const oMana = Object.values(s.o.mana).reduce((a, b) => a + b, 0);
 
 return (
 <div style={{
-height: ‘100vh’, width: ‘100vw’,
-background: ‘#0a0e08’,
-display: ‘flex’, flexDirection: ‘column’,
-overflow: ‘hidden’,
-fontFamily: “‘Crimson Text’,serif”,
+height: '100vh', width: '100vw',
+background: '#0a0e08',
+display: 'flex', flexDirection: 'column',
+overflow: 'hidden',
+fontFamily: "'Crimson Text',serif",
 }}>
 
 ```
@@ -642,18 +642,18 @@ fontFamily: “‘Crimson Text’,serif”,
 
 /**
 
-- Resolve a sensible default target for a spell when the player hasn’t
+- Resolve a sensible default target for a spell when the player hasn't
 - explicitly clicked one. DuelCore will validate — this is just a UX convenience.
   */
   function resolveDefaultTarget(card, state) {
   const { effect } = card;
-  if ([‘damage3’, ‘damage5’, ‘damageX’, ‘psionicBlast’, ‘chainLightning’].includes(effect)) {
-  return ‘o’;
+  if (['damage3', 'damage5', 'damageX', 'psionicBlast', 'chainLightning'].includes(effect)) {
+  return 'o';
   }
-  if ([‘draw3’, ‘gainLife3’, ‘gainLifeX’, ‘tutor’, ‘drawX’].includes(effect)) {
-  return state.selTgt || ‘p’;
+  if (['draw3', 'gainLife3', 'gainLifeX', 'tutor', 'drawX'].includes(effect)) {
+  return state.selTgt || 'p';
   }
-  if ([‘destroy’, ‘exileCreature’, ‘bounce’, ‘destroyArtifact’, ‘destroyArtOrEnch’].includes(effect)) {
+  if (['destroy', 'exileCreature', 'bounce', 'destroyArtifact', 'destroyArtOrEnch'].includes(effect)) {
   return state.selTgt || null;
   }
   return state.selTgt || null;
