@@ -88,6 +88,7 @@ return { …found, iid: mkId() };
   */
   export default function OverworldGame({ startConfig, onQuit, onScore }) {
   const { color, name, seed } = startConfig;
+  const isSandbox = !!startConfig.sandbox;
   const startDef = START_DECKS[color];
 
 // ── Map ──────────────────────────────────────────────────────────────────
@@ -104,10 +105,16 @@ const [moves, setMoves] = useState(0);
 const [player, setPlayer] = useState({
 name, color,
 hp: startDef.hp, maxHP: startDef.maxHP,
-gold: startDef.gold, gems: 0,
+gold: isSandbox ? 9999 : startDef.gold,
+gems: isSandbox ? 99 : 0,
 });
 const [deck, setDeck]         = useState(() => buildDeck(startDef.deckIds));
-const [binder, setBinder]     = useState([]);
+const [binder, setBinder]     = useState(() => {
+  if (!isSandbox) return [];
+  return CARD_DB.flatMap(card =>
+    Array.from({ length: 4 }, () => ({ ...card, iid: mkId() }))
+  );
+});
 const [artifacts, setArtifacts] = useState([…OW_ARTS]);
 
 // ── World pressure ───────────────────────────────────────────────────────
@@ -133,7 +140,11 @@ const [anteEnabled, setAnteEnabled] = useState(false);
 // ── UI ───────────────────────────────────────────────────────────────────
 const [modal, setModal]         = useState(null);
 const [activeTile, setActiveTile] = useState(null);
-const [log, setLog]             = useState([{ text: `${name} enters the plane of Shandalar.`, type: ‘info’ }]);
+const [log, setLog]             = useState(() => {
+  const entries = [{ text: `${name} enters the plane of Shandalar.`, type: ‘info’ }];
+  if (isSandbox) entries.push({ text: ‘⚗ Sandbox mode: all cards available in binder.’, type: ‘info’ });
+  return entries;
+});
 
 // ── Viewport ─────────────────────────────────────────────────────────────
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
@@ -833,11 +844,27 @@ fontFamily: “‘Crimson Text’, serif”,
       📖 Deck ({deck.length})
     </button>
 
-    {/* Quit */}
-    <button onClick={onQuit}
-      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(180,80,40,.3)', color: '#a06040', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      ✕ Quit
-    </button>
+    {/* Quit + sandbox badge */}
+    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+      {isSandbox && (
+        <div style={{
+          fontSize: 9,
+          color: "#60c0ff",
+          fontFamily: "'Cinzel',serif",
+          background: "rgba(0,60,120,.4)",
+          border: "1px solid rgba(60,120,200,.4)",
+          borderRadius: 3,
+          padding: "2px 7px",
+          letterSpacing: 1,
+        }}>
+          ⚗ SANDBOX
+        </div>
+      )}
+      <button onClick={onQuit}
+        style={{ background: 'transparent', border: '1px solid rgba(180,80,40,.3)', color: '#a06040', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
+        ✕ Quit
+      </button>
+    </div>
   </div>
 
   {/* ── HUD BAR ───────────────────────────────────────────────────────── */}

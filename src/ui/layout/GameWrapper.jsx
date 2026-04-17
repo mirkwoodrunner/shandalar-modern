@@ -53,6 +53,17 @@ backgroundImage: “radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,tran
           padding:"13px 46px", borderRadius:6, cursor:"pointer",
           fontSize:14, fontFamily:"'Cinzel',serif", letterSpacing:2,
         }}>BEGIN YOUR JOURNEY</button>
+        <div style={{ marginTop:18 }}>
+          <button onClick={() => onStart({ color:"W", name:"The Archivist", seed:Date.now(), sandbox:true })} style={{
+            background:"transparent",
+            border:"1px solid rgba(96,192,255,.35)", color:"rgba(96,192,255,.7)",
+            padding:"8px 22px", borderRadius:5, cursor:"pointer",
+            fontSize:11, fontFamily:"'Cinzel',serif", letterSpacing:1,
+          }}>⚗ Sandbox Mode</button>
+          <div style={{ fontSize:9, color:"rgba(96,192,255,.35)", marginTop:5, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
+            All cards · unlimited copies · dev testing
+          </div>
+        </div>
       </div>
     )}
 
