@@ -25,6 +25,19 @@ import OverworldGame from './OverworldGame.jsx'; // assembled below — see note
 // to the UI. They live in separate files for maintainability.
 // If those files haven't been created yet, App.jsx still boots to TitleScreen.
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(e) { return { err: e }; }
+  render() {
+    if (this.state.err) return (
+      <div style={{ color:'#f88', padding:32, fontFamily:'monospace', whiteSpace:'pre-wrap', background:'#0a0000', minHeight:'100vh' }}>
+        <b>Runtime error — please report this:</b>{'\n\n'}{this.state.err?.message}{'\n\n'}{this.state.err?.stack}
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 export default function App() {
 const [screen, setScreen]     = useState("title");   // title | game | score
 const [startConfig, setStart] = useState(null);
@@ -48,12 +61,11 @@ return <ScoreScreen stats={scoreData} onNewGame={handleNewGame} />;
 }
 
 if (screen === "game" && startConfig) {
-// Lazy-load OverworldGame — if it exists
-try {
-return <OverworldGame startConfig={startConfig} onQuit={handleQuit} onScore={handleScore} />;
-} catch {
-return <div style={{ color:"#fff", padding:40, fontFamily:"monospace" }}>OverworldGame.jsx not yet created. Check console.</div>;
-}
+return (
+  <ErrorBoundary>
+    <OverworldGame startConfig={startConfig} onQuit={handleQuit} onScore={handleScore} />
+  </ErrorBoundary>
+);
 }
 
 return <TitleScreen onStart={handleStart} />;
