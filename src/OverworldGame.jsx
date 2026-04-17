@@ -278,7 +278,7 @@ if (t.terrain !== TERRAIN.WATER && Math.random() < t.encChance) {
   openEncounterPopup(monster.archKey, player.hp, 'monster', null, {}, { monsterName: monster.name, tier: monster.tier });
 }
 
-}, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, magesDefeated, player.hp, addLog]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
