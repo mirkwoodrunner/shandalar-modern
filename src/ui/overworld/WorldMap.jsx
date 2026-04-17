@@ -89,25 +89,32 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
 
 // ─── MAP GRID ─────────────────────────────────────────────────────────────────
 
-export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick }) {
+export function WorldMap({ tiles, pos, viewOfs, zoom, onTileClick }) {
+const tileS = Math.round(TILE_SIZE * (zoom || 1));
+const mapH = tiles?.length || 22;
+const mapW = tiles?.[0]?.length || 32;
+const viewW = Math.min(mapW, Math.floor(28 / (zoom || 1)));
+const viewH = Math.min(mapH, Math.floor(20 / (zoom || 1)));
+const vpX = Math.max(0, Math.min(mapW - viewW, (viewOfs?.x || 0) - Math.floor(viewW / 2)));
+const vpY = Math.max(0, Math.min(mapH - viewH, (viewOfs?.y || 0) - Math.floor(viewH / 2)));
 return (
 <div style={{
 display: "grid",
-gridTemplateColumns: `repeat(${viewW},${TILE_SIZE}px)`,
-gridTemplateRows:    `repeat(${viewH},${TILE_SIZE}px)`,
+gridTemplateColumns: `repeat(${viewW},${tileS}px)`,
+gridTemplateRows:    `repeat(${viewH},${tileS}px)`,
 gap: 1, padding: 8, background: "#080604",
 }}>
 {Array.from({ length: viewH }, (_, vy) =>
 Array.from({ length: viewW }, (_, vx) => {
-const x = viewport.x + vx;
-const y = viewport.y + vy;
+const x = vpX + vx;
+const y = vpY + vy;
 const tile = tiles[y]?.[x];
-if (!tile) return <div key={`${vx}-${vy}`} style={{ width:TILE_SIZE, height:TILE_SIZE, background:"#030202" }} />;
+if (!tile) return <div key={`${vx}-${vy}`} style={{ width:tileS, height:tileS, background:"#030202" }} />;
 return (
 <MapTile
 key={`${x}-${y}`}
 tile={tile}
-isPlayer={x === playerPos.x && y === playerPos.y}
+isPlayer={pos && x === pos.x && y === pos.y}
 onClick={onTileClick}
 />
 );
