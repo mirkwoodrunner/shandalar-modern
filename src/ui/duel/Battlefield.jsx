@@ -33,7 +33,6 @@ onMouseLeave={onTipLeave}
 </div>
 </div>
 
-```
   {/* Creatures / spells */}
   <div style={{ padding:"6px 10px 8px", minHeight:90, display:"flex", flexWrap:"wrap", gap:5, alignContent:"flex-start" }}>
     {nonLands.map(c => (
@@ -55,7 +54,6 @@ onMouseLeave={onTipLeave}
     )}
   </div>
 </div>
-```
 
 );
 }
@@ -88,7 +86,6 @@ onMouseLeave={onTipLeave}
 </div>
 </div>
 
-```
   {/* Creatures — flex fills remaining space */}
   <div style={{ flex:1, padding:"6px 10px", overflow:"auto", display:"flex", flexWrap:"wrap", gap:5, alignContent:"flex-start" }}>
     {nonLands.map(c => (
@@ -110,7 +107,6 @@ onMouseLeave={onTipLeave}
     )}
   </div>
 </div>
-```
 
 );
 }

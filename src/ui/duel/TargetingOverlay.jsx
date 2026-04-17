@@ -31,7 +31,6 @@ borderTop:    "1px solid rgba(200,160,40,.15)",
 display: "flex", alignItems: "center", gap: 8, minHeight: 44,
 }}>
 
-```
   {/* Cast / Play button */}
   {isMyTurn && inMain && selDef && (
     <button onClick={onCast} style={{
@@ -124,7 +123,6 @@ display: "flex", alignItems: "center", gap: 8, minHeight: 44,
     )}
   </div>
 </div>
-```
 
 );
 }

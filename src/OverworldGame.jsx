@@ -177,7 +177,6 @@ const doMove = useCallback((nx, ny) => {
 // Reveal fog
 const newTiles = revealAround(tiles, nx, ny);
 
-```
 // Move counters
 const newMoves = moves + 1;
 setMoves(newMoves);
@@ -278,7 +277,6 @@ if (t.terrain !== TERRAIN.WATER && Math.random() < t.encChance) {
   addLog(`⚔ A ${monster.name} blocks your path!`, 'danger');
   openEncounterPopup(monster.archKey, player.hp, 'monster', null, {}, { monsterName: monster.name, tier: monster.tier });
 }
-```
 
 }, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -383,7 +381,6 @@ const won      = outcome === 'win';
 const finalHP  = duelState?.p?.life ?? 1;
 const ctx      = duelCfg?.context;
 
-```
 // ── Ante resolution ────────────────────────────────────────────────────
 if (anteEnabled && duelState?.anteP && duelState?.anteO) {
   if (won) {
@@ -516,7 +513,6 @@ if (ctx === 'arzakon') {
 
 // Clear duel state
 setDuelCfg(null);
-```
 
 }, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -729,7 +725,6 @@ overflow: 'hidden',
 fontFamily: "'Crimson Text', serif",
 }}>
 
-```
   {/* ── GAME-LOSS OVERLAY ─────────────────────────────────────────────── */}
   {gameLost && (
     <div style={{
@@ -1048,7 +1043,6 @@ fontFamily: "'Crimson Text', serif",
     />
   )}
 </div>
-```
 
 );
 }

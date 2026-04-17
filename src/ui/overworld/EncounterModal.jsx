@@ -59,7 +59,6 @@ return (
 <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.78)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200 }}>
 <div style={{ width:520, maxHeight:"80vh", background:"linear-gradient(160deg,#1a1008,#0e0c04)", border:"2px solid rgba(200,160,60,.5)", borderRadius:10, boxShadow:"0 0 40px rgba(0,0,0,.8)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
-```
     {/* Header */}
     <div style={{ padding:"12px 16px 0", borderBottom:"1px solid rgba(200,160,60,.2)" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
@@ -219,7 +218,6 @@ return (
     </div>
   </div>
 </div>
-```
 
 );
 }
@@ -357,7 +355,6 @@ return (
 <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"stretch", justifyContent:"center", zIndex:200, padding:16 }}>
 <div style={{ width:"100%", maxWidth:760, background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
 
-```
     {/* Header */}
     <div style={{ padding:"12px 16px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
       <div>
@@ -435,7 +432,6 @@ return (
     </div>
   </div>
 </div>
-```
 
 );
 }

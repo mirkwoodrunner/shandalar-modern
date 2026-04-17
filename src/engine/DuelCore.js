@@ -15,7 +15,7 @@ export const makeId = () => Math.random().toString(36).slice(2, 9);
 
 export const shuffle = (arr) => {
 const r = [...arr];
-for (let i = r.length - 1; i > 0; i–) {
+for (let i = r.length - 1; i > 0; i--) {
 const j = Math.floor(Math.random() * (i + 1));
 [r[i], r[j]] = [r[j], r[i]];
 }
@@ -415,7 +415,7 @@ for (let i = 0; i < xVal; i++) {
 if (!ns[opp].hand.length) break;
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((*, j) => j !== idx), gy: [...ns[opp].gy, dc] } };
+ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, j) => j !== idx), gy: [...ns[opp].gy, dc] } };
 ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
@@ -424,7 +424,7 @@ case "discardOne": {
 if (ns[opp].hand.length) {
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((*, i) => i !== idx), gy: [...ns[opp].gy, dc] } };
+ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, i) => i !== idx), gy: [...ns[opp].gy, dc] } };
 ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
@@ -783,7 +783,6 @@ const defW = actrl === "p" ? "o" : "p";
 const hasLifelink = hasKw(att, "LIFELINK") || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
 const blockers = ns[defW].bf.filter(c => c.blocking === attId);
 
-```
 if (!blockers.length) {
   ns = hurt(ns, defW, ap, att.name);
   if (hasLifelink) ns = hurt(ns, actrl, -ap);
@@ -801,7 +800,6 @@ if (!blockers.length) {
   }
   if (hasKw(att, "TRAMPLE") && rem > 0) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
-```
 
 }
 
@@ -867,7 +865,7 @@ break;
 case "sacrificeSelf": if (next === "CLEANUP") ns = zMove(ns, c.iid, w, w, "gy"); break;
 case "sacrificeUnless_U": {
 const mp = { ...ns[w].mana };
-if ((mp.U || 0) >= 1) { mp.U–; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+if ((mp.U || 0) >= 1) { mp.U--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
 else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
 break;
 }
@@ -967,7 +965,6 @@ let s = state;
 
 switch (action.type) {
 
-```
 case "TAP_LAND":
   return applyOvergrowthTap(s, action.who, action.iid, action.mana);
 
@@ -1114,7 +1111,6 @@ case "CHOOSE_BOP_COLOR": {
 case "SET_PENDING_BOP": return { ...s, pendingBop: true };
 
 default: return s;
-```
 
 }
 }

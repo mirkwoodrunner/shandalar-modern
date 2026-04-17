@@ -133,7 +133,6 @@ if (state.phase === "DECLARE_BLOCKERS" && state.active === "p") {
 const canBlock = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.attacking);
 const alreadyBlocking = new Set();
 
-```
 for (const attId of state.attackers) {
   const att = getBF(state, attId);
   if (!att) continue;
@@ -152,7 +151,6 @@ for (const attId of state.attackers) {
     acts.push({ type: "DECLARE_BLOCKER", blId: chosen.iid, attId });
   }
 }
-```
 
 }
 

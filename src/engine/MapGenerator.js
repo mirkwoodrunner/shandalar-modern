@@ -145,7 +145,6 @@ const ny = y / MAP_H - 0.5;
 const dist = Math.sqrt(nx * nx + ny * ny);
 const v = rng();
 
-```
   let terrain;
   if (dist > 0.45 && v > 0.3)  terrain = TERRAIN.WATER;
   else if (v < 0.18)            terrain = TERRAIN.MOUNTAIN;
@@ -166,7 +165,6 @@ const v = rng();
     encChance: 0.11 + dist * 0.14,
   };
 }
-```
 
 }
 

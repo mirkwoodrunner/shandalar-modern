@@ -38,7 +38,6 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
 <div style={{ position:"absolute", inset:0, background:`${MANA_HEX[ml]}40`, border:`2px solid ${MANA_HEX[ml]}80`, animation:"pulse 2s infinite" }} />
 )}
 
-```
   {/* Structure icons with labels */}
   {s === "TOWN" && (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", zIndex:2, gap:1 }}>
@@ -84,7 +83,6 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
     </div>
   )}
 </div>
-```
 
 );
 }
@@ -99,8 +97,8 @@ gridTemplateColumns: `repeat(${viewW},${TILE_SIZE}px)`,
 gridTemplateRows:    `repeat(${viewH},${TILE_SIZE}px)`,
 gap: 1, padding: 8, background: "#080604",
 }}>
-{Array.from({ length: viewH }, (*, vy) =>
-Array.from({ length: viewW }, (*, vx) => {
+{Array.from({ length: viewH }, (_, vy) =>
+Array.from({ length: viewW }, (_, vx) => {
 const x = viewport.x + vx;
 const y = viewport.y + vy;
 const tile = tiles[y]?.[x];
@@ -144,7 +142,6 @@ transition: "width .4s", borderRadius: 6,
 <span style={{ fontSize:11, color:"#e08060", fontFamily:"'Cinzel',serif", minWidth:36 }}>{player.hp}/{player.maxHP}</span>
 </div>
 
-```
   <span style={{ fontSize:12, color:"#f0c040", fontFamily:"'Cinzel',serif" }}>⚙ {player.gold}g</span>
   <span style={{ fontSize:12, color:"#a080e0", fontFamily:"'Cinzel',serif" }}>◆ {player.gems}</span>
   <span style={{ fontSize:10, color:"#8090a0", fontFamily:"'Cinzel',serif" }}>Move {moves}</span>
@@ -183,7 +180,6 @@ transition: "width .4s", borderRadius: 6,
     </div>
   ))}
 </div>
-```
 
 );
 }
