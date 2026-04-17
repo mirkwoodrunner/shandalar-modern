@@ -398,9 +398,40 @@ CRITICAL BOUNDARY LAYER
 ### Implementation
 ```
 /src/ui/shared/
-  Card.jsx
+  Card.jsx       — card rendering; hosts CardArtDisplay (see §7.5)
   Tooltip.jsx
 ```
+
+---
+
+## 7.5 Scryfall Art Display
+
+### Description
+Presentation-only subsystem that fetches card artwork from the Scryfall API and renders it inside card components. Falls back to emoji icons on any failure — the game is fully playable without network access.
+
+### SYSTEMS.md Reference
+- Section 16 (Scryfall Art Integration System)
+
+### Implementation
+```
+/src/utils/scryfallArt.js    — fetch utility + session cache (no React)
+/src/utils/useCardArt.js     — React hook: { url, loading, error }
+/src/ui/shared/Card.jsx      — CardArtDisplay component (inline)
+```
+
+### Responsibilities
+- Resolve oldest classic-set art_crop URL per card name
+- Cache results for the browser session (max one request per card)
+- Expose synchronous cache read to eliminate flicker on re-renders
+- Render `<img>` when URL is available; render emoji fallback otherwise
+
+### Strict Constraints
+- No game state access or mutation
+- No interaction with DuelCore, reducers, or any engine file
+- Network failure must never throw or crash the UI
+
+### Status
+ACTIVE
 
 ---
 
