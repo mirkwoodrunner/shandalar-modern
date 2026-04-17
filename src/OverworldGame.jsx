@@ -8,7 +8,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from ‘reac
 // ── Engine ────────────────────────────────────────────────────────────────────
 import {
 generateMap, findPath, revealAround,
-TERRAIN, COLORS, MAGE_NAMES, MAGE_ARCHS, CASTLE_MODIFIERS,
+TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
 MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE,
 } from ‘./engine/MapGenerator.js’;
 import { isLand } from ‘./engine/DuelCore.js’;
@@ -18,6 +18,7 @@ import RULESETS from ‘./data/rulesets.js’;
 // ── UI ────────────────────────────────────────────────────────────────────────
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from ‘./ui/overworld/WorldMap.jsx’;
 import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from ‘./ui/overworld/EncounterModal.jsx’;
+import PreDuelPopup from ‘./ui/overworld/PreDuelPopup.jsx’;
 import { DuelLog as OWLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import DuelScreen from ‘./DuelScreen.jsx’;
 
@@ -43,6 +44,13 @@ U: { hp: 18, maxHP: 18, gold: 50,  deckIds: [‘counterspell’,‘merfolk_pearl
 B: { hp: 18, maxHP: 18, gold: 35,  deckIds: [‘dark_ritual’,‘hypnotic_specter’,‘sengir_vampire’,‘terror’,‘demonic_tutor’,‘mind_twist’,…Array(9).fill(‘swamp’)] },
 R: { hp: 20, maxHP: 20, gold: 40,  deckIds: [‘lightning_bolt’,‘chain_lightning’,‘fireball’,‘goblin_king’,‘shivan_dragon’,‘lava_axe’,…Array(9).fill(‘mountain’)] },
 G: { hp: 22, maxHP: 22, gold: 30,  deckIds: [‘llanowar_elves’,‘fyndhorn_elves’,‘craw_wurm’,‘force_of_nature’,‘giant_growth’,‘stream_of_life’,…Array(9).fill(‘forest’)] },
+};
+
+const STRATEGY_FLAVORS = {
+aggro: 'Favors swift and overwhelming force.',
+control: 'Patient and precise, seeks advantage.',
+combo: 'Assembles arcane power for a devastating strike.',
+bomb: 'Commands overwhelming magical force.',
 };
 
 const MINION_NAMES = {
@@ -116,6 +124,7 @@ const [arzakonDefeated, setArzakonDefeated]   = useState(false);
 // ── Duel bridge ──────────────────────────────────────────────────────────
 const [duelCfg, setDuelCfg]         = useState(null);
 const [dungeonProg, setDungeonProg] = useState(null);
+const [encounterPopup, setEncounterPopup] = useState(null);
 
 // ── Ruleset / ante ───────────────────────────────────────────────────────
 const [ruleset, setRuleset]       = useState(RULESETS.CLASSIC);
@@ -256,11 +265,11 @@ if (t.terrain !== TERRAIN.WATER && Math.random() < t.encChance) {
   const tier = newMoves < 20 ? 1 : newMoves < 60 ? (Math.random() > 0.5 ? 2 : 1) : 2;
   const monster = { ...mList[Math.min(tier - 1, mList.length - 1)], tier };
   addLog(`⚔ A ${monster.name} blocks your path!`, 'danger');
-  launchDuel(monster.archKey, player.hp, 'monster');
+  openEncounterPopup(monster.archKey, player.hp, 'monster', null, {}, { monsterName: monster.name, tier: monster.tier });
 }
 ```
 
-}, [tiles, moves, magesDefeated, player.hp, addLog]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -306,6 +315,57 @@ context,
 …extraData,
 });
 }, [deck, ruleset, anteEnabled]);
+
+const openEncounterPopup = useCallback((oppArchKey, overworldHP, context, castleMod = null, extraData = {}, monsterMeta = {}) => {
+const arch = ARCHETYPES[oppArchKey];
+
+let monsterName, monsterFlavor, monsterColor, canFlee, fleeCost;
+
+if (context === 'castle') {
+const col = extraData.castleColor;
+monsterName = MAGE_NAMES[col] || oppArchKey;
+monsterFlavor = MAGE_TITLES[col] || '';
+monsterColor = col;
+canFlee = false;
+fleeCost = 0;
+} else {
+monsterName = monsterMeta.monsterName || arch?.name || oppArchKey;
+monsterFlavor = STRATEGY_FLAVORS[arch?.strategy] || 'A dangerous adversary.';
+monsterColor = (arch?.color || '').slice(0, 1);
+canFlee = true;
+const tier = monsterMeta.tier || 1;
+fleeCost = Math.max(5, tier * 15 + Math.floor(Math.random() * 10));
+}
+
+let playerAnteCard = null;
+let opponentAnteCard = null;
+if (anteEnabled) {
+if (deck.length > 0) {
+playerAnteCard = deck[0];
+}
+const archColor = arch?.color || '';
+const colorKey = archColor.length === 1 ? archColor : '';
+const pool = CARD_DB.filter(c => !isLand(c) && c.color === colorKey);
+if (pool.length) {
+opponentAnteCard = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+}
+}
+
+setEncounterPopup({
+oppArchKey,
+overworldHP,
+context,
+castleMod,
+extraData,
+monsterName,
+monsterFlavor,
+monsterColor,
+playerAnteCard,
+opponentAnteCard,
+fleeCost,
+canFlee,
+});
+}, [deck, anteEnabled]);
 
 const handleDuelEnd = useCallback((outcome, duelState) => {
 const won      = outcome === ‘win’;
@@ -577,8 +637,8 @@ if (!col || activeTile.castleData.defeated) return;
 const mod = CASTLE_MODIFIERS[col];
 addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, ‘event’);
 setModal(null);
-launchDuel(MAGE_ARCHS[col], player.hp, ‘castle’, mod, { castleColor: col });
-}, [activeTile, player.hp, launchDuel, addLog]);
+openEncounterPopup(MAGE_ARCHS[col], player.hp, ‘castle’, mod, { castleColor: col });
+}, [activeTile, player.hp, openEncounterPopup, addLog]);
 
 // ─────────────────────────────────────────────────────────────────────────
 // DECK MANAGEMENT
@@ -931,6 +991,33 @@ fontFamily: “‘Crimson Text’, serif”,
       onSwap={handleSwap}
       onMoveToDeck={handleMoveToDeck}
       onMoveToBinder={handleMoveToBinder}
+    />
+  )}
+
+  {encounterPopup && !duelCfg && (
+    <PreDuelPopup
+      popup={encounterPopup}
+      player={player}
+      anteEnabled={anteEnabled}
+      onFight={() => {
+        launchDuel(
+          encounterPopup.oppArchKey,
+          encounterPopup.overworldHP,
+          encounterPopup.context,
+          encounterPopup.castleMod,
+          encounterPopup.extraData,
+        );
+        setEncounterPopup(null);
+      }}
+      onFlee={(cost) => {
+        setPlayer(p => ({ ...p, gold: p.gold - cost }));
+        addLog(`Paid ${cost}g to avoid the fight.`, 'warn');
+        setEncounterPopup(null);
+      }}
+      onClose={() => {
+        addLog('You withdraw from the encounter.', 'warn');
+        setEncounterPopup(null);
+      }}
     />
   )}
 </div>
