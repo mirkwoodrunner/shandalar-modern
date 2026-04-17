@@ -61,7 +61,7 @@ exerted: false,
 
 // ─── MANA SYSTEM ──────────────────────────────────────────────────────────────
 
-export function parseMana(cost) {
+export function parseMana(cost, xValue = 0) {
 if (!cost) return { W:0, U:0, B:0, R:0, G:0, C:0, generic:0 };
 const p = { W:0, U:0, B:0, R:0, G:0, C:0, generic:0 };
 let i = 0;
@@ -69,7 +69,7 @@ while (i < cost.length) {
 const ch = cost[i];
 if (“WUBRG”.includes(ch)) { p[ch]++; i++; }
 else if (ch === “C”)       { p.C++; i++; }
-else if (ch === “X”)       { i++; }
+else if (ch === “X”)       { p.generic += xValue; i++; }
 else if (!isNaN(parseInt(ch))) {
 let n = “”;
 while (i < cost.length && !isNaN(parseInt(cost[i]))) { n += cost[i]; i++; }
@@ -79,8 +79,8 @@ p.generic += parseInt(n);
 return p;
 }
 
-export function canPay(pool, cost) {
-const r = parseMana(cost);
+export function canPay(pool, cost, xValue = 0) {
+const r = parseMana(cost, xValue);
 const a = { …pool };
 for (const c of [“W”,“U”,“B”,“R”,“G”,“C”]) {
 if (a[c] < r[c]) return false;
@@ -89,8 +89,8 @@ a[c] -= r[c];
 return Object.values(a).reduce((s, v) => s + v, 0) >= r.generic;
 }
 
-export function payMana(pool, cost) {
-const r = parseMana(cost);
+export function payMana(pool, cost, xValue = 0) {
+const r = parseMana(cost, xValue);
 const p = { …pool };
 for (const c of [“W”,“U”,“B”,“R”,“G”,“C”]) p[c] = Math.max(0, p[c] - r[c]);
 let g = r.generic;
@@ -997,9 +997,10 @@ case "CAST_SPELL": {
   if (!c) return s;
   if (s.active !== w && !isInst(c)) return s;
   if ((s.phase !== "MAIN1" && s.phase !== "MAIN2") && !isInst(c)) return s;
-  if (!canPay(s[w].mana, c.cost)) return s;
+  const xVal = action.xVal || 0;
+  if (!canPay(s[w].mana, c.cost, xVal)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock prevents casting more than one spell per turn.", "effect");
-  s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, c.cost), hand: s[w].hand.filter(x => x.iid !== action.iid) } };
+  s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, c.cost, xVal), hand: s[w].hand.filter(x => x.iid !== action.iid) } };
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (isPerm(c) && !isLand(c)) {

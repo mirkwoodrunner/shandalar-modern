@@ -75,6 +75,13 @@ if (bestSpell) {
     // never double-emits TAP_LAND for a land already handled above.
     const vPool = { ...state.o.mana };
     const req = parseMana(bestSpell.cost);
+    // For X spells, maximize X = all available mana minus the fixed (non-X) cost
+    let xVal = 0;
+    if (bestSpell.cost?.includes("X")) {
+      const fixedCost = Object.values(req).reduce((s, v) => s + v, 0);
+      xVal = Math.max(1, maxAffordable - fixedCost);
+      req.generic += xVal;
+    }
     const tappedIids = new Set();
 
     const vCanPay = () => {
@@ -113,7 +120,7 @@ if (bestSpell) {
       }
     }
 
-    acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal: 3 });
+    acts.push({ type: "CAST_SPELL", who: "o", iid: bestSpell.iid, tgt, xVal });
   }
 }
 
