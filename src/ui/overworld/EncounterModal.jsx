@@ -2,39 +2,39 @@
 // All overworld modal dialogs: Town, Dungeon, Castle, DeckManager, ScoreScreen.
 // Presentation only. Per MECHANICS_INDEX.md §7.2
 
-import React, { useState } from ‘react’;
-import { isCre, isLand } from ‘../../engine/DuelCore.js’;
-import { thmOf, CCOLOR, Cost } from ‘../shared/Card.jsx’;
-import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS } from ‘../../engine/MapGenerator.js’;
-import { POWERED_NINE_IDS } from ‘../../data/cards.js’;
+import React, { useState } from 'react';
+import { isCre, isLand } from '../../engine/DuelCore.js';
+import { thmOf, CCOLOR, Cost } from '../shared/Card.jsx';
+import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS } from '../../engine/MapGenerator.js';
+import { POWERED_NINE_IDS } from '../../data/cards.js';
 
 // ─── CARD PRICE HELPER ───────────────────────────────────────────────────────
 
-const cardPrice = c => Math.round((c.cmc||1)*8 + (c.rarity===“R”?32:c.rarity===“U”?12:0));
+const cardPrice = c => Math.round((c.cmc||1)*8 + (c.rarity==="R"?32:c.rarity==="U"?12:0));
 const sellPrice = c => Math.max(1, Math.round(cardPrice(c)*0.4));
 
 // ─── MINI CARD TILE (used in shop / deck manager) ─────────────────────────────
 
 function CardTile({ c, selected, onClick, priceLabel, side }) {
-const ca = CCOLOR[c.color] || “#888”;
+const ca = CCOLOR[c.color] || "#888";
 return (
 <div onClick={onClick} style={{
-width:90, padding:“7px 7px 5px”,
-background: selected ? (side===“deck”?“rgba(240,192,64,.15)”:“rgba(64,180,240,.15)”) : thmOf(c).bg,
+width:90, padding:"7px 7px 5px",
+background: selected ? (side==="deck"?"rgba(240,192,64,.15)":"rgba(64,180,240,.15)") : thmOf(c).bg,
 border:`2px solid ${selected?(side==="deck"?"#f0c040":"#40b4f0"):thmOf(c).bd}`,
-borderRadius:6, cursor:“pointer”, position:“relative”,
-boxShadow: selected?“0 0 10px rgba(200,160,40,.4)”:“0 2px 5px rgba(0,0,0,.4)”,
-transition:“transform .12s”, flexShrink:0,
+borderRadius:6, cursor:"pointer", position:"relative",
+boxShadow: selected?"0 0 10px rgba(200,160,40,.4)":"0 2px 5px rgba(0,0,0,.4)",
+transition:"transform .12s", flexShrink:0,
 }}
-onMouseEnter={e=>e.currentTarget.style.transform=“translateY(-2px)”}
-onMouseLeave={e=>e.currentTarget.style.transform=””}
+onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+onMouseLeave={e=>e.currentTarget.style.transform=""}
 >
-<div style={{ position:“absolute”, top:3, left:3, width:6, height:6, borderRadius:“50%”, background:c.rarity===“R”?”#f0c040”:c.rarity===“U”?”#88b8d0”:”#909090” }} />
-<div style={{ position:“absolute”, top:3, right:4, fontSize:7, color:ca, fontFamily:”‘Fira Code’,monospace”, fontWeight:700 }}>{c.cost||””}</div>
-<div style={{ fontSize:8, fontFamily:”‘Cinzel’,serif”, color:”#e0d080”, fontWeight:700, lineHeight:1.3, marginBottom:2, paddingLeft:8, paddingRight:20 }}>{c.name}</div>
-<div style={{ fontSize:7, color:”#806040”, marginBottom:2 }}>{c.subtype||c.type}</div>
-{isCre(c) && <div style={{ fontSize:9, fontWeight:700, color:ca, fontFamily:”‘Fira Code’,monospace”, textAlign:“right” }}>{c.power}/{c.toughness}</div>}
-{priceLabel && <div style={{ fontSize:9, color:”#8a6000”, fontWeight:700, marginTop:2 }}>{priceLabel}</div>}
+<div style={{ position:"absolute", top:3, left:3, width:6, height:6, borderRadius:"50%", background:c.rarity==="R"?"#f0c040":c.rarity==="U"?"#88b8d0":"#909090" }} />
+<div style={{ position:"absolute", top:3, right:4, fontSize:7, color:ca, fontFamily:"'Fira Code',monospace", fontWeight:700 }}>{c.cost||""}</div>
+<div style={{ fontSize:8, fontFamily:"'Cinzel',serif", color:"#e0d080", fontWeight:700, lineHeight:1.3, marginBottom:2, paddingLeft:8, paddingRight:20 }}>{c.name}</div>
+<div style={{ fontSize:7, color:"#806040", marginBottom:2 }}>{c.subtype||c.type}</div>
+{isCre(c) && <div style={{ fontSize:9, fontWeight:700, color:ca, fontFamily:"'Fira Code',monospace", textAlign:"right" }}>{c.power}/{c.toughness}</div>}
+{priceLabel && <div style={{ fontSize:9, color:"#8a6000", fontWeight:700, marginTop:2 }}>{priceLabel}</div>}
 </div>
 );
 }
@@ -42,22 +42,22 @@ onMouseLeave={e=>e.currentTarget.style.transform=””}
 // ─── TOWN MODAL ───────────────────────────────────────────────────────────────
 
 export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy }) {
-const [tab, setTab] = useState(“shop”);
+const [tab, setTab] = useState("shop");
 const restCost = Math.max(0, (player.maxHP - player.hp) * 3);
 
 const tabs = [
-{ id:“shop”,  l:“⚜ Shop” },
-{ id:“sell”,  l:`💰 Sell (${binder.length})` },
-{ id:“inn”,   l:“🏠 Inn” },
-…(town.hasSage ? [{ id:“sage”, l:“📜 Sage” }] : []),
-…(town.hasBlackMarket ? [{ id:“bm”, l:“⚫ Market” }] : []),
-{ id:“gems”,  l:`◆ Gems (${player.gems})` },
-…(town.quest && !town.questDone ? [{ id:“guild”, l:“⚔ Guild” }] : []),
+{ id:"shop",  l:"⚜ Shop" },
+{ id:"sell",  l:`💰 Sell (${binder.length})` },
+{ id:"inn",   l:"🏠 Inn" },
+…(town.hasSage ? [{ id:"sage", l:"📜 Sage" }] : []),
+…(town.hasBlackMarket ? [{ id:"bm", l:"⚫ Market" }] : []),
+{ id:"gems",  l:`◆ Gems (${player.gems})` },
+…(town.quest && !town.questDone ? [{ id:"guild", l:"⚔ Guild" }] : []),
 ];
 
 return (
-<div style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,.78)”, display:“flex”, alignItems:“center”, justifyContent:“center”, zIndex:200 }}>
-<div style={{ width:520, maxHeight:“80vh”, background:“linear-gradient(160deg,#1a1008,#0e0c04)”, border:“2px solid rgba(200,160,60,.5)”, borderRadius:10, boxShadow:“0 0 40px rgba(0,0,0,.8)”, display:“flex”, flexDirection:“column”, overflow:“hidden” }}>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.78)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200 }}>
+<div style={{ width:520, maxHeight:"80vh", background:"linear-gradient(160deg,#1a1008,#0e0c04)", border:"2px solid rgba(200,160,60,.5)", borderRadius:10, boxShadow:"0 0 40px rgba(0,0,0,.8)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
 ```
     {/* Header */}
@@ -229,31 +229,31 @@ return (
 export function DungeonModal({ dungeon, onClose, onEnter }) {
 const m = dungeon.mod;
 return (
-<div style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,.82)”, display:“flex”, alignItems:“center”, justifyContent:“center”, zIndex:200 }}>
-<div style={{ width:400, background:“linear-gradient(160deg,#100a04,#0a0804)”, border:“2px solid rgba(150,100,50,.4)”, borderRadius:10, padding:22, boxShadow:“0 0 50px rgba(0,0,0,.9)” }}>
-<div style={{ textAlign:“center”, marginBottom:18 }}>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.82)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200 }}>
+<div style={{ width:400, background:"linear-gradient(160deg,#100a04,#0a0804)", border:"2px solid rgba(150,100,50,.4)", borderRadius:10, padding:22, boxShadow:"0 0 50px rgba(0,0,0,.9)" }}>
+<div style={{ textAlign:"center", marginBottom:18 }}>
 <div style={{ fontSize:26, marginBottom:6 }}>⚑</div>
-<div style={{ fontSize:17, fontFamily:”‘Cinzel’,serif”, color:”#c08040” }}>{dungeon.name}</div>
-<div style={{ fontSize:10, color:”#6a4820”, fontStyle:“italic” }}>A place of shadow and terrible power…</div>
+<div style={{ fontSize:17, fontFamily:"'Cinzel',serif", color:"#c08040" }}>{dungeon.name}</div>
+<div style={{ fontSize:10, color:"#6a4820", fontStyle:"italic" }}>A place of shadow and terrible power…</div>
 </div>
-<div style={{ display:“grid”, gridTemplateColumns:“1fr 1fr”, gap:10, marginBottom:14 }}>
-<div style={{ background:“rgba(255,255,255,.04)”, borderRadius:6, padding:8, border:“1px solid rgba(150,100,50,.2)” }}>
-<div style={{ fontSize:9, color:”#8a6030”, fontFamily:”‘Cinzel’,serif”, marginBottom:3 }}>ROOMS</div>
-<div style={{ fontSize:18, fontFamily:”‘Cinzel’,serif”, color:”#e0a060” }}>{dungeon.rooms}</div>
+<div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+<div style={{ background:"rgba(255,255,255,.04)", borderRadius:6, padding:8, border:"1px solid rgba(150,100,50,.2)" }}>
+<div style={{ fontSize:9, color:"#8a6030", fontFamily:"'Cinzel',serif", marginBottom:3 }}>ROOMS</div>
+<div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#e0a060" }}>{dungeon.rooms}</div>
 </div>
-<div style={{ background:“rgba(255,255,255,.04)”, borderRadius:6, padding:8, border:“1px solid rgba(150,100,50,.2)” }}>
-<div style={{ fontSize:9, color:”#8a6030”, fontFamily:”‘Cinzel’,serif”, marginBottom:3 }}>DOMINANT</div>
-<span style={{ fontSize:18 }}>{[‘W’,‘U’,‘B’,‘R’,‘G’].includes(dungeon.domColor) ? dungeon.domColor : “?”}</span>
+<div style={{ background:"rgba(255,255,255,.04)", borderRadius:6, padding:8, border:"1px solid rgba(150,100,50,.2)" }}>
+<div style={{ fontSize:9, color:"#8a6030", fontFamily:"'Cinzel',serif", marginBottom:3 }}>DOMINANT</div>
+<span style={{ fontSize:18 }}>{['W','U','B','R','G'].includes(dungeon.domColor) ? dungeon.domColor : "?"}</span>
 </div>
 </div>
-<div style={{ background:“rgba(80,20,0,.2)”, borderRadius:6, padding:10, marginBottom:14, border:“1px solid rgba(150,60,20,.3)” }}>
-<div style={{ fontSize:9, color:”#a06040”, fontFamily:”‘Cinzel’,serif”, marginBottom:3 }}>{m.icon} MODIFIER: {m.name.toUpperCase()}</div>
-<div style={{ fontSize:11, color:”#c08050” }}>{m.desc}</div>
+<div style={{ background:"rgba(80,20,0,.2)", borderRadius:6, padding:10, marginBottom:14, border:"1px solid rgba(150,60,20,.3)" }}>
+<div style={{ fontSize:9, color:"#a06040", fontFamily:"'Cinzel',serif", marginBottom:3 }}>{m.icon} MODIFIER: {m.name.toUpperCase()}</div>
+<div style={{ fontSize:11, color:"#c08050" }}>{m.desc}</div>
 </div>
-<div style={{ fontSize:10, color:”#8a5020”, fontStyle:“italic”, marginBottom:14 }}>⚠ HP does not restore between rooms. You cannot exit and return.</div>
-<div style={{ display:“flex”, gap:10 }}>
-<button onClick={onEnter} style={{ flex:1, background:“linear-gradient(135deg,#3a1a08,#5a2a10)”, border:“1px solid #a06030”, color:”#f0a040”, padding:“9px”, borderRadius:5, cursor:“pointer”, fontFamily:”‘Cinzel’,serif”, fontSize:12, letterSpacing:1 }}>⚑ Enter Dungeon</button>
-<button onClick={onClose} style={{ background:“transparent”, border:“1px solid #4a3020”, color:”#806040”, padding:“9px 14px”, borderRadius:5, cursor:“pointer”, fontFamily:”‘Cinzel’,serif”, fontSize:11 }}>Retreat</button>
+<div style={{ fontSize:10, color:"#8a5020", fontStyle:"italic", marginBottom:14 }}>⚠ HP does not restore between rooms. You cannot exit and return.</div>
+<div style={{ display:"flex", gap:10 }}>
+<button onClick={onEnter} style={{ flex:1, background:"linear-gradient(135deg,#3a1a08,#5a2a10)", border:"1px solid #a06030", color:"#f0a040", padding:"9px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1 }}>⚑ Enter Dungeon</button>
+<button onClick={onClose} style={{ background:"transparent", border:"1px solid #4a3020", color:"#806040", padding:"9px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11 }}>Retreat</button>
 </div>
 </div>
 </div>
@@ -267,37 +267,37 @@ const { color, mage, defeated } = castleData;
 const hx  = MANA_HEX[color];
 const mod = CASTLE_MODIFIERS[color];
 const flavor = {
-W:“Delenia rules with iron velvet. Her justice is merciless.”,
-U:“Xylos has watched for centuries, pulling strings like a puppeteer.”,
-B:“The stench of death precedes Mortis. Power is all he respects.”,
-R:“Karag does not strategize. He burns. He relishes your challenge.”,
-G:“Sylvara is ancient beyond reckoning. To fight her is to fight the land.”,
+W:"Delenia rules with iron velvet. Her justice is merciless.",
+U:"Xylos has watched for centuries, pulling strings like a puppeteer.",
+B:"The stench of death precedes Mortis. Power is all he respects.",
+R:"Karag does not strategize. He burns. He relishes your challenge.",
+G:"Sylvara is ancient beyond reckoning. To fight her is to fight the land.",
 };
 
 return (
-<div style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,.87)”, display:“flex”, alignItems:“center”, justifyContent:“center”, zIndex:200 }}>
-<div style={{ width:410, background:“linear-gradient(160deg,#0a0808,#050505)”, border:`2px solid ${hx}50`, borderRadius:10, padding:26, boxShadow:`0 0 50px ${hx}30` }}>
-<div style={{ textAlign:“center”, marginBottom:18 }}>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.87)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200 }}>
+<div style={{ width:410, background:"linear-gradient(160deg,#0a0808,#050505)", border:`2px solid ${hx}50`, borderRadius:10, padding:26, boxShadow:`0 0 50px ${hx}30` }}>
+<div style={{ textAlign:"center", marginBottom:18 }}>
 <div style={{ fontSize:30, marginBottom:8, filter:`drop-shadow(0 0 8px ${hx})` }}>{MANA_SYM[color]}</div>
-<div style={{ fontSize:11, color:hx, fontFamily:”‘Cinzel’,serif”, letterSpacing:2, marginBottom:4 }}>{CASTLE_NAMES[color]?.toUpperCase()}</div>
-<div style={{ fontSize:20, fontFamily:”‘Cinzel’,serif”, color:”#f0e0c0”, marginBottom:4 }}>{mage}</div>
-<div style={{ fontSize:12, color:”#8a7060”, fontStyle:“italic” }}>{MAGE_TITLES[color]}</div>
+<div style={{ fontSize:11, color:hx, fontFamily:"'Cinzel',serif", letterSpacing:2, marginBottom:4 }}>{CASTLE_NAMES[color]?.toUpperCase()}</div>
+<div style={{ fontSize:20, fontFamily:"'Cinzel',serif", color:"#f0e0c0", marginBottom:4 }}>{mage}</div>
+<div style={{ fontSize:12, color:"#8a7060", fontStyle:"italic" }}>{MAGE_TITLES[color]}</div>
 </div>
 <div style={{ background:`${hx}10`, borderRadius:8, padding:12, marginBottom:12, border:`1px solid ${hx}25` }}>
-<div style={{ fontSize:12, color:”#c0a070”, fontStyle:“italic” }}>”{flavor[color]}”</div>
+<div style={{ fontSize:12, color:"#c0a070", fontStyle:"italic" }}>"{flavor[color]}"</div>
 </div>
-<div style={{ background:“rgba(80,20,0,.2)”, borderRadius:6, padding:10, marginBottom:14, border:`1px solid ${hx}30` }}>
-<div style={{ fontSize:9, color:hx, fontFamily:”‘Cinzel’,serif”, marginBottom:3 }}>CASTLE MODIFIER: {mod?.name?.toUpperCase()}</div>
-<div style={{ fontSize:11, color:”#c08050” }}>{mod?.desc}</div>
+<div style={{ background:"rgba(80,20,0,.2)", borderRadius:6, padding:10, marginBottom:14, border:`1px solid ${hx}30` }}>
+<div style={{ fontSize:9, color:hx, fontFamily:"'Cinzel',serif", marginBottom:3 }}>CASTLE MODIFIER: {mod?.name?.toUpperCase()}</div>
+<div style={{ fontSize:11, color:"#c08050" }}>{mod?.desc}</div>
 </div>
 {defeated ? (
-<div style={{ textAlign:“center”, padding:10 }}>
-<div style={{ fontSize:13, color:”#60a060”, fontFamily:”‘Cinzel’,serif” }}>✓ Defeated. {mage}’s power is broken.</div>
+<div style={{ textAlign:"center", padding:10 }}>
+<div style={{ fontSize:13, color:"#60a060", fontFamily:"'Cinzel',serif" }}>✓ Defeated. {mage}'s power is broken.</div>
 </div>
 ) : (
-<div style={{ display:“flex”, gap:10 }}>
-<button onClick={onChallenge} style={{ flex:1, background:`linear-gradient(135deg,${hx}20,${hx}10)`, border:`1px solid ${hx}60`, color:hx, padding:“11px”, borderRadius:5, cursor:“pointer”, fontFamily:”‘Cinzel’,serif”, fontSize:13, letterSpacing:1 }}>⚔ Challenge {mage}</button>
-<button onClick={onClose} style={{ background:“transparent”, border:“1px solid #4a3020”, color:”#806040”, padding:“11px 14px”, borderRadius:5, cursor:“pointer”, fontFamily:”‘Cinzel’,serif”, fontSize:11 }}>Withdraw</button>
+<div style={{ display:"flex", gap:10 }}>
+<button onClick={onChallenge} style={{ flex:1, background:`linear-gradient(135deg,${hx}20,${hx}10)`, border:`1px solid ${hx}60`, color:hx, padding:"11px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:1 }}>⚔ Challenge {mage}</button>
+<button onClick={onClose} style={{ background:"transparent", border:"1px solid #4a3020", color:"#806040", padding:"11px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11 }}>Withdraw</button>
 </div>
 )}
 </div>
@@ -308,24 +308,24 @@ return (
 // ─── DECK MANAGER ─────────────────────────────────────────────────────────────
 
 function DeckCardTile({ c, selected, onClick, side }) {
-const ca = CCOLOR[c.color] || “#888”;
+const ca = CCOLOR[c.color] || "#888";
 return (
 <div onClick={onClick} style={{
-width:90, padding:“7px 7px 5px”,
-background: selected ? (side===“deck”?“rgba(240,192,64,.15)”:“rgba(64,180,240,.15)”) : thmOf(c).bg,
+width:90, padding:"7px 7px 5px",
+background: selected ? (side==="deck"?"rgba(240,192,64,.15)":"rgba(64,180,240,.15)") : thmOf(c).bg,
 border:`2px solid ${selected?(side==="deck"?"#f0c040":"#40b4f0"):thmOf(c).bd}`,
-borderRadius:6, cursor:“pointer”, position:“relative”,
-boxShadow:selected?“0 0 10px rgba(200,160,40,.4)”:“0 2px 5px rgba(0,0,0,.4)”,
-transition:“transform .12s”, flexShrink:0,
+borderRadius:6, cursor:"pointer", position:"relative",
+boxShadow:selected?"0 0 10px rgba(200,160,40,.4)":"0 2px 5px rgba(0,0,0,.4)",
+transition:"transform .12s", flexShrink:0,
 }}
-onMouseEnter={e=>e.currentTarget.style.transform=“translateY(-2px)”}
-onMouseLeave={e=>e.currentTarget.style.transform=””}
+onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+onMouseLeave={e=>e.currentTarget.style.transform=""}
 >
-<div style={{ position:“absolute”, top:3, left:3, width:6, height:6, borderRadius:“50%”, background:c.rarity===“R”?”#f0c040”:c.rarity===“U”?”#88b8d0”:”#909090” }} />
-<div style={{ position:“absolute”, top:3, right:4, fontSize:7, color:ca, fontFamily:”‘Fira Code’,monospace”, fontWeight:700 }}>{c.cost||””}</div>
-<div style={{ fontSize:8, fontFamily:”‘Cinzel’,serif”, color:”#e0d080”, fontWeight:700, lineHeight:1.3, marginBottom:2, paddingLeft:8, paddingRight:20 }}>{c.name}</div>
-<div style={{ fontSize:7, color:”#806040”, marginBottom:2 }}>{c.subtype||c.type}</div>
-{isCre(c) && <div style={{ fontSize:9, fontWeight:700, color:ca, fontFamily:”‘Fira Code’,monospace”, textAlign:“right” }}>{c.power}/{c.toughness}</div>}
+<div style={{ position:"absolute", top:3, left:3, width:6, height:6, borderRadius:"50%", background:c.rarity==="R"?"#f0c040":c.rarity==="U"?"#88b8d0":"#909090" }} />
+<div style={{ position:"absolute", top:3, right:4, fontSize:7, color:ca, fontFamily:"'Fira Code',monospace", fontWeight:700 }}>{c.cost||""}</div>
+<div style={{ fontSize:8, fontFamily:"'Cinzel',serif", color:"#e0d080", fontWeight:700, lineHeight:1.3, marginBottom:2, paddingLeft:8, paddingRight:20 }}>{c.name}</div>
+<div style={{ fontSize:7, color:"#806040", marginBottom:2 }}>{c.subtype||c.type}</div>
+{isCre(c) && <div style={{ fontSize:9, fontWeight:700, color:ca, fontFamily:"'Fira Code',monospace", textAlign:"right" }}>{c.power}/{c.toughness}</div>}
 </div>
 );
 }
@@ -333,17 +333,17 @@ onMouseLeave={e=>e.currentTarget.style.transform=””}
 export function DeckManager({ deck, binder, onClose, onSwap, onMoveToDeck, onMoveToBinder }) {
 const [selD, setSelD] = useState(null);
 const [selB, setSelB] = useState(null);
-const [colorFilt, setColorFilt] = useState(“ALL”);
-const [search, setSearch]   = useState(””);
-const [sortBy, setSortBy]   = useState(“cmc”);
+const [colorFilt, setColorFilt] = useState("ALL");
+const [search, setSearch]   = useState("");
+const [sortBy, setSortBy]   = useState("cmc");
 
 const apply = cards => {
 let r = […cards];
-if (colorFilt !== “ALL”) r = r.filter(c => c.color === colorFilt);
+if (colorFilt !== "ALL") r = r.filter(c => c.color === colorFilt);
 if (search.trim()) r = r.filter(c => c.name.toLowerCase().includes(search.trim().toLowerCase()));
-if (sortBy===“cmc”)  r.sort((a,b) => a.cmc-b.cmc||a.name.localeCompare(b.name));
-if (sortBy===“name”) r.sort((a,b) => a.name.localeCompare(b.name));
-if (sortBy===“type”) r.sort((a,b) => (a.type||””).localeCompare(b.type||””)||a.name.localeCompare(b.name));
+if (sortBy==="cmc")  r.sort((a,b) => a.cmc-b.cmc||a.name.localeCompare(b.name));
+if (sortBy==="name") r.sort((a,b) => a.name.localeCompare(b.name));
+if (sortBy==="type") r.sort((a,b) => (a.type||"").localeCompare(b.type||"")||a.name.localeCompare(b.name));
 return r;
 };
 const fD = apply(deck);
@@ -351,11 +351,11 @@ const fB = apply(binder);
 const lands = deck.filter(isLand).length;
 const avgCmc = deck.filter(c=>!isLand(c)).length
 ? (deck.filter(c=>!isLand(c)).reduce((a,c)=>a+(c.cmc||0),0)/deck.filter(c=>!isLand(c)).length).toFixed(1)
-: “—”;
+: "—";
 
 return (
-<div style={{ position:“fixed”, inset:0, background:“rgba(0,0,0,.9)”, display:“flex”, alignItems:“stretch”, justifyContent:“center”, zIndex:200, padding:16 }}>
-<div style={{ width:“100%”, maxWidth:760, background:“linear-gradient(160deg,#0e0c04,#080a04)”, border:“2px solid rgba(180,160,60,.4)”, borderRadius:12, display:“flex”, flexDirection:“column”, boxShadow:“0 0 60px rgba(0,0,0,.9)”, overflow:“hidden” }}>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"stretch", justifyContent:"center", zIndex:200, padding:16 }}>
+<div style={{ width:"100%", maxWidth:760, background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
 
 ```
     {/* Header */}
@@ -455,39 +455,39 @@ const linkPenalty = manaLinksEstablished * 25;
 const total      = Math.max(0, base+mageScore+dungScore+townScore+cardScore+p9Score-linkPenalty);
 
 const rows = [
-{ label:“Victory”,                                       val:base,        color:”#f0d040”, show:won },
-{ label:`Mages Defeated (×${magesDefeated.length})`,    val:mageScore,   color:”#ff9060” },
-{ label:`Dungeons Cleared (×${dungeonsCleared})`,       val:dungScore,   color:”#aa88ff” },
-{ label:`Towns Saved (×${townsSaved})`,                 val:townScore,   color:”#60d080” },
-{ label:`Cards Collected (×${(collection||[]).length})`,val:cardScore,   color:”#88ccff” },
-{ label:`Powered Nine (×${p9})`,                        val:p9Score,     color:”#f0c040”, show:p9>0 },
-{ label:`Mana Links Established (×${manaLinksEstablished})`, val:-linkPenalty, color:”#ff5040”, show:manaLinksEstablished>0 },
+{ label:"Victory",                                       val:base,        color:"#f0d040", show:won },
+{ label:`Mages Defeated (×${magesDefeated.length})`,    val:mageScore,   color:"#ff9060" },
+{ label:`Dungeons Cleared (×${dungeonsCleared})`,       val:dungScore,   color:"#aa88ff" },
+{ label:`Towns Saved (×${townsSaved})`,                 val:townScore,   color:"#60d080" },
+{ label:`Cards Collected (×${(collection||[]).length})`,val:cardScore,   color:"#88ccff" },
+{ label:`Powered Nine (×${p9})`,                        val:p9Score,     color:"#f0c040", show:p9>0 },
+{ label:`Mana Links Established (×${manaLinksEstablished})`, val:-linkPenalty, color:"#ff5040", show:manaLinksEstablished>0 },
 ];
 
-const colorName = { W:“White”,U:“Blue”,B:“Black”,R:“Red”,G:“Green” }[playerColor] || playerColor;
+const colorName = { W:"White",U:"Blue",B:"Black",R:"Red",G:"Green" }[playerColor] || playerColor;
 
 return (
-<div style={{ minHeight:“100vh”, background:”#060402”, display:“flex”, flexDirection:“column”, alignItems:“center”, justifyContent:“center”, fontFamily:”‘Cinzel’,serif”, backgroundImage:“radial-gradient(ellipse at 50% 30%,rgba(100,60,10,.5) 0%,transparent 70%)” }}>
-<div style={{ width:520, background:“linear-gradient(160deg,#1a1408,#0e0c04)”, border:“2px solid rgba(200,160,40,.4)”, borderRadius:12, padding:36, boxShadow:“0 0 60px rgba(0,0,0,.9)” }}>
-<div style={{ textAlign:“center”, marginBottom:28 }}>
-<div style={{ fontSize:36, marginBottom:8 }}>{won?“✦”:“💀”}</div>
-<div style={{ fontSize:24, fontFamily:”‘Cinzel Decorative’,serif”, color:won?”#f0d060”:”#e04040”, marginBottom:4 }}>{won?“Shandalar Saved!”:“The Plane Falls”}</div>
-<div style={{ fontSize:13, color:”#a09060”, fontFamily:”‘Crimson Text’,serif”, fontStyle:“italic” }}>{playerName} · {colorName} Mage · {magesDefeated.length}/5 Mages Defeated</div>
+<div style={{ minHeight:"100vh", background:"#060402", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Cinzel',serif", backgroundImage:"radial-gradient(ellipse at 50% 30%,rgba(100,60,10,.5) 0%,transparent 70%)" }}>
+<div style={{ width:520, background:"linear-gradient(160deg,#1a1408,#0e0c04)", border:"2px solid rgba(200,160,40,.4)", borderRadius:12, padding:36, boxShadow:"0 0 60px rgba(0,0,0,.9)" }}>
+<div style={{ textAlign:"center", marginBottom:28 }}>
+<div style={{ fontSize:36, marginBottom:8 }}>{won?"✦":"💀"}</div>
+<div style={{ fontSize:24, fontFamily:"'Cinzel Decorative',serif", color:won?"#f0d060":"#e04040", marginBottom:4 }}>{won?"Shandalar Saved!":"The Plane Falls"}</div>
+<div style={{ fontSize:13, color:"#a09060", fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>{playerName} · {colorName} Mage · {magesDefeated.length}/5 Mages Defeated</div>
 </div>
 <div style={{ marginBottom:24 }}>
 {rows.filter(r=>r.show!==false).map((r,i) => (
-<div key={i} style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, padding:“8px 12px”, marginBottom:4, background:“rgba(255,255,255,.03)”, borderRadius:5, border:“1px solid rgba(255,255,255,.06)”, animation:`scoreReveal .4s ease-out ${i*80}ms both` }}>
-<span style={{ fontSize:12, color:”#c0b080” }}>{r.label}</span>
-<span style={{ fontSize:13, fontWeight:700, color:r.color, fontFamily:”‘Fira Code’,monospace” }}>{r.val>=0?”+”:””}{r.val}</span>
+<div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", marginBottom:4, background:"rgba(255,255,255,.03)", borderRadius:5, border:"1px solid rgba(255,255,255,.06)", animation:`scoreReveal .4s ease-out ${i*80}ms both` }}>
+<span style={{ fontSize:12, color:"#c0b080" }}>{r.label}</span>
+<span style={{ fontSize:13, fontWeight:700, color:r.color, fontFamily:"'Fira Code',monospace" }}>{r.val>=0?"+":""}{r.val}</span>
 </div>
 ))}
-<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“center”, padding:“12px 12px”, marginTop:8, background:“rgba(200,160,40,.12)”, borderRadius:6, border:“2px solid rgba(200,160,40,.4)” }}>
-<span style={{ fontSize:14, fontFamily:”‘Cinzel’,serif”, color:”#f0c040”, fontWeight:700, letterSpacing:1 }}>FINAL SCORE</span>
-<span style={{ fontSize:22, fontWeight:700, color:”#f0c040”, fontFamily:”‘Cinzel Decorative’,serif” }}>{total.toLocaleString()}</span>
+<div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 12px", marginTop:8, background:"rgba(200,160,40,.12)", borderRadius:6, border:"2px solid rgba(200,160,40,.4)" }}>
+<span style={{ fontSize:14, fontFamily:"'Cinzel',serif", color:"#f0c040", fontWeight:700, letterSpacing:1 }}>FINAL SCORE</span>
+<span style={{ fontSize:22, fontWeight:700, color:"#f0c040", fontFamily:"'Cinzel Decorative',serif" }}>{total.toLocaleString()}</span>
 </div>
 </div>
-<div style={{ display:“flex”, gap:12, justifyContent:“center” }}>
-<button onClick={onNewGame} style={{ background:“linear-gradient(135deg,#1a1004,#2e1c08)”, border:“2px solid rgba(200,160,40,.5)”, color:”#f0c040”, padding:“12px 28px”, borderRadius:6, cursor:“pointer”, fontSize:13, fontFamily:”‘Cinzel’,serif”, letterSpacing:1 }}>New Game</button>
+<div style={{ display:"flex", gap:12, justifyContent:"center" }}>
+<button onClick={onNewGame} style={{ background:"linear-gradient(135deg,#1a1004,#2e1c08)", border:"2px solid rgba(200,160,40,.5)", color:"#f0c040", padding:"12px 28px", borderRadius:6, cursor:"pointer", fontSize:13, fontFamily:"'Cinzel',serif", letterSpacing:1 }}>New Game</button>
 </div>
 </div>
 </div>

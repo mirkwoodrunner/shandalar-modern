@@ -10,12 +10,12 @@
 //   ✗ CANNOT bypass DuelCore validation
 //   ✗ CANNOT directly trigger system effects
 
-import { ARCHETYPES } from ‘../data/cards.js’;
+import { ARCHETYPES } from '../data/cards.js';
 import {
 isLand, isCre, isInst,
 getBF, getPow, getTou, canBlockDuel,
 canPay, parseMana,
-} from ‘./DuelCore.js’;
+} from './DuelCore.js';
 
 // ─── AI DECISION ENTRY POINT ─────────────────────────────────────────────────
 
@@ -31,12 +31,12 @@ canPay, parseMana,
   const acts = [];
   const arch = state.oppArch || ARCHETYPES.RED_BURN;
   const strat = arch.strategy;
-  const inMain = (state.phase === “MAIN1” || state.phase === “MAIN2”) && state.active === “o”;
+  const inMain = (state.phase === "MAIN1" || state.phase === "MAIN2") && state.active === "o";
 
 // ── 1. Play land ──────────────────────────────────────────────────────────
 if (inMain && state.landsPlayed < 1) {
 const landInHand = state.o.hand.find(isLand);
-if (landInHand) acts.push({ type: “PLAY_LAND”, who: “o”, iid: landInHand.iid });
+if (landInHand) acts.push({ type: "PLAY_LAND", who: "o", iid: landInHand.iid });
 }
 
 // ── 2. Choose best castable spell ─────────────────────────────────────────
@@ -121,15 +121,15 @@ if (bestSpell) {
 
 // ── 3. Declare attackers — always attack with all eligible creatures ───────
 // Per GDD Bug B9 fix: simplified AI always attacks.
-if (state.phase === “DECLARE_ATTACKERS” && state.active === “o”) {
+if (state.phase === "DECLARE_ATTACKERS" && state.active === "o") {
 const eligible = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
 for (const att of eligible) {
-acts.push({ type: “DECLARE_ATTACKER”, iid: att.iid });
+acts.push({ type: "DECLARE_ATTACKER", iid: att.iid });
 }
 }
 
 // ── 4. Declare blockers ───────────────────────────────────────────────────
-if (state.phase === “DECLARE_BLOCKERS” && state.active === “p”) {
+if (state.phase === "DECLARE_BLOCKERS" && state.active === "p") {
 const canBlock = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.attacking);
 const alreadyBlocking = new Set();
 

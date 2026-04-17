@@ -2,30 +2,30 @@
 // Title screen and top-level screen state router.
 // Per MECHANICS_INDEX.md §7.4 and GDD §7
 
-import React, { useState } from ‘react’;
-import { MANA_HEX, MANA_SYM, COLORS } from ‘../../engine/MapGenerator.js’;
+import React, { useState } from 'react';
+import { MANA_HEX, MANA_SYM, COLORS } from '../../engine/MapGenerator.js';
 
 const COLOR_META = {
-W: { name:“White”, label:“Order & Protection”,  hp:22, gold:40, flavor:“The light of justice guides your blade.” },
-U: { name:“Blue”,  label:“Control & Knowledge”, hp:18, gold:50, flavor:“Knowledge is the mightiest spell of all.” },
-B: { name:“Black”, label:“Power & Sacrifice”,   hp:18, gold:35, flavor:“Power demands sacrifice — others’ or yours.” },
-R: { name:“Red”,   label:“Speed & Chaos”,       hp:20, gold:40, flavor:“Strike first. Strike hard. Ask questions never.” },
-G: { name:“Green”, label:“Growth & Might”,      hp:22, gold:30, flavor:“The land itself rises to answer your call.” },
+W: { name:"White", label:"Order & Protection",  hp:22, gold:40, flavor:"The light of justice guides your blade." },
+U: { name:"Blue",  label:"Control & Knowledge", hp:18, gold:50, flavor:"Knowledge is the mightiest spell of all." },
+B: { name:"Black", label:"Power & Sacrifice",   hp:18, gold:35, flavor:"Power demands sacrifice — others' or yours." },
+R: { name:"Red",   label:"Speed & Chaos",       hp:20, gold:40, flavor:"Strike first. Strike hard. Ask questions never." },
+G: { name:"Green", label:"Growth & Might",      hp:22, gold:30, flavor:"The land itself rises to answer your call." },
 };
 
 // ─── TITLE SCREEN ─────────────────────────────────────────────────────────────
 
 export function TitleScreen({ onStart }) {
 const [col, setCol]     = useState(null);
-const [name, setName]   = useState(””);
-const [step, setStep]   = useState(“intro”); // intro | choose | name
+const [name, setName]   = useState("");
+const [step, setStep]   = useState("intro"); // intro | choose | name
 
 return (
 <div style={{
-minHeight: “100vh”, background: “#050302”,
-display: “flex”, flexDirection: “column”, alignItems: “center”, justifyContent: “center”,
-fontFamily: “‘Cinzel’,serif”,
-backgroundImage: “radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transparent 70%)”,
+minHeight: "100vh", background: "#050302",
+display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+fontFamily: "'Cinzel',serif",
+backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transparent 70%)",
 }}>
 <style>{`@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} } @keyframes pulse { 0%,100%{opacity:.7} 50%{opacity:1} } @keyframes wizPulse { 0%,100%{box-shadow:0 0 10px rgba(255,240,100,.8)} 50%{box-shadow:0 0 22px rgba(255,240,100,1)} } @keyframes alertDrop { from{transform:translateX(-50%) translateY(-18px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} } @keyframes phaseGlow { 0%,100%{box-shadow:0 0 6px rgba(200,160,40,.4)} 50%{box-shadow:0 0 14px rgba(200,160,40,.8)} } @keyframes stackIn { from{transform:translateX(36px);opacity:0} to{transform:none;opacity:1} } @keyframes scoreReveal { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} } @keyframes damageFlash { 0%{filter:none;transform:translateX(0)} 20%{filter:brightness(2.5) saturate(.2);transform:translateX(-3px)} 60%{transform:translateX(2px)} 100%{filter:none;transform:translateX(0)} } @keyframes healFlash { 0%,100%{filter:none;transform:scale(1)} 50%{filter:brightness(1.5) hue-rotate(100deg);transform:scale(1.05)} } ::-webkit-scrollbar{width:5px;height:5px} ::-webkit-scrollbar-track{background:#080502} ::-webkit-scrollbar-thumb{background:#4a3010;border-radius:3px}`}</style>
 

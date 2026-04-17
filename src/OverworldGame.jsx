@@ -3,24 +3,24 @@
 // Per MECHANICS_INDEX.md §7.2 — presentation coordinator only.
 // All map logic lives in MapGenerator.js; duel logic in DuelCore.js.
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from ‘react’;
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 
 // ── Engine ────────────────────────────────────────────────────────────────────
 import {
 generateMap, findPath, revealAround,
 TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
 MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE,
-} from ‘./engine/MapGenerator.js’;
-import { isLand } from ‘./engine/DuelCore.js’;
-import { ARCHETYPES, CARD_DB } from ‘./data/cards.js’;
-import RULESETS from ‘./data/rulesets.js’;
+} from './engine/MapGenerator.js';
+import { isLand } from './engine/DuelCore.js';
+import { ARCHETYPES, CARD_DB } from './data/cards.js';
+import RULESETS from './data/rulesets.js';
 
 // ── UI ────────────────────────────────────────────────────────────────────────
-import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from ‘./ui/overworld/WorldMap.jsx’;
-import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from ‘./ui/overworld/EncounterModal.jsx’;
-import PreDuelPopup from ‘./ui/overworld/PreDuelPopup.jsx’;
-import { DuelLog as OWLog } from ‘./ui/layout/TechnicalLog.jsx’;
-import DuelScreen from ‘./DuelScreen.jsx’;
+import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
+import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
+import PreDuelPopup from './ui/overworld/PreDuelPopup.jsx';
+import { DuelLog as OWLog } from './ui/layout/TechnicalLog.jsx';
+import DuelScreen from './DuelScreen.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS (mirrors shandalar-phase4.jsx)
@@ -28,22 +28,22 @@ import DuelScreen from ‘./DuelScreen.jsx’;
 
 const mkId = () => Math.random().toString(36).slice(2, 9);
 
-const ART_REWARD = { W: ‘ward’, U: ‘stone’, B: ‘amulet’, R: ‘focus’, G: ‘boots’ };
+const ART_REWARD = { W: 'ward', U: 'stone', B: 'amulet', R: 'focus', G: 'boots' };
 
 const OW_ARTS = [
-{ id: ‘boots’,  name: ‘Magical Boots’,  icon: ‘👢’, desc: ‘Movement cost –1 per tile (min 1).’,      owned: false },
-{ id: ‘amulet’, name: ‘Amulet of Life’, icon: ‘💎’, desc: ‘Maximum HP +5.’,                           owned: false },
-{ id: ‘focus’,  name: “Mage’s Focus”,   icon: ‘🔮’, desc: ‘Draw 1 extra card at duel start.’,         owned: false },
-{ id: ‘ward’,   name: “Arzakon’s Ward”, icon: ‘🛡’, desc: ‘Mana link threshold raised to 5.’,         owned: false },
-{ id: ‘stone’,  name: ‘Scrying Stone’,  icon: ‘🔯’, desc: ‘Free dungeon reveal per town visit.’,      owned: false },
+{ id: 'boots',  name: 'Magical Boots',  icon: '👢', desc: 'Movement cost –1 per tile (min 1).',      owned: false },
+{ id: 'amulet', name: 'Amulet of Life', icon: '💎', desc: 'Maximum HP +5.',                           owned: false },
+{ id: 'focus',  name: "Mage's Focus",   icon: '🔮', desc: 'Draw 1 extra card at duel start.',         owned: false },
+{ id: 'ward',   name: "Arzakon's Ward", icon: '🛡', desc: 'Mana link threshold raised to 5.',         owned: false },
+{ id: 'stone',  name: 'Scrying Stone',  icon: '🔯', desc: 'Free dungeon reveal per town visit.',      owned: false },
 ];
 
 const START_DECKS = {
-W: { hp: 22, maxHP: 22, gold: 40,  deckIds: [‘savannah_lions’,‘white_knight’,‘serra_angel’,‘swords’,‘healing_salve’,‘wog’,…Array(9).fill(‘plains’)] },
-U: { hp: 18, maxHP: 18, gold: 50,  deckIds: [‘counterspell’,‘merfolk_pearl’,‘air_elemental’,‘ancestral’,‘unsummon’,‘braingeyser’,…Array(9).fill(‘island’)] },
-B: { hp: 18, maxHP: 18, gold: 35,  deckIds: [‘dark_ritual’,‘hypnotic_specter’,‘sengir_vampire’,‘terror’,‘demonic_tutor’,‘mind_twist’,…Array(9).fill(‘swamp’)] },
-R: { hp: 20, maxHP: 20, gold: 40,  deckIds: [‘lightning_bolt’,‘chain_lightning’,‘fireball’,‘goblin_king’,‘shivan_dragon’,‘lava_axe’,…Array(9).fill(‘mountain’)] },
-G: { hp: 22, maxHP: 22, gold: 30,  deckIds: [‘llanowar_elves’,‘fyndhorn_elves’,‘craw_wurm’,‘force_of_nature’,‘giant_growth’,‘stream_of_life’,…Array(9).fill(‘forest’)] },
+W: { hp: 22, maxHP: 22, gold: 40,  deckIds: ['savannah_lions','white_knight','serra_angel','swords','healing_salve','wog',…Array(9).fill('plains')] },
+U: { hp: 18, maxHP: 18, gold: 50,  deckIds: ['counterspell','merfolk_pearl','air_elemental','ancestral','unsummon','braingeyser',…Array(9).fill('island')] },
+B: { hp: 18, maxHP: 18, gold: 35,  deckIds: ['dark_ritual','hypnotic_specter','sengir_vampire','terror','demonic_tutor','mind_twist',…Array(9).fill('swamp')] },
+R: { hp: 20, maxHP: 20, gold: 40,  deckIds: ['lightning_bolt','chain_lightning','fireball','goblin_king','shivan_dragon','lava_axe',…Array(9).fill('mountain')] },
+G: { hp: 22, maxHP: 22, gold: 30,  deckIds: ['llanowar_elves','fyndhorn_elves','craw_wurm','force_of_nature','giant_growth','stream_of_life',…Array(9).fill('forest')] },
 };
 
 const STRATEGY_FLAVORS = {
@@ -54,11 +54,11 @@ bomb: 'Commands overwhelming magical force.',
 };
 
 const MINION_NAMES = {
-W: [‘Holy Crusader’, “Serra’s Knight”],
-U: [‘Tidal Phantom’, “Xylos’s Agent”],
-B: [‘Skeletal Minion’, “Mortis’s Shade”],
-R: [‘Goblin Horde’, “Karag’s Raider”],
-G: [‘Vine Elemental’, “Sylvara’s Chosen”],
+W: ['Holy Crusader', "Serra's Knight"],
+U: ['Tidal Phantom', "Xylos's Agent"],
+B: ['Skeletal Minion', "Mortis's Shade"],
+R: ['Goblin Horde', "Karag's Raider"],
+G: ['Vine Elemental', "Sylvara's Chosen"],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function buildDeck(deckIds) {
 return deckIds.map(id => {
 const found = CARD_DB.find(c => c.id === id);
 if (!found) {
-// Fail-fast: log missing card so it’s caught during development.
+// Fail-fast: log missing card so it's caught during development.
 console.error(`[OverworldGame] Missing card in CARD_DB: "${id}"`);
 return null;
 }
@@ -82,7 +82,7 @@ return { …found, iid: mkId() };
 
 /**
 
-- @param {object} startConfig  { color: “W”|“U”|“B”|“R”|“G”, name: string, seed: number }
+- @param {object} startConfig  { color: "W"|"U"|"B"|"R"|"G", name: string, seed: number }
 - @param {function} onQuit     () => void — returns to title
 - @param {function} onScore    (data) => void — hands off to ScoreScreen
   */
@@ -141,8 +141,8 @@ const [anteEnabled, setAnteEnabled] = useState(false);
 const [modal, setModal]         = useState(null);
 const [activeTile, setActiveTile] = useState(null);
 const [log, setLog]             = useState(() => {
-  const entries = [{ text: `${name} enters the plane of Shandalar.`, type: ‘info’ }];
-  if (isSandbox) entries.push({ text: ‘⚗ Sandbox mode: all cards available in binder.’, type: ‘info’ });
+  const entries = [{ text: `${name} enters the plane of Shandalar.`, type: 'info' }];
+  if (isSandbox) entries.push({ text: '⚗ Sandbox mode: all cards available in binder.', type: 'info' });
   return entries;
 });
 
@@ -151,10 +151,10 @@ const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const [zoom, setZoom]         = useState(1);
 
 // ── Derived ──────────────────────────────────────────────────────────────
-const hasBoots  = artifacts.some(a => a.id === ‘boots’  && a.owned);
-const hasWard   = artifacts.some(a => a.id === ‘ward’   && a.owned);
-const hasFocus  = artifacts.some(a => a.id === ‘focus’  && a.owned);
-const hasStone  = artifacts.some(a => a.id === ‘stone’  && a.owned);
+const hasBoots  = artifacts.some(a => a.id === 'boots'  && a.owned);
+const hasWard   = artifacts.some(a => a.id === 'ward'   && a.owned);
+const hasFocus  = artifacts.some(a => a.id === 'focus'  && a.owned);
+const hasStone  = artifacts.some(a => a.id === 'stone'  && a.owned);
 const mlThreshold = hasWard ? 5 : 3;
 const allMagesDown   = magesDefeated.length === 5;
 const gameWon        = allMagesDown && arzakonDefeated;
@@ -165,7 +165,7 @@ const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDef
 // UTILITIES
 // ─────────────────────────────────────────────────────────────────────────
 
-const addLog = useCallback((text, type = ‘info’) => {
+const addLog = useCallback((text, type = 'info') => {
 setLog(prev => […prev.slice(-80), { text, type }]);
 }, []);
 
@@ -286,7 +286,7 @@ const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
 if (tile.x === pos.x && tile.y === pos.y) return;
 const path = findPath(tiles, pos.x, pos.y, tile.x, tile.y);
-if (!path || !path.length) { addLog(‘No path to that location.’, ‘warn’); return; }
+if (!path || !path.length) { addLog('No path to that location.', 'warn'); return; }
 doMove(path[0].x, path[0].y);
 }, [tiles, pos, doMove, addLog]);
 
@@ -300,14 +300,14 @@ const path = findPath(tiles, pos.x, pos.y, ev.tx, ev.ty);
 if (path?.length) doMove(path[0].x, path[0].y);
 // Dismiss the event — player is now en route
 setMlEvents(prev => prev.filter(e => e.id !== ev.id));
-addLog(`Rushing to ${ev.townName}!`, ‘info’);
+addLog(`Rushing to ${ev.townName}!`, 'info');
 // Defending a town before the minion arrives counts as a town saved
 setTownsSaved(t => t + 1);
 }, [tiles, pos, doMove, addLog]);
 
 const handleDismissAlert = useCallback((ev) => {
 setMlEvents(prev => prev.filter(e => e.id !== ev.id));
-addLog(`Ignoring ${MAGE_NAMES[ev.color]}'s minion. Risk accepted.`, ‘warn’);
+addLog(`Ignoring ${MAGE_NAMES[ev.color]}'s minion. Risk accepted.`, 'warn');
 }, [addLog]);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ canFlee,
 }, [deck, anteEnabled]);
 
 const handleDuelEnd = useCallback((outcome, duelState) => {
-const won      = outcome === ‘win’;
+const won      = outcome === 'win';
 const finalHP  = duelState?.p?.life ?? 1;
 const ctx      = duelCfg?.context;
 
@@ -525,15 +525,15 @@ setDuelCfg(null);
 // ─────────────────────────────────────────────────────────────────────────
 
 const launchArzakon = useCallback(() => {
-addLog(‘⚡ Arzakon manifests! The final battle begins!’, ‘danger’);
+addLog('⚡ Arzakon manifests! The final battle begins!', 'danger');
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
-oppArchKey: ‘FIVE_COLOR_BOMB’,
+oppArchKey: 'FIVE_COLOR_BOMB',
 ruleset,
 overworldHP: ruleset.startingLife, // Full HP reset for Arzakon
-castleMod: { name: ‘Dominion’, desc: ‘Arzakon commands all five colors. The final battle for Shandalar begins.’ },
+castleMod: { name: 'Dominion', desc: 'Arzakon commands all five colors. The final battle for Shandalar begins.' },
 anteEnabled: false,
-context: ‘arzakon’,
+context: 'arzakon',
 });
 }, [deck, ruleset, addLog]);
 
@@ -542,31 +542,31 @@ context: ‘arzakon’,
 // ─────────────────────────────────────────────────────────────────────────
 
 const handleBuy = useCallback((card, price) => {
-if (player.gold < price) { addLog(‘Not enough gold.’, ‘warn’); return; }
+if (player.gold < price) { addLog('Not enough gold.', 'warn'); return; }
 setPlayer(p => ({ …p, gold: p.gold - price }));
 setBinder(b => […b, { …card, iid: mkId() }]);
-addLog(`Purchased ${card.name} for ${price}g. Added to binder.`, ‘success’);
+addLog(`Purchased ${card.name} for ${price}g. Added to binder.`, 'success');
 }, [player.gold, addLog]);
 
 const handleSell = useCallback((card, price) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
 setPlayer(p => ({ …p, gold: p.gold + price }));
-addLog(`Sold ${card.name} for ${price}g.`, ‘success’);
+addLog(`Sold ${card.name} for ${price}g.`, 'success');
 }, [addLog]);
 
 const handleRest = useCallback((cost) => {
-if (player.gold < cost) { addLog(‘Not enough gold for the inn.’, ‘warn’); return; }
+if (player.gold < cost) { addLog('Not enough gold for the inn.', 'warn'); return; }
 setPlayer(p => ({ …p, hp: p.maxHP, gold: p.gold - cost }));
-addLog(`Rested at the inn — full HP restored. –${cost}g.`, ‘success’);
+addLog(`Rested at the inn — full HP restored. –${cost}g.`, 'success');
 }, [player.gold, addLog]);
 
 const handleSage = useCallback(() => {
-if (player.gold < 25) { addLog(‘Need 25g for the sage.’, ‘warn’); return; }
+if (player.gold < 25) { addLog('Need 25g for the sage.', 'warn'); return; }
 // Scrying Stone: free first reveal per town visit
 const cost = hasStone ? 0 : 25;
 if (cost > 0) setPlayer(p => ({ …p, gold: p.gold - cost }));
 const dgs = [];
-tiles.forEach(row => row.forEach(t => { if (t.structure === ‘DUNGEON’ && !t.revealed) dgs.push(t); }));
+tiles.forEach(row => row.forEach(t => { if (t.structure === 'DUNGEON' && !t.revealed) dgs.push(t); }));
 if (dgs.length) {
 const d = dgs[Math.floor(Math.random() * dgs.length)];
 setTiles(prev => {
@@ -574,52 +574,52 @@ const n = prev.map(r => […r]);
 n[d.y][d.x] = { …n[d.y][d.x], revealed: true };
 return n;
 });
-const costStr = cost === 0 ? ‘(free — Scrying Stone)’ : `–${cost}g`;
-addLog(`The sage reveals ${d.dungeonData.name}. ${costStr}`, ‘success’);
+const costStr = cost === 0 ? '(free — Scrying Stone)' : `–${cost}g`;
+addLog(`The sage reveals ${d.dungeonData.name}. ${costStr}`, 'success');
 } else {
-addLog(‘No unknown dungeons remain to reveal.’, ‘info’);
+addLog('No unknown dungeons remain to reveal.', 'info');
 }
 }, [player.gold, tiles, hasStone, addLog]);
 
 const handleTrade = useCallback((rarity) => {
-if (rarity === ‘C’) {
-const commons = binder.filter(c => c.rarity === ‘C’);
-if (commons.length < 3) { addLog(‘Need 3 commons to trade.’, ‘warn’); return; }
+if (rarity === 'C') {
+const commons = binder.filter(c => c.rarity === 'C');
+if (commons.length < 3) { addLog('Need 3 commons to trade.', 'warn'); return; }
 const rm = commons.slice(0, 3);
-const pool = CARD_DB.filter(c => c.rarity === ‘U’ && !isLand(c));
+const pool = CARD_DB.filter(c => c.rarity === 'U' && !isLand(c));
 if (!pool.length) return;
 const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
 setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
-addLog(`Traded 3 commons → ${reward.name}.`, ‘success’);
-} else if (rarity === ‘U’) {
-const uncs = binder.filter(c => c.rarity === ‘U’);
-if (uncs.length < 5) { addLog(‘Need 5 uncommons to trade.’, ‘warn’); return; }
+addLog(`Traded 3 commons → ${reward.name}.`, 'success');
+} else if (rarity === 'U') {
+const uncs = binder.filter(c => c.rarity === 'U');
+if (uncs.length < 5) { addLog('Need 5 uncommons to trade.', 'warn'); return; }
 const rm = uncs.slice(0, 5);
-const pool = CARD_DB.filter(c => c.rarity === ‘R’ && !isLand(c));
+const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
 const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
 setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
-addLog(`Traded 5 uncommons → ${reward.name}.`, ‘success’);
+addLog(`Traded 5 uncommons → ${reward.name}.`, 'success');
 }
 }, [binder, addLog]);
 
 const handleGemBuy = useCallback((type) => {
-if (type === ‘rare’) {
-if (player.gems < 3) { addLog(‘Need 3◆ for a rare.’, ‘warn’); return; }
-const pool = CARD_DB.filter(c => c.rarity === ‘R’ && !isLand(c));
+if (type === 'rare') {
+if (player.gems < 3) { addLog('Need 3◆ for a rare.', 'warn'); return; }
+const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
 const r = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
 setBinder(b => […b, r]);
 setPlayer(p => ({ …p, gems: p.gems - 3 }));
-addLog(`Gem merchant: received ${r.name}. –3◆`, ‘success’);
-} else if (type === ‘hp’) {
-if (player.gems < 5) { addLog(‘Need 5◆ for max HP upgrade.’, ‘warn’); return; }
+addLog(`Gem merchant: received ${r.name}. –3◆`, 'success');
+} else if (type === 'hp') {
+if (player.gems < 5) { addLog('Need 5◆ for max HP upgrade.', 'warn'); return; }
 setPlayer(p => ({ …p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
-addLog(‘Max HP +5. –5◆’, ‘success’);
-} else if (type === ‘heal’) {
-if (player.gems < 2) { addLog(‘Need 2◆ for a full heal.’, ‘warn’); return; }
+addLog('Max HP +5. –5◆', 'success');
+} else if (type === 'heal') {
+if (player.gems < 2) { addLog('Need 2◆ for a full heal.', 'warn'); return; }
 setPlayer(p => ({ …p, hp: p.maxHP, gems: p.gems - 2 }));
-addLog(‘Fully healed. –2◆’, ‘success’);
+addLog('Fully healed. –2◆', 'success');
 }
 }, [player.gems, addLog]);
 
@@ -630,12 +630,12 @@ addLog(‘Fully healed. –2◆’, ‘success’);
 const handleEnterDungeon = useCallback(() => {
 const dg = activeTile?.dungeonData;
 if (!dg) return;
-addLog(`You descend into ${dg.name}. Modifier: ${dg.mod.name}.`, ‘event’);
+addLog(`You descend into ${dg.name}. Modifier: ${dg.mod.name}.`, 'event');
 const prog = { tile: activeTile, room: 0, totalRooms: dg.rooms, mod: dg.mod, entryHP: player.hp };
 setDungeonProg(prog);
 setModal(null);
 const arch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
-launchDuel(arch, player.hp, ‘dungeon’, dg.mod);
+launchDuel(arch, player.hp, 'dungeon', dg.mod);
 }, [activeTile, player.hp, launchDuel, addLog]);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -646,9 +646,9 @@ const handleChallenge = useCallback(() => {
 const col = activeTile?.castleData?.color;
 if (!col || activeTile.castleData.defeated) return;
 const mod = CASTLE_MODIFIERS[col];
-addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, ‘event’);
+addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
 setModal(null);
-openEncounterPopup(MAGE_ARCHS[col], player.hp, ‘castle’, mod, { castleColor: col });
+openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
 }, [activeTile, player.hp, openEncounterPopup, addLog]);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -658,19 +658,19 @@ openEncounterPopup(MAGE_ARCHS[col], player.hp, ‘castle’, mod, { castleColor:
 const handleSwap = useCallback((deckCard, binderCard) => {
 setDeck(d => d.map(c => c.iid === deckCard.iid ? { …binderCard, iid: deckCard.iid } : c));
 setBinder(b => b.map(c => c.iid === binderCard.iid ? { …deckCard, iid: binderCard.iid } : c));
-addLog(`Swapped ${deckCard.name} ↔ ${binderCard.name}.`, ‘info’);
+addLog(`Swapped ${deckCard.name} ↔ ${binderCard.name}.`, 'info');
 }, [addLog]);
 
 const handleMoveToDeck = useCallback((card) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
 setDeck(d => […d, { …card, iid: card.iid || mkId() }]);
-addLog(`Added ${card.name} to deck.`, ‘info’);
+addLog(`Added ${card.name} to deck.`, 'info');
 }, [addLog]);
 
 const handleMoveToBinder = useCallback((card) => {
 setDeck(d => d.filter(c => c.iid !== card.iid));
 setBinder(b => […b, { …card, iid: card.iid || mkId() }]);
-addLog(`Moved ${card.name} to binder.`, ‘info’);
+addLog(`Moved ${card.name} to binder.`, 'info');
 }, [addLog]);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -679,8 +679,8 @@ addLog(`Moved ${card.name} to binder.`, ‘info’);
 
 const handleScroll = useCallback((dir) => {
 setViewOfs(v => ({
-x: Math.max(0, Math.min(32 - 1, v.x + (dir === ‘left’ ? -3 : dir === ‘right’ ? 3 : 0))),
-y: Math.max(0, Math.min(22 - 1, v.y + (dir === ‘up’ ? -3 : dir === ‘down’ ? 3 : 0))),
+x: Math.max(0, Math.min(32 - 1, v.x + (dir === 'left' ? -3 : dir === 'right' ? 3 : 0))),
+y: Math.max(0, Math.min(22 - 1, v.y + (dir === 'up' ? -3 : dir === 'down' ? 3 : 0))),
 }));
 }, []);
 
@@ -722,11 +722,11 @@ onDuelEnd={handleDuelEnd}
 // ─────────────────────────────────────────────────────────────────────────
 return (
 <div style={{
-height: ‘100vh’, width: ‘100vw’,
-background: ‘#0a0e08’,
-display: ‘flex’, flexDirection: ‘column’,
-overflow: ‘hidden’,
-fontFamily: “‘Crimson Text’, serif”,
+height: '100vh', width: '100vw',
+background: '#0a0e08',
+display: 'flex', flexDirection: 'column',
+overflow: 'hidden',
+fontFamily: "'Crimson Text', serif",
 }}>
 
 ```
