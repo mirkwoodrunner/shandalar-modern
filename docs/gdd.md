@@ -14,6 +14,7 @@
 | 0.4 | Post-Phase 3 | Full source-code validation pass; corrected 14 inaccuracies; documented all stub effects, undocumented card DB entries, undocumented state fields, and animation status; Phase 3 integration complete |
 | 0.5 | Post-Phase 4 | AI overhaul; 8 stub effects completed; castle modifier mechanics enforced; Arzakon final fight; run score screen; gem merchant; map town/castle labels; life flash animations; activated ability UI; Black Lotus color picker; bug fixes documented |
 | 0.6 | Post-Phase 4 fixes | Mana burn per-phase fix; land layout (horizontal pip row); AI mana simulation; priority improvements: auto-center map, clipboard log, deck manager overhaul, always-attack AI |
+| 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
 
 ---
 
@@ -345,7 +346,7 @@ Strategy-aware per archetype. `aiDecide(state)` returns ordered action array dis
 
 ### 3.3 The Card Database *(Phase 2 — Complete)*
 
-Self-contained local database. Scryfall API integration deferred to Phase 5.
+Self-contained local database. Scryfall API art integration completed in Phase 5 (see §8 Phase 5 and §10 Aesthetic Direction).
 
 **Card instance shape:**
 ```javascript
@@ -731,9 +732,9 @@ These items were identified during playtesting and are being addressed before Ph
 - ✅ `gainFlyingEOT` — Goblin Balloon Brigade activated flying, EOT duration via `eotBuffs[]`
 - ✅ `addManaAny` — Birds of Paradise any-color mana (`BopColorPicker`, `CHOOSE_BOP_COLOR`)
 - ✅ `powerSink` — confirmed complete (Phase 4)
+- ✅ Scryfall API card art — `src/utils/scryfallArt.js` + `src/utils/useCardArt.js` + `CardArtDisplay` in `Card.jsx`; fetches oldest classic-set printing (Alpha→Beta→Unlimited→Revised→4th Ed); session cache (one request per card name); double-faced card fallback; emoji fallback on any network or parse failure
 
 **Remaining:**
-- Scryfall API card art integration (replace emoji/icon art with real card images)
 - Sengir Vampire triggered counter (+1/+1 when a creature it damaged dies)
 - Force of Nature upkeep choice UI (currently auto-damages; needs GGGG-or-8 prompt)
 - Holy Ground full protection enforcement in combat
@@ -756,7 +757,7 @@ These items were identified during playtesting and are being addressed before Ph
 | Mana burn? | On in Classic, off in Modern+ | Correct per ruleset; gated by abstraction |
 | Stack? | Batch in Classic, LIFO in Modern+ | Both implemented via ruleset config |
 | Permadeath? | Soft | HP loss meaningful without ending run |
-| Card art? | Rendered cards; Scryfall in Phase 5 | Avoids CORS; 79-card local DB sufficient |
+| Card art? | Scryfall `art_crop` (Phase 5); emoji fallback always present | Classic-set priority (Alpha→4th Ed); zero-crash on network failure |
 | Map style? | Square tile, 32×22 | Simpler to build; faithful to original |
 | AI fairness? | Fair draws | Difficulty via deck quality and strategy |
 | Multi-format? | Ruleset abstraction layer | Classic/Modern/Contemporary all live |
@@ -795,6 +796,7 @@ These items were identified during playtesting and are being addressed before Ph
 | `healFlash` animation | Hue-rotate + scale on heal | ✓ Applied to life counter on heal |
 | `lifeChange` animation | Scale pulse on life counter | ✓ Merged into damageFlash/healFlash |
 
+| Card artwork | Scryfall `art_crop` image (oldest classic-set printing); `<img>` fills art area with `objectFit:cover`; 0.3s opacity fade-in; emoji icon at 30% opacity during load and on failure | ✓ Applied (Phase 5) |
 | Rarity gem | Colored pip in card top-left corner (gold=rare, silver=uncommon, grey=common) | ✓ Applied (Phase 4) |
 | Arzakon overlay | Deep purple radial gradient background with `arzakonPulse` glow on ⚡ icon | ✓ Applied (Phase 4) |
 | Score screen | Staggered `scoreReveal` animation on score rows; gold total box | ✓ Applied (Phase 4) |

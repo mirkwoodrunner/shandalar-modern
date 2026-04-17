@@ -399,4 +399,62 @@ This system does NOT define:
 
 ---
 
+# 16. Scryfall Art Integration System
+
+## 16.1 Purpose
+
+Fetches real card artwork from the Scryfall API and displays it in card UI components. This is a **pure presentation enhancement** — it has no effect on game state, rules, or determinism.
+
+---
+
+## 16.2 System Files
+
+```
+/src/utils/scryfallArt.js   — fetch + cache utility (no React)
+/src/utils/useCardArt.js    — React hook wrapping the utility
+```
+
+`CardArtDisplay` (defined inline in `Card.jsx`) is the rendering component that consumes the hook.
+
+---
+
+## 16.3 Art Resolution Priority
+
+For each card name, the system queries Scryfall in this order:
+
+1. **Classic-set search** — oldest printing from Alpha (lea), Beta (leb), Unlimited (2ed), Revised (3ed), or 4th Edition (4ed), sorted by release date ascending.
+2. **Named fallback** — if no classic printing exists, `cards/named?exact=` returns whatever printing Scryfall has on file.
+
+`image_uris.art_crop` is extracted from the result. For double-faced cards where `image_uris` is absent, `card_faces[0].image_uris.art_crop` is used instead.
+
+---
+
+## 16.4 Cache Behaviour
+
+A module-level `Map` (`cardName → { url, status }`) persists for the lifetime of the browser session.
+
+- `status: 'resolved'` — a valid art URL was found; returned immediately on all subsequent calls.
+- `status: 'error'` — the fetch or parse failed; the card is never retried this session.
+
+This guarantees at most one Scryfall request per unique card name per session, keeping usage well within Scryfall's 10 req/sec rate limit.
+
+---
+
+## 16.5 Failure & Fallback Rules
+
+- Any network error, non-OK HTTP status, or missing `image_uris` field → `null` is returned and the error status is cached.
+- Malformed JSON or missing expected fields → `console.error` logs the card name and raw response, then `null` is returned.
+- The UI falls back to the emoji icon (`CARD_ICON`) at reduced opacity during loading and on any failure.
+- **Zero crashes on network failure.** The game renders and plays normally without art.
+
+---
+
+## 16.6 System Constraints
+
+- No game logic. No state mutation. No interaction with DuelCore, reducers, or any engine file.
+- The `<img>` element in `CardArtDisplay` does not use `position: absolute` — existing absolutely-positioned overlays (damage badge, summoning sick, ACT button) remain on top via their existing z-ordering.
+- No loading spinners or skeleton frames — the emoji at reduced opacity (0.3) is the only loading indicator.
+
+---
+
 # End of SYSTEMS v1.0

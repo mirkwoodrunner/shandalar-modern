@@ -4,6 +4,7 @@
 
 import React from ‘react’;
 import { isCre, isLand, isInst, isSort, isArt, isEnch, getPow, getTou, hasKw } from ‘../../engine/DuelCore.js’;
+import useCardArt from ‘../../utils/useCardArt.js’;
 
 // ─── COLOR CONSTANTS ─────────────────────────────────────────────────────────
 
@@ -130,6 +131,33 @@ opacity: tapped ? 0.55 : 1,
 );
 }
 
+// ─── CARD ART DISPLAY ─────────────────────────────────────────────────────────
+
+function CardArtDisplay({ card, sm }) {
+  const { url, loading } = useCardArt(card.name);
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={card.name}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          borderRadius: 3,
+          opacity: loading ? 0 : 1,
+          transition: "opacity 0.3s ease"
+        }}
+      />
+    );
+  }
+  return (
+    <span style={{ fontSize: sm ? 22 : 28, opacity: loading ? 0.3 : 0.65 }}>
+      {CARD_ICON(card)}
+    </span>
+  );
+}
+
 // ─── FIELD CARD ───────────────────────────────────────────────────────────────
 
 export function FieldCard({ card, state, selected, attacking, onClick, onActivate, sm = false }) {
@@ -167,7 +195,7 @@ flexShrink: 0, display: “flex”, flexDirection: “column”, overflow: “hi
 </div>
 {/* Art */}
 <div style={{ flex:1, margin:“3px 5px”, background:`linear-gradient(135deg,${bg}dd,rgba(0,0,0,.55))`, borderRadius:4, display:“flex”, alignItems:“center”, justifyContent:“center”, position:“relative”, overflow:“hidden”, border:`1px solid ${bd}60` }}>
-<span style={{ fontSize:sm?22:28, opacity:.65 }}>{CARD_ICON(card)}</span>
+<CardArtDisplay card={card} sm={sm} />
 {card.damage > 0 && <div style={{ position:“absolute”, top:2, right:2, background:”#cc0a0a”, color:”#fff”, fontSize:9, fontWeight:700, padding:“1px 4px”, borderRadius:3 }}>💢{card.damage}</div>}
 {card.summoningSick && isCre(card) && <div style={{ position:“absolute”, inset:0, background:“rgba(0,0,0,.45)”, display:“flex”, alignItems:“center”, justifyContent:“center”, borderRadius:4 }}><span style={{ fontSize:8, color:“rgba(255,220,150,.65)”, fontFamily:”‘Cinzel’,serif” }}>SICK</span></div>}
 {hasActivated && onActivate && (
@@ -213,7 +241,7 @@ position: “relative”,
 <Cost cost={card.cost} size={11} />
 </div>
 <div style={{ flex:1, margin:“3px 5px”, background:`linear-gradient(135deg,${bg}dd,rgba(0,0,0,.5))`, borderRadius:4, display:“flex”, alignItems:“center”, justifyContent:“center”, border:`1px solid ${bd}50` }}>
-<span style={{ fontSize:24, opacity:.65 }}>{CARD_ICON(card)}</span>
+<CardArtDisplay card={card} sm={sm} />
 </div>
 <div style={{ padding:“2px 5px”, fontSize:7, color:”#b0a070”, fontFamily:”‘Crimson Text’,serif”, flexShrink:0 }}>{card.subtype || card.type}</div>
 {card.text && <div style={{ padding:“0 5px 2px”, fontSize:7, color:”#c0b080”, lineHeight:1.3, overflow:“hidden”, maxHeight:26 }}>{card.text.slice(0,55)}{card.text.length>55?”…”:””}</div>}
