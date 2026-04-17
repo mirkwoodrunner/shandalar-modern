@@ -244,7 +244,7 @@ position: "relative",
 <CardArtDisplay card={card} sm={sm} />
 </div>
 <div style={{ padding:"2px 5px", fontSize:7, color:"#b0a070", fontFamily:"'Crimson Text',serif", flexShrink:0 }}>{card.subtype || card.type}</div>
-{card.text && <div style={{ padding:"0 5px 2px", fontSize:7, color:"#c0b080", lineHeight:1.3, overflow:"hidden", maxHeight:26 }}>{card.text.slice(0,55)}{card.text.length>55?"…":""}</div>}
+{card.text && <div style={{ padding:"0 5px 2px", fontSize:7, color:"#c0b080", lineHeight:1.3, overflow:"hidden", maxHeight:26 }}>{card.text.slice(0,55)}{card.text.length>55?"...":""}</div>}
 {isCre(card) && <div style={{ textAlign:"right", padding:"0 5px 4px", fontSize:11, fontWeight:700, color:ca, fontFamily:"'Fira Code',monospace" }}>{getPow(card,state)}/{getTou(card,state)}</div>}
 {playable && !selected && <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:"rgba(96,221,96,.6)", borderRadius:"0 0 6px 6px" }} />}
 </div>

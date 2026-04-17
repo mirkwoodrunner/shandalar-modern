@@ -190,14 +190,14 @@ return null;
 };
 
 // ── Towns (8–10) ─────────────────────────────────────────────────────────
-const townNames = […TOWN_POOL].sort(() => rng() - 0.5);
+const townNames = [...TOWN_POOL].sort(() => rng() - 0.5);
 const townCount = 8 + Math.floor(rng() * 3);
 for (let i = 0; i < townCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 3);
 if (!p) continue;
 claim(p.x, p.y);
 const stock = shopCardPool.length
-? […shopCardPool].sort(() => rng() - 0.5).slice(0, 6 + Math.floor(rng() * 5))
+? [...shopCardPool].sort(() => rng() - 0.5).slice(0, 6 + Math.floor(rng() * 5))
 : [];
 tiles[p.y][p.x].structure = "TOWN";
 tiles[p.y][p.x].townData = {
@@ -211,7 +211,7 @@ questDone: false,
 }
 
 // ── Dungeons (6–8) ───────────────────────────────────────────────────────
-const dungeonNames = […DUNGEON_POOL].sort(() => rng() - 0.5);
+const dungeonNames = [...DUNGEON_POOL].sort(() => rng() - 0.5);
 const dungeonCount = 6 + Math.floor(rng() * 3);
 for (let i = 0; i < dungeonCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 4);
@@ -237,7 +237,7 @@ const quads = [
 { x1:MAP_W/2+2,x2:MAP_W-2,   y1:MAP_H/2+2,y2:MAP_H-2   },
 { x1:MAP_W/2-3,x2:MAP_W/2+3, y1:MAP_H/2-3,y2:MAP_H/2+3 },
 ];
-[…COLORS].sort(() => rng() - 0.5).forEach((color, i) => {
+[...COLORS].sort(() => rng() - 0.5).forEach((color, i) => {
 const q = quads[i];
 const p = spot(q.x1, q.x2, q.y1, q.y2, 5);
 if (!p) return;
@@ -298,7 +298,7 @@ if (visited.has(key)) continue;
 const t = tiles[ny]?.[nx];
 if (!t || !t.revealed || t.terrain === TERRAIN.WATER) continue;
 visited.add(key);
-queue.push({ x: nx, y: ny, path: […path, { x: nx, y: ny }] });
+queue.push({ x: nx, y: ny, path: [...path, { x: nx, y: ny }] });
 }
 }
 return null;
@@ -310,11 +310,11 @@ return null;
 - Returns new tiles array (immutable update).
   */
   export function revealAround(tiles, cx, cy) {
-  const next = tiles.map(row => […row]);
+  const next = tiles.map(row => [...row]);
   for (let dy = -2; dy <= 2; dy++) {
   for (let dx = -2; dx <= 2; dx++) {
   if (next[cy + dy]?.[cx + dx]) {
-  next[cy + dy][cx + dx] = { …next[cy + dy][cx + dx], revealed: true };
+  next[cy + dy][cx + dx] = { ...next[cy + dy][cx + dx], revealed: true };
   }
   }
   }

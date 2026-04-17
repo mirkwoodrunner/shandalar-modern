@@ -304,7 +304,7 @@ fontFamily: "'Crimson Text',serif",
           {s.over.winner === 'p' ? 'Victory!' : 'Defeat'}
         </div>
         <div style={{ fontSize: 12, color: '#a08060', marginBottom: 16 }}>{s.over.reason}</div>
-        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld…</div>
+        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld...</div>
       </div>
     </div>
   )}
@@ -374,7 +374,7 @@ fontFamily: "'Crimson Text',serif",
         )}
         {s.active === 'o' && (
           <span style={{ fontSize: 10, color: '#9090dd', animation: 'pulse 1s infinite', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-            Opp thinking…
+            Opp thinking...
           </span>
         )}
       </div>

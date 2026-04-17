@@ -119,7 +119,7 @@ display: "flex", alignItems: "center", gap: 8, minHeight: 44,
     )}
     {!isMyTurn && (
       <span style={{ fontSize:11, color:"#6a5a30", padding:"6px 12px", fontFamily:"'Cinzel',serif", fontStyle:"italic" }}>
-        Opponent's turn…
+        Opponent's turn...
       </span>
     )}
   </div>

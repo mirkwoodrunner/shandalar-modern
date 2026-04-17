@@ -39,11 +39,11 @@ const OW_ARTS = [
 ];
 
 const START_DECKS = {
-W: { hp: 22, maxHP: 22, gold: 40,  deckIds: ['savannah_lions','white_knight','serra_angel','swords','healing_salve','wog',…Array(9).fill('plains')] },
-U: { hp: 18, maxHP: 18, gold: 50,  deckIds: ['counterspell','merfolk_pearl','air_elemental','ancestral','unsummon','braingeyser',…Array(9).fill('island')] },
-B: { hp: 18, maxHP: 18, gold: 35,  deckIds: ['dark_ritual','hypnotic_specter','sengir_vampire','terror','demonic_tutor','mind_twist',…Array(9).fill('swamp')] },
-R: { hp: 20, maxHP: 20, gold: 40,  deckIds: ['lightning_bolt','chain_lightning','fireball','goblin_king','shivan_dragon','lava_axe',…Array(9).fill('mountain')] },
-G: { hp: 22, maxHP: 22, gold: 30,  deckIds: ['llanowar_elves','fyndhorn_elves','craw_wurm','force_of_nature','giant_growth','stream_of_life',…Array(9).fill('forest')] },
+W: { hp: 22, maxHP: 22, gold: 40,  deckIds: ['savannah_lions','white_knight','serra_angel','swords','healing_salve','wog',...Array(9).fill('plains')] },
+U: { hp: 18, maxHP: 18, gold: 50,  deckIds: ['counterspell','merfolk_pearl','air_elemental','ancestral','unsummon','braingeyser',...Array(9).fill('island')] },
+B: { hp: 18, maxHP: 18, gold: 35,  deckIds: ['dark_ritual','hypnotic_specter','sengir_vampire','terror','demonic_tutor','mind_twist',...Array(9).fill('swamp')] },
+R: { hp: 20, maxHP: 20, gold: 40,  deckIds: ['lightning_bolt','chain_lightning','fireball','goblin_king','shivan_dragon','lava_axe',...Array(9).fill('mountain')] },
+G: { hp: 22, maxHP: 22, gold: 30,  deckIds: ['llanowar_elves','fyndhorn_elves','craw_wurm','force_of_nature','giant_growth','stream_of_life',...Array(9).fill('forest')] },
 };
 
 const STRATEGY_FLAVORS = {
@@ -72,7 +72,7 @@ if (!found) {
 console.error(`[OverworldGame] Missing card in CARD_DB: "${id}"`);
 return null;
 }
-return { …found, iid: mkId() };
+return { ...found, iid: mkId() };
 }).filter(Boolean);
 }
 
@@ -115,7 +115,7 @@ const [binder, setBinder]     = useState(() => {
     Array.from({ length: 4 }, () => ({ ...card, iid: mkId() }))
   );
 });
-const [artifacts, setArtifacts] = useState([…OW_ARTS]);
+const [artifacts, setArtifacts] = useState([...OW_ARTS]);
 
 // ── World pressure ───────────────────────────────────────────────────────
 const [manaLinks, setManaLinks]       = useState({ W:0, U:0, B:0, R:0, G:0 });
@@ -166,7 +166,7 @@ const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDef
 // ─────────────────────────────────────────────────────────────────────────
 
 const addLog = useCallback((text, type = 'info') => {
-setLog(prev => […prev.slice(-80), { text, type }]);
+setLog(prev => [...prev.slice(-80), { text, type }]);
 }, []);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ overworldHP,
 castleMod,
 anteEnabled,
 context,
-…extraData,
+...extraData,
 });
 }, [deck, ruleset, anteEnabled]);
 
@@ -358,7 +358,7 @@ const archColor = arch?.color || '';
 const colorKey = archColor.length === 1 ? archColor : '';
 const pool = CARD_DB.filter(c => !isLand(c) && c.color === colorKey);
 if (pool.length) {
-opponentAnteCard = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+opponentAnteCard = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
 }
 }
 
@@ -455,7 +455,7 @@ if (ctx === 'dungeon') {
       const newProg = { ...prog, room: nextRoom };
       setDungeonProg(newProg);
       const nextArch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
-      addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further…`, 'event');
+      addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further...`, 'event');
       setDuelCfg({
         pDeckIds: deck.map(c => c.id).filter(Boolean),
         oppArchKey: nextArch,
@@ -543,20 +543,20 @@ context: 'arzakon',
 
 const handleBuy = useCallback((card, price) => {
 if (player.gold < price) { addLog('Not enough gold.', 'warn'); return; }
-setPlayer(p => ({ …p, gold: p.gold - price }));
-setBinder(b => […b, { …card, iid: mkId() }]);
+setPlayer(p => ({ ...p, gold: p.gold - price }));
+setBinder(b => [...b, { ...card, iid: mkId() }]);
 addLog(`Purchased ${card.name} for ${price}g. Added to binder.`, 'success');
 }, [player.gold, addLog]);
 
 const handleSell = useCallback((card, price) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
-setPlayer(p => ({ …p, gold: p.gold + price }));
+setPlayer(p => ({ ...p, gold: p.gold + price }));
 addLog(`Sold ${card.name} for ${price}g.`, 'success');
 }, [addLog]);
 
 const handleRest = useCallback((cost) => {
 if (player.gold < cost) { addLog('Not enough gold for the inn.', 'warn'); return; }
-setPlayer(p => ({ …p, hp: p.maxHP, gold: p.gold - cost }));
+setPlayer(p => ({ ...p, hp: p.maxHP, gold: p.gold - cost }));
 addLog(`Rested at the inn — full HP restored. –${cost}g.`, 'success');
 }, [player.gold, addLog]);
 
@@ -564,14 +564,14 @@ const handleSage = useCallback(() => {
 if (player.gold < 25) { addLog('Need 25g for the sage.', 'warn'); return; }
 // Scrying Stone: free first reveal per town visit
 const cost = hasStone ? 0 : 25;
-if (cost > 0) setPlayer(p => ({ …p, gold: p.gold - cost }));
+if (cost > 0) setPlayer(p => ({ ...p, gold: p.gold - cost }));
 const dgs = [];
 tiles.forEach(row => row.forEach(t => { if (t.structure === 'DUNGEON' && !t.revealed) dgs.push(t); }));
 if (dgs.length) {
 const d = dgs[Math.floor(Math.random() * dgs.length)];
 setTiles(prev => {
-const n = prev.map(r => […r]);
-n[d.y][d.x] = { …n[d.y][d.x], revealed: true };
+const n = prev.map(r => [...r]);
+n[d.y][d.x] = { ...n[d.y][d.x], revealed: true };
 return n;
 });
 const costStr = cost === 0 ? '(free — Scrying Stone)' : `–${cost}g`;
@@ -588,8 +588,8 @@ if (commons.length < 3) { addLog('Need 3 commons to trade.', 'warn'); return; }
 const rm = commons.slice(0, 3);
 const pool = CARD_DB.filter(c => c.rarity === 'U' && !isLand(c));
 if (!pool.length) return;
-const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
+const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
 addLog(`Traded 3 commons → ${reward.name}.`, 'success');
 } else if (rarity === 'U') {
 const uncs = binder.filter(c => c.rarity === 'U');
@@ -597,8 +597,8 @@ if (uncs.length < 5) { addLog('Need 5 uncommons to trade.', 'warn'); return; }
 const rm = uncs.slice(0, 5);
 const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
-const reward = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
+const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b.filter(c => !rm.find(r => r.iid === c.iid)), reward]);
 addLog(`Traded 5 uncommons → ${reward.name}.`, 'success');
 }
 }, [binder, addLog]);
@@ -608,17 +608,17 @@ if (type === 'rare') {
 if (player.gems < 3) { addLog('Need 3◆ for a rare.', 'warn'); return; }
 const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
-const r = { …pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-setBinder(b => […b, r]);
-setPlayer(p => ({ …p, gems: p.gems - 3 }));
+const r = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b, r]);
+setPlayer(p => ({ ...p, gems: p.gems - 3 }));
 addLog(`Gem merchant: received ${r.name}. –3◆`, 'success');
 } else if (type === 'hp') {
 if (player.gems < 5) { addLog('Need 5◆ for max HP upgrade.', 'warn'); return; }
-setPlayer(p => ({ …p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
+setPlayer(p => ({ ...p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
 addLog('Max HP +5. –5◆', 'success');
 } else if (type === 'heal') {
 if (player.gems < 2) { addLog('Need 2◆ for a full heal.', 'warn'); return; }
-setPlayer(p => ({ …p, hp: p.maxHP, gems: p.gems - 2 }));
+setPlayer(p => ({ ...p, hp: p.maxHP, gems: p.gems - 2 }));
 addLog('Fully healed. –2◆', 'success');
 }
 }, [player.gems, addLog]);
@@ -656,20 +656,20 @@ openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col
 // ─────────────────────────────────────────────────────────────────────────
 
 const handleSwap = useCallback((deckCard, binderCard) => {
-setDeck(d => d.map(c => c.iid === deckCard.iid ? { …binderCard, iid: deckCard.iid } : c));
-setBinder(b => b.map(c => c.iid === binderCard.iid ? { …deckCard, iid: binderCard.iid } : c));
+setDeck(d => d.map(c => c.iid === deckCard.iid ? { ...binderCard, iid: deckCard.iid } : c));
+setBinder(b => b.map(c => c.iid === binderCard.iid ? { ...deckCard, iid: binderCard.iid } : c));
 addLog(`Swapped ${deckCard.name} ↔ ${binderCard.name}.`, 'info');
 }, [addLog]);
 
 const handleMoveToDeck = useCallback((card) => {
 setBinder(b => b.filter(c => c.iid !== card.iid));
-setDeck(d => […d, { …card, iid: card.iid || mkId() }]);
+setDeck(d => [...d, { ...card, iid: card.iid || mkId() }]);
 addLog(`Added ${card.name} to deck.`, 'info');
 }, [addLog]);
 
 const handleMoveToBinder = useCallback((card) => {
 setDeck(d => d.filter(c => c.iid !== card.iid));
-setBinder(b => […b, { …card, iid: card.iid || mkId() }]);
+setBinder(b => [...b, { ...card, iid: card.iid || mkId() }]);
 addLog(`Moved ${card.name} to binder.`, 'info');
 }, [addLog]);
 
@@ -710,7 +710,7 @@ return () => clearTimeout(t);
 if (duelCfg) {
 return (
 <DuelScreen
-key={JSON.stringify({ …duelCfg, _ts: Date.now() })}
+key={JSON.stringify({ ...duelCfg, _ts: Date.now() })}
 config={duelCfg}
 onDuelEnd={handleDuelEnd}
 />
@@ -740,7 +740,7 @@ fontFamily: "'Crimson Text', serif",
       <div style={{ fontSize: 40 }}>💀</div>
       <div style={{ fontSize: 24, fontFamily: "'Cinzel',serif", color: '#e04040' }}>The Plane Falls</div>
       <div style={{ fontSize: 12, color: '#a06040', fontStyle: 'italic' }}>
-        Arzakon's mana links have consumed Shandalar…
+        Arzakon's mana links have consumed Shandalar...
       </div>
     </div>
   )}
@@ -779,7 +779,7 @@ fontFamily: "'Crimson Text', serif",
           cursor: 'pointer', fontSize: 12, fontFamily: "'Cinzel',serif",
         }}
       >
-        Prepare further…
+        Prepare further...
       </button>
     </div>
   )}
@@ -944,7 +944,7 @@ fontFamily: "'Crimson Text', serif",
               {c.name.slice(0, 10)}
             </div>
           ))}
-          {deck.length > 10 && <div style={{ fontSize: 8, color: '#6a5020' }}>+{deck.length - 10}…</div>}
+          {deck.length > 10 && <div style={{ fontSize: 8, color: '#6a5020' }}>+{deck.length - 10}...</div>}
         </div>
         <div style={{ fontSize: 10, color: '#8a6030', fontFamily: "'Cinzel',serif", marginBottom: 4 }}>
           BINDER ({binder.length})

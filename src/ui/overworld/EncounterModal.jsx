@@ -49,10 +49,10 @@ const tabs = [
 { id:"shop",  l:"⚜ Shop" },
 { id:"sell",  l:`💰 Sell (${binder.length})` },
 { id:"inn",   l:"🏠 Inn" },
-…(town.hasSage ? [{ id:"sage", l:"📜 Sage" }] : []),
-…(town.hasBlackMarket ? [{ id:"bm", l:"⚫ Market" }] : []),
+...(town.hasSage ? [{ id:"sage", l:"📜 Sage" }] : []),
+...(town.hasBlackMarket ? [{ id:"bm", l:"⚫ Market" }] : []),
 { id:"gems",  l:`◆ Gems (${player.gems})` },
-…(town.quest && !town.questDone ? [{ id:"guild", l:"⚔ Guild" }] : []),
+...(town.quest && !town.questDone ? [{ id:"guild", l:"⚔ Guild" }] : []),
 ];
 
 return (
@@ -234,7 +234,7 @@ return (
 <div style={{ textAlign:"center", marginBottom:18 }}>
 <div style={{ fontSize:26, marginBottom:6 }}>⚑</div>
 <div style={{ fontSize:17, fontFamily:"'Cinzel',serif", color:"#c08040" }}>{dungeon.name}</div>
-<div style={{ fontSize:10, color:"#6a4820", fontStyle:"italic" }}>A place of shadow and terrible power…</div>
+<div style={{ fontSize:10, color:"#6a4820", fontStyle:"italic" }}>A place of shadow and terrible power...</div>
 </div>
 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
 <div style={{ background:"rgba(255,255,255,.04)", borderRadius:6, padding:8, border:"1px solid rgba(150,100,50,.2)" }}>
@@ -338,7 +338,7 @@ const [search, setSearch]   = useState("");
 const [sortBy, setSortBy]   = useState("cmc");
 
 const apply = cards => {
-let r = […cards];
+let r = [...cards];
 if (colorFilt !== "ALL") r = r.filter(c => c.color === colorFilt);
 if (search.trim()) r = r.filter(c => c.name.toLowerCase().includes(search.trim().toLowerCase()));
 if (sortBy==="cmc")  r.sort((a,b) => a.cmc-b.cmc||a.name.localeCompare(b.name));
@@ -373,7 +373,7 @@ return (
 
     {/* Controls */}
     <div style={{ padding:"8px 16px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.2)" }}>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cards…" style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"4px 10px", borderRadius:5, fontSize:11, fontFamily:"'Cinzel',serif", width:140, outline:"none" }}/>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cards..." style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"4px 10px", borderRadius:5, fontSize:11, fontFamily:"'Cinzel',serif", width:140, outline:"none" }}/>
       <div style={{ display:"flex", gap:3 }}>
         {["ALL","W","U","B","R","G",""].map(f => (
           <button key={f} onClick={()=>setColorFilt(f)} style={{ background:colorFilt===f?"rgba(200,160,40,.25)":"transparent", border:`1px solid ${colorFilt===f?"#c0a030":"#3a3010"}`, color:colorFilt===f?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{f||"∅"}</button>

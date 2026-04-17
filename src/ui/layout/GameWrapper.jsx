@@ -106,7 +106,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === "Enter" && onStart({ color:col, name:name.trim()||`The ${COLOR_META[col].name} Mage`, seed:Date.now() })}
-          placeholder="Enter your wizard's name…"
+          placeholder="Enter your wizard's name..."
           maxLength={24}
           style={{ background:"rgba(0,0,0,.5)", border:"1px solid rgba(200,160,40,.4)", color:"#f0d080", padding:"10px 16px", borderRadius:6, fontSize:15, fontFamily:"'Cinzel',serif", width:280, outline:"none", marginBottom:18, letterSpacing:1 }}
         />
