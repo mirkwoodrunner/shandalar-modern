@@ -48,8 +48,8 @@ The following discrepancies were found between v0.3 and actual source code and h
 | 4 | Green creature count | 6 | 7 (Grizzly Bears was missing from table) | **Corrected** |
 | 5 | Archetype display name | "Five-Color Bomb" | "Five-Color Chaos" (display name in code) | **Corrected** |
 | 6 | Stone Rain | Not in card DB | Present in SHOP_CARDS (overworld shop only) | **Added** |
-| 7 | `natural_order` id | Listed as Hurricane | Code id is `natural_order`, display name is `Hurricane` — id/name mismatch bug logged | **Documented** |
-| 8 | `royal_decree` id | Listed as Animate Dead | Code id is `royal_decree`, display name is `Animate Dead` — id/name mismatch bug logged | **Documented** |
+| 7 | `natural_order` id | Listed as Hurricane | Fixed in Phase 3: id corrected to `hurricane` in `src/data/cards.js` | **Fixed ✅** |
+| 8 | `royal_decree` id | Listed as Animate Dead | Fixed in Phase 3: id corrected to `animate_dead` in `src/data/cards.js` | **Fixed ✅** |
 | 9 | Stub effects | Not flagged | `powerSink`, `enchantCreature`, `pumpPower`, `gainFlying`, `lotusActivated`/`addMana3Any` fall through to default handler | **Documented** |
 | 10 | Card instance fields | Missing `enchantments`, `tokens`, `exerted` | Present on card instance | **Added** |
 | 11 | Duel state fields | Missing `animationQueue`, `awaitingTarget`, `firstStrikeHandled`, `opponentMulligan` | Present on initial state | **Added** |
