@@ -140,6 +140,7 @@ export function canBlockDuel(bl, at) {
 if (hasKw(at, “FLYING”) && !hasKw(bl, “FLYING”) && !hasKw(bl, “REACH”)) return false;
 if (hasKw(at, “PROTECTION”) && at.protection === bl.color) return false;
 if (hasKw(bl, “PROTECTION”) && bl.protection === at.color) return false;
+if (hasKw(at, "FEAR") && bl.color !== "B" && !isArt(bl)) return false;
 return true;
 }
 
@@ -238,7 +239,20 @@ bf: s[who].bf.map(x => x.iid === iid ? { …x, tapped: true } : x),
 mana: { …s[who].mana, [m]: (s[who].mana[m] || 0) + amount },
 },
 };
-return dlog(ns, `${who} taps ${c.name} → +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, “mana”);
+ns = dlog(ns, `${who} taps ${c.name} → +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, “mana”);
+const allBF_tap = [...ns.p.bf, ...ns.o.bf];
+if (allBF_tap.some(x => x.id === "mana_flare")) {
+ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, [m]: (ns[who].mana[m] || 0) + 1 } } };
+ns = dlog(ns, `Mana Flare: ${who} gets +1${m}.`, "mana");
+}
+if (allBF_tap.some(x => x.id === "manabarbs")) {
+ns = hurt(ns, who, 1, "Manabarbs");
+}
+if (ns[who].bf.some(x => x.id === "sunglasses_of_urza") && c.subtype?.includes("Plains")) {
+ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, R: (ns[who].mana.R || 0) + 1 } } };
+ns = dlog(ns, `Sunglasses of Urza: ${who} gets +1R.`, "mana");
+}
+return ns;
 }
 
 // ─── EFFECT RESOLVER ─────────────────────────────────────────────────────────
@@ -753,6 +767,45 @@ for (let i = 0; i < 3; i++) { if (!ns[caster].hand.length) break; const disc = n
 ns = dlog(ns, “Bazaar: drew 2, discarded 3.”, “draw”);
 break;
 }
+case "counterBlack": {
+const topB = ns.stack[ns.stack.length - 2];
+if (topB && topB.card.color === "B") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== topB.id), [topB.caster]: { ...ns[topB.caster], gy: [...ns[topB.caster].gy, { ...topB.card }] } }; ns = dlog(ns, `${card.name} counters ${topB.card.name}.`, "effect"); }
+break;
+}
+case "counterGreen": {
+const topG = ns.stack[ns.stack.length - 2];
+if (topG && topG.card.color === "G") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== topG.id), [topG.caster]: { ...ns[topG.caster], gy: [...ns[topG.caster].gy, { ...topG.card }] } }; ns = dlog(ns, `${card.name} counters ${topG.card.name}.`, "effect"); }
+break;
+}
+case "counterWhite": {
+const topW = ns.stack[ns.stack.length - 2];
+if (topW && topW.card.color === "W") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== topW.id), [topW.caster]: { ...ns[topW.caster], gy: [...ns[topW.caster].gy, { ...topW.card }] } }; ns = dlog(ns, `${card.name} counters ${topW.card.name}.`, "effect"); }
+break;
+}
+case "returnArtifacts": {
+const raTgt = tgt === "p" || tgt === "o" ? tgt : opp;
+const raArts = [...ns[raTgt].bf.filter(isArt)];
+for (const ra of raArts) ns = zMove(ns, ra.iid, raTgt, raTgt, "hand");
+ns = dlog(ns, `${card.name} returns all artifacts to ${raTgt}'s hand.`, "effect");
+break;
+}
+case "setPT02": {
+if (tgtC && tgtC.iid !== card.iid) {
+const curPow = getPow(tgtC, ns);
+const curTou = getTou(tgtC, ns);
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -curPow, toughness: 2 - curTou }] } : c) } };
+ns = dlog(ns, `${tgtC.name} becomes 0/2 until end of turn.`, "effect");
+}
+break;
+}
+case "forceAttack": {
+if (tgtC && !hasKw(tgtC, "DEFENDER")) {
+const faCtrl = tgtC.controller;
+ns = { ...ns, [faCtrl]: { ...ns[faCtrl], bf: ns[faCtrl].bf.map(c => c.iid === tgtC.iid ? { ...c, mustAttack: true } : c) } };
+ns = dlog(ns, `${tgtC.name} must attack this turn.`, "effect");
+}
+break;
+}
 case “stub”: ns = dlog(ns, `${card.name} resolves (effect pending).`, “effect”); break;
 default:      ns = dlog(ns, `${card.name} resolves.`, “effect”);
 }
@@ -830,7 +883,20 @@ let ns = { …s, phase: next };
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
 for (const w of [“p”,“o”]) ns = burnMana(ns, w, ns.ruleset);
 
-if (next === “COMBAT_DAMAGE”) { ns = resolveCombat(ns); return ns; }
+if (next === “COMBAT_DAMAGE”) {
+ns = resolveCombat(ns);
+for (const mw of ["p","o"]) {
+for (const mc of [...ns[mw].bf].filter(x => x.mustAttack)) {
+if (!ns.attackers.includes(mc.iid)) {
+ns = zMove(ns, mc.iid, mw, mw, "gy");
+ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, "death");
+} else {
+ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
+}
+}
+}
+return ns;
+}
 
 if (turnChange) {
 const whoExtra = [“p”,“o”].find(w => ns[w].extraTurns > 0);
@@ -843,7 +909,28 @@ ns = { …ns, active: nx };
 ns = dlog(ns, `── Turn ${ns.turn + 1} · ${nx} ──`, “phase”);
 }
 ns = { …ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0 };
-ns = { …ns, [ns.active]: { …ns[ns.active], bf: ns[ns.active].bf.map(c => ({ …c, tapped:false, summoningSick:false, damage:0 })) } };
+{
+const allBF_s = [...ns.p.bf, ...ns.o.bf];
+const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
+const winterOrbOut = allBF_s.some(x => x.id === "winter_orb" && !x.tapped);
+const smokeOut     = allBF_s.some(x => x.id === "smoke");
+let landsUntapped = 0, cresUntapped = 0;
+ns = { …ns, [ns.active]: { …ns[ns.active], bf: ns[ns.active].bf.map(c => {
+const base = { …c, summoningSick:false, damage:0 };
+if (isLand(c)) {
+if (winterOrbOut && landsUntapped >= 1) return base;
+landsUntapped++;
+return { ...base, tapped:false };
+}
+if (isCre(c)) {
+if (meekstoneOut && getPow(c, ns) >= 3) return base;
+if (smokeOut && cresUntapped >= 1) return base;
+cresUntapped++;
+return { ...base, tapped:false };
+}
+return { ...base, tapped:false };
+}) } };
+}
 }
 
 if (next === “UPKEEP”) {
@@ -888,6 +975,11 @@ ns = { …ns, [w]: { …ns[w], hand: ns[w].hand.slice(0,-2), lib: […put, …ns
 if (w === “p”) ns = dlog(ns, “Sylvan Library: drew 2 extra cards.”, “draw”);
 break;
 }
+case “karmaUpkeep”: {
+const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length;
+if (kSwamps > 0) ns = hurt(ns, w, kSwamps, "Karma");
+break;
+}
 default: break;
 }
 }
@@ -910,6 +1002,10 @@ ns = { …ns, [ac]: { …ns[ac], hand: ns[ac].hand.slice(0,-1), gy: […ns[ac].g
 // Expire all EOT buffs on all permanents. SYSTEMS.md §3.1
 for (const w of [“p”,”o”]) {
 ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { …c, eotBuffs: [] } : c) } };
+}
+// Clear mustAttack flags at end of turn
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, mustAttack: false } : c) } };
 }
 // Castle Inferno modifier
 if (ns.castleMod?.name === “Inferno”) { ns = hurt(ns, “p”, 1, “Inferno”); ns = hurt(ns, “o”, 1, “Inferno”); }
