@@ -461,9 +461,32 @@ Six archetypes with curated ~40-card lists:
 
 ---
 
-### 3.6 Dungeons *(Design complete; duel integration Phase 3)*
+### 3.6 Dungeons *(Phase 5 — Dungeon Crawl Map System implemented)*
 
-**Structure:** 3–5 rooms; no HP restore; permanent on exit
+**Structure:** 3–5 rectangular rooms connected by L-shaped CORRIDOR tiles on a 24×16 grid.
+- Rooms are 4–8 tiles wide and 3–5 tiles tall, placed without overlap.
+- Rooms are connected sequentially by L-shaped corridors (two-leg paths between room centers).
+- Player starts in the center of the first room.
+- EXIT entity placed in the center of the last room.
+
+**Line-of-sight revelation:**
+- On each move, a Bresenham raycast runs from the player's new position to every unrevealed FLOOR/CORRIDOR tile.
+- Tiles with an unobstructed ray (no WALL cells crossed) become permanently revealed for that dungeon instance.
+- Unrevealed tiles render as solid black; WALL tiles render as dark charcoal.
+
+**Static enemy placement:**
+- 1–2 ENEMY entities placed in each non-first room.
+- Enemies are stationary; they do not move.
+- Archetype weighted 60% toward the dungeon's dominant color; 40% random from full pool.
+- Tier scales with room index: room 0 = tier 1, scaling to tier 3 in the final room.
+- Stepping onto an enemy tile triggers a duel (context `dungeon_entity`).
+- Winning returns the player to the dungeon map; enemy marked defeated.
+- Losing ejects the player from the dungeon (HP → 1 per soft-permadeath rule).
+
+**HP and restoration:**
+- Player HP carries into and out of the dungeon.
+- No HP restoration is available inside the dungeon.
+- HP restores are only available at town inns.
 
 **Six modifiers (all implemented):**
 
@@ -476,7 +499,7 @@ Six archetypes with curated ~40-card lists:
 | `TWILIGHT` | Eternal Twilight | No creatures may attack until turn 3 |
 | `OVERLOAD` | Overload | All spells cost 1 less (minimum 1) |
 
-**Loot:** Rooms 1–2 uncommons/gold; rooms 3–4 rares/gold; final room 1 guaranteed rare, Dual Land or Power Nine possible
+**Loot:** 0–1 TREASURE entity per room. Rooms 0–1: 50% C / 30% U / 20% none. Rooms 2+: 20% C / 40% U / 40% R. Gold: 20 + (tier × 15)g.
 
 **Clues:** 25g per sage consultation; reveals dungeon name, dominant color, one modifier/loot hint
 
@@ -593,6 +616,12 @@ Phase 3 — Integration  (shandalar-phase3.jsx)
       ├── Dungeon chain   room-by-room duel sequence with modifier applied
       ├── Castle duels    mage archetype + castle modifier active
       └── Ante system     optional toggle; ante card tracked per duel
+
+Dungeon Crawl (Phase 5 — new)
+<DungeonHUD>       dungeon name, modifier, HP, gold, rooms cleared
+<DungeonMap>       24×16 CSS grid; LOS revelation; keyboard movement; entity tokens
+<TreasureModal>    gold + card rarity reveal on chest collection
+DungeonGenerator   procedural room+corridor layout; seeded RNG; entity placement
 ```
 
 ### Duel State Shape (complete, including previously undocumented fields)

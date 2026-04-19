@@ -457,4 +457,37 @@ This guarantees at most one Scryfall request per unique card name per session, k
 
 ---
 
+# 9. Dungeon System
+
+## 9.1 Authority
+DungeonGenerator.js owns dungeon layout generation.
+OverworldGame.jsx owns dungeon runtime state (playerPos, entity defeated/collected flags).
+DungeonMap.jsx is presentation only.
+
+## 9.2 State Lifecycle
+- Dungeon state created on enter; discarded on exit.
+- Player HP and gold persist bidirectionally (overworld → dungeon → overworld).
+- Cards gained from treasure go directly to binder (not deck).
+- No dungeon state survives exit. Re-entering a dungeon tile generates a new dungeon.
+
+## 9.3 Line of Sight
+- Raycast from playerPos using Bresenham's line algorithm.
+- Any FLOOR or CORRIDOR tile with an unobstructed ray (no WALL tile crossed) becomes revealed.
+- Revealed state is permanent for the duration of the dungeon instance.
+
+## 9.4 Entity Rules
+- Enemies are stationary. They do not move.
+- Stepping onto an enemy tile triggers a duel via the existing DuelScreen bridge (context: `dungeon_entity`).
+- Winning the duel returns the player to the dungeon map; the enemy entity is marked defeated.
+- Losing the duel applies the standard overworld soft-permadeath rule (HP → 1, ante card lost)
+  and ejects the player from the dungeon (dungeonScreen → null).
+- Treasure is collected automatically on tile entry; TreasureModal shows the result.
+- Exit tile is always in the final generated room.
+
+## 9.5 Dungeon Modifier
+- The modifier from MapGenerator (POWER_STRUGGLE, CURSED_GROUND, etc.) is passed through
+  to every duel triggered inside the dungeon, identical to the existing dungeon duel flow.
+
+---
+
 # End of SYSTEMS v1.0

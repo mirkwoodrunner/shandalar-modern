@@ -21,6 +21,10 @@ import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from �
 import PreDuelPopup from ‘./ui/overworld/PreDuelPopup.jsx’;
 import { DuelLog as OWLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import DuelScreen from ‘./DuelScreen.jsx’;
+import { generateDungeon, checkLOS } from ‘./engine/DungeonGenerator.js’;
+import DungeonHUD from ‘./ui/dungeon/DungeonHUD.jsx’;
+import DungeonMap from ‘./ui/dungeon/DungeonMap.jsx’;
+import TreasureModal from ‘./ui/dungeon/TreasureModal.jsx’;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS (mirrors shandalar-phase4.jsx)
@@ -132,6 +136,12 @@ const [arzakonDefeated, setArzakonDefeated]   = useState(false);
 const [duelCfg, setDuelCfg]         = useState(null);
 const [dungeonProg, setDungeonProg] = useState(null);
 const [encounterPopup, setEncounterPopup] = useState(null);
+
+// ── Dungeon map screen ───────────────────────────────────────────────────
+const [dungeonScreen, setDungeonScreen]       = useState(null);
+const [dungeonPlayerPos, setDungeonPlayerPos] = useState(null);
+const [treasureModal, setTreasureModal]       = useState(null);
+const pendingDungeonEntity = useRef(null);
 
 // ── Ruleset / ante ───────────────────────────────────────────────────────
 const [ruleset, setRuleset]       = useState(RULESETS.CLASSIC);
@@ -444,6 +454,27 @@ if (ctx === 'castle') {
   }
 }
 
+// ── Dungeon entity (map-based dungeon combat) ──────────────────────────
+if (ctx === 'dungeon_entity') {
+  setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
+  const entityId = pendingDungeonEntity.current;
+  pendingDungeonEntity.current = null;
+  if (won) {
+    setDungeonScreen(prev => prev ? {
+      ...prev,
+      entities: prev.entities.map(e => e.id === entityId ? { ...e, defeated: true } : e),
+    } : null);
+    const gold = 5 + Math.floor(Math.random() * 15);
+    setPlayer(p => ({ ...p, gold: p.gold + gold }));
+    addLog(`Victory! +${gold}g. Returning to the dungeon.`, 'success');
+  } else {
+    addLog(`Defeated in the dungeon depths. Retreating…`, 'danger');
+    setDungeonScreen(null);
+    setDungeonPlayerPos(null);
+    setDungeonProg(null);
+  }
+}
+
 // ── Dungeon room ───────────────────────────────────────────────────────
 if (ctx === 'dungeon') {
   setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
@@ -633,10 +664,85 @@ if (!dg) return;
 addLog(`You descend into ${dg.name}. Modifier: ${dg.mod.name}.`, ‘event’);
 const prog = { tile: activeTile, room: 0, totalRooms: dg.rooms, mod: dg.mod, entryHP: player.hp };
 setDungeonProg(prog);
+const generated = generateDungeon(dg, Date.now());
+setDungeonScreen(generated);
+setDungeonPlayerPos(generated.playerStart);
 setModal(null);
-const arch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
-launchDuel(arch, player.hp, ‘dungeon’, dg.mod);
-}, [activeTile, player.hp, launchDuel, addLog]);
+}, [activeTile, player.hp, addLog]);
+
+// ─────────────────────────────────────────────────────────────────────────
+// DUNGEON MAP HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+
+const handleDungeonExit = useCallback(() => {
+addLog(`You emerge from ${dungeonScreen?.name || 'the dungeon'}.`, 'info');
+setDungeonsCleared(dc => dc + 1);
+setDungeonScreen(null);
+setDungeonPlayerPos(null);
+setDungeonProg(null);
+}, [dungeonScreen, addLog]);
+
+const handleDungeonInteract = useCallback((entity) => {
+// Treasure auto-collected on entry; this triggers the reveal UI.
+setPlayer(p => ({ ...p, gold: p.gold + entity.gold }));
+if (entity.cardRarity) {
+const pool = CARD_DB.filter(c => c.rarity === entity.cardRarity && !isLand(c));
+if (pool.length) {
+const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+setBinder(b => [...b, reward]);
+addLog(`Treasure: +${entity.gold}g and ${reward.name} added to binder.`, 'success');
+} else {
+addLog(`Treasure: +${entity.gold}g.`, 'success');
+}
+} else {
+addLog(`Treasure: +${entity.gold}g.`, 'success');
+}
+setDungeonScreen(prev => prev ? {
+...prev,
+entities: prev.entities.map(e => e.id === entity.id ? { ...e, collected: true } : e),
+} : null);
+setTreasureModal(entity);
+}, [addLog]);
+
+const handleDungeonMove = useCallback((dx, dy) => {
+if (!dungeonScreen || !dungeonPlayerPos) return;
+const { x, y } = dungeonPlayerPos;
+const nx = x + dx;
+const ny = y + dy;
+
+if (nx < 0 || nx >= dungeonScreen.width || ny < 0 || ny >= dungeonScreen.height) return;
+if (dungeonScreen.grid[ny][nx].type === 'WALL') return;
+
+setDungeonPlayerPos({ x: nx, y: ny });
+
+// Reveal tiles with unobstructed LOS from new position
+setDungeonScreen(prev => {
+if (!prev) return prev;
+const newGrid = prev.grid.map(row => row.map(cell => ({ ...cell })));
+for (let ty = 0; ty < prev.height; ty++) {
+for (let tx = 0; tx < prev.width; tx++) {
+const cell = newGrid[ty][tx];
+if (cell.revealed || cell.type === 'WALL') continue;
+if (checkLOS(newGrid, nx, ny, tx, ty)) {
+newGrid[ty][tx] = { ...cell, revealed: true };
+}
+}
+}
+return { ...prev, grid: newGrid };
+});
+
+// Entity interaction at the new tile (uses pre-update state for entity status)
+const entity = dungeonScreen.entities.find(e => e.x === nx && e.y === ny);
+if (!entity) return;
+if (entity.type === 'ENEMY' && !entity.defeated) {
+pendingDungeonEntity.current = entity.id;
+launchDuel(entity.archKey, player.hp, 'dungeon_entity', dungeonScreen.mod);
+} else if (entity.type === 'TREASURE' && !entity.collected) {
+handleDungeonInteract(entity);
+} else if (entity.type === 'EXIT') {
+handleDungeonExit();
+}
+}, [dungeonScreen, dungeonPlayerPos, player.hp, launchDuel, handleDungeonInteract, handleDungeonExit]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // ─────────────────────────────────────────────────────────────────────────
 // CASTLE CHALLENGE
@@ -714,6 +820,44 @@ key={JSON.stringify({ …duelCfg, _ts: Date.now() })}
 config={duelCfg}
 onDuelEnd={handleDuelEnd}
 />
+);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// RENDER — DUNGEON MAP SCREEN
+// ─────────────────────────────────────────────────────────────────────────
+if (dungeonScreen && dungeonPlayerPos) {
+return (
+<div style={{
+height: '100vh', width: '100vw',
+background: '#050302',
+display: 'flex', flexDirection: 'column',
+overflow: 'hidden',
+fontFamily: "'Crimson Text', serif",
+}}>
+<DungeonHUD
+dungeonName={dungeonScreen.name}
+mod={dungeonScreen.mod}
+domColor={dungeonScreen.domColor}
+playerHP={player.hp}
+playerMaxHP={player.maxHP}
+playerGold={player.gold}
+roomsCleared={dungeonScreen.entities.filter(e => e.type === 'ENEMY' && e.defeated).length}
+totalRooms={dungeonProg?.totalRooms || dungeonScreen.numRooms}
+/>
+<DungeonMap
+dungeon={dungeonScreen}
+playerPos={dungeonPlayerPos}
+onMove={handleDungeonMove}
+onEntityInteract={handleDungeonInteract}
+/>
+{treasureModal && (
+<TreasureModal
+treasure={treasureModal}
+onCollect={() => setTreasureModal(null)}
+/>
+)}
+</div>
 );
 }
 
