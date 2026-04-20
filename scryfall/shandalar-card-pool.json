@@ -1055,6 +1055,27 @@
     "scryfallUri": "https://scryfall.com/card/5ed/278/aspect-of-wolf?utm_source=api"
   },
   {
+    "id": "aswan_jaguar",
+    "scryfallId": "cf25a3a5-0e7d-43d1-a2e6-85a233eee3e4",
+    "name": "Aswan Jaguar",
+    "manaCost": "{1}{G}{G}",
+    "cmc": 3,
+    "typeLine": "Summon Jaguar",
+    "oracleText": "When Aswan Jaguar comes into play, choose a random creature type from those in target opponent's deck.\n{G}{G}, {T}: Bury target creature of the chosen type.",
+    "colors": [
+      "G"
+    ],
+    "colorIdentity": [
+      "G"
+    ],
+    "power": "2",
+    "toughness": "2",
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "pmic",
+    "scryfallUri": "https://scryfall.com/card/pmic/1/aswan-jaguar?utm_source=api"
+  },
+  {
     "id": "atog",
     "scryfallId": "adf3bd18-d9c1-4f18-86c0-579db8ea37c7",
     "name": "Atog",
@@ -5460,6 +5481,29 @@
     "scryfallUri": "https://scryfall.com/card/me4/12/eye-for-an-eye?utm_source=api"
   },
   {
+    "id": "faerie_dragon",
+    "scryfallId": "3e8a5cc8-5565-4372-bdfe-a82d672b644c",
+    "name": "Faerie Dragon",
+    "manaCost": "{2}{G}{G}",
+    "cmc": 4,
+    "typeLine": "Summon Dragon",
+    "oracleText": "Flying\n{1}{G}{G}: Play a random effect.",
+    "colors": [
+      "G"
+    ],
+    "colorIdentity": [
+      "G"
+    ],
+    "power": "1",
+    "toughness": "3",
+    "rarity": "C",
+    "keywords": [
+      "Flying"
+    ],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/3/faerie-dragon?utm_source=api"
+  },
+  {
     "id": "fallen_angel",
     "scryfallId": "d3baa621-1b50-4a7f-9ed4-4ae0e0e9e4e7",
     "name": "Fallen Angel",
@@ -6533,6 +6577,23 @@
     "scryfallUri": "https://scryfall.com/card/me3/196/gauntlets-of-chaos?utm_source=api"
   },
   {
+    "id": "gem_bazaar",
+    "scryfallId": "ab186e91-3a4b-4916-a57d-cef8caea00cd",
+    "name": "Gem Bazaar",
+    "manaCost": "",
+    "cmc": 0,
+    "typeLine": "Land",
+    "oracleText": "When Gem Bazaar comes into play, choose a random color.\n{T}: Add to your mana pool one mana of the color last chosen. Then choose a random color.",
+    "colors": [],
+    "colorIdentity": [],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/12/gem-bazaar?utm_source=api"
+  },
+  {
     "id": "ghazbán_ogre",
     "scryfallId": "1e14cf3a-3c5a-4c22-88d1-1b19660b2e2a",
     "name": "Ghazbán Ogre",
@@ -7039,6 +7100,27 @@
     "keywords": [],
     "setCode": "10e",
     "scryfallUri": "https://scryfall.com/card/10e/207/goblin-king?utm_source=api"
+  },
+  {
+    "id": "goblin_polka_band",
+    "scryfallId": "86419b05-8199-4137-86a2-b341ad380770",
+    "name": "Goblin Polka Band",
+    "manaCost": "{R}{R}",
+    "cmc": 2,
+    "typeLine": "Summon Goblin",
+    "oracleText": "{2}, {T}, Pay {R} for each target: Tap any number of random target creatures. Goblins tapped in this way do not untap during their controllers' next untap phases.",
+    "colors": [
+      "R"
+    ],
+    "colorIdentity": [
+      "R"
+    ],
+    "power": "1",
+    "toughness": "1",
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/4/goblin-polka-band?utm_source=api"
   },
   {
     "id": "goblin_rock_sled",
@@ -11418,6 +11500,27 @@
     "scryfallUri": "https://scryfall.com/card/drk/105/necropolis?utm_source=api"
   },
   {
+    "id": "necropolis_of_azar",
+    "scryfallId": "f17886ea-5dcf-4a92-9896-284bf3188998",
+    "name": "Necropolis of Azar",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "typeLine": "Enchantment",
+    "oracleText": "Whenever a non-black creature is put into any graveyard from play, put a husk counter on Necropolis of Azar.\n{5}, Remove a husk counter from Necropolis of Azar: Put a Spawn of Azar token into play. Treat this token as a black creature with a random power and toughness, each no less than 1 and no greater than 3, that has swampwalk.",
+    "colors": [
+      "B"
+    ],
+    "colorIdentity": [
+      "B"
+    ],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/5/necropolis-of-azar?utm_source=api"
+  },
+  {
     "id": "nether_shadow",
     "scryfallId": "11988c46-6d0c-46a8-85aa-8c6da72bfe30",
     "name": "Nether Shadow",
@@ -11757,6 +11860,27 @@
     "scryfallUri": "https://scryfall.com/card/10e/220/orcish-artillery?utm_source=api"
   },
   {
+    "id": "orcish_catapult",
+    "scryfallId": "27e37cd7-1e01-464d-933f-8326d677b126",
+    "name": "Orcish Catapult",
+    "manaCost": "{X}{R}{R}",
+    "cmc": 2,
+    "typeLine": "Instant",
+    "oracleText": "Randomly distribute X -0/-1 counters among a random number of random target creatures.",
+    "colors": [
+      "R"
+    ],
+    "colorIdentity": [
+      "R"
+    ],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/6/orcish-catapult?utm_source=api"
+  },
+  {
     "id": "orcish_mechanics",
     "scryfallId": "acfa5626-e843-495f-8716-316b63b9aaf4",
     "name": "Orcish Mechanics",
@@ -11888,6 +12012,23 @@
     ],
     "setCode": "me3",
     "scryfallUri": "https://scryfall.com/card/me3/164/palladia-mors?utm_source=api"
+  },
+  {
+    "id": "pandoras_box",
+    "scryfallId": "d5cf7e7d-0d73-4760-b844-e9c3faf6fe20",
+    "name": "Pandora's Box",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "typeLine": "Artifact",
+    "oracleText": "{3}, {T}: Choose a random summon card from all players' decks. For each player, flip a coin. If the flip ends up heads, put a token creature into play and treat it as though an exact copy of the chosen summon card were just played.",
+    "colors": [],
+    "colorIdentity": [],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/11/pandoras-box?utm_source=api"
   },
   {
     "id": "paralyze",
@@ -12425,6 +12566,27 @@
     "scryfallUri": "https://scryfall.com/card/vma/88/power-sink?utm_source=api"
   },
   {
+    "id": "power_struggle",
+    "scryfallId": "55103248-6192-413a-ab69-a956c7c0587a",
+    "name": "Power Struggle",
+    "manaCost": "{2}{U}{U}{U}",
+    "cmc": 5,
+    "typeLine": "Enchantment",
+    "oracleText": "During each player's upkeep, that player exchanges control of random target artifact, creature or land he or she controls, for control of random target permanent of the same type that a random opponent controls.",
+    "colors": [
+      "U"
+    ],
+    "colorIdentity": [
+      "U"
+    ],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/7/power-struggle?utm_source=api"
+  },
+  {
     "id": "power_surge",
     "scryfallId": "0b5717af-a1a3-45cb-8b05-7543eed5532a",
     "name": "Power Surge",
@@ -12610,6 +12772,29 @@
     "keywords": [],
     "setCode": "me3",
     "scryfallUri": "https://scryfall.com/card/me3/166/princess-lucrezia?utm_source=api"
+  },
+  {
+    "id": "prismatic_dragon",
+    "scryfallId": "ef59f284-dc3c-4b4f-acc4-fc8080d8dc23",
+    "name": "Prismatic Dragon",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "typeLine": "Summon Dragon",
+    "oracleText": "Flying\nDuring your upkeep, Prismatic Dragon becomes a random color permanently.\n{2}: Prismatic Dragon becomes a random color permanently.",
+    "colors": [
+      "W"
+    ],
+    "colorIdentity": [
+      "W"
+    ],
+    "power": "2",
+    "toughness": "3",
+    "rarity": "C",
+    "keywords": [
+      "Flying"
+    ],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/8/prismatic-dragon?utm_source=api"
   },
   {
     "id": "prodigal_sorcerer",
@@ -12994,6 +13179,27 @@
     "keywords": [],
     "setCode": "me3",
     "scryfallUri": "https://scryfall.com/card/me3/167/ragnar?utm_source=api"
+  },
+  {
+    "id": "rainbow_knights",
+    "scryfallId": "8205deb1-4dcc-4c0b-9dc9-a2bb65b251c1",
+    "name": "Rainbow Knights",
+    "manaCost": "{W}{W}",
+    "cmc": 2,
+    "typeLine": "Summon Knights",
+    "oracleText": "When Rainbow Knights comes into play, it gains protection from a random color permanently.\n{1}: First strike until end of turn.\n{W}{W}: +0/+0, +1/+0 or +2/+0 until end of turn chosen at random.",
+    "colors": [
+      "W"
+    ],
+    "colorIdentity": [
+      "W"
+    ],
+    "power": "2",
+    "toughness": "1",
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/9/rainbow-knights?utm_source=api"
   },
   {
     "id": "raise_dead",
@@ -18215,6 +18421,27 @@
     "keywords": [],
     "setCode": "vma",
     "scryfallUri": "https://scryfall.com/card/vma/192/wheel-of-fortune?utm_source=api"
+  },
+  {
+    "id": "whimsy",
+    "scryfallId": "ff257509-8035-45c7-a0d7-ab55449a99c9",
+    "name": "Whimsy",
+    "manaCost": "{X}{U}{U}",
+    "cmc": 2,
+    "typeLine": "Sorcery",
+    "oracleText": "Play X random fast effects.",
+    "colors": [
+      "U"
+    ],
+    "colorIdentity": [
+      "U"
+    ],
+    "power": null,
+    "toughness": null,
+    "rarity": "C",
+    "keywords": [],
+    "setCode": "past",
+    "scryfallUri": "https://scryfall.com/card/past/10/whimsy?utm_source=api"
   },
   {
     "id": "whippoorwill",
