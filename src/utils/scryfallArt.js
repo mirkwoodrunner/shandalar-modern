@@ -1,7 +1,8 @@
 const cache = new Map();
 
-export async function fetchOldestArt(cardName) {
-  const cached = cache.get(cardName);
+export async function fetchOldestArt(cardName, scryfallId) {
+  const cacheKey = scryfallId ?? cardName;
+  const cached = cache.get(cacheKey);
   if (cached?.status === 'resolved') return cached.url;
   if (cached?.status === 'error') return null;
 
@@ -20,25 +21,31 @@ export async function fetchOldestArt(cardName) {
       }
     }
 
+    if (!artUrl && scryfallId) {
+      const idResp = await fetch(`https://api.scryfall.com/cards/${scryfallId}`);
+      if (idResp.ok) {
+        artUrl = extractArtCrop(await idResp.json(), cardName);
+      }
+    }
+
     if (!artUrl) {
       const namedResp = await fetch(`https://api.scryfall.com/cards/named?exact=${encodedName}`);
       if (!namedResp.ok) {
-        cache.set(cardName, { url: null, status: 'error' });
+        cache.set(cacheKey, { url: null, status: 'error' });
         return null;
       }
-      const namedData = await namedResp.json();
-      artUrl = extractArtCrop(namedData, cardName);
+      artUrl = extractArtCrop(await namedResp.json(), cardName);
     }
 
     if (!artUrl) {
-      cache.set(cardName, { url: null, status: 'error' });
+      cache.set(cacheKey, { url: null, status: 'error' });
       return null;
     }
 
-    cache.set(cardName, { url: artUrl, status: 'resolved' });
+    cache.set(cacheKey, { url: artUrl, status: 'resolved' });
     return artUrl;
   } catch (err) {
-    cache.set(cardName, { url: null, status: 'error' });
+    cache.set(cacheKey, { url: null, status: 'error' });
     return null;
   }
 }
@@ -54,7 +61,7 @@ function extractArtCrop(cardData, cardName) {
   return null;
 }
 
-export function getCachedArt(cardName) {
-  const cached = cache.get(cardName);
+export function getCachedArt(cardName, scryfallId) {
+  const cached = cache.get(scryfallId ?? cardName);
   return cached?.status === 'resolved' ? cached.url : null;
 }

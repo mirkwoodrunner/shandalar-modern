@@ -134,7 +134,7 @@ opacity: tapped ? 0.55 : 1,
 // ─── CARD ART DISPLAY ─────────────────────────────────────────────────────────
 
 function CardArtDisplay({ card, sm }) {
-  const { url, loading } = useCardArt(card.name);
+  const { url, loading } = useCardArt(card.name, card.scryfallId);
   if (url) {
     return (
       <img

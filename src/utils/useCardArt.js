@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { fetchOldestArt, getCachedArt } from './scryfallArt.js';
 
-export default function useCardArt(cardName) {
-  const cached = getCachedArt(cardName);
+export default function useCardArt(cardName, scryfallId) {
+  const cached = getCachedArt(cardName, scryfallId);
 
   const [state, setState] = useState(() =>
     cached ? { url: cached, loading: false, error: false } : { url: null, loading: true, error: false }
@@ -13,7 +13,7 @@ export default function useCardArt(cardName) {
 
     let cancelled = false;
 
-    fetchOldestArt(cardName).then(url => {
+    fetchOldestArt(cardName, scryfallId).then(url => {
       if (cancelled) return;
       if (url) {
         setState({ url, loading: false, error: false });
@@ -23,7 +23,7 @@ export default function useCardArt(cardName) {
     });
 
     return () => { cancelled = true; };
-  }, [cardName]);
+  }, [cardName, scryfallId]);
 
   return state;
 }
