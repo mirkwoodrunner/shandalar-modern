@@ -1,0 +1,92 @@
+Shandalar Card Pool Processing Report
+======================================
+Run date: 2026-04-20T00:40:44.211Z
+Scryfall oracle cards loaded: 37236
+Pool list entries: 901
+Cards matched: 911
+Cards unmatched: 1
+
+UNMATCHED CARDS (not found in Scryfall oracle data):
+- Aswan Jaguar
+
+SLUG RECONCILIATION (existing CARD_DB ids not found in generated pool):
+- pearl_unicorn  →  closest match in pool: NO MATCH
+- merfolk_pearl  →  closest match in pool: NO MATCH
+- lord_atlantis  →  closest match in pool: NO MATCH
+- phantom_warrior  →  closest match in pool: NO MATCH
+- dandan  →  closest match in pool: NO MATCH
+- glacial_wall  →  closest match in pool: NO MATCH
+- juzam_djinn  →  closest match in pool: NO MATCH
+- lord_of_pit  →  closest match in pool: NO MATCH
+- stromgald_cabal  →  closest match in pool: NO MATCH
+- goblin_balloon  →  closest match in pool: goblin_balloon_brigade
+- mons_goblin  →  closest match in pool: NO MATCH
+- roc_of_kher  →  closest match in pool: roc_of_kher_ridges
+- two_headed_giant  →  closest match in pool: two_headed_giant_of_foriys
+- fyndhorn_elves  →  closest match in pool: NO MATCH
+- gaea_liege  →  closest match in pool: NO MATCH
+- swords  →  closest match in pool: emeritus_of_truce__swords_to_plowshares
+- wog  →  closest match in pool: NO MATCH
+- ancestral  →  closest match in pool: ancestral_recall
+- dark_banishing  →  closest match in pool: NO MATCH
+- consume_spirit  →  closest match in pool: NO MATCH
+- lava_axe  →  closest match in pool: NO MATCH
+- nevinyrral_disk  →  closest match in pool: NO MATCH
+- tawnos_coffin  →  closest match in pool: NO MATCH
+- CLASSIC  →  closest match in pool: NO MATCH
+- MODERN  →  closest match in pool: NO MATCH
+- CONTEMPORARY  →  closest match in pool: NO MATCH
+- wrath  →  closest match in pool: wrath_of_god
+- sleep  →  closest match in pool: NO MATCH
+- aeolipile  →  closest match in pool: NO MATCH
+- counterspell2  →  closest match in pool: counterspell
+- mishra_factory  →  closest match in pool: NO MATCH
+- feldon_cane  →  closest match in pool: NO MATCH
+- howling_mine2  →  closest match in pool: howling_mine
+- karma2  →  closest match in pool: karma
+- death_ward2  →  closest match in pool: death_ward
+- resurrection2  →  closest match in pool: resurrection
+- swords2  →  closest match in pool: NO MATCH
+- frozen_shade2  →  closest match in pool: frozen_shade
+- ashes_to_ashes2  →  closest match in pool: ashes_to_ashes
+- howl_beyond2  →  closest match in pool: NO MATCH
+- shatter2  →  closest match in pool: shatter
+- regeneration2  →  closest match in pool: regeneration
+- disrupting_scepter2  →  closest match in pool: disrupting_scepter
+- magic_candelabra  →  closest match in pool: NO MATCH
+- aeolipile2  →  closest match in pool: NO MATCH
+- tetravus2  →  closest match in pool: tetravus
+- erhnam_djinn2  →  closest match in pool: erhnam_djinn
+- PLAINS  →  closest match in pool: NO MATCH
+- FOREST  →  closest match in pool: NO MATCH
+- SWAMP  →  closest match in pool: NO MATCH
+- MOUNTAIN  →  closest match in pool: NO MATCH
+- ISLAND  →  closest match in pool: NO MATCH
+- WATER  →  closest match in pool: NO MATCH
+- POWER_STRUGGLE  →  closest match in pool: NO MATCH
+- CURSED_GROUND  →  closest match in pool: NO MATCH
+- MANA_SURGE  →  closest match in pool: NO MATCH
+- SILENCE  →  closest match in pool: NO MATCH
+- TWILIGHT  →  closest match in pool: NO MATCH
+- OVERLOAD  →  closest match in pool: NO MATCH
+- q1  →  closest match in pool: NO MATCH
+- q2  →  closest match in pool: NO MATCH
+- q3  →  closest match in pool: NO MATCH
+- q4  →  closest match in pool: NO MATCH
+- q5  →  closest match in pool: NO MATCH
+- boots  →  closest match in pool: NO MATCH
+- amulet  →  closest match in pool: amulet_of_kroog
+- focus  →  closest match in pool: dirgur_focusmage__braingeyser
+- ward  →  closest match in pool: artifact_ward
+- stone  →  closest match in pool: fellwar_stone
+- shop  →  closest match in pool: mishras_workshop
+- sell  →  closest match in pool: NO MATCH
+- inn  →  closest match in pool: erhnam_djinn
+- sage  →  closest match in pool: sage_of_lat_nam
+- bm  →  closest match in pool: NO MATCH
+- gems  →  closest match in pool: NO MATCH
+- guild  →  closest match in pool: adventurers_guildhouse
+
+ACTION REQUIRED: Review mismatches above before engine integration.
+If the pool id is correct, patch CARD_DB to use the new slug.
+If the CARD_DB id is preferred, add a slug override map to this script.
