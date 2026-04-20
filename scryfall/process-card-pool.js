@@ -65,6 +65,9 @@ function loadCardPool() {
 // --- Step 3: Filter Scryfall cards ---
 const EXCLUDED_LAYOUTS = new Set(['token', 'art_series']);
 const EXCLUDED_SET_TYPES = new Set(['token', 'memorabilia', 'funny']);
+// 'past' is Scryfall's set code for the Shandalar astral cards — game-only cards
+// that never existed in the real card game and must be excluded.
+const EXCLUDED_SET_CODES = new Set(['past']);
 
 function filterCards(scryfallData, pool, originalLines) {
   const matchedNames = new Set();
@@ -73,6 +76,7 @@ function filterCards(scryfallData, pool, originalLines) {
   for (const card of scryfallData) {
     if (EXCLUDED_LAYOUTS.has(card.layout)) continue;
     if (EXCLUDED_SET_TYPES.has(card.set_type)) continue;
+    if (EXCLUDED_SET_CODES.has(card.set)) continue;
 
     let found = false;
     if (pool.has(card.name.toLowerCase())) {

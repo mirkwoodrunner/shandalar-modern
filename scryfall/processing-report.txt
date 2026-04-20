@@ -1,13 +1,23 @@
 Shandalar Card Pool Processing Report
 ======================================
-Run date: 2026-04-20T00:40:44.211Z
+Run date: 2026-04-20T02:51:37.108Z
 Scryfall oracle cards loaded: 37236
 Pool list entries: 901
-Cards matched: 911
-Cards unmatched: 1
+Cards matched: 901
+Cards unmatched: 11
 
 UNMATCHED CARDS (not found in Scryfall oracle data):
 - Aswan Jaguar
+- Faerie Dragon
+- Gem Bazaar
+- Goblin Polka Band
+- Necropolis of Azar
+- Orcish Catapult
+- Pandora's Box
+- Power Struggle
+- Prismatic Dragon
+- Rainbow Knights
+- Whimsy
 
 SLUG RECONCILIATION (existing CARD_DB ids not found in generated pool):
 - pearl_unicorn  →  closest match in pool: NO MATCH
