@@ -11,11 +11,11 @@ export const RULESETS = {
 CLASSIC: {
 id: “CLASSIC”,
 name: “Classic (Alpha–4th Ed.)”,
-description: “Original 1993–1995 rules. Mana burn, banding, batch stack, 7-card mulligan (no free).”,
+description: “Original 1993–1995 rules. Mana burn, banding, LIFO stack, 7-card mulligan (no free).”,
 manaBurn: true,
 freeMulligan: false,
 londonMulligan: false,
-stackType: “batch”,          // “batch” | “lifo”
+stackType: “lifo”,           // “batch” | “lifo”
 planeswalkers: false,
 commandZone: false,
 scry: false,
@@ -28,7 +28,7 @@ startingHandSize: 7,
 startingLife: 20,
 drawOnFirstTurn: false,
 maxHandSize: 7,
-poisonCountersToWin: 10,
+poisonCountersToWin: 5,      // original Shandalar rule (not 10)
 combatDamageOnStack: true,
 },
 

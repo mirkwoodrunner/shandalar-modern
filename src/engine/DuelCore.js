@@ -8,6 +8,8 @@
 //   - Deterministic given identical GameState + rngSeed + action sequence
 
 import { CARD_DB, ARCHETYPES } from ‘../data/cards.js’;
+import { PHASE, PHASE_SEQUENCE } from ‘./phases.js’;
+import { CARD_HANDLERS } from ‘./cardHandlers.js’;
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 
@@ -136,11 +138,17 @@ const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughnes
 return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou);
 }
 
-export function canBlockDuel(bl, at) {
+export function canBlockDuel(bl, at, defBf) {
 if (hasKw(at, “FLYING”) && !hasKw(bl, “FLYING”) && !hasKw(bl, “REACH”)) return false;
 if (hasKw(at, “PROTECTION”) && at.protection === bl.color) return false;
 if (hasKw(bl, “PROTECTION”) && bl.protection === at.color) return false;
-if (hasKw(at, "FEAR") && bl.color !== "B" && !isArt(bl)) return false;
+if (hasKw(at, “FEAR”) && bl.color !== “B” && !isArt(bl)) return false;
+// LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
+// defBf is the defending player's battlefield (optional — skipped if not provided).
+if (hasKw(at, “LANDWALK”) && at.landwalkType && defBf) {
+  const landSubtype = at.landwalkType.charAt(0).toUpperCase() + at.landwalkType.slice(1).toLowerCase();
+  if (defBf.some(c => isLand(c) && c.subtype?.includes(landSubtype))) return false;
+}
 return true;
 }
 
@@ -206,12 +214,23 @@ return { …ns, [tw]: { …ns[tw], [tz]: […ns[tw][tz], a] } };
 
 export function checkDeath(s) {
 let ns = s;
-for (const w of [“p”,“o”]) {
-const dead = ns[w].bf.filter(c => isCre(c) && c.damage >= getTou(c, ns) && getTou(c, ns) > 0);
-for (const c of dead) {
-ns = zMove(ns, c.iid, w, w, “gy”);
-ns = dlog(ns, `${c.name} is destroyed.`, “death”);
-}
+// SBE loop: keep checking until no new deaths. Covers -X/-X dropping toughness to 0.
+let changed = true;
+while (changed) {
+  changed = false;
+  for (const w of [“p”,”o”]) {
+    const dead = ns[w].bf.filter(c =>
+      isCre(c) && (
+        getTou(c, ns) <= 0 ||                           // SBE §5.4 — toughness ≤ 0
+        (c.damage >= getTou(c, ns) && getTou(c, ns) > 0) // SBE §5.5 — lethal damage
+      )
+    );
+    for (const c of dead) {
+      ns = zMove(ns, c.iid, w, w, “gy”);
+      ns = dlog(ns, `${c.name} is destroyed.`, “death”);
+      changed = true;
+    }
+  }
 }
 return ns;
 }
@@ -222,6 +241,31 @@ const u = Object.values(s[who].mana).reduce((a, b) => a + b, 0);
 let ns = { …s, [who]: { …s[who], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
 if (u > 0) ns = hurt(ns, who, u, “mana burn”);
 return ns;
+}
+
+// ─── WIN CONDITIONS ───────────────────────────────────────────────────────────
+// Checked after every SBE pass. Returns { winner, reason } or null.
+
+export function checkWinConditions(state) {
+  const poisonLimit = state.ruleset?.poisonCountersToWin ?? 5;
+  if (state.p.life <= 0)                         return { winner: 'o', reason: 'LIFE' };
+  if (state.o.life <= 0)                         return { winner: 'p', reason: 'LIFE' };
+  if ((state.p.poisonCounters || 0) >= poisonLimit) return { winner: 'o', reason: 'POISON' };
+  if ((state.o.poisonCounters || 0) >= poisonLimit) return { winner: 'p', reason: 'POISON' };
+  return null;
+}
+
+// ─── INTERRUPT PROMPT GUARD ───────────────────────────────────────────────────
+// Returns true if the human player should be offered a response window.
+
+export function shouldPromptPlayerForResponse(state) {
+  const hand = state.p.hand;
+  const battlefield = state.p.bf;
+  const hasInstant = hand.some(c => c.type?.includes('Instant') || c.type?.includes('Interrupt'));
+  const hasActivatedAbility = battlefield.some(p =>
+    p.abilities?.some(a => a.type === 'ACTIVATED' && canPay(state.p.mana, a.cost))
+  );
+  return hasInstant || hasActivatedAbility;
 }
 
 // ─── CASTLE MODIFIER: OVERGROWTH ─────────────────────────────────────────────
@@ -265,6 +309,12 @@ const opp = caster === “p” ? “o” : “p”;
 let ns = s;
 const tgt = targets?.[0];
 const tgtC = tgt ? getBF(ns, tgt) : null;
+
+// Priority 1: custom card handler (spec §7.2)
+if (card.name && CARD_HANDLERS[card.name]) {
+  const result = CARD_HANDLERS[card.name].onResolve(ns, card, targets || []);
+  if (result) return result;
+}
 
 switch (card.effect) {
 case “damage3”: {
@@ -866,35 +916,53 @@ return ns;
 
 // ─── PHASE ADVANCEMENT ───────────────────────────────────────────────────────
 
-export const PHASE_SEQ = [“UNTAP”,“UPKEEP”,“DRAW”,“MAIN1”,“DECLARE_ATTACKERS”,“DECLARE_BLOCKERS”,“COMBAT_DAMAGE”,“MAIN2”,“END”,“CLEANUP”];
+export const PHASE_SEQ = PHASE_SEQUENCE;
 export const PHASE_LBL = {
-UNTAP:“Untap”, UPKEEP:“Upkeep”, DRAW:“Draw”, MAIN1:“Main 1”,
-DECLARE_ATTACKERS:“Attackers”, DECLARE_BLOCKERS:“Blockers”,
-COMBAT_DAMAGE:“Combat”, MAIN2:“Main 2”, END:“End”, CLEANUP:“Cleanup”,
+  [PHASE.UNTAP]:            “Untap”,
+  [PHASE.UPKEEP]:           “Upkeep”,
+  [PHASE.DRAW]:             “Draw”,
+  [PHASE.MAIN_1]:           “Main 1”,
+  [PHASE.COMBAT_BEGIN]:     “Cbt Begin”,
+  [PHASE.COMBAT_ATTACKERS]: “Attackers”,
+  [PHASE.COMBAT_BLOCKERS]:  “Blockers”,
+  [PHASE.COMBAT_DAMAGE]:    “Combat”,
+  [PHASE.COMBAT_END]:       “Cbt End”,
+  [PHASE.MAIN_2]:           “Main 2”,
+  [PHASE.END]:              “End”,
+  [PHASE.CLEANUP]:          “Cleanup”,
 };
-export const COMBAT_PHASES = [“DECLARE_ATTACKERS”,“DECLARE_BLOCKERS”,“COMBAT_DAMAGE”];
+export const COMBAT_PHASES = [
+  PHASE.COMBAT_BEGIN,
+  PHASE.COMBAT_ATTACKERS,
+  PHASE.COMBAT_BLOCKERS,
+  PHASE.COMBAT_DAMAGE,
+  PHASE.COMBAT_END,
+];
 
 export function advPhase(s) {
 const idx = PHASE_SEQ.indexOf(s.phase);
 const next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
-const turnChange = next === “UNTAP”;
+const turnChange = next === PHASE.UNTAP;
 let ns = { …s, phase: next };
 
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
 for (const w of [“p”,“o”]) ns = burnMana(ns, w, ns.ruleset);
 
-if (next === “COMBAT_DAMAGE”) {
+if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
-for (const mw of ["p","o"]) {
+for (const mw of [“p”,”o”]) {
 for (const mc of [...ns[mw].bf].filter(x => x.mustAttack)) {
 if (!ns.attackers.includes(mc.iid)) {
-ns = zMove(ns, mc.iid, mw, mw, "gy");
-ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, "death");
+ns = zMove(ns, mc.iid, mw, mw, “gy”);
+ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, “death”);
 } else {
 ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
 }
 }
 }
+// Check win conditions after combat damage resolves.
+const combatWin = checkWinConditions(ns);
+if (combatWin && !ns.over) ns = { ...ns, over: { winner: combatWin.winner, reason: combatWin.reason } };
 return ns;
 }
 
@@ -933,7 +1001,7 @@ return { ...base, tapped:false };
 }
 }
 
-if (next === “UPKEEP”) {
+if (next === PHASE.UPKEEP) {
 for (const w of [“p”,“o”]) {
 for (const c of […ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
@@ -951,7 +1019,7 @@ if (others.length) { ns = zMove(ns, others[0].iid, w, w, “gy”); ns = dlog(ns
 else ns = hurt(ns, w, 7, “Lord of the Pit”);
 break;
 }
-case “sacrificeSelf”: if (next === “CLEANUP”) ns = zMove(ns, c.iid, w, w, “gy”); break;
+case “sacrificeSelf”: if (next === PHASE.CLEANUP) ns = zMove(ns, c.iid, w, w, “gy”); break;
 case “sacrificeUnless_U”: {
 const mp = { …ns[w].mana };
 if ((mp.U || 0) >= 1) { mp.U–; ns = { …ns, [w]: { …ns[w], mana: mp } }; }
@@ -987,13 +1055,16 @@ default: break;
 if (ns.fogActive) ns = { …ns, fogActive: false };
 }
 
-if (next === “DRAW”) {
+if (next === PHASE.DRAW) {
 if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === “p”)) {
 ns = drawD(ns, ns.active);
+// SBE: check deck-out
+const drawWin = checkWinConditions(ns);
+if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: drawWin.reason } };
 }
 }
 
-if (next === “CLEANUP”) {
+if (next === PHASE.CLEANUP) {
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -1027,13 +1098,13 @@ const anteO = anteEnabled && od.length ? od[0] : null;
 
 return {
 ruleset,
-phase: “MAIN1”,
+phase: PHASE.MAIN_1,
 active: “p”,
 turn: 1,
 landsPlayed: 0,
 spellsThisTurn: 0,
-p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null },
-o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null },
+p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0 },
+o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0 },
 stack: [],
 attackers: [],
 blockers: {},
@@ -1081,7 +1152,7 @@ case "TAP_ART_MANA": {
 case "PLAY_LAND": {
   const w = action.who;
   const c = s[w].hand.find(x => x.iid === action.iid);
-  if (!c || !isLand(c) || s.active !== w || (s.phase !== "MAIN1" && s.phase !== "MAIN2") || s.landsPlayed >= 1) return s;
+  if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || s.landsPlayed >= 1) return s;
   const lArr = { ...c, controller: w, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
   s = { ...s, [w]: { ...s[w], hand: s[w].hand.filter(x => x.iid !== action.iid), bf: [...s[w].bf, lArr] }, landsPlayed: s.landsPlayed + 1 };
   return dlog(s, `${w} plays ${c.name}.`, "play");
@@ -1092,9 +1163,9 @@ case "CAST_SPELL": {
   const c = s[w].hand.find(x => x.iid === action.iid);
   if (!c) return s;
   if (s.active !== w && !isInst(c)) return s;
-  if ((s.phase !== "MAIN1" && s.phase !== "MAIN2") && !isInst(c)) return s;
+  if ((s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) && !isInst(c)) return s;
   if (!canPay(s[w].mana, c.cost)) return s;
-  if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock prevents casting more than one spell per turn.", "effect");
+  if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
   s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, c.cost), hand: s[w].hand.filter(x => x.iid !== action.iid) } };
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
@@ -1121,7 +1192,7 @@ case "RESOLVE_STACK": {
 }
 
 case "DECLARE_ATTACKER": {
-  if (s.phase !== "DECLARE_ATTACKERS" || s.active !== "p") return s;
+  if (s.phase !== PHASE.COMBAT_ATTACKERS || s.active !== "p") return s;
   const c = s.p.bf.find(x => x.iid === action.iid);
   if (!c || !isCre(c) || c.tapped || c.summoningSick) return s;
   const att = s.attackers.includes(action.iid);
@@ -1132,7 +1203,7 @@ case "DECLARE_ATTACKER": {
 case "DECLARE_BLOCKER": {
   const bl = s.o.bf.find(x => x.iid === action.blId);
   const att = getBF(s, action.attId);
-  if (!bl || !att || !s.attackers.includes(action.attId) || !canBlockDuel(bl, att)) return s;
+  if (!bl || !att || !s.attackers.includes(action.attId) || !canBlockDuel(bl, att, s.o.bf)) return s;
   const already = s.blockers[action.blId] === action.attId;
   const nb = { ...s.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
