@@ -137,3 +137,14 @@ html, body, #root {
 .popover-content button:hover {
   background: #777;
 }
+
+.dual-land-icons {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.mana-icon {
+  font-size: 18px;
+  display: inline-block;
+}
