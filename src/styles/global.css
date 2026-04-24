@@ -148,3 +148,27 @@ html, body, #root {
   font-size: 18px;
   display: inline-block;
 }
+
+.mana-choice-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+  flex-wrap: wrap;
+}
+
+.mana-choice-btn {
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border: 2px solid #666;
+  border-radius: 6px;
+  background: #3a3a3a;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mana-choice-btn:hover {
+  background: #4a4a4a;
+  border-color: #aaa;
+}

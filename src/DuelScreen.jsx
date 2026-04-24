@@ -20,6 +20,42 @@ import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MANA CHOICE POPOVER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getManaSymbol(color) {
+  const symbols = {
+    W: '⚪',
+    U: '🔵',
+    B: '⚫',
+    R: '🔴',
+    G: '🟢',
+  };
+  return symbols[color] || '❓';
+}
+
+function ManaChoicePopover({ colors, cardName, onSelect, onClose }) {
+  return (
+    <div className="popover-overlay" onClick={onClose}>
+      <div className="popover-content" onClick={(e) => e.stopPropagation()}>
+        <h3>Choose mana for {cardName}</h3>
+        <div className="mana-choice-buttons">
+          {colors.map((color) => (
+            <button
+              key={color}
+              className="mana-choice-btn"
+              onClick={() => onSelect(color)}
+            >
+              {getManaSymbol(color)} {color}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GRAVEYARD POPOVER
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -115,6 +151,12 @@ const [graveyardPopover, setGraveyardPopover] = useState({
   player: null,
   mode: 'reference',
 });
+const [manaChoicePopover, setManaChoicePopover] = useState({
+  open: false,
+  colors: [],
+  cardName: '',
+  callback: null,
+});
 const aiRef = useRef(false);
 
 // ── Sync BopColorPicker with engine pendingBop flag ───────────────────────
@@ -178,6 +220,13 @@ if (zone === 'hand') {
 if (zone === 'pBf') {
   // Tap land for mana
   if (isLand(card) && !card.tapped) {
+    const dualColors = getDualLandColors(card);
+    if (dualColors) {
+      openManaChoicePopover(dualColors, card.name, (color) => {
+        tapLand(card.iid, color);
+      });
+      return;
+    }
     tapLand(card.iid, card.produces?.[0] || 'C');
     return;
   }
@@ -327,6 +376,22 @@ const handleGraveyardCardSelect = (card, idx) => {
     dispatch({ type: 'RESOLVE_GRAVEYARD_EFFECT', effect });
     closeGraveyardPopover();
   }
+};
+
+// ── Mana choice popover handlers ───────────────────────────────────────────
+const openManaChoicePopover = (colors, cardName, callback) => {
+  setManaChoicePopover({ open: true, colors, cardName, callback });
+};
+
+const closeManaChoicePopover = () => {
+  setManaChoicePopover({ open: false, colors: [], cardName: '', callback: null });
+};
+
+const handleManaChoice = (color) => {
+  if (manaChoicePopover.callback) {
+    manaChoicePopover.callback(color);
+  }
+  closeManaChoicePopover();
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -703,6 +768,15 @@ fontFamily: “‘Crimson Text’,serif”,
       onClose={closeGraveyardPopover}
     />
   )}
+
+  {manaChoicePopover.open && (
+    <ManaChoicePopover
+      colors={manaChoicePopover.colors}
+      cardName={manaChoicePopover.cardName}
+      onSelect={handleManaChoice}
+      onClose={closeManaChoicePopover}
+    />
+  )}
 </div>
 ```
 
@@ -712,6 +786,20 @@ fontFamily: “‘Crimson Text’,serif”,
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+
+function getDualLandColors(card) {
+  if (!card.oracle_text) return null;
+  const text = card.oracle_text;
+  const dualPatterns = [
+    /\{T\}:\s*Add\s+\{(.)\}\s+or\s+\{(.)\}\./i,
+    /\{T\}:\s*Add\s+(\w+)\s+or\s+(\w+)\./i,
+  ];
+  for (const pattern of dualPatterns) {
+    const match = text.match(pattern);
+    if (match) return [match[1], match[2]];
+  }
+  return null;
+}
 
 /**
 
