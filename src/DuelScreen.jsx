@@ -20,6 +20,45 @@ import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GRAVEYARD POPOVER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }) {
+  if (!graveyard || graveyard.length === 0) {
+    return (
+      <div className="popover-overlay" onClick={onClose}>
+        <div className="popover-content" onClick={(e) => e.stopPropagation()}>
+          <h3>{playerName} Graveyard</h3>
+          <p>Empty</p>
+          <button onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="popover-overlay" onClick={onClose}>
+      <div className="popover-content" onClick={(e) => e.stopPropagation()}>
+        <h3>{playerName} Graveyard</h3>
+        <div className="graveyard-list">
+          {graveyard.map((card, idx) => (
+            <div
+              key={idx}
+              className={`graveyard-card ${mode === 'targeting' ? 'clickable' : ''}`}
+              onClick={() => mode === 'targeting' && onSelect(card, idx)}
+            >
+              <span className="card-name">{card.name}</span>
+              <span className="card-type">{card.type_line}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DUEL SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -71,6 +110,11 @@ const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
 const [showBop, setShowBop]               = useState(false);
+const [graveyardPopover, setGraveyardPopover] = useState({
+  open: false,
+  player: null,
+  mode: 'reference',
+});
 const aiRef = useRef(false);
 
 // ── Sync BopColorPicker with engine pendingBop flag ───────────────────────
@@ -267,6 +311,23 @@ setPendingActivate(null);
 selectCard(null);
 selectTarget(null);
 }, [selectCard, selectTarget]);
+
+// ── Graveyard popover handlers ─────────────────────────────────────────────
+const openGraveyardPopover = (player, mode = 'reference') => {
+  setGraveyardPopover({ open: true, player, mode });
+};
+
+const closeGraveyardPopover = () => {
+  setGraveyardPopover({ open: false, player: null, mode: 'reference' });
+};
+
+const handleGraveyardCardSelect = (card, idx) => {
+  if (state.awaitingInput?.type === 'graveyard_target') {
+    const effect = { ...state.awaitingInput.effect, target: card, targetIndex: idx };
+    dispatch({ type: 'RESOLVE_GRAVEYARD_EFFECT', effect });
+    closeGraveyardPopover();
+  }
+};
 
 // ─────────────────────────────────────────────────────────────────────────
 // RENDER
@@ -551,25 +612,27 @@ fontFamily: “‘Crimson Text’,serif”,
         <div style={{ fontSize: 11, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
           GRAVEYARDS
         </div>
-        {(['p', 'o'] ).map(w => (
-          <div key={w} style={{
-            marginBottom: 8, padding: '6px 8px',
-            background: 'rgba(255,255,255,.03)', borderRadius: 5,
-            border: '1px solid rgba(160,120,40,.15)',
-          }}>
-            <div style={{ fontSize: 9, color: '#907040', marginBottom: 3, fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
-              {w === 'p' ? 'YOUR' : 'OPPONENT'} ({s[w].gy.length})
-            </div>
-            {s[w].gy.slice(-1).map(c => (
-              <div key={c.iid} style={{ fontSize: 10, color: '#c0a870', fontStyle: 'italic', fontFamily: "'Crimson Text',serif" }}>
-                {c.name}
-              </div>
-            ))}
-            {!s[w].gy.length && (
-              <div style={{ fontSize: 9, color: '#4a3820', fontStyle: 'italic' }}>Empty</div>
-            )}
-          </div>
-        ))}
+        {/* Player graveyard */}
+        <div
+          className="zone graveyard player-graveyard"
+          onClick={() => openGraveyardPopover('p', 'reference')}
+        >
+          <h4>Graveyard ({s.p.gy.length})</h4>
+          {s.p.gy.length > 0 && (
+            <div className="card-preview">{s.p.gy[s.p.gy.length - 1].name}</div>
+          )}
+        </div>
+
+        {/* AI graveyard */}
+        <div
+          className="zone graveyard ai-graveyard"
+          onClick={() => openGraveyardPopover('a', 'reference')}
+        >
+          <h4>Graveyard ({s.o.gy.length})</h4>
+          {s.o.gy.length > 0 && (
+            <div className="card-preview">{s.o.gy[s.o.gy.length - 1].name}</div>
+          )}
+        </div>
       </div>
 
       {/* Exile zone (Modern+ only) */}
@@ -629,6 +692,16 @@ fontFamily: “‘Crimson Text’,serif”,
   {/* Hover tooltip */}
   {tooltip && (
     <Tooltip card={tooltip.card} state={s} pos={tooltip.pos} />
+  )}
+
+  {graveyardPopover.open && (
+    <GraveyardPopover
+      graveyard={graveyardPopover.player === 'p' ? s.p.gy : s.o.gy}
+      playerName={graveyardPopover.player === 'p' ? 'Your' : "Opponent's"}
+      mode={graveyardPopover.mode}
+      onSelect={handleGraveyardCardSelect}
+      onClose={closeGraveyardPopover}
+    />
   )}
 </div>
 ```

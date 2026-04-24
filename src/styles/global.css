@@ -53,3 +53,87 @@ html, body, #root {
   0%, 100% { box-shadow: 0 0 10px rgba(255,240,100,.8); }
   50%       { box-shadow: 0 0 22px rgba(255,240,100,1); }
 }
+
+/* ── Graveyard Popover ─────────────────────────────────────────────────────── */
+.popover-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popover-content {
+  background: #1a1a1a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 400px;
+  max-height: 500px;
+  overflow-y: auto;
+  color: #fff;
+}
+
+.popover-content h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+}
+
+.graveyard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.graveyard-card {
+  padding: 10px;
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.graveyard-card.clickable {
+  cursor: pointer;
+  background: #3a3a3a;
+  border-color: #777;
+  transition: all 0.2s;
+}
+
+.graveyard-card.clickable:hover {
+  background: #4a4a4a;
+  border-color: #aaa;
+}
+
+.graveyard-card .card-name {
+  display: block;
+  font-weight: bold;
+  color: #fff;
+}
+
+.graveyard-card .card-type {
+  display: block;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.popover-content button {
+  width: 100%;
+  padding: 10px;
+  background: #555;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.popover-content button:hover {
+  background: #777;
+}
