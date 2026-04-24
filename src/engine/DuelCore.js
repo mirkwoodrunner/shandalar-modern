@@ -1286,4 +1286,48 @@ default: return s;
 }
 }
 
+export function activateAbility(gameState, creatureId, ability, targetOrChoice) {
+  const newState = JSON.parse(JSON.stringify(gameState));
+  const creature = newState.p_battlefield.find(c => c.id === creatureId);
+
+  if (!creature) {
+    console.error(`activateAbility: creature ${creatureId} not found on p_battlefield`);
+    return newState;
+  }
+
+  // Tap the creature as part of the cost
+  creature.isTapped = true;
+
+  // Resolve the effect
+  if (ability.type === 'damage_target') {
+    const target = targetOrChoice;
+    if (target.type === 'creature') {
+      const targetCreature =
+        newState.p_battlefield.find(c => c.id === target.id) ||
+        newState.a_battlefield.find(c => c.id === target.id);
+      if (targetCreature) {
+        targetCreature.damage = (targetCreature.damage || 0) + 1;
+      } else {
+        console.error(`activateAbility: target creature ${target.id} not found`);
+      }
+    } else if (target.type === 'player') {
+      const playerKey = target.player === 'p' ? 'p' : 'a';
+      newState[`${playerKey}_hp`] -= 1;
+    }
+  } else if (ability.type === 'mana_any_color') {
+    const color = targetOrChoice?.color;
+    if (!color) {
+      console.error('activateAbility: mana_any_color called without a color choice');
+      return newState;
+    }
+    newState.p_mana_pool[color] = (newState.p_mana_pool[color] || 0) + 1;
+  } else if (ability.type === 'mana_green') {
+    newState.p_mana_pool.G = (newState.p_mana_pool.G || 0) + 1;
+  } else {
+    console.error(`activateAbility: unknown ability type "${ability.type}"`);
+  }
+
+  return newState;
+}
+
 export default { duelReducer, buildDuelState, PHASE_SEQ, PHASE_LBL, COMBAT_PHASES };
