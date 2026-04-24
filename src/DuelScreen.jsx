@@ -143,7 +143,7 @@ if (zone === 'pBf') {
     return;
   }
   // Declare attacker
-  if (state.phase === 'DECLARE_ATTACKERS') {
+  if (state.phase === 'COMBAT_ATTACKERS') {
     declareAttacker(card.iid);
     return;
   }
@@ -163,7 +163,7 @@ if (zone === 'pBf') {
 // ── OPPONENT BATTLEFIELD ─────────────────────────────────────────────────
 if (zone === 'oBf') {
   // Blocker assignment: click attacker first to select, then your blocker
-  if (state.phase === 'DECLARE_BLOCKERS' && state.selTgt) {
+  if (state.phase === 'COMBAT_BLOCKERS' && state.selTgt) {
     declareBlocker(state.selTgt, card.iid);
     selectTarget(null);
     return;
