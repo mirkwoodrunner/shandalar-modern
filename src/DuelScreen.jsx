@@ -95,6 +95,34 @@ function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ABILITY LOOKUP
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getActivatedAbilities(card) {
+  const hardcodedAbilities = {
+    'Prodigal Sorcerer': {
+      name: 'Prodigal Sorcerer',
+      cost: '{T}',
+      text: 'deals 1 damage to target creature or player',
+      type: 'damage_target',
+    },
+    'Birds of Paradise': {
+      name: 'Birds of Paradise',
+      cost: '{T}',
+      text: 'Add one mana of any color',
+      type: 'mana_any_color',
+    },
+    'Llanowar Elves': {
+      name: 'Llanowar Elves',
+      cost: '{T}',
+      text: 'Add {G}',
+      type: 'mana_green',
+    },
+  };
+  return hardcodedAbilities[card.name] || null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DUEL SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -331,6 +359,28 @@ activateAbility(card.iid, null);
 ```
 
 }, [activateAbility, selectCard]);
+
+// ── New ability handler (uses getActivatedAbilities type system) ───────────
+const handleActivateAbility = useCallback((card) => {
+  const ability = getActivatedAbilities(card);
+  if (!ability) return;
+
+  switch (ability.type) {
+    case 'damage_target':
+      setPendingActivate(card);
+      selectCard(card.iid);
+      break;
+    case 'mana_any_color':
+      openManaChoicePopover(['W', 'U', 'B', 'R', 'G'], card.name, (color) => {
+        activateAbility(card.iid, null, color);
+        closeManaChoicePopover();
+      });
+      break;
+    case 'mana_green':
+      activateAbility(card.iid, null);
+      break;
+  }
+}, [activateAbility, selectCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // ── Lotus color choice ─────────────────────────────────────────────────────
 const handleLotusChoose = useCallback((color) => {
@@ -601,7 +651,7 @@ fontFamily: “‘Crimson Text’,serif”,
       <PlayerBattlefield
         state={s}
         onCardClick={handleCardClick}
-        onActivate={handleActivate}
+        onActivate={handleActivateAbility}
         onTipEnter={handleTipEnter}
         onTipLeave={handleTipLeave}
       />

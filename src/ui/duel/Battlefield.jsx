@@ -101,7 +101,7 @@ onMouseLeave={onTipLeave}
           selected={state.selCard === c.iid || state.selTgt === c.iid}
           attacking={state.attackers.includes(c.iid)}
           onClick={() => onCardClick(c, "pBf")}
-          onActivate={c.activated ? onActivate : null}
+          onActivate={onActivate}
         />
       </div>
     ))}
