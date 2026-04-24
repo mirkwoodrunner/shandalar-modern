@@ -35,19 +35,13 @@ export default function CardDisplay({ card }) {
   return (
     <div className="card-display">
       <div className="card-mana-cost">
-        {card.mana_cost ? (
-          <>
-            <span className="mana-text">{card.mana_cost}</span>
-            {getDualLandColors(card) && (
-              <div className="dual-land-icons">
-                {getDualLandColors(card).map((color, idx) => (
-                  <span key={idx} className="mana-icon">{getManaSymbol(color)}</span>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <span>Land</span>
+        {card.cmc !== undefined && (
+          <div className="mana-value">{card.cmc}</div>
+        )}
+        {card.mana_cost && (
+          <div className="mana-symbols">
+            {card.mana_cost}
+          </div>
         )}
       </div>
     </div>
