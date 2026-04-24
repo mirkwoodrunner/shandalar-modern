@@ -158,6 +158,32 @@ function CardArtDisplay({ card, sm }) {
   );
 }
 
+// ─── ABILITY LOOKUP ───────────────────────────────────────────────────────────
+
+function getActivatedAbilities(card) {
+  const hardcodedAbilities = {
+    'Prodigal Sorcerer': {
+      name: 'Prodigal Sorcerer',
+      cost: '{T}',
+      text: 'deals 1 damage to target creature or player',
+      type: 'damage_target',
+    },
+    'Birds of Paradise': {
+      name: 'Birds of Paradise',
+      cost: '{T}',
+      text: 'Add one mana of any color',
+      type: 'mana_any_color',
+    },
+    'Llanowar Elves': {
+      name: 'Llanowar Elves',
+      cost: '{T}',
+      text: 'Add {G}',
+      type: 'mana_green',
+    },
+  };
+  return hardcodedAbilities[card.name] || null;
+}
+
 // ─── FIELD CARD ───────────────────────────────────────────────────────────────
 
 export function FieldCard({ card, state, selected, attacking, onClick, onActivate, sm = false }) {
@@ -167,7 +193,7 @@ const w = sm ? 76 : 92;
 const h = sm ? 100 : 124;
 const p = isCre(card) ? getPow(card, state) : null;
 const t = isCre(card) ? getTou(card, state) : null;
-const hasActivated = card.activated && !card.tapped && card.controller === “p”;
+const ability = getActivatedAbilities(card);
 const rarityColor = card.rarity === “R” ? “#f0c040” : card.rarity === “U” ? “#90b8d0” : “#888”;
 
 return (
@@ -197,16 +223,23 @@ flexShrink: 0, display: “flex”, flexDirection: “column”, overflow: “hi
 <div style={{ flex:1, margin:“3px 5px”, background:`linear-gradient(135deg,${bg}dd,rgba(0,0,0,.55))`, borderRadius:4, display:“flex”, alignItems:“center”, justifyContent:“center”, position:“relative”, overflow:“hidden”, border:`1px solid ${bd}60` }}>
 <CardArtDisplay card={card} sm={sm} />
 {card.damage > 0 && <div style={{ position:“absolute”, top:2, right:2, background:”#cc0a0a”, color:”#fff”, fontSize:9, fontWeight:700, padding:“1px 4px”, borderRadius:3 }}>💢{card.damage}</div>}
-{card.summoningSick && isCre(card) && <div style={{ position:“absolute”, inset:0, background:“rgba(0,0,0,.45)”, display:“flex”, alignItems:“center”, justifyContent:“center”, borderRadius:4 }}><span style={{ fontSize:8, color:“rgba(255,220,150,.65)”, fontFamily:”‘Cinzel’,serif” }}>SICK</span></div>}
-{hasActivated && onActivate && (
-<button onClick={e => { e.stopPropagation(); onActivate(card); }} style={{ position:“absolute”, bottom:2, left:2, background:“rgba(200,160,40,.85)”, border:“none”, borderRadius:3, color:”#000”, fontSize:7, fontWeight:700, padding:“1px 4px”, cursor:“pointer”, fontFamily:”‘Cinzel’,serif” }}>ACT</button>
-)}
+{card.summoningSick && isCre(card) && <div style={{ position:”absolute”, inset:0, background:”rgba(0,0,0,.45)”, display:”flex”, alignItems:”center”, justifyContent:”center”, borderRadius:4 }}><span style={{ fontSize:8, color:”rgba(255,220,150,.65)”, fontFamily:”’Cinzel’,serif” }}>SICK</span></div>}
 </div>
 {/* Keywords */}
 {card.keywords?.length > 0 && (
-<div style={{ padding:“2px 5px”, display:“flex”, flexWrap:“wrap”, gap:1 }}>
-{card.keywords.slice(0, 2).map(k => <span key={k} style={{ fontSize:6.5, background:`${ac}25`, color:ac, padding:“0 3px”, borderRadius:2, fontFamily:”‘Cinzel’,serif” }}>{k.replace(/_/g,” “)}</span>)}
+<div style={{ padding:”2px 5px”, display:”flex”, flexWrap:”wrap”, gap:1 }}>
+{card.keywords.slice(0, 2).map(k => <span key={k} style={{ fontSize:6.5, background:`${ac}25`, color:ac, padding:”0 3px”, borderRadius:2, fontFamily:”’Cinzel’,serif” }}>{k.replace(/_/g,” “)}</span>)}
 </div>
+)}
+{/* Activate button */}
+{ability && onActivate && (
+<button
+  className=”activate-btn”
+  onClick={e => { e.stopPropagation(); onActivate(card); }}
+  disabled={card.summoningSick || card.tapped}
+>
+  Activate
+</button>
 )}
 {/* P/T */}
 {isCre(card) && <div style={{ position:“absolute”, bottom:4, right:5, fontSize:sm?10:13, fontWeight:700, color:card.damage>0?”#ff6050”:ca, fontFamily:”‘Fira Code’,monospace”, background:“rgba(0,0,0,.55)”, padding:“0 4px”, borderRadius:3, border:`1px solid ${ca}40` }}>{p}/{t}</div>}
