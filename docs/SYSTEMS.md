@@ -491,3 +491,245 @@ DungeonMap.jsx is presentation only.
 ---
 
 # End of SYSTEMS v1.0
+
+---
+
+# 17. Triggered Ability Pipeline
+
+The Triggered Ability Pipeline is the deterministic system responsible for detecting, ordering, and resolving all triggered abilities in the game. It operates entirely within the reducer-driven game state (DuelCore.js) and must not rely on timing, async behavior, or external I/O.
+
+This system is event-driven and processes triggers as a consequence of explicit game state transitions.
+
+---
+
+## 17.1 Data Model
+
+Cards that possess triggered abilities MUST declare them explicitly in their static definition.
+
+**Card Object Requirements:**
+
+Each card MAY include:
+
+```js
+triggeredAbilities: [
+  {
+    id: string,
+    trigger: TriggerDefinition,
+    condition?: ConditionDefinition,
+    effect: EffectDefinition,
+    optional?: boolean,
+    requiresChoice?: boolean
+  }
+]
+```
+
+**TriggerDefinition:**
+
+```js
+{
+  event: EventType,
+  scope?: "self" | "controller" | "global",
+  source?: "self" | "any" | "controlled"
+}
+```
+
+**ConditionDefinition (optional):**
+Declarative constraints evaluated at trigger time (e.g., "was dealt damage by this source this turn").
+
+**EffectDefinition:**
+Declarative description of state mutation (resolved later via effect executor).
+
+**State Tracking Requirements:**
+
+To support abilities like Sengir Vampire, the engine MUST maintain turn-scoped metadata:
+
+```js
+turnState: {
+  damageLog: [
+    {
+      sourceId: CardID,
+      targetId: CardID,
+      amount: number,
+      turnId: number
+    }
+  ]
+}
+```
+
+This log MUST persist until end-of-turn cleanup.
+
+---
+
+## 17.2 Trigger Registration
+
+The system does NOT use runtime listeners. Instead, triggers are evaluated deterministically whenever an event is emitted.
+
+**Event Emission Contract:**
+
+All state transitions that may produce triggers MUST emit a structured event:
+
+```js
+event: {
+  type: EventType,
+  payload: {...},
+  gameStateSnapshot: reference
+}
+```
+
+**Trigger Evaluation Process:**
+
+Upon event emission:
+
+1. Scan all cards in all relevant zones (battlefield minimum)
+1. For each `triggeredAbilities` entry:
+- Match `event.type` with `trigger.event`
+- Validate `scope` and `source`
+- Evaluate `condition` (if present)
+1. If valid, enqueue a Trigger Instance into the Trigger Queue
+
+**Trigger Instance Shape:**
+
+```js
+{
+  triggerId: string,
+  sourceCardId: CardID,
+  controller: PlayerID,
+  eventPayload: object,
+  timestamp: integer
+}
+```
+
+---
+
+## 17.3 Supported Event Types
+
+### 17.3.1 ON_DAMAGE_DEALT
+
+Emitted whenever damage is successfully assigned and applied.
+
+Payload: `{ sourceId, targetId, amount, combat: boolean }`
+
+Used by: Sengir Vampire (tracking condition only)
+
+### 17.3.2 ON_CREATURE_DIES
+
+Emitted when a creature moves from battlefield to graveyard.
+
+Payload: `{ cardId, previousController: PlayerID }`
+
+Used by: Sengir Vampire
+
+### 17.3.3 ON_UPKEEP_START
+
+Emitted at the beginning of each player's upkeep step.
+
+Payload: `{ activePlayer: PlayerID }`
+
+Used by: Force of Nature
+
+### 17.3.4 ON_BLOCK_DECLARED
+
+Emitted during combat when blockers are declared.
+
+Payload: `{ attackerId, blockerId }`
+
+Used by: Protection enforcement (validation phase)
+
+---
+
+## 17.4 Trigger Queue and Resolution Order
+
+All valid triggers are added to a centralized Trigger Queue.
+
+### 17.4.1 Queue Behavior
+
+- The queue is processed to completion before advancing game phases
+- No new player actions may occur while the queue is non-empty
+
+### 17.4.2 Ordering Rules (APNAP)
+
+1. Group triggers by controller
+1. AP triggers ordered first, then NAP
+1. Within each group, maintain deterministic insertion order
+
+### 17.4.3 Resolution Rules
+
+Each Trigger Instance resolves as follows:
+
+1. Re-validate source existence (if required)
+1. Re-check conditions if necessary
+1. Execute effect
+1. Remove from queue
+1. Emit any resulting events (may enqueue new triggers)
+
+---
+
+## 17.5 Upkeep Choice UI Contract (Modal Decisions)
+
+### 17.5.1 Game State Shape
+
+```js
+pendingChoice: {
+  id: string,
+  type: "triggered_ability_choice",
+  sourceCardId: CardID,
+  controller: PlayerID,
+  options: [
+    { id: string, label: string, effect: EffectDefinition }
+  ],
+  required: true
+}
+```
+
+### 17.5.2 Behavior
+
+- When resolving a trigger with `requiresChoice = true`:
+1. Populate `pendingChoice`
+1. Suspend Trigger Queue processing
+- Player selection dispatches: `RESOLVE_CHOICE(optionId)`
+- Upon resolution: execute selected effect, clear `pendingChoice`, resume Trigger Queue
+
+### 17.5.3 Determinism Requirement
+
+No timers, defaults, or implicit selections allowed. Game cannot advance without explicit input.
+
+---
+
+## 17.6 Protection Enforcement (Combat Integration)
+
+Protection is NOT a triggered ability. It is a static rule enforced at validation points.
+
+### 17.6.1 Definition
+
+Protection from a quality enforces:
+
+- Cannot be targeted by sources of that quality
+- Cannot be blocked by creatures of that quality
+- Damage from sources of that quality is prevented
+
+### 17.6.2 Enforcement Points
+
+A. **Target Validation** — reject illegal targets before resolution  
+B. **Block Declaration** — if `attacker.hasProtectionFrom(blocker.color)`, reject block  
+C. **Damage Assignment** — if `target.hasProtectionFrom(source.color)`, prevent damage
+
+### 17.6.3 No Trigger Queue Interaction
+
+Protection is enforced inline. It MUST NOT use the Trigger Queue.
+
+---
+
+## 17.7 Example Mapping
+
+- **Sengir Vampire**: ON_DAMAGE_DEALT → populate damageLog; ON_CREATURE_DIES → check damageLog → enqueue counter trigger
+- **Force of Nature**: ON_UPKEEP_START → pendingChoice (pay GGGG or take 8 damage)
+- **Protection**: enforced during targeting, blocking, and damage; no trigger registration
+
+---
+
+## 17.8 Determinism Guarantees
+
+- All triggers derived from explicit events
+- No race conditions or timing dependencies
+- Fully reproducible given identical inputs
+- Strict phase blocking until all triggers and choices resolve

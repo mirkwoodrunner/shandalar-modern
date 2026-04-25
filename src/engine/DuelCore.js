@@ -140,8 +140,16 @@ return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTo
 
 export function canBlockDuel(bl, at, defBf) {
 if (hasKw(at, “FLYING”) && !hasKw(bl, “FLYING”) && !hasKw(bl, “REACH”)) return false;
-if (hasKw(at, “PROTECTION”) && at.protection === bl.color) return false;
-if (hasKw(bl, “PROTECTION”) && bl.protection === at.color) return false;
+// Support both string (“B”) and array ([“black”]) protection formats (§17.6)
+const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
+if (at.protection) {
+  const prot = Array.isArray(at.protection) ? at.protection : [at.protection];
+  if (prot.some(q => (PROT_MAP[q] || q) === bl.color)) return false;
+}
+if (bl.protection) {
+  const prot = Array.isArray(bl.protection) ? bl.protection : [bl.protection];
+  if (prot.some(q => (PROT_MAP[q] || q) === at.color)) return false;
+}
 if (hasKw(at, “FEAR”) && bl.color !== “B” && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional — skipped if not provided).
@@ -226,8 +234,11 @@ while (changed) {
       )
     );
     for (const c of dead) {
+      const dyingCard = c;
       ns = zMove(ns, c.iid, w, w, “gy”);
       ns = dlog(ns, `${c.name} is destroyed.`, “death”);
+      ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w } });
+      ns = processTriggerQueue(ns);
       changed = true;
     }
   }
@@ -909,15 +920,35 @@ if (!blockers.length) {
   if (hasLifelink) ns = hurt(ns, actrl, -ap);
 } else {
   let rem = ap;
+  const PROT_CMAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
   for (const bl of blockers) {
     const bp = getPow(bl, ns);
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
-    ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
-    ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
-    rem = Math.max(0, rem - dbl);
-    if (hasLifelink) ns = hurt(ns, actrl, -dbl);
-    if (hasKw(att, "DEATHTOUCH") && ns.ruleset.deathtouch) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+
+    // §17.6.3: protection enforced inline, no trigger queue
+    const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
+    const attProt = Array.isArray(att.protection) ? att.protection : (att.protection ? [att.protection] : []);
+    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
+    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
+
+    if (!attackerProtectsFromBl) {
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
+      if (bp > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
+      }
+    }
+    if (!blockerProtectsFromAtt) {
+      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
+      if (dbl > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: attId, targetId: bl.iid, amount: dbl, combat: true } });
+      }
+    }
+    if (!blockerProtectsFromAtt) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt) ns = hurt(ns, actrl, -dbl);
+    if (hasKw(att, "DEATHTOUCH") && ns.ruleset.deathtouch && !blockerProtectsFromAtt) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, "TRAMPLE") && rem > 0) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
@@ -1019,7 +1050,9 @@ return { ...base, tapped:false };
 }
 
 if (next === PHASE.UPKEEP) {
-for (const w of [“p”,“o”]) {
+ns = emitEvent(ns, { type: 'ON_UPKEEP_START', payload: { activePlayer: ns.active } });
+ns = processTriggerQueue(ns);
+for (const w of [“p”,”o”]) {
 for (const c of […ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
 switch (c.upkeep) {
@@ -1082,6 +1115,7 @@ if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: d
 }
 
 if (next === PHASE.CLEANUP) {
+ns = { ...ns, turnState: { ...ns.turnState, damageLog: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -1100,6 +1134,121 @@ if (ns.castleMod?.name === “Inferno”) { ns = hurt(ns, “p”, 1, “Inferno
 }
 
 return ns;
+}
+
+// ─── TRIGGERED ABILITY PIPELINE ──────────────────────────────────────────────
+// §17 (SYSTEMS.md): deterministic trigger detection, queuing, and resolution.
+// All helpers are pure functions: (GameState, ...) → GameState.
+
+function evaluateCondition(state, card, condition, payload) {
+  if (condition.type === 'damagedByThisTurn') {
+    return state.turnState.damageLog.some(
+      entry => entry.sourceId === card.iid && entry.targetId === payload.cardId
+    );
+  }
+  return true; // unknown conditions pass by default; add stricter handling as needed
+}
+
+function emitEvent(state, event) {
+  const newTriggers = [];
+  const allPlayers = ['p', 'o'];
+  let ts = Date.now(); // tie-breaking integer only, not for timing
+
+  for (const who of allPlayers) {
+    for (const card of state[who].bf) {
+      if (!card.triggeredAbilities) continue;
+      for (const ability of card.triggeredAbilities) {
+        if (ability.trigger.event !== event.type) continue;
+        if (ability.trigger.scope === 'self' && card.iid !== event.payload?.sourceId) continue;
+        if (ability.trigger.scope === 'controller' && card.controller !== event.payload?.activePlayer) continue;
+        if (ability.condition && !evaluateCondition(state, card, ability.condition, event.payload)) continue;
+        newTriggers.push({
+          triggerId: ability.id,
+          sourceCardId: card.iid,
+          controller: who,
+          eventPayload: event.payload,
+          timestamp: ts++,
+        });
+      }
+    }
+  }
+
+  if (!newTriggers.length) return state;
+  // APNAP ordering: active player's triggers first
+  const sorted = [
+    ...newTriggers.filter(t => t.controller === state.active),
+    ...newTriggers.filter(t => t.controller !== state.active),
+  ];
+  return { ...state, triggerQueue: [...state.triggerQueue, ...sorted] };
+}
+
+function resolveTriggeredEffect(state, sourceCard, effect, payload) {
+  switch (effect.type) {
+    case 'addCounter': {
+      // Map declarative counter names to the internal keys used by getPow/getTou
+      const counterKey = effect.counter === '+1/+1' ? 'P1P1'
+                       : effect.counter === '-1/-1' ? 'M1M1'
+                       : effect.counter;
+      const who = sourceCard.controller;
+      const updated = state[who].bf.map(c =>
+        c.iid === sourceCard.iid
+          ? { ...c, counters: { ...c.counters, [counterKey]: (c.counters?.[counterKey] || 0) + effect.amount } }
+          : c
+      );
+      return dlog(
+        { ...state, [who]: { ...state[who], bf: updated } },
+        `${sourceCard.name} gets a +1/+1 counter.`,
+        'effect'
+      );
+    }
+    case 'dealDamageToController': {
+      const who = sourceCard.controller;
+      const newLife = state[who].life - effect.amount;
+      let s = { ...state, [who]: { ...state[who], life: newLife } };
+      if (newLife <= 0) s = { ...s, over: { winner: who === 'p' ? 'o' : 'p', reason: `${sourceCard.name} triggered damage` } };
+      return dlog(s, `${sourceCard.name} deals ${effect.amount} damage to ${who}.`, 'damage');
+    }
+    default:
+      console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
+      return state;
+  }
+}
+
+function resolveTrigger(state, inst) {
+  const allBf = [...state.p.bf, ...state.o.bf];
+  const sourceCard = allBf.find(c => c.iid === inst.sourceCardId);
+  if (!sourceCard?.triggeredAbilities) return state;
+  const ability = sourceCard.triggeredAbilities.find(a => a.id === inst.triggerId);
+  if (!ability) return state;
+
+  if (ability.requiresChoice) {
+    // Suspend queue and present choice to the controlling player
+    return {
+      ...state,
+      pendingChoice: {
+        id: `choice_${inst.triggerId}_${inst.timestamp}`,
+        type: 'triggered_ability_choice',
+        sourceCardId: inst.sourceCardId,
+        controller: inst.controller,
+        options: ability.effect.options,
+        required: true,
+      },
+      // Re-insert at front so it is re-resolved once the choice is made
+      triggerQueue: [inst, ...state.triggerQueue],
+    };
+  }
+
+  return resolveTriggeredEffect(state, sourceCard, ability.effect, inst.eventPayload);
+}
+
+function processTriggerQueue(state) {
+  let s = state;
+  while (s.triggerQueue.length > 0 && !s.pendingChoice) {
+    const [next, ...rest] = s.triggerQueue;
+    s = { ...s, triggerQueue: rest };
+    s = resolveTrigger(s, next);
+  }
+  return s;
 }
 
 // ─── DUEL STATE BUILDER ───────────────────────────────────────────────────────
@@ -1139,6 +1288,9 @@ fogActive: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
+turnState: { damageLog: [] },
+triggerQueue: [],
+pendingChoice: null,
 };
 }
 
@@ -1221,7 +1373,18 @@ case "DECLARE_ATTACKER": {
 case "DECLARE_BLOCKER": {
   const bl = s.o.bf.find(x => x.iid === action.blId);
   const att = getBF(s, action.attId);
-  if (!bl || !att || !s.attackers.includes(action.attId) || !canBlockDuel(bl, att, s.o.bf)) return s;
+  if (!bl || !att || !s.attackers.includes(action.attId)) return s;
+  // §17.6.2B: explicit protection enforcement with log message
+  if (att.protection) {
+    const prot = Array.isArray(att.protection) ? att.protection : [att.protection];
+    const PROT_COLOR_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
+    for (const quality of prot) {
+      if (bl.color === (PROT_COLOR_MAP[quality] || quality)) {
+        return dlog(s, `${bl.name} cannot block ${att.name} (protection from ${quality}).`, 'rule');
+      }
+    }
+  }
+  if (!canBlockDuel(bl, att, s.o.bf)) return s;
   const already = s.blockers[action.blId] === action.attId;
   const nb = { ...s.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
@@ -1324,6 +1487,28 @@ case "CHOOSE_BOP_COLOR": {
 }
 
 case "SET_PENDING_BOP": return { ...s, pendingBop: true };
+
+case "RESOLVE_CHOICE": {
+  if (!s.pendingChoice) return s;
+  const choice = s.pendingChoice;
+  // The re-inserted trigger sits at the front of the queue (put there by resolveTrigger)
+  const [pendingTrigger, ...remainingQueue] = s.triggerQueue;
+  const sourceCard = [...s.p.bf, ...s.o.bf].find(c => c.iid === choice.sourceCardId);
+  const ability = sourceCard?.triggeredAbilities?.find(a => pendingTrigger?.triggerId === a.id);
+
+  if (!ability) return { ...s, pendingChoice: null, triggerQueue: remainingQueue };
+
+  const selectedOption = ability.effect.options?.find(o => o.id === action.optionId);
+  if (!selectedOption) return s;
+
+  let ns = resolveTriggeredEffect(
+    { ...s, pendingChoice: null, triggerQueue: remainingQueue },
+    sourceCard,
+    selectedOption.effect,
+    pendingTrigger?.eventPayload || {}
+  );
+  return processTriggerQueue(ns);
+}
 
 default: return s;
 ```
