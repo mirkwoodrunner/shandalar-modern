@@ -196,7 +196,7 @@ export const CARD_DB = [
 {id:"power_sink",         name:"Power Sink",      type:"Instant", color:"U",cmc:2,cost:"XU",  text:"Counter target spell unless its controller pays X; if not, tap all lands.",effect:"powerSink",rarity:"C"},
 {id:"boomerang",          name:"Boomerang",       type:"Instant", color:"U",cmc:2,cost:"UU",  text:"Return target permanent to its owner’s hand.",effect:"bounce",rarity:"C"},
 {id:"control_magic",      name:"Control Magic",   type:"Enchantment",subtype:"Aura",color:"U",cmc:4,cost:"2UU",text:"You control enchanted creature.",effect:"controlCreature",rarity:"U"},
-{id:"timetwister",        name:"Timetwister",     type:"Sorcery", color:"U",cmc:3,cost:"2U",  text:"Each player shuffles hand+GY into library, draws 7.",effect:"wheelOfFortune",rarity:"R"},
+{id:"timetwister",        name:"Timetwister",     type:"Sorcery", color:"U",cmc:3,cost:"2U",  text:"Each player shuffles hand+GY into library, draws 7.",effect:"timetwister",rarity:"R"},
 {id:"mana_short",         name:"Mana Short",      type:"Instant", color:"U",cmc:3,cost:"2U",  text:"Tap all target player’s lands and drain their mana pool.",effect:"manaShort",rarity:"R"},
 {id:"remove_soul",        name:"Remove Soul",     type:"Instant", color:"U",cmc:2,cost:"1U",  text:"Counter target creature spell.",effect:"counterCreature",rarity:"C"},
 {id:"force_spike",        name:"Force Spike",     type:"Instant", color:"U",cmc:1,cost:"U",   text:"Counter target spell unless its controller pays 1.",effect:"counter",rarity:"C"},

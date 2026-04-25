@@ -66,25 +66,56 @@ fontFamily: “‘Fira Code’,monospace”,
 // ─── COST ─────────────────────────────────────────────────────────────────────
 
 export function Cost({ cost, size = 12 }) {
-if (!cost) return null;
-const parts = [];
-let i = 0;
-while (i < cost.length) {
-const ch = cost[i];
-if (“WUBRG”.includes(ch)) { parts.push(<Pip key={i} sym={ch} size={size} />); i++; }
-else if (ch === “X”) {
-parts.push(<span key={i} style={{ display:“inline-flex”, alignItems:“center”, justifyContent:“center”, width:size, height:size, borderRadius:“50%”, background:”#777”, color:”#fff”, fontSize:size*.6, fontWeight:700, border:“1px solid rgba(0,0,0,.4)” }}>X</span>);
-i++;
-} else if (ch === “0”) {
-parts.push(<span key={i} style={{ display:“inline-flex”, alignItems:“center”, justifyContent:“center”, width:size, height:size, borderRadius:“50%”, background:”#555”, color:”#ddd”, fontSize:size*.6, fontWeight:700 }}>0</span>);
-i++;
-} else if (!isNaN(parseInt(ch))) {
-let n = “”;
-while (i < cost.length && !isNaN(parseInt(cost[i]))) { n += cost[i]; i++; }
-parts.push(<span key={i + n} style={{ display:“inline-flex”, alignItems:“center”, justifyContent:“center”, width:size, height:size, borderRadius:“50%”, background:”#555”, color:”#ddd”, fontSize:size*.6, fontWeight:700, border:“1px solid rgba(0,0,0,.4)” }}>{n}</span>);
-} else i++;
-}
-return <span style={{ display: “inline-flex”, gap: 2 }}>{parts}</span>;
+  if (!cost) return null;
+
+  // Normalize Scryfall brace format “{4}{U}{U}” → “4UU”
+  // Plain format “4UU” is unchanged.
+  // Hybrid pips like {W/U} collapse to “WU” (first color wins for display).
+  const normalized = cost
+    .replace(/\{([^}]+)\}/g, '$1')
+    .replace(/\//g, '');
+
+  const parts = [];
+  let i = 0;
+  while (i < normalized.length) {
+    const ch = normalized[i];
+    if ('WUBRG'.includes(ch)) {
+      parts.push(<Pip key={`${ch}${i}`} sym={ch} size={size} />);
+      i++;
+    } else if (ch === 'C') {
+      parts.push(<Pip key={`C${i}`} sym=”C” size={size} />);
+      i++;
+    } else if (ch === 'X') {
+      parts.push(
+        <span key={`X${i}`} style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: size, height: size, borderRadius: '50%',
+          background: '#777', color: '#fff',
+          fontSize: size * 0.6, fontWeight: 700,
+          border: '1px solid rgba(0,0,0,.4)',
+        }}>X</span>
+      );
+      i++;
+    } else if (!isNaN(parseInt(ch, 10))) {
+      let n = '';
+      while (i < normalized.length && !isNaN(parseInt(normalized[i], 10))) {
+        n += normalized[i];
+        i++;
+      }
+      parts.push(
+        <span key={`n${i}`} style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: size, height: size, borderRadius: '50%',
+          background: '#555', color: '#ddd',
+          fontSize: size * 0.6, fontWeight: 700,
+          border: '1px solid rgba(0,0,0,.4)',
+        }}>{n}</span>
+      );
+    } else {
+      i++; // skip unknown characters
+    }
+  }
+  return <span style={{ display: 'inline-flex', gap: 2 }}>{parts}</span>;
 }
 
 // ─── POOL DISPLAY ────────────────────────────────────────────────────────────
