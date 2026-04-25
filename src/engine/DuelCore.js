@@ -884,7 +884,26 @@ ns = dlog(ns, `${tgtC.name} must attack this turn.`, "effect");
 }
 break;
 }
-case “stub”: ns = dlog(ns, `${card.name} resolves (effect pending).`, “effect”); break;
+case “triskelionPing”: {
+  const tri = ns[caster].bf.find(c => c.iid === card.iid);
+  if (tri && (tri.counters?.P1P1 || 0) > 0) {
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+      c.iid === card.iid
+        ? { ...c, counters: { ...c.counters, P1P1: (c.counters.P1P1 || 0) - 1 } }
+        : c
+    ) } };
+    if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 1, card.name);
+    else if (tgtC) {
+      ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+        c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c
+      ) } };
+      ns = checkDeath(ns);
+    }
+    ns = dlog(ns, `${card.name} removes a counter and deals 1 damage.`, “effect”);
+  }
+  break;
+}
+case “stub”: console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, “effect”); break;
 default:      ns = dlog(ns, `${card.name} resolves.`, “effect”);
 }
 return ns;
@@ -1094,9 +1113,57 @@ if (w === “p”) ns = dlog(ns, “Sylvan Library: drew 2 extra cards.”, “d
 break;
 }
 case “karmaUpkeep”: {
-const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length;
-if (kSwamps > 0) ns = hurt(ns, w, kSwamps, "Karma");
+const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes(“Swamp”)).length;
+if (kSwamps > 0) ns = hurt(ns, w, kSwamps, “Karma”);
 break;
+}
+case “landTax”: {
+  if (w !== ns.active) break;
+  const ltOpp = w === “p” ? “o” : “p”;
+  if (ns[ltOpp].bf.filter(isLand).length > ns[w].bf.filter(isLand).length) {
+    const basics = ns[w].lib.filter(lc => isLand(lc) && lc.subtype?.startsWith(“Basic”));
+    const fetched = basics.slice(0, 3);
+    for (const land of fetched) ns = zMove(ns, land.iid, w, w, “hand”);
+    if (fetched.length) {
+      ns = { ...ns, [w]: { ...ns[w], lib: shuffle(ns[w].lib) } };
+      ns = dlog(ns, `Land Tax: ${w} fetches ${fetched.length} basic land(s).`, “effect”);
+    }
+  }
+  break;
+}
+case “erhnamsUpkeep”: {
+  if (w !== ns.active) break;
+  const erOpp = w === “p” ? “o” : “p”;
+  const erTargets = ns[erOpp].bf.filter(isCre);
+  if (erTargets.length) {
+    const chosen = erTargets[Math.floor(Math.random() * erTargets.length)];
+    const kws = [...(chosen.keywords || [])];
+    if (!kws.includes(“FORESTWALK”)) kws.push(“FORESTWALK”);
+    ns = { ...ns, [erOpp]: { ...ns[erOpp], bf: ns[erOpp].bf.map(x =>
+      x.iid === chosen.iid ? { ...x, keywords: kws } : x
+    ) } };
+    ns = dlog(ns, `Erhnam Djinn grants forestwalk to ${chosen.name}.`, “effect”);
+  }
+  break;
+}
+case “demonicHordesUpkeep”: {
+  const demonPool = { ...ns[w].mana };
+  if ((demonPool.B || 0) >= 3) {
+    demonPool.B -= 3;
+    ns = { ...ns, [w]: { ...ns[w], mana: demonPool } };
+    ns = dlog(ns, `${c.name}: paid BBB upkeep.`, “mana”);
+  } else {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+    ns = hurt(ns, w, 3, c.name);
+    ns = dlog(ns, `${c.name}: failed to pay BBB — tapped and took 3 damage.`, “damage”);
+  }
+  break;
+}
+case “powerSurgeUpkeep”: {
+  // TODO: requires untapped-land count tracked from start of previous upkeep
+  console.warn(`STUB: Power Surge upkeep not yet implemented — needs untapped-land state tracking`);
+  ns = dlog(ns, `Power Surge: upkeep damage pending.`, “effect”);
+  break;
 }
 default: break;
 }
@@ -1340,7 +1407,7 @@ case "CAST_SPELL": {
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (isPerm(c) && !isLand(c)) {
-    const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, "HASTE"), attacking: false, blocking: null, damage: 0, counters: {} };
+    const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, "HASTE"), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
     s = { ...s, [w]: { ...s[w], bf: [...s[w].bf, pArr] } };
     return dlog(s, `${w} casts ${c.name}.`, "play");
   }
