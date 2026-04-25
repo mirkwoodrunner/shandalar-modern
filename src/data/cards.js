@@ -461,6 +461,134 @@ deck:[
 …Array(3).fill("swamp"),   …Array(3).fill("mountain"),
 …Array(4).fill("forest"),
 ]},
+
+// ─── BOSS DECKS ───────────────────────────────────────────────────────────────
+// Tied to AI_PROFILES keys in AI.js. profileId on the opponent archetype must
+// match the key exactly (DELENIA, XYLOS, MORTIS, KARAG, SYLVARA).
+
+BOSS_WHITE: {
+  name: "Aegis of Dawn", color: "W", strategy: "aggro-control",
+  profileId: "DELENIA",
+  deck: [
+    // Creatures (12)
+    ...Array(4).fill("savannah_lions"),
+    ...Array(2).fill("white_knight"),
+    ...Array(2).fill("serra_angel"),
+    ...Array(2).fill("benalish_hero"),
+    ...Array(2).fill("mesa_pegasus"),
+    // Spells (10)
+    ...Array(4).fill("swords"),
+    ...Array(2).fill("disenchant"),
+    ...Array(2).fill("wog"),
+    ...Array(1).fill("armageddon"),
+    ...Array(1).fill("holy_strength"),
+    // Artifacts (2)
+    ...Array(1).fill("sol_ring"),
+    ...Array(1).fill("jayemdae_tome"),
+    // Lands (16)
+    ...Array(16).fill("plains"),
+  ],
+  // Total: 4+2+2+2+2 + 4+2+2+1+1 + 1+1 + 16 = 40 ✓
+},
+
+BOSS_BLUE: {
+  name: "Mind of the Maelstrom", color: "U", strategy: "control",
+  profileId: "XYLOS",
+  deck: [
+    // Creatures (8)
+    ...Array(2).fill("mahamoti_djinn"),
+    ...Array(2).fill("air_elemental"),
+    ...Array(2).fill("phantom_warrior"),
+    ...Array(2).fill("prodigal_sorcerer"),
+    // Spells (14)
+    ...Array(4).fill("counterspell"),
+    ...Array(1).fill("ancestral"),
+    ...Array(1).fill("time_walk"),
+    ...Array(2).fill("unsummon"),
+    ...Array(2).fill("psionic_blast"),
+    ...Array(2).fill("control_magic"),
+    ...Array(2).fill("mana_short"),
+    // Artifacts (2)
+    ...Array(1).fill("sol_ring"),
+    ...Array(1).fill("jayemdae_tome"),
+    // Lands (16)
+    ...Array(16).fill("island"),
+  ],
+  // Total: 2+2+2+2 + 4+1+1+2+2+2+2 + 1+1 + 16 = 40 ✓
+},
+
+BOSS_BLACK: {
+  name: "Grasp of Midnight", color: "B", strategy: "discard-removal",
+  profileId: "MORTIS",
+  deck: [
+    // Creatures (12)
+    ...Array(4).fill("hypnotic_specter"),
+    ...Array(2).fill("sengir_vampire"),
+    ...Array(2).fill("juzam_djinn"),
+    ...Array(2).fill("drudge_skeletons"),
+    ...Array(2).fill("royal_assassin"),
+    // Spells (12)
+    ...Array(4).fill("dark_ritual"),
+    ...Array(2).fill("terror"),
+    ...Array(1).fill("mind_twist"),
+    ...Array(1).fill("demonic_tutor"),
+    ...Array(2).fill("drain_life"),
+    ...Array(2).fill("pestilence"),
+    // Artifacts (2)
+    ...Array(1).fill("sol_ring"),
+    ...Array(1).fill("nevinyrral_disk"),
+    // Lands (14)
+    ...Array(14).fill("swamp"),
+  ],
+  // Total: 4+2+2+2+2 + 4+2+1+1+2+2 + 1+1 + 14 = 40 ✓
+},
+
+BOSS_RED: {
+  name: "Inferno Sovereign", color: "R", strategy: "burn-aggro",
+  profileId: "KARAG",
+  deck: [
+    // Creatures (14)
+    ...Array(4).fill("goblin_balloon"),  // goblin_balloon_brigade substitute
+    ...Array(4).fill("goblin_king"),
+    ...Array(2).fill("hill_giant"),
+    ...Array(2).fill("earth_elemental"),
+    ...Array(2).fill("shivan_dragon"),
+    // Spells (10)
+    ...Array(4).fill("lightning_bolt"),
+    ...Array(4).fill("chain_lightning"),
+    ...Array(2).fill("fireball"),
+    // Artifacts (2)
+    ...Array(1).fill("sol_ring"),
+    ...Array(1).fill("black_lotus"),
+    // Lands (14)
+    ...Array(14).fill("mountain"),
+  ],
+  // Total: 4+4+2+2+2 + 4+4+2 + 1+1 + 14 = 40 ✓
+},
+
+BOSS_GREEN: {
+  name: "Heart of the Wilds", color: "G", strategy: "ramp-stomp",
+  profileId: "SYLVARA",
+  deck: [
+    // Creatures (16)
+    ...Array(4).fill("llanowar_elves"),
+    ...Array(2).fill("birds_of_paradise"),
+    ...Array(4).fill("grizzly_bears"),
+    ...Array(2).fill("giant_spider"),
+    ...Array(2).fill("war_mammoth"),     // replaces ironroot_treefolk
+    ...Array(2).fill("force_of_nature"),
+    // Spells (8)
+    ...Array(4).fill("giant_growth"),
+    ...Array(2).fill("regrowth"),
+    ...Array(2).fill("hurricane"),
+    // Artifacts (2)
+    ...Array(1).fill("sol_ring"),
+    ...Array(1).fill("mox_emerald"),
+    // Lands (14)
+    ...Array(14).fill("forest"),
+  ],
+  // Total: 4+2+4+2+2+2 + 4+2+2 + 1+1 + 14 = 40 ✓
+},
 };
 
 export default CARD_DB;
