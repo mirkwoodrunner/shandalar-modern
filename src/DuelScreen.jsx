@@ -15,7 +15,7 @@ import { isLand, isInst, isArt, isCre, canPay } from ‘./engine/DuelCore.js’;
 import { OpponentBattlefield, PlayerBattlefield } from ‘./ui/duel/Battlefield.jsx’;
 import { Hand } from ‘./ui/duel/Hand.jsx’;
 import { PhaseBar, ManaPoolDisplay } from ‘./ui/duel/ManaPanel.jsx’;
-import { ActionBar, LotusColorPicker, BopColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
+import { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
 import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
 import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
 
@@ -174,6 +174,7 @@ const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
 const [showBop, setShowBop]               = useState(false);
+const [pendingDualLand, setPendingDualLand] = useState(null); // { card, colors } | null
 const [graveyardPopover, setGraveyardPopover] = useState({
   open: false,
   player: null,
@@ -248,14 +249,16 @@ if (zone === 'hand') {
 if (zone === 'pBf') {
   // Tap land for mana
   if (isLand(card) && !card.tapped) {
-    const dualColors = getDualLandColors(card);
-    if (dualColors) {
-      openManaChoicePopover(dualColors, card.name, (color) => {
-        tapLand(card.iid, color);
-      });
+    if (card.produces && card.produces.length > 1) {
+      setPendingDualLand({ card, colors: card.produces });
       return;
     }
     tapLand(card.iid, card.produces?.[0] || 'C');
+    return;
+  }
+  // Black Lotus always routes through handleActivate (never raw-tapped)
+  if (card.name === 'Black Lotus') {
+    handleActivate(card);
     return;
   }
   // Tap artifact mana source
@@ -306,6 +309,7 @@ state.over, state.selCard, state.selTgt, state.phase,
 pendingActivate,
 selectCard, selectTarget, tapLand, tapArtifactMana,
 tapArtifactMana, declareAttacker, declareBlocker, activateAbility,
+handleActivate,
 ]);
 
 // ── Cast / play selected card ──────────────────────────────────────────────
@@ -343,8 +347,8 @@ if (effect === 'addManaAny') {
 }
 // Black Lotus needs a color choice modal
 if (effect === 'addMana3Any') {
+  activateAbility(card.iid, null); // taps + sets pendingLotusIid in engine
   setShowLotus(true);
-  // Store lotus iid so we can dispatch after color choice
   setPendingActivate(card);
   return;
 }
@@ -802,6 +806,22 @@ fontFamily: “‘Crimson Text’,serif”,
   {/* Birds of Paradise color picker */}
   {showBop && (
     <BopColorPicker onChoose={handleBopChoose} onCancel={handleBopCancel} />
+  )}
+
+  {/* Dual land / City of Brass color picker */}
+  {pendingDualLand && (
+    <DualLandColorPicker
+      landName={pendingDualLand.card.name}
+      colors={pendingDualLand.colors}
+      onChoose={(color) => {
+        dispatch({ type: 'TAP_LAND', who: 'p', iid: pendingDualLand.card.iid, mana: color });
+        if (pendingDualLand.card.id === 'city_of_brass') {
+          dispatch({ type: 'CITY_OF_BRASS_DAMAGE' });
+        }
+        setPendingDualLand(null);
+      }}
+      onCancel={() => setPendingDualLand(null)}
+    />
   )}
 
   {/* Hover tooltip */}

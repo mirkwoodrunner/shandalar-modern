@@ -220,4 +220,55 @@ export function BopColorPicker({ onChoose, onCancel }) {
   );
 }
 
-export default { ActionBar, LotusColorPicker, BopColorPicker };
+// ─── DUAL LAND COLOR PICKER ───────────────────────────────────────────────────
+
+export function DualLandColorPicker({ landName, colors, onChoose, onCancel }) {
+  const bg    = { W:"#f9f0d0", U:"#3366bb", B:"#6633aa", R:"#bb3311", G:"#226611" };
+  const label = { W:"White",   U:"Blue",    B:"Black",   R:"Red",     G:"Green"   };
+  const sym   = { W:"☀",      U:"💧",      B:"💀",      R:"🔥",      G:"🌿"      };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,.80)",
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 600,
+    }}>
+      <div style={{
+        background: "linear-gradient(160deg,#101820,#080e14)",
+        border: "2px solid rgba(120,160,200,.4)", borderRadius: 10,
+        padding: 24, textAlign: "center",
+        boxShadow: "0 0 60px rgba(0,0,0,.9)",
+        minWidth: 220,
+      }}>
+        <div style={{ fontSize: 16, fontFamily: "'Cinzel',serif", color: "#a0c8f0", marginBottom: 4 }}>
+          🏔 {landName}
+        </div>
+        <div style={{ fontSize: 12, color: "#7090a0", marginBottom: 18, fontFamily: "'Crimson Text',serif", fontStyle: "italic" }}>
+          Tap for which color?
+        </div>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          {colors.map(col => (
+            <button key={col} onClick={() => onChoose(col)} style={{
+              width: 60, height: 60, borderRadius: 8,
+              background: bg[col], border: "2px solid rgba(255,255,255,.25)",
+              cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: 2,
+              color: col === "W" ? "#333" : "#fff",
+              boxShadow: `0 0 10px ${bg[col]}60`,
+            }}>
+              <span style={{ fontSize: 22 }}>{sym[col]}</span>
+              <span style={{ fontSize: 9, fontFamily: "'Cinzel',serif", opacity: 0.85 }}>{label[col]}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onCancel} style={{
+          marginTop: 16, background: "transparent", border: "1px solid #304050",
+          color: "#506070", padding: "5px 14px", borderRadius: 4, cursor: "pointer",
+          fontSize: 11, fontFamily: "'Cinzel',serif",
+        }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+export default { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker };

@@ -494,8 +494,25 @@ ns = dlog(ns, `${opp} discards ${dc.name}.`, “effect”);
 break;
 }
 case “wheelOfFortune”: {
-for (const w of [“p”,“o”]) { ns = { …ns, [w]: { …ns[w], gy: […ns[w].gy, …ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
+for (const w of [“p”,”o”]) { ns = { …ns, [w]: { …ns[w], gy: […ns[w].gy, …ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
 ns = dlog(ns, “Wheel of Fortune!”, “effect”);
+break;
+}
+case “timetwister”: {
+const shuffleArr = (arr) => {
+const r = [...arr];
+for (let i = r.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[r[i], r[j]] = [r[j], r[i]];
+}
+return r;
+};
+for (const w of ['p', 'o']) {
+const newLib = shuffleArr([...ns[w].lib, ...ns[w].hand, ...ns[w].gy]);
+ns = { ...ns, [w]: { ...ns[w], lib: newLib, hand: [], gy: [] } };
+ns = drawD(ns, w, 7);
+}
+ns = dlog(ns, 'Timetwister — all players shuffle and draw 7.', 'effect');
 break;
 }
 case “extraTurn”: {
@@ -1120,6 +1137,7 @@ anteO,
 anteEnabled,
 fogActive: false,
 pendingLotus: false,
+pendingLotusIid: null,
 pendingBop: false,
 };
 }
@@ -1250,6 +1268,12 @@ case "ACTIVATE_ABILITY": {
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingBop: true };
     return dlog(s, `${card.name} tapped — choose a color.`, "mana");
   }
+  // Black Lotus: tap, set pendingLotus + pendingLotusIid, UI shows LotusColorPicker.
+  if (act.effect === "addMana3Any") {
+    if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingLotus: true, pendingLotusIid: action.iid };
+    return dlog(s, `${card.name} tapped — choose a color.`, "mana");
+  }
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
@@ -1266,10 +1290,31 @@ case "ACTIVATE_ABILITY": {
 case "CHOOSE_LOTUS_COLOR": {
   const mp = { ...s.p.mana };
   mp[action.color] = (mp[action.color] || 0) + 3;
-  return dlog({ ...s, p: { ...s.p, mana: mp }, pendingLotus: false }, `Black Lotus adds 3${action.color}.`, "mana");
+  let ns = { ...s, p: { ...s.p, mana: mp }, pendingLotus: false };
+  const lotusIid = ns.pendingLotusIid;
+  if (lotusIid) {
+    const lotus = ns.p.bf.find(c => c.iid === lotusIid);
+    if (lotus) {
+      ns = {
+        ...ns,
+        pendingLotusIid: null,
+        p: {
+          ...ns.p,
+          bf: ns.p.bf.filter(c => c.iid !== lotusIid),
+          gy: [...ns.p.gy, lotus],
+        },
+      };
+    }
+  }
+  return dlog(ns, `Black Lotus adds 3${action.color} and is sacrificed.`, "mana");
 }
 
-case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true };
+case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true, pendingLotusIid: action.iid };
+
+case "CITY_OF_BRASS_DAMAGE": {
+  const ns = hurt(s, 'p', 1, 'City of Brass');
+  return dlog(ns, 'City of Brass deals 1 damage to you.', 'damage');
+}
 
 case "CHOOSE_BOP_COLOR": {
   // Birds of Paradise color resolution. Adds 1 mana of chosen color. SYSTEMS.md §10
