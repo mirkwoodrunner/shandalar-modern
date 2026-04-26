@@ -1,5 +1,5 @@
 // src/data/effectSchemas.js
-// Data-driven effect schema registry — per design spec §7.1.
+// Data-driven effect schema registry ? per design spec S7.1.
 //
 // Each schema entry describes the parameters an effect expects.
 // The actual resolve implementations live in DuelCore.resolveEff,
@@ -7,10 +7,10 @@
 // canonical parameter contract; DuelCore is the execution authority.
 //
 // Schema shape:
-//   params   — ordered list of required parameter names
-//   target   — 'creature' | 'player' | 'any' | 'stack' | 'none'
-//   duration — 'instant' | 'permanent' | 'end_of_turn' | 'combat'
-//   desc     — human-readable summary for debugging / UI tooltips
+//   params   ? ordered list of required parameter names
+//   target   ? 'creature' | 'player' | 'any' | 'stack' | 'none'
+//   duration ? 'instant' | 'permanent' | 'end_of_turn' | 'combat'
+//   desc     ? human-readable summary for debugging / UI tooltips
 
 export const EFFECT_SCHEMAS = {
   DAMAGE_TARGET: {

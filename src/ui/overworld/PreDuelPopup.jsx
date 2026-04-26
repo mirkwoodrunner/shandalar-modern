@@ -1,5 +1,5 @@
 // src/ui/overworld/PreDuelPopup.jsx
-// Pre-duel interstitial modal. Presentational only — no game logic.
+// Pre-duel interstitial modal. Presentational only ? no game logic.
 
 import React from 'react';
 import { CCOLOR } from '../shared/Card.jsx';
@@ -63,7 +63,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
   } = popup;
 
   const accentColor = CCOLOR[monsterColor] || CCOLOR[''];
-  const icon = context === 'castle' ? '♔' : '⚔';
+  const icon = context === 'castle' ? '?' : '?';
   const canAffordFlee = player.gold >= fleeCost;
   const showAnte = anteEnabled && (playerAnteCard !== null || opponentAnteCard !== null);
 
@@ -105,7 +105,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
           </div>
         </div>
 
-        {/* Ante section — absent from DOM when not applicable */}
+        {/* Ante section ? absent from DOM when not applicable */}
         {showAnte && (
           <>
             <div style={{ padding: '14px 22px 0' }}>
@@ -113,7 +113,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                 fontSize: 10, fontFamily: "'Cinzel',serif",
                 color: '#8a6030', textAlign: 'center', letterSpacing: 2, marginBottom: 10,
               }}>
-                — The Stakes —
+                ? The Stakes ?
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <AnteCardBox
@@ -138,7 +138,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
         <div style={{ padding: '14px 22px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', gap: 8 }}>
 
-            {/* Fight — always present */}
+            {/* Fight ? always present */}
             <button
               onClick={onFight}
               style={{
@@ -154,10 +154,10 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                 letterSpacing: 1,
               }}
             >
-              ⚔ Fight
+              ? Fight
             </button>
 
-            {/* Flee — or "cannot be bought off" when canFlee is false */}
+            {/* Flee ? or "cannot be bought off" when canFlee is false */}
             {canFlee ? (
               <button
                 onClick={() => canAffordFlee && onFlee(fleeCost)}
@@ -176,7 +176,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                   fontSize: 11,
                 }}
               >
-                💰 Pay {fleeCost}g to Flee
+                ? Pay {fleeCost}g to Flee
               </button>
             ) : (
               <div style={{
@@ -194,7 +194,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
             )}
           </div>
 
-          {/* Withdraw — only shown when canFlee is true */}
+          {/* Withdraw ? only shown when canFlee is true */}
           {canFlee && (
             <div style={{ textAlign: 'center' }}>
               <button
@@ -210,7 +210,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                   fontFamily: "'Cinzel',serif",
                 }}
               >
-                ✕ Withdraw
+                ? Withdraw
               </button>
             </div>
           )}

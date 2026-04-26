@@ -1,37 +1,37 @@
 // src/DuelScreen.jsx
 // Assembler component for the duel UI.
 // Wires engine (useDuel / AI) to all duel UI sub-components.
-// Per MECHANICS_INDEX.md §8.1 — this is a presentation coordinator only.
+// Per MECHANICS_INDEX.md S8.1 ? this is a presentation coordinator only.
 // All game logic lives in DuelCore.js; all decisions live in AI.js.
 
-import React, { useState, useEffect, useRef, useCallback } from ‘react’;
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-// ── Engine / hooks ───────────────────────────────────────────────────────────
-import { useDuel } from ‘./hooks/useDuel.js’;
-import { aiDecide } from ‘./engine/AI.js’;
-import { isLand, isInst, isArt, isCre, canPay } from ‘./engine/DuelCore.js’;
+// -- Engine / hooks -----------------------------------------------------------
+import { useDuel } from './hooks/useDuel.js';
+import { aiDecide } from './engine/AI.js';
+import { isLand, isInst, isArt, isCre, canPay } from './engine/DuelCore.js';
 
-// ── UI sub-components ────────────────────────────────────────────────────────
-import { OpponentBattlefield, PlayerBattlefield } from ‘./ui/duel/Battlefield.jsx’;
-import { Hand } from ‘./ui/duel/Hand.jsx’;
-import { PhaseBar, ManaPoolDisplay } from ‘./ui/duel/ManaPanel.jsx’;
-import { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker } from ‘./ui/duel/TargetingOverlay.jsx’;
-import { DuelLog } from ‘./ui/layout/TechnicalLog.jsx’;
-import { Tooltip } from ‘./ui/shared/Tooltip.jsx’;
+// -- UI sub-components --------------------------------------------------------
+import { OpponentBattlefield, PlayerBattlefield } from './ui/duel/Battlefield.jsx';
+import { Hand } from './ui/duel/Hand.jsx';
+import { PhaseBar, ManaPoolDisplay } from './ui/duel/ManaPanel.jsx';
+import { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
+import { DuelLog } from './ui/layout/TechnicalLog.jsx';
+import { Tooltip } from './ui/shared/Tooltip.jsx';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // MANA CHOICE POPOVER
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function getManaSymbol(color) {
   const symbols = {
-    W: '⚪',
-    U: '🔵',
-    B: '⚫',
-    R: '🔴',
-    G: '🟢',
+    W: '?',
+    U: '?',
+    B: '?',
+    R: '?',
+    G: '?',
   };
-  return symbols[color] || '❓';
+  return symbols[color] || '?';
 }
 
 function ManaChoicePopover({ colors, cardName, onSelect, onClose }) {
@@ -55,9 +55,9 @@ function ManaChoicePopover({ colors, cardName, onSelect, onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // GRAVEYARD POPOVER
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }) {
   if (!graveyard || graveyard.length === 0) {
@@ -94,9 +94,9 @@ function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ABILITY LOOKUP
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function getActivatedAbilities(card) {
   const hardcodedAbilities = {
@@ -122,9 +122,9 @@ function getActivatedAbilities(card) {
   return hardcodedAbilities[card.name] || null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // DUEL SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 /**
 
@@ -135,13 +135,13 @@ function getActivatedAbilities(card) {
 - @param {number}   [config.overworldHP]- Player HP carried from overworld
 - @param {object}   [config.castleMod]  - Castle modifier if applicable
 - @param {boolean}  [config.anteEnabled]- Whether ante is active
-- @param {string}   [config.context]    - “monster” | “castle” | “dungeon” | “arzakon”
+- @param {string}   [config.context]    - "monster" | "castle" | "dungeon" | "arzakon"
 - 
 - @param {function} onDuelEnd(outcome, duelState)
-- outcome: “win” | “lose” | “forfeit”
+- outcome: "win" | "lose" | "forfeit"
   */
   export default function DuelScreen({ config, onDuelEnd }) {
-  // ── Engine state via useDuel bridge ────────────────────────────────────────
+  // -- Engine state via useDuel bridge ----------------------------------------
   const {
   state,
   dispatch,
@@ -169,7 +169,7 @@ function getActivatedAbilities(card) {
   config.anteEnabled ?? false
   );
 
-// ── Local UI state (presentation only — NOT game state) ───────────────────
+// -- Local UI state (presentation only ? NOT game state) -------------------
 const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
@@ -188,28 +188,27 @@ const [manaChoicePopover, setManaChoicePopover] = useState({
 });
 const aiRef = useRef(false);
 
-// ── Sync BopColorPicker with engine pendingBop flag ───────────────────────
+// -- Sync BopColorPicker with engine pendingBop flag -----------------------
 useEffect(() => {
 if (state.pendingBop) setShowBop(true);
 }, [state.pendingBop]);
 
-// ── Game-over handler ──────────────────────────────────────────────────────
+// -- Game-over handler ------------------------------------------------------
 useEffect(() => {
 if (!state.over) return;
 const timer = setTimeout(() => {
-onDuelEnd(state.over.winner === ‘p’ ? ‘win’ : ‘lose’, state);
+onDuelEnd(state.over.winner === 'p' ? 'win' : 'lose', state);
 }, 900);
 return () => clearTimeout(timer);
 }, [state.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
-// ── AI loop ────────────────────────────────────────────────────────────────
+// -- AI loop ----------------------------------------------------------------
 // Fires whenever phase, active player, or turn changes.
-// AI produces GameAction[] → dispatched via applyAiActions → DuelCore executes.
+// AI produces GameAction[] ? dispatched via applyAiActions ? DuelCore executes.
 useEffect(() => {
 if (state.over) return;
-if (state.active !== ‘o’ || aiRef.current) return;
+if (state.active !== 'o' || aiRef.current) return;
 
-```
 aiRef.current = true;
 
 const thinkTimer = setTimeout(() => {
@@ -224,28 +223,26 @@ const thinkTimer = setTimeout(() => {
 }, 500 + Math.random() * 350);
 
 return () => clearTimeout(thinkTimer);
-```
 
 }, [state.phase, state.active, state.turn, state.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
-// ── Tooltip handlers ───────────────────────────────────────────────────────
+// -- Tooltip handlers -------------------------------------------------------
 const handleTipEnter = useCallback((card, e) => {
 setTooltip({ card, pos: { x: e.clientX, y: e.clientY } });
 }, []);
 const handleTipLeave = useCallback(() => setTooltip(null), []);
 
-// ── Card click dispatcher ──────────────────────────────────────────────────
+// -- Card click dispatcher --------------------------------------------------
 const handleCardClick = useCallback((card, zone) => {
 if (state.over) return;
 
-```
-// ── HAND ────────────────────────────────────────────────────────────────
+// -- HAND ----------------------------------------------------------------
 if (zone === 'hand') {
   selectCard(state.selCard === card.iid ? null : card.iid);
   return;
 }
 
-// ── PLAYER BATTLEFIELD ───────────────────────────────────────────────────
+// -- PLAYER BATTLEFIELD ---------------------------------------------------
 if (zone === 'pBf') {
   // Tap land for mana
   if (isLand(card) && !card.tapped) {
@@ -271,7 +268,7 @@ if (zone === 'pBf') {
     declareAttacker(card.iid);
     return;
   }
-  // Pending activated ability — this creature is the target
+  // Pending activated ability ? this creature is the target
   if (pendingActivate) {
     activateAbility(pendingActivate.iid, card.iid);
     setPendingActivate(null);
@@ -284,7 +281,7 @@ if (zone === 'pBf') {
   return;
 }
 
-// ── OPPONENT BATTLEFIELD ─────────────────────────────────────────────────
+// -- OPPONENT BATTLEFIELD -------------------------------------------------
 if (zone === 'oBf') {
   // Blocker assignment: click attacker first to select, then your blocker
   if (state.phase === 'COMBAT_BLOCKERS' && state.selTgt) {
@@ -292,7 +289,7 @@ if (zone === 'oBf') {
     selectTarget(null);
     return;
   }
-  // Pending activated ability — opponent creature is target
+  // Pending activated ability ? opponent creature is target
   if (pendingActivate) {
     activateAbility(pendingActivate.iid, card.iid);
     setPendingActivate(null);
@@ -302,7 +299,6 @@ if (zone === 'oBf') {
   selectTarget(card.iid);
   return;
 }
-```
 
 }, [
 state.over, state.selCard, state.selTgt, state.phase,
@@ -312,12 +308,11 @@ tapArtifactMana, declareAttacker, declareBlocker, activateAbility,
 handleActivate,
 ]);
 
-// ── Cast / play selected card ──────────────────────────────────────────────
+// -- Cast / play selected card ----------------------------------------------
 const handleCast = useCallback(() => {
 const card = state.p.hand.find(c => c.iid === state.selCard);
 if (!card) return;
 
-```
 if (isLand(card)) {
   playLand(card.iid);
   selectCard(null);
@@ -330,16 +325,14 @@ if (card.effect === 'enchantCreature' && !tgt) return; // must select a creature
 castSpell(card.iid, tgt, state.xVal);
 selectCard(null);
 selectTarget(null);
-```
 
 }, [state, playLand, castSpell, selectCard, selectTarget]);
 
-// ── Activated ability handler ──────────────────────────────────────────────
+// -- Activated ability handler ----------------------------------------------
 const handleActivate = useCallback((card) => {
 if (!card.activated) return;
 const { effect } = card.activated;
 
-```
 // Birds of Paradise needs a color choice modal
 if (effect === 'addManaAny') {
   activateAbility(card.iid, null); // DuelCore taps bird + sets pendingBop
@@ -352,19 +345,18 @@ if (effect === 'addMana3Any') {
   setPendingActivate(card);
   return;
 }
-// Abilities that need a target — enter pending mode
+// Abilities that need a target ? enter pending mode
 if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].includes(effect)) {
   setPendingActivate(card);
   selectCard(card.iid);
   return;
 }
-// No target needed — fire immediately
+// No target needed ? fire immediately
 activateAbility(card.iid, null);
-```
 
 }, [activateAbility, selectCard]);
 
-// ── New ability handler (uses getActivatedAbilities type system) ───────────
+// -- New ability handler (uses getActivatedAbilities type system) -----------
 const handleActivateAbility = useCallback((card) => {
   const ability = getActivatedAbilities(card);
   if (!ability) return;
@@ -386,7 +378,7 @@ const handleActivateAbility = useCallback((card) => {
   }
 }, [activateAbility, selectCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
-// ── Lotus color choice ─────────────────────────────────────────────────────
+// -- Lotus color choice -----------------------------------------------------
 const handleLotusChoose = useCallback((color) => {
 chooseLotusColor(color);
 setShowLotus(false);
@@ -408,14 +400,14 @@ dispatch({ type: 'CHOOSE_BOP_COLOR', color: 'G' }); // default Green on cancel
 setShowBop(false);
 }, [dispatch]);
 
-// ── Cancel pending activate ────────────────────────────────────────────────
+// -- Cancel pending activate ------------------------------------------------
 const handleCancelActivate = useCallback(() => {
 setPendingActivate(null);
 selectCard(null);
 selectTarget(null);
 }, [selectCard, selectTarget]);
 
-// ── Graveyard popover handlers ─────────────────────────────────────────────
+// -- Graveyard popover handlers ---------------------------------------------
 const openGraveyardPopover = (player, mode = 'reference') => {
   setGraveyardPopover({ open: true, player, mode });
 };
@@ -432,7 +424,7 @@ const handleGraveyardCardSelect = (card, idx) => {
   }
 };
 
-// ── Mana choice popover handlers ───────────────────────────────────────────
+// -- Mana choice popover handlers -------------------------------------------
 const openManaChoicePopover = (colors, cardName, callback) => {
   setManaChoicePopover({ open: true, colors, cardName, callback });
 };
@@ -448,9 +440,9 @@ const handleManaChoice = (color) => {
   closeManaChoicePopover();
 };
 
-// ─────────────────────────────────────────────────────────────────────────
+// -------------------------------------------------------------------------
 // RENDER
-// ─────────────────────────────────────────────────────────────────────────
+// -------------------------------------------------------------------------
 
 const s = state;
 const pMana = Object.values(s.p.mana).reduce((a, b) => a + b, 0);
@@ -458,15 +450,14 @@ const oMana = Object.values(s.o.mana).reduce((a, b) => a + b, 0);
 
 return (
 <div style={{
-height: ‘100vh’, width: ‘100vw’,
-background: ‘#0a0e08’,
-display: ‘flex’, flexDirection: ‘column’,
-overflow: ‘hidden’,
-fontFamily: “‘Crimson Text’,serif”,
+height: '100vh', width: '100vw',
+background: '#0a0e08',
+display: 'flex', flexDirection: 'column',
+overflow: 'hidden',
+fontFamily: "'Crimson Text',serif",
 }}>
 
-```
-  {/* ── GAME OVER OVERLAY ─────────────────────────────────────────────── */}
+  {/* -- GAME OVER OVERLAY ----------------------------------------------- */}
   {s.over && (
     <div style={{
       position: 'fixed', inset: 0,
@@ -475,7 +466,7 @@ fontFamily: “‘Crimson Text’,serif”,
       zIndex: 500,
     }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>{s.over.winner === 'p' ? '✦' : '💀'}</div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{s.over.winner === 'p' ? '?' : '?'}</div>
         <div style={{
           fontSize: 24, fontFamily: "'Cinzel',serif",
           color: s.over.winner === 'p' ? '#80e080' : '#e04040',
@@ -484,12 +475,12 @@ fontFamily: “‘Crimson Text’,serif”,
           {s.over.winner === 'p' ? 'Victory!' : 'Defeat'}
         </div>
         <div style={{ fontSize: 12, color: '#a08060', marginBottom: 16 }}>{s.over.reason}</div>
-        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld…</div>
+        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld?</div>
       </div>
     </div>
   )}
 
-  {/* ── CASTLE MODIFIER BANNER ────────────────────────────────────────── */}
+  {/* -- CASTLE MODIFIER BANNER ------------------------------------------ */}
   {s.castleMod && (
     <div style={{
       background: 'rgba(100,20,0,.4)',
@@ -505,12 +496,12 @@ fontFamily: “‘Crimson Text’,serif”,
         {s.castleMod.name}
       </span>
       <span style={{ fontSize: 10, color: '#a07040', fontStyle: 'italic' }}>
-        — {s.castleMod.desc}
+        ? {s.castleMod.desc}
       </span>
     </div>
   )}
 
-  {/* ── ANTE BANNER ───────────────────────────────────────────────────── */}
+  {/* -- ANTE BANNER ----------------------------------------------------- */}
   {s.anteEnabled && (s.anteP || s.anteO) && (
     <div style={{
       background: 'rgba(60,30,0,.4)',
@@ -533,7 +524,7 @@ fontFamily: “‘Crimson Text’,serif”,
     </div>
   )}
 
-  {/* ── TOP BAR: ruleset / turn / phase tracker / forfeit ────────────── */}
+  {/* -- TOP BAR: ruleset / turn / phase tracker / forfeit -------------- */}
   <div style={{
     padding: '5px 10px',
     borderBottom: '2px solid rgba(200,160,40,.3)',
@@ -549,12 +540,12 @@ fontFamily: “‘Crimson Text’,serif”,
         <span style={{ fontSize: 10, color: '#a09050', whiteSpace: 'nowrap' }}>T{s.turn}</span>
         {config.ruleset.manaBurn && (
           <span style={{ fontSize: 9, color: '#ee6030', fontFamily: "'Cinzel',serif", fontWeight: 700, whiteSpace: 'nowrap' }}>
-            ⚠ BURN
+            ? BURN
           </span>
         )}
         {s.active === 'o' && (
           <span style={{ fontSize: 10, color: '#9090dd', animation: 'pulse 1s infinite', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-            Opp thinking…
+            Opp thinking--
           </span>
         )}
       </div>
@@ -575,10 +566,10 @@ fontFamily: “‘Crimson Text’,serif”,
     <PhaseBar phase={s.phase} />
   </div>
 
-  {/* ── MAIN LAYOUT ───────────────────────────────────────────────────── */}
+  {/* -- MAIN LAYOUT ----------------------------------------------------- */}
   <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-    {/* ── BATTLEFIELD COLUMN ──────────────────────────────────────────── */}
+    {/* -- BATTLEFIELD COLUMN -------------------------------------------- */}
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Opponent side */}
@@ -615,7 +606,7 @@ fontFamily: “‘Crimson Text’,serif”,
             </div>
           </div>
           <span style={{ fontSize: 11, color: '#907050' }}>
-            📚{s.o.lib.length} ✋{s.o.hand.length} 🪦{s.o.gy.length}
+            ?{s.o.lib.length} ?{s.o.hand.length} ?{s.o.gy.length}
           </span>
           {oMana > 0 && <ManaPoolDisplay pool={s.o.mana} size={13} />}
           {/* Face-down hand */}
@@ -686,7 +677,7 @@ fontFamily: “‘Crimson Text’,serif”,
             }} />
           </div>
         </div>
-        <span style={{ fontSize: 11, color: '#706850' }}>📚{s.p.lib.length} 🪦{s.p.gy.length}</span>
+        <span style={{ fontSize: 11, color: '#706850' }}>?{s.p.lib.length} ?{s.p.gy.length}</span>
         {pMana > 0 && (
           <ManaPoolDisplay
             pool={s.p.mana}
@@ -718,7 +709,7 @@ fontFamily: “‘Crimson Text’,serif”,
       />
     </div>
 
-    {/* ── RIGHT SIDEBAR: graveyards / exile / ruleset flags / log ─────── */}
+    {/* -- RIGHT SIDEBAR: graveyards / exile / ruleset flags / log ------- */}
     <div style={{
       width: 'clamp(160px,22vw,210px)',
       borderLeft: '2px solid rgba(180,140,60,.25)',
@@ -780,7 +771,7 @@ fontFamily: “‘Crimson Text’,serif”,
               color: f.v === true ? '#60ee60' : f.v === false ? '#ee4040' : '#e0c040',
               fontWeight: 700,
             }}>
-              {typeof f.v === 'boolean' ? (f.v ? '✓' : '✗') : f.v}
+              {typeof f.v === 'boolean' ? (f.v ? '?' : '?') : f.v}
             </span>
           </div>
         ))}
@@ -796,7 +787,7 @@ fontFamily: “‘Crimson Text’,serif”,
     </div>
   </div>
 
-  {/* ── MODALS ────────────────────────────────────────────────────────── */}
+  {/* -- MODALS ---------------------------------------------------------- */}
 
   {/* Black Lotus color picker */}
   {showLotus && (
@@ -848,14 +839,13 @@ fontFamily: “‘Crimson Text’,serif”,
     />
   )}
 </div>
-```
 
 );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 function getDualLandColors(card) {
   if (!card.oracle_text) return null;
@@ -873,18 +863,18 @@ function getDualLandColors(card) {
 
 /**
 
-- Resolve a sensible default target for a spell when the player hasn’t
-- explicitly clicked one. DuelCore will validate — this is just a UX convenience.
+- Resolve a sensible default target for a spell when the player hasn't
+- explicitly clicked one. DuelCore will validate ? this is just a UX convenience.
   */
   function resolveDefaultTarget(card, state) {
   const { effect } = card;
-  if ([‘damage3’, ‘damage5’, ‘damageX’, ‘psionicBlast’, ‘chainLightning’].includes(effect)) {
-  return ‘o’;
+  if (['damage3', 'damage5', 'damageX', 'psionicBlast', 'chainLightning'].includes(effect)) {
+  return 'o';
   }
-  if ([‘draw3’, ‘gainLife3’, ‘gainLifeX’, ‘tutor’, ‘drawX’].includes(effect)) {
-  return state.selTgt || ‘p’;
+  if (['draw3', 'gainLife3', 'gainLifeX', 'tutor', 'drawX'].includes(effect)) {
+  return state.selTgt || 'p';
   }
-  if ([‘destroy’, ‘exileCreature’, ‘bounce’, ‘destroyArtifact’, ‘destroyArtOrEnch’].includes(effect)) {
+  if (['destroy', 'exileCreature', 'bounce', 'destroyArtifact', 'destroyArtOrEnch'].includes(effect)) {
   return state.selTgt || null;
   }
   return state.selTgt || null;

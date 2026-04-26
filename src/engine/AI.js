@@ -1,14 +1,14 @@
 // src/engine/AI.js
-// AI decision generator — produces GameAction objects for DuelCore to execute.
-// Per design spec §3 and SYSTEMS.md §6.
+// AI decision generator ? produces GameAction objects for DuelCore to execute.
+// Per design spec S3 and SYSTEMS.md S6.
 //
-// STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md §5):
-//   ✔ May read GameState snapshots
-//   ✔ May generate valid GameAction objects
-//   ✗ CANNOT mutate GameState
-//   ✗ CANNOT simulate combat results directly
-//   ✗ CANNOT bypass DuelCore validation
-//   ✗ CANNOT make async calls or access the network
+// STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md S5):
+//   ? May read GameState snapshots
+//   ? May generate valid GameAction objects
+//   ? CANNOT mutate GameState
+//   ? CANNOT simulate combat results directly
+//   ? CANNOT bypass DuelCore validation
+//   ? CANNOT make async calls or access the network
 
 import { ARCHETYPES } from '../data/cards.js';
 import {
@@ -18,8 +18,8 @@ import {
 } from './DuelCore.js';
 import { PHASE } from './phases.js';
 
-// ─── OPPONENT PROFILES ────────────────────────────────────────────────────────
-// Pure data — no logic. Weights range 0.0–1.0.
+// --- OPPONENT PROFILES --------------------------------------------------------
+// Pure data ? no logic. Weights range 0.0?1.0.
 
 const AI_PROFILES = {
   GENERIC:  { aggression: 0.5, greedySpells: 0.5, removalPriority: 0.5 },
@@ -31,7 +31,7 @@ const AI_PROFILES = {
   ARZAKON:  { aggression: 0.8, greedySpells: 0.8, removalPriority: 1.0 }, // Final boss: optimal
 };
 
-// ─── BOARD EVALUATION ─────────────────────────────────────────────────────────
+// --- BOARD EVALUATION ---------------------------------------------------------
 
 function sumCreaturePower(creatures, state) {
   return creatures.filter(isCre).reduce((sum, c) => sum + getPow(c, state), 0);
@@ -46,7 +46,7 @@ function evaluateBoard(state) {
   return (myPower * 2) + lifeDelta + (cardDelta * 1.5) - (theirPower * 1.5);
 }
 
-// ─── MANA SIMULATION HELPERS ──────────────────────────────────────────────────
+// --- MANA SIMULATION HELPERS --------------------------------------------------
 // Compute how much mana the AI can access (current pool + untapped lands).
 
 function computeAvailableMana(state) {
@@ -113,7 +113,7 @@ function buildTapActions(state, cost) {
   return { tapActions, affordable: vCanPay() };
 }
 
-// ─── PHASE PLANNERS ───────────────────────────────────────────────────────────
+// --- PHASE PLANNERS -----------------------------------------------------------
 
 function passPlan(phase) {
   return { phase, actions: [{ type: 'PASS_PRIORITY' }] };
@@ -121,7 +121,7 @@ function passPlan(phase) {
 
 function planUpkeep(state, profile) {
   // Check for activated abilities with upkeep relevance.
-  // For now, safe fallback — upkeep triggers resolve automatically via DuelCore.
+  // For now, safe fallback ? upkeep triggers resolve automatically via DuelCore.
   return passPlan(PHASE.UPKEEP);
 }
 
@@ -156,7 +156,7 @@ function planMain(state, profile, phase) {
       'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
     if (isRemoval) {
       const threats = state.p.bf.filter(isCre);
-      if (!threats.length) continue; // no valid target — skip to avoid mana burn
+      if (!threats.length) continue; // no valid target ? skip to avoid mana burn
       const target = threats.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
       if (Math.random() < profile.removalPriority) {
         actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
@@ -189,7 +189,7 @@ function planAttack(state, profile) {
   const attackerIds = [];
 
   if (profile.aggression >= 1.0) {
-    // Full aggro — always attack with everything.
+    // Full aggro ? always attack with everything.
     for (const c of candidates) attackerIds.push(c.iid);
   } else {
     const defBf = state.p.bf.filter(isCre);
@@ -216,7 +216,7 @@ function planAttack(state, profile) {
       }, null);
 
       if (!bestBlocker) {
-        // No blocker — safe to attack.
+        // No blocker ? safe to attack.
         attackerIds.push(att.iid);
         continue;
       }
@@ -229,12 +229,12 @@ function planAttack(state, profile) {
       const survives = at > bp;
 
       if (killsBlocker && survives) {
-        // Favorable trade — attack if board improves.
+        // Favorable trade ? attack if board improves.
         attackerIds.push(att.iid);
         continue;
       }
 
-      // Risky attack — defer to aggression roll.
+      // Risky attack ? defer to aggression roll.
       if (Math.random() < profile.aggression) {
         attackerIds.push(att.iid);
       }
@@ -304,7 +304,7 @@ function planEnd(state, profile) {
   return passPlan(PHASE.END);
 }
 
-// ─── MAIN ENTRY POINT ─────────────────────────────────────────────────────────
+// --- MAIN ENTRY POINT ---------------------------------------------------------
 
 /**
  * Evaluate the current GameState and return a structured AITurnPlan.
@@ -329,9 +329,9 @@ export function getAIPlan(gameState, phase) {
   }
 }
 
-// ─── VALIDATE PLAN ────────────────────────────────────────────────────────────
+// --- VALIDATE PLAN ------------------------------------------------------------
 // Before translating to DuelCore actions, validate each spec action.
-// Invalid actions are skipped with a console warning — never crash.
+// Invalid actions are skipped with a console warning ? never crash.
 
 function validateAction(action, state) {
   if (action.type === 'PLAY_CARD') {
@@ -353,13 +353,13 @@ function validateAction(action, state) {
   return true;
 }
 
-// ─── COMPATIBILITY ADAPTER ────────────────────────────────────────────────────
-// Converts AITurnPlan spec-format actions → DuelCore reducer action objects.
+// --- COMPATIBILITY ADAPTER ----------------------------------------------------
+// Converts AITurnPlan spec-format actions ? DuelCore reducer action objects.
 // Called by DuelScreen.jsx via applyAiActions().
 
 /**
  * Evaluate the current GameState and return DuelCore-compatible action array.
- * This is the interface consumed by the existing UI (DuelScreen → applyAiActions).
+ * This is the interface consumed by the existing UI (DuelScreen ? applyAiActions).
  *
  * @param {object} state - Current GameState (read-only snapshot)
  * @returns {object[]}   - Array of DuelCore GameAction objects
@@ -382,7 +382,7 @@ export function aiDecide(state) {
           // Tap lands to cover cost before casting.
           const { tapActions, affordable } = buildTapActions(state, card.cost);
           if (!affordable) {
-            console.warn(`[AI] PLAY_CARD: cannot afford ${card.name} — skipping.`);
+            console.warn(`[AI] PLAY_CARD: cannot afford ${card.name} ? skipping.`);
             break;
           }
           dcActions.push(...tapActions);
@@ -410,7 +410,7 @@ export function aiDecide(state) {
       }
 
       case 'PASS_PRIORITY':
-        // No DuelCore action — phase advance is handled by DuelScreen after aiDecide returns.
+        // No DuelCore action ? phase advance is handled by DuelScreen after aiDecide returns.
         break;
 
       default:

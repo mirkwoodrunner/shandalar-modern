@@ -55,7 +55,7 @@ export function handleTimetwister(gameState, castingPlayer) {
     if (newState[`${p}_library`].length > 0) {
       newState[`${p}_hand`].push(newState[`${p}_library`].shift());
     }
-    // If the library is empty, the player simply does not draw — no token, no error
+    // If the library is empty, the player simply does not draw ? no token, no error
     // Drawing from an empty library is handled by the normal loss condition elsewhere
 
     if (newState[`${opp}_library`].length > 0) {
@@ -63,7 +63,7 @@ export function handleTimetwister(gameState, castingPlayer) {
     }
   }
 
-  // Timetwister goes to the casting player's graveyard — it is the only card there
+  // Timetwister goes to the casting player's graveyard ? it is the only card there
   newState[`${p}_graveyard`] = [{ name: 'Timetwister', type_line: 'Sorcery' }];
 
   return newState;

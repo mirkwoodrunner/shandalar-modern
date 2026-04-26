@@ -1,5 +1,5 @@
 // src/engine/cardHandlers.js
-// Custom card effect handlers — per design spec §7.2.
+// Custom card effect handlers ? per design spec S7.2.
 //
 // Cards that cannot be expressed by effectSchemas.js get a handler here.
 // DuelCore checks CARD_HANDLERS[card.name] before falling through to
@@ -9,9 +9,9 @@
 //
 // Handlers receive a read-only-style state snapshot, the card instance,
 // and the resolved targets array. They return new GameState (pure).
-// No imports from DuelCore to avoid circular dependencies — state ops inline.
+// No imports from DuelCore to avoid circular dependencies ? state ops inline.
 
-// ─── HELPERS (local — no DuelCore import) ────────────────────────────────────
+// --- HELPERS (local ? no DuelCore import) ------------------------------------
 
 function drawN(state, who, n) {
   let ns = state;
@@ -31,7 +31,7 @@ function addLog(state, text, type = 'effect') {
   return { ...state, log: [...state.log.slice(-100), { text, type, turn: state.turn }] };
 }
 
-// ─── CARD HANDLERS ────────────────────────────────────────────────────────────
+// --- CARD HANDLERS ------------------------------------------------------------
 
 export const CARD_HANDLERS = {
   // Black Lotus: sacrifice for 3 mana of any one color.
@@ -41,7 +41,7 @@ export const CARD_HANDLERS = {
     onResolve: (state, card, _targets) => {
       return addLog(
         { ...state, pendingLotus: true },
-        'Black Lotus — choose a color for 3 mana.',
+        'Black Lotus ? choose a color for 3 mana.',
         'mana',
       );
     },
@@ -96,7 +96,7 @@ export const CARD_HANDLERS = {
         ns = { ...ns, [w]: { ...ns[w], lib: newLib, hand: [], gy: [] } };
         ns = drawN(ns, w, 7);
       }
-      return addLog(ns, 'Timetwister — all players shuffle and draw 7.', 'effect');
+      return addLog(ns, 'Timetwister ? all players shuffle and draw 7.', 'effect');
     },
   },
 };

@@ -1,6 +1,6 @@
 // src/ui/dungeon/DungeonHUD.jsx
 // Slim status bar rendered above the dungeon grid.
-// Presentation only — no engine state. Per SYSTEMS.md §9 (Dungeon System).
+// Presentation only ? no engine state. Per SYSTEMS.md S9 (Dungeon System).
 
 import React from 'react';
 
@@ -32,7 +32,7 @@ export default function DungeonHUD({
         fontSize: 13, fontFamily: "'Cinzel', serif",
         color: '#f0c040', letterSpacing: 1,
       }}>
-        ⚑ {dungeonName}
+        ? {dungeonName}
       </span>
 
       {/* Modifier */}
@@ -68,7 +68,7 @@ export default function DungeonHUD({
 
       {/* Gold */}
       <span style={{ fontSize: 12, color: '#f0c040', fontFamily: "'Cinzel', serif" }}>
-        ⚙ {playerGold}g
+        ? {playerGold}g
       </span>
 
       {/* Rooms cleared */}
@@ -81,7 +81,7 @@ export default function DungeonHUD({
         marginLeft: 'auto', fontSize: 10,
         color: '#504030', fontFamily: "'Cinzel', serif", letterSpacing: 1,
       }}>
-        WASD / ↑↓←→ to move
+        WASD / ???? to move
       </span>
     </div>
   );

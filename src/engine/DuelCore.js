@@ -1,37 +1,37 @@
 // src/engine/DuelCore.js
-// Central simulation engine — the ONLY authority for GameState mutation.
-// Per SYSTEMS.md §1 and MECHANICS_INDEX.md §1.1
+// Central simulation engine ? the ONLY authority for GameState mutation.
+// Per SYSTEMS.md S1 and MECHANICS_INDEX.md S1.1
 //
-// STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md §7):
+// STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md S7):
 //   - ONLY this module may mutate GameState
 //   - All other systems submit GameAction objects
 //   - Deterministic given identical GameState + rngSeed + action sequence
 
-import { CARD_DB, ARCHETYPES } from ‘../data/cards.js’;
-import { PHASE, PHASE_SEQUENCE } from ‘./phases.js’;
-import { CARD_HANDLERS } from ‘./cardHandlers.js’;
+import { CARD_DB, ARCHETYPES } from '../data/cards.js';
+import { PHASE, PHASE_SEQUENCE } from './phases.js';
+import { CARD_HANDLERS } from './cardHandlers.js';
 
-// ─── UTILITIES ────────────────────────────────────────────────────────────────
+// --- UTILITIES ----------------------------------------------------------------
 
 export const makeId = () => Math.random().toString(36).slice(2, 9);
 
 export const shuffle = (arr) => {
-const r = […arr];
-for (let i = r.length - 1; i > 0; i–) {
+const r = [...arr];
+for (let i = r.length - 1; i > 0; i--) {
 const j = Math.floor(Math.random() * (i + 1));
 [r[i], r[j]] = [r[j], r[i]];
 }
 return r;
 };
 
-// ─── CARD TYPE GUARDS ─────────────────────────────────────────────────────────
+// --- CARD TYPE GUARDS ---------------------------------------------------------
 
-export const isLand   = c => c?.type === “Land”;
-export const isCre    = c => c?.type?.startsWith(“Creature”);
-export const isInst   = c => c?.type === “Instant”;
-export const isSort   = c => c?.type === “Sorcery”;
-export const isArt    = c => c?.type === “Artifact”;
-export const isEnch   = c => c?.type?.startsWith(“Enchantment”);
+export const isLand   = c => c?.type === "Land";
+export const isCre    = c => c?.type?.startsWith("Creature");
+export const isInst   = c => c?.type === "Instant";
+export const isSort   = c => c?.type === "Sorcery";
+export const isArt    = c => c?.type === "Artifact";
+export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
 export function hasKw(c, kw) {
   if ((c.keywords     || []).includes(kw)) return true;
@@ -40,13 +40,12 @@ export function hasKw(c, kw) {
   return false;
 }
 
-// ─── CARD INSTANTIATION ───────────────────────────────────────────────────────
+// --- CARD INSTANTIATION -------------------------------------------------------
 
 export function makeCardInstance(id, controller) {
 const def = CARD_DB.find(c => c.id === id);
 if (!def) return null;
-return {
-…def,
+return { ...def,
 iid: makeId(),
 controller,
 tapped: false,
@@ -61,7 +60,7 @@ exerted: false,
 };
 }
 
-// ─── MANA SYSTEM ──────────────────────────────────────────────────────────────
+// --- MANA SYSTEM --------------------------------------------------------------
 
 export function parseMana(cost) {
 if (!cost) return { W:0, U:0, B:0, R:0, G:0, C:0, generic:0 };
@@ -69,11 +68,11 @@ const p = { W:0, U:0, B:0, R:0, G:0, C:0, generic:0 };
 let i = 0;
 while (i < cost.length) {
 const ch = cost[i];
-if (“WUBRG”.includes(ch)) { p[ch]++; i++; }
-else if (ch === “C”)       { p.C++; i++; }
-else if (ch === “X”)       { i++; }
+if ("WUBRG".includes(ch)) { p[ch]++; i++; }
+else if (ch === "C")       { p.C++; i++; }
+else if (ch === "X")       { i++; }
 else if (!isNaN(parseInt(ch))) {
-let n = “”;
+let n = "";
 while (i < cost.length && !isNaN(parseInt(cost[i]))) { n += cost[i]; i++; }
 p.generic += parseInt(n);
 } else i++;
@@ -83,8 +82,8 @@ return p;
 
 export function canPay(pool, cost) {
 const r = parseMana(cost);
-const a = { …pool };
-for (const c of [“W”,“U”,“B”,“R”,“G”,“C”]) {
+const a = { ...pool };
+for (const c of ["W","U","B","R","G","C"]) {
 if (a[c] < r[c]) return false;
 a[c] -= r[c];
 }
@@ -93,10 +92,10 @@ return Object.values(a).reduce((s, v) => s + v, 0) >= r.generic;
 
 export function payMana(pool, cost) {
 const r = parseMana(cost);
-const p = { …pool };
-for (const c of [“W”,“U”,“B”,“R”,“G”,“C”]) p[c] = Math.max(0, p[c] - r[c]);
+const p = { ...pool };
+for (const c of ["W","U","B","R","G","C"]) p[c] = Math.max(0, p[c] - r[c]);
 let g = r.generic;
-for (const c of [“C”,“G”,“R”,“B”,“U”,“W”]) {
+for (const c of ["C","G","R","B","U","W"]) {
 const s = Math.min(p[c], g);
 p[c] -= s;
 g -= s;
@@ -104,7 +103,7 @@ g -= s;
 return p;
 }
 
-// ─── STATE QUERIES ────────────────────────────────────────────────────────────
+// --- STATE QUERIES ------------------------------------------------------------
 
 export function getBF(state, iid) {
 return state.p.bf.find(c => c.iid === iid) || state.o.bf.find(c => c.iid === iid) || null;
@@ -113,11 +112,11 @@ return state.p.bf.find(c => c.iid === iid) || state.o.bf.find(c => c.iid === iid
 export function getPow(c, state) {
 let p = c.power ?? 0;
 if (c.dynamic) {
-if (c.name === “Plague Rats”)        p = […state.p.bf, …state.o.bf].filter(x => x.name === “Plague Rats”).length;
-else if (c.dynamicType === “swampCount”)   p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes(“Swamp”)).length ?? 0;
-else if (c.dynamicType === “forestCount”)  p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes(“Forest”)).length ?? 0;
-else if (c.dynamicType === “creatureCount”)p = […state.p.bf, …state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
-else if (c.dynamicType === “forestBonus”)  p = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes(“Forest”)) ? 1 : 0);
+if (c.name === "Plague Rats")        p = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
+else if (c.dynamicType === "swampCount")   p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length ?? 0;
+else if (c.dynamicType === "forestCount")  p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Forest")).length ?? 0;
+else if (c.dynamicType === "creatureCount")p = [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
+else if (c.dynamicType === "forestBonus")  p = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes("Forest")) ? 1 : 0);
 }
 const eotPow  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.power || 0), 0);
 const enchPow = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.power || 0), 0);
@@ -127,11 +126,11 @@ return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPo
 export function getTou(c, state) {
 let t = c.toughness ?? 0;
 if (c.dynamic) {
-if (c.name === “Plague Rats”)        t = […state.p.bf, …state.o.bf].filter(x => x.name === “Plague Rats”).length;
-else if (c.dynamicType === “swampCount”)   t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes(“Swamp”)).length ?? 0;
-else if (c.dynamicType === “forestCount”)  t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes(“Forest”)).length ?? 0;
-else if (c.dynamicType === “creatureCount”)t = […state.p.bf, …state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
-else if (c.dynamicType === “forestBonus”)  t = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes(“Forest”)) ? 2 : 1);
+if (c.name === "Plague Rats")        t = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
+else if (c.dynamicType === "swampCount")   t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length ?? 0;
+else if (c.dynamicType === "forestCount")  t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Forest")).length ?? 0;
+else if (c.dynamicType === "creatureCount")t = [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
+else if (c.dynamicType === "forestBonus")  t = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes("Forest")) ? 2 : 1);
 }
 const eotTou  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.toughness || 0), 0);
 const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughness || 0), 0);
@@ -139,8 +138,8 @@ return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTo
 }
 
 export function canBlockDuel(bl, at, defBf) {
-if (hasKw(at, “FLYING”) && !hasKw(bl, “FLYING”) && !hasKw(bl, “REACH”)) return false;
-// Support both string (“B”) and array ([“black”]) protection formats (§17.6)
+if (hasKw(at, "FLYING") && !hasKw(bl, "FLYING") && !hasKw(bl, "REACH")) return false;
+// Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
 if (at.protection) {
   const prot = Array.isArray(at.protection) ? at.protection : [at.protection];
@@ -150,28 +149,28 @@ if (bl.protection) {
   const prot = Array.isArray(bl.protection) ? bl.protection : [bl.protection];
   if (prot.some(q => (PROT_MAP[q] || q) === at.color)) return false;
 }
-if (hasKw(at, “FEAR”) && bl.color !== “B” && !isArt(bl)) return false;
+if (hasKw(at, "FEAR") && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
-// defBf is the defending player's battlefield (optional — skipped if not provided).
-if (hasKw(at, “LANDWALK”) && at.landwalkType && defBf) {
+// defBf is the defending player's battlefield (optional ? skipped if not provided).
+if (hasKw(at, "LANDWALK") && at.landwalkType && defBf) {
   const landSubtype = at.landwalkType.charAt(0).toUpperCase() + at.landwalkType.slice(1).toLowerCase();
   if (defBf.some(c => isLand(c) && c.subtype?.includes(landSubtype))) return false;
 }
 return true;
 }
 
-// ─── STATE MUTATION HELPERS ───────────────────────────────────────────────────
+// --- STATE MUTATION HELPERS ---------------------------------------------------
 
-export function dlog(s, text, type = “info”) {
-return { …s, log: […s.log.slice(-100), { text, type, turn: s.turn }] };
+export function dlog(s, text, type = "info") {
+return { ...s, log: [...s.log.slice(-100), { text, type, turn: s.turn }] };
 }
 
-export function hurt(s, who, amt, src = “”) {
+export function hurt(s, who, amt, src = "") {
 const nl = s[who].life - amt;
-let ns = { …s, [who]: { …s[who], life: nl, lifeAnim: amt > 0 ? “damage” : “heal” } };
-if (amt > 0) ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, “damage”);
-else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, “heal”);
-if (nl <= 0 && !ns.over) ns = { …ns, over: { winner: who === “p” ? “o” : “p”, reason: `${who} reached 0 life` } };
+let ns = { ...s, [who]: { ...s[who], life: nl, lifeAnim: amt > 0 ? "damage" : "heal" } };
+if (amt > 0) ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
+else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
+if (nl <= 0 && !ns.over) ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} reached 0 life` } };
 return ns;
 }
 
@@ -179,45 +178,45 @@ export function drawD(s, who, n = 1) {
 let ns = s;
 for (let i = 0; i < n; i++) {
 if (!ns[who].lib.length) {
-return { …ns, over: { winner: who === “p” ? “o” : “p”, reason: `${who} drew from empty library` } };
+return { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} drew from empty library` } };
 }
-const [top, …rest] = ns[who].lib;
-ns = { …ns, [who]: { …ns[who], lib: rest, hand: […ns[who].hand, top] } };
+const [top, ...rest] = ns[who].lib;
+ns = { ...ns, [who]: { ...ns[who], lib: rest, hand: [...ns[who].hand, top] } };
 }
 return ns;
 }
 
 export function zMove(s, iid, fw, tw, tz) {
 let card = null;
-let ns = { …s };
-for (const z of [“hand”,”bf”,”gy”,”exile”,”lib”]) {
+let ns = { ...s };
+for (const z of ["hand","bf","gy","exile","lib"]) {
 const idx = ns[fw]?.[z]?.findIndex(c => c.iid === iid);
 if (idx !== undefined && idx >= 0) {
 card = ns[fw][z][idx];
-ns = { …ns, [fw]: { …ns[fw], [z]: ns[fw][z].filter((_, i) => i !== idx) } };
+ns = { ...ns, [fw]: { ...ns[fw], [z]: ns[fw][z].filter((_, i) => i !== idx) } };
 break;
 }
 }
 if (!card) return s;
 
 // Cascade aura removal: when a permanent leaves the battlefield,
-// all attached auras go to their controller's graveyard. (SYSTEMS.md §10)
+// all attached auras go to their controller's graveyard. (SYSTEMS.md S10)
 if (card.enchantments?.length) {
 for (const aura of card.enchantments) {
 const auraOwner = aura.controller || fw;
-ns = dlog(ns, `${aura.name} falls off ${card.name}.`, “effect”);
-ns = { …ns, [auraOwner]: { …ns[auraOwner], gy: […ns[auraOwner].gy, { …aura.cardData }] } };
+ns = dlog(ns, `${aura.name} falls off ${card.name}.`, "effect");
+ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...aura.cardData }] } };
 }
 }
 
-let a = { …card, controller: tw };
-if (tz === “bf”) {
-a = { …a, tapped: false, summoningSick: !hasKw(card, “HASTE”), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
+let a = { ...card, controller: tw };
+if (tz === "bf") {
+a = { ...a, tapped: false, summoningSick: !hasKw(card, "HASTE"), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
 }
-if (tz === “gy” || tz === “hand”) {
-a = { …a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
+if (tz === "gy" || tz === "hand") {
+a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
 }
-return { …ns, [tw]: { …ns[tw], [tz]: […ns[tw][tz], a] } };
+return { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
 }
 
 export function checkDeath(s) {
@@ -226,17 +225,17 @@ let ns = s;
 let changed = true;
 while (changed) {
   changed = false;
-  for (const w of [“p”,”o”]) {
+  for (const w of ["p","o"]) {
     const dead = ns[w].bf.filter(c =>
       isCre(c) && (
-        getTou(c, ns) <= 0 ||                           // SBE §5.4 — toughness ≤ 0
-        (c.damage >= getTou(c, ns) && getTou(c, ns) > 0) // SBE §5.5 — lethal damage
+        getTou(c, ns) <= 0 ||                           // SBE S5.4 ? toughness ? 0
+        (c.damage >= getTou(c, ns) && getTou(c, ns) > 0) // SBE S5.5 ? lethal damage
       )
     );
     for (const c of dead) {
       const dyingCard = c;
-      ns = zMove(ns, c.iid, w, w, “gy”);
-      ns = dlog(ns, `${c.name} is destroyed.`, “death”);
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = dlog(ns, `${c.name} is destroyed.`, "death");
       ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w } });
       ns = processTriggerQueue(ns);
       changed = true;
@@ -247,14 +246,14 @@ return ns;
 }
 
 export function burnMana(s, who, ruleset) {
-if (!ruleset.manaBurn) return { …s, [who]: { …s[who], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+if (!ruleset.manaBurn) return { ...s, [who]: { ...s[who], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
 const u = Object.values(s[who].mana).reduce((a, b) => a + b, 0);
-let ns = { …s, [who]: { …s[who], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
-if (u > 0) ns = hurt(ns, who, u, “mana burn”);
+let ns = { ...s, [who]: { ...s[who], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+if (u > 0) ns = hurt(ns, who, u, "mana burn");
 return ns;
 }
 
-// ─── WIN CONDITIONS ───────────────────────────────────────────────────────────
+// --- WIN CONDITIONS -----------------------------------------------------------
 // Checked after every SBE pass. Returns { winner, reason } or null.
 
 export function checkWinConditions(state) {
@@ -266,7 +265,7 @@ export function checkWinConditions(state) {
   return null;
 }
 
-// ─── INTERRUPT PROMPT GUARD ───────────────────────────────────────────────────
+// --- INTERRUPT PROMPT GUARD ---------------------------------------------------
 // Returns true if the human player should be offered a response window.
 
 export function shouldPromptPlayerForResponse(state) {
@@ -279,22 +278,20 @@ export function shouldPromptPlayerForResponse(state) {
   return hasInstant || hasActivatedAbility;
 }
 
-// ─── CASTLE MODIFIER: OVERGROWTH ─────────────────────────────────────────────
+// --- CASTLE MODIFIER: OVERGROWTH ---------------------------------------------
 
 export function applyOvergrowthTap(s, who, iid, mana) {
 const c = s[who].bf.find(x => x.iid === iid);
 if (!c || c.tapped || !isLand(c)) return s;
-const m = mana || c.produces?.[0] || “C”;
-const amount = s.castleMod?.name === “Overgrowth” ? 2 : 1;
-let ns = {
-…s,
-[who]: {
-…s[who],
-bf: s[who].bf.map(x => x.iid === iid ? { …x, tapped: true } : x),
-mana: { …s[who].mana, [m]: (s[who].mana[m] || 0) + amount },
+const m = mana || c.produces?.[0] || "C";
+const amount = s.castleMod?.name === "Overgrowth" ? 2 : 1;
+let ns = { ...s,
+[who]: { ...s[who],
+bf: s[who].bf.map(x => x.iid === iid ? { ...x, tapped: true } : x),
+mana: { ...s[who].mana, [m]: (s[who].mana[m] || 0) + amount },
 },
 };
-ns = dlog(ns, `${who} taps ${c.name} → +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, “mana”);
+ns = dlog(ns, `${who} taps ${c.name} ? +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, "mana");
 const allBF_tap = [...ns.p.bf, ...ns.o.bf];
 if (allBF_tap.some(x => x.id === "mana_flare")) {
 ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, [m]: (ns[who].mana[m] || 0) + 1 } } };
@@ -310,206 +307,206 @@ ns = dlog(ns, `Sunglasses of Urza: ${who} gets +1R.`, "mana");
 return ns;
 }
 
-// ─── EFFECT RESOLVER ─────────────────────────────────────────────────────────
+// --- EFFECT RESOLVER ---------------------------------------------------------
 // All spell/ability effects route through here.
 // Only this function (via DuelCore) may mutate GameState.
 
 export function resolveEff(s, item) {
 const { card, caster, targets, xVal } = item;
-const opp = caster === “p” ? “o” : “p”;
+const opp = caster === "p" ? "o" : "p";
 let ns = s;
 const tgt = targets?.[0];
 const tgtC = tgt ? getBF(ns, tgt) : null;
 
-// Priority 1: custom card handler (spec §7.2)
+// Priority 1: custom card handler (spec S7.2)
 if (card.name && CARD_HANDLERS[card.name]) {
   const result = CARD_HANDLERS[card.name].onResolve(ns, card, targets || []);
   if (result) return result;
 }
 
 switch (card.effect) {
-case “damage3”: {
-if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 3, card.name);
-else if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, damage: c.damage + 3 } : c) } }; ns = checkDeath(ns); }
+case "damage3": {
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name);
+else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 3 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case “damage5”:    ns = hurt(ns, tgt || opp, 5, card.name); break;
-case “damageX”:    { const t2 = tgt === “p” || tgt === “o” ? tgt : opp; ns = hurt(ns, t2, xVal, card.name); break; }
-case “psionicBlast”: ns = hurt(hurt(ns, tgt || opp, 4, card.name), caster, 2, “Psionic Blast”); break;
-case “counter”: {
+case "damage5":    ns = hurt(ns, tgt || opp, 5, card.name); break;
+case "damageX":    { const t2 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t2, xVal, card.name); break; }
+case "psionicBlast": ns = hurt(hurt(ns, tgt || opp, 4, card.name), caster, 2, "Psionic Blast"); break;
+case "counter": {
 const top = ns.stack[ns.stack.length - 2];
 if (top) {
-ns = { …ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { …ns[top.caster], gy: […ns[top.caster].gy, { …top.card }] } };
-ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, “effect”);
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
+ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect");
 }
 break;
 }
-case “counterCreature”: {
+case "counterCreature": {
 const top = ns.stack[ns.stack.length - 2];
-if (top && isCre(top.card)) { ns = { …ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { …ns[top.caster], gy: […ns[top.caster].gy, { …top.card }] } }; ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, “effect”); }
+if (top && isCre(top.card)) { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } }; ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect"); }
 break;
 }
-case “powerSink”: {
+case "powerSink": {
 const top = ns.stack[ns.stack.length - 2];
 if (top) {
-ns = { …ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { …ns[top.caster], gy: […ns[top.caster].gy, { …top.card }] } };
-ns = { …ns, [opp]: { …ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { …c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
-ns = dlog(ns, `Power Sink counters ${top.card?.name} and drains ${opp}'s mana.`, “effect”);
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
+ns = { ...ns, [opp]: { ...ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+ns = dlog(ns, `Power Sink counters ${top.card?.name} and drains ${opp}'s mana.`, "effect");
 }
 break;
 }
-case “draw3”:   ns = drawD(ns, tgt === “p” || tgt === “o” ? tgt : caster, 3); break;
-case “draw1”:   ns = drawD(ns, caster, 1); break;
-case “drawX”:   ns = drawD(ns, caster, xVal); break;
-case “gainLife3”: ns = hurt(ns, caster, -3); break;
-case “gainLifeX”: ns = hurt(ns, caster, -xVal); break;
-case “gainLife1”: ns = hurt(ns, caster, -1); break;
-case “gainLife2”: ns = hurt(ns, caster, -2); break;
-case “gainLife6”: ns = hurt(ns, caster, -6); break;
-case “bounce”: {
-if (tgtC) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “hand”); ns = dlog(ns, `${card.name} returns ${tgtC.name}.`, “effect”); }
+case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
+case "draw1":   ns = drawD(ns, caster, 1); break;
+case "drawX":   ns = drawD(ns, caster, xVal); break;
+case "gainLife3": ns = hurt(ns, caster, -3); break;
+case "gainLifeX": ns = hurt(ns, caster, -xVal); break;
+case "gainLife1": ns = hurt(ns, caster, -1); break;
+case "gainLife2": ns = hurt(ns, caster, -2); break;
+case "gainLife6": ns = hurt(ns, caster, -6); break;
+case "bounce": {
+if (tgtC) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "hand"); ns = dlog(ns, `${card.name} returns ${tgtC.name}.`, "effect"); }
 break;
 }
-case “exileCreature”: {
+case "exileCreature": {
 if (tgtC) {
 const lf = getPow(tgtC, ns);
-ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, ns.ruleset.exileZone ? “exile” : “gy”);
-ns = hurt(ns, tgtC.controller, -lf, “Swords to Plowshares”);
-ns = dlog(ns, `${card.name} exiles ${tgtC.name}.`, “effect”);
+ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, ns.ruleset.exileZone ? "exile" : "gy");
+ns = hurt(ns, tgtC.controller, -lf, "Swords to Plowshares");
+ns = dlog(ns, `${card.name} exiles ${tgtC.name}.`, "effect");
 }
 break;
 }
-case “destroy”: {
+case "destroy": {
 if (tgtC) {
 const r = card.restriction;
 let ok = true;
-if (r === “nonArtifactNonBlack” && (tgtC.color === “B” || isArt(tgtC))) ok = false;
-if (r === “nonBlack” && tgtC.color === “B”) ok = false;
-if (ok) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+if (r === "nonArtifactNonBlack" && (tgtC.color === "B" || isArt(tgtC))) ok = false;
+if (r === "nonBlack" && tgtC.color === "B") ok = false;
+if (ok) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 }
 break;
 }
-case “destroyArtifact”: {
-if (tgtC && isArt(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+case "destroyArtifact": {
+if (tgtC && isArt(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
-case “destroyArtOrEnch”: {
-if (tgtC && (isArt(tgtC) || isEnch(tgtC))) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+case "destroyArtOrEnch": {
+if (tgtC && (isArt(tgtC) || isEnch(tgtC))) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
-case “destroyTargetLand”: {
-if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+case "destroyTargetLand": {
+if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
-case “destroyBlack”: {
-if (tgtC && tgtC.color === “B”) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+case "destroyBlack": {
+if (tgtC && tgtC.color === "B") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
-case “destroyBlueOrCounter”: {
-if (tgtC && tgtC.color === “U”) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
-else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === “U”) { ns = { …ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, “effect”); } }
+case "destroyBlueOrCounter": {
+if (tgtC && tgtC.color === "U") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === "U") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, "effect"); } }
 break;
 }
-case “destroyRedOrCounter”: {
-if (tgtC && tgtC.color === “R”) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
-else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === “R”) { ns = { …ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, “effect”); } }
+case "destroyRedOrCounter": {
+if (tgtC && tgtC.color === "R") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === "R") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, "effect"); } }
 break;
 }
-case “wrathAll”: {
-ns = dlog(ns, “Wrath of God — all creatures destroyed!”, “effect”);
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(isCre)) ns = zMove(ns, c.iid, w, w, “gy”);
+case "wrathAll": {
+ns = dlog(ns, "Wrath of God ? all creatures destroyed!", "effect");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isCre)) ns = zMove(ns, c.iid, w, w, "gy");
 break;
 }
-case “destroyAllLands”: {
-ns = dlog(ns, “Armageddon — all lands destroyed!”, “effect”);
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(isLand)) ns = zMove(ns, c.iid, w, w, “gy”);
+case "destroyAllLands": {
+ns = dlog(ns, "Armageddon ? all lands destroyed!", "effect");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isLand)) ns = zMove(ns, c.iid, w, w, "gy");
 break;
 }
-case “destroyAllEnchantments”: {
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(isEnch)) ns = zMove(ns, c.iid, w, w, “gy”);
-ns = dlog(ns, `${card.name} destroys all enchantments.`, “effect”);
+case "destroyAllEnchantments": {
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isEnch)) ns = zMove(ns, c.iid, w, w, "gy");
+ns = dlog(ns, `${card.name} destroys all enchantments.`, "effect");
 break;
 }
-case “destroyIslands”: {
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(c => isLand(c) && c.subtype?.includes(“Island”))) ns = zMove(ns, c.iid, w, w, “gy”);
-ns = dlog(ns, `${card.name} destroys all Islands.`, “effect”);
+case "destroyIslands": {
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Island"))) ns = zMove(ns, c.iid, w, w, "gy");
+ns = dlog(ns, `${card.name} destroys all Islands.`, "effect");
 break;
 }
-case “destroyPlains”: {
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(c => isLand(c) && c.subtype?.includes(“Plains”))) ns = zMove(ns, c.iid, w, w, “gy”);
-ns = dlog(ns, `${card.name} destroys all Plains.`, “effect”);
+case "destroyPlains": {
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Plains"))) ns = zMove(ns, c.iid, w, w, "gy");
+ns = dlog(ns, `${card.name} destroys all Plains.`, "effect");
 break;
 }
-case “pumpCreature”: {
+case "pumpCreature": {
 if (tgtC && card.mod) {
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, power: (c.power||0)+(card.mod.power||0), toughness: (c.toughness||0)+(card.mod.toughness||0) } : c) } };
-ns = dlog(ns, `${card.name} pumps ${tgtC.name}.`, “effect”);
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+(card.mod.power||0), toughness: (c.toughness||0)+(card.mod.toughness||0) } : c) } };
+ns = dlog(ns, `${card.name} pumps ${tgtC.name}.`, "effect");
 }
 break;
 }
-case “addMana”: {
-const ms = Array.isArray(card.mana) ? card.mana : [card.mana || “C”];
-const mp = { …ns[caster].mana };
-for (const m of ms) if (“WUBRGC”.includes(m)) mp[m] = (mp[m] || 0) + 1;
-ns = { …ns, [caster]: { …ns[caster], mana: mp } };
-ns = dlog(ns, `${card.name} adds mana.`, “mana”);
+case "addMana": {
+const ms = Array.isArray(card.mana) ? card.mana : [card.mana || "C"];
+const mp = { ...ns[caster].mana };
+for (const m of ms) if ("WUBRGC".includes(m)) mp[m] = (mp[m] || 0) + 1;
+ns = { ...ns, [caster]: { ...ns[caster], mana: mp } };
+ns = dlog(ns, `${card.name} adds mana.`, "mana");
 break;
 }
-case “addMana3Any”: {
-const col = item.chosenColor || “C”;
-const mp2 = { …ns[caster].mana };
+case "addMana3Any": {
+const col = item.chosenColor || "C";
+const mp2 = { ...ns[caster].mana };
 mp2[col] = (mp2[col] || 0) + 3;
-ns = { …ns, [caster]: { …ns[caster], mana: mp2 } };
-ns = dlog(ns, `Black Lotus adds 3${col}.`, “mana”);
+ns = { ...ns, [caster]: { ...ns[caster], mana: mp2 } };
+ns = dlog(ns, `Black Lotus adds 3${col}.`, "mana");
 break;
 }
-case “addManaAny”: {
+case "addManaAny": {
 // Birds of Paradise: T: Add one mana of any color.
 // Color is chosen via BopColorPicker UI and pre-set as item.chosenColor,
 // OR dispatched separately via CHOOSE_BOP_COLOR action.
 if (item.chosenColor) {
-const mp = { …ns[caster].mana };
+const mp = { ...ns[caster].mana };
 mp[item.chosenColor] = (mp[item.chosenColor] || 0) + 1;
-ns = { …ns, [caster]: { …ns[caster], mana: mp } };
-ns = dlog(ns, `${card.name} adds 1${item.chosenColor}.`, “mana”);
+ns = { ...ns, [caster]: { ...ns[caster], mana: mp } };
+ns = dlog(ns, `${card.name} adds 1${item.chosenColor}.`, "mana");
 }
 break;
 }
-case “tutor”: {
+case "tutor": {
 const nl = ns[caster].lib.filter(c => !isLand(c));
 if (nl.length) {
 const f = nl[Math.floor(Math.random() * nl.length)];
-ns = zMove(ns, f.iid, caster, caster, “hand”);
-ns = { …ns, [caster]: { …ns[caster], lib: shuffle(ns[caster].lib) } };
-ns = dlog(ns, `${card.name} — found ${f.name}.`, “effect”);
+ns = zMove(ns, f.iid, caster, caster, "hand");
+ns = { ...ns, [caster]: { ...ns[caster], lib: shuffle(ns[caster].lib) } };
+ns = dlog(ns, `${card.name} ? found ${f.name}.`, "effect");
 }
 break;
 }
-case “discardX”: {
+case "discardX": {
 for (let i = 0; i < xVal; i++) {
 if (!ns[opp].hand.length) break;
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { …ns, [opp]: { …ns[opp], hand: ns[opp].hand.filter((*, j) => j !== idx), gy: […ns[opp].gy, dc] } };
-ns = dlog(ns, `${opp} discards ${dc.name}.`, “effect”);
+ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, j) => j !== idx), gy: [...ns[opp].gy, dc] } };
+ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
 }
-case “discardOne”: {
+case "discardOne": {
 if (ns[opp].hand.length) {
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { …ns, [opp]: { …ns[opp], hand: ns[opp].hand.filter((*, i) => i !== idx), gy: […ns[opp].gy, dc] } };
-ns = dlog(ns, `${opp} discards ${dc.name}.`, “effect”);
+ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, i) => i !== idx), gy: [...ns[opp].gy, dc] } };
+ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
 }
-case “wheelOfFortune”: {
-for (const w of [“p”,”o”]) { ns = { …ns, [w]: { …ns[w], gy: […ns[w].gy, …ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
-ns = dlog(ns, “Wheel of Fortune!”, “effect”);
+case "wheelOfFortune": {
+for (const w of ["p","o"]) { ns = { ...ns, [w]: { ...ns[w], gy: [...ns[w].gy, ...ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
+ns = dlog(ns, "Wheel of Fortune!", "effect");
 break;
 }
-case “timetwister”: {
+case "timetwister": {
 const shuffleArr = (arr) => {
 const r = [...arr];
 for (let i = r.length - 1; i > 0; i--) {
@@ -523,89 +520,87 @@ const newLib = shuffleArr([...ns[w].lib, ...ns[w].hand, ...ns[w].gy]);
 ns = { ...ns, [w]: { ...ns[w], lib: newLib, hand: [], gy: [] } };
 ns = drawD(ns, w, 7);
 }
-ns = dlog(ns, 'Timetwister — all players shuffle and draw 7.', 'effect');
+ns = dlog(ns, 'Timetwister ? all players shuffle and draw 7.', 'effect');
 break;
 }
-case “extraTurn”: {
-ns = { …ns, [caster]: { …ns[caster], extraTurns: (ns[caster].extraTurns || 0) + 1 } };
-ns = dlog(ns, `${caster} takes an extra turn!`, “effect”);
+case "extraTurn": {
+ns = { ...ns, [caster]: { ...ns[caster], extraTurns: (ns[caster].extraTurns || 0) + 1 } };
+ns = dlog(ns, `${caster} takes an extra turn!`, "effect");
 break;
 }
-case “regrowth”: {
+case "regrowth": {
 if (ns[caster].gy.length) {
 const top = ns[caster].gy[ns[caster].gy.length - 1];
-ns = zMove(ns, top.iid, caster, caster, “hand”);
-ns = dlog(ns, `Regrowth returns ${top.name}.`, “effect”);
+ns = zMove(ns, top.iid, caster, caster, "hand");
+ns = dlog(ns, `Regrowth returns ${top.name}.`, "effect");
 }
 break;
 }
-case “regrowthCreature”: {
+case "regrowthCreature": {
 const myC = ns[caster].gy.filter(isCre);
-if (myC.length) { const top = myC[myC.length - 1]; ns = zMove(ns, top.iid, caster, caster, “hand”); ns = dlog(ns, `${card.name} returns ${top.name} to hand.`, “effect”); }
+if (myC.length) { const top = myC[myC.length - 1]; ns = zMove(ns, top.iid, caster, caster, "hand"); ns = dlog(ns, `${card.name} returns ${top.name} to hand.`, "effect"); }
 break;
 }
-case “reanimate”: {
-const allGY = […ns[opp].gy, …ns[caster].gy].filter(isCre);
+case "reanimate": {
+const allGY = [...ns[opp].gy, ...ns[caster].gy].filter(isCre);
 if (allGY.length) {
 const oppCres = ns[opp].gy.filter(isCre);
 const target = oppCres.length ? oppCres[oppCres.length - 1] : allGY[allGY.length - 1];
 const fromWho = ns[opp].gy.find(c => c.iid === target.iid) ? opp : caster;
-ns = zMove(ns, target.iid, fromWho, caster, “bf”);
-ns = dlog(ns, `${card.name} returns ${target.name} under ${caster}'s control.`, “effect”);
+ns = zMove(ns, target.iid, fromWho, caster, "bf");
+ns = dlog(ns, `${card.name} returns ${target.name} under ${caster}'s control.`, "effect");
 }
 break;
 }
-case “reanimateOwn”: {
+case "reanimateOwn": {
 const myCreatures = ns[caster].gy.filter(isCre);
-if (myCreatures.length) { const top = myCreatures[myCreatures.length - 1]; ns = zMove(ns, top.iid, caster, caster, “bf”); ns = dlog(ns, `${card.name} returns ${top.name}.`, “effect”); }
+if (myCreatures.length) { const top = myCreatures[myCreatures.length - 1]; ns = zMove(ns, top.iid, caster, caster, "bf"); ns = dlog(ns, `${card.name} returns ${top.name}.`, "effect"); }
 break;
 }
-case “controlCreature”: {
-if (tgtC) { ns = zMove(ns, tgtC.iid, tgtC.controller, caster, “bf”); ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, “effect”); }
+case "controlCreature": {
+if (tgtC) { ns = zMove(ns, tgtC.iid, tgtC.controller, caster, "bf"); ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, "effect"); }
 break;
 }
-case “hurricane”: {
-for (const w of [“p”,“o”]) {
-ns = hurt(ns, w, xVal, “Hurricane”);
-const fl = ns[w].bf.filter(c => isCre(c) && hasKw(c, “FLYING”));
-for (const c of fl) ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { …x, damage: x.damage + xVal } : x) } };
+case "hurricane": {
+for (const w of ["p","o"]) {
+ns = hurt(ns, w, xVal, "Hurricane");
+const fl = ns[w].bf.filter(c => isCre(c) && hasKw(c, "FLYING"));
+for (const c of fl) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
 ns = checkDeath(ns);
 break;
 }
-case “earthquake”: {
-for (const w of [“p”,“o”]) {
-ns = hurt(ns, w, xVal, “Earthquake”);
-const ground = ns[w].bf.filter(c => isCre(c) && !hasKw(c, “FLYING”));
-for (const c of ground) ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { …x, damage: x.damage + xVal } : x) } };
+case "earthquake": {
+for (const w of ["p","o"]) {
+ns = hurt(ns, w, xVal, "Earthquake");
+const ground = ns[w].bf.filter(c => isCre(c) && !hasKw(c, "FLYING"));
+for (const c of ground) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
 ns = checkDeath(ns);
 break;
 }
-case “armageddonDisk”: {
-ns = dlog(ns, “Nevinyrral’s Disk fires!”, “effect”);
-for (const w of [“p”,“o”]) for (const c of […ns[w].bf].filter(c => isCre(c) || isArt(c) || isEnch(c))) ns = zMove(ns, c.iid, w, w, “gy”);
+case "armageddonDisk": {
+ns = dlog(ns, "Nevinyrral's Disk fires!", "effect");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isCre(c) || isArt(c) || isEnch(c))) ns = zMove(ns, c.iid, w, w, "gy");
 break;
 }
-case “enchantCreature”: {
+case "enchantCreature": {
 // Attach aura to target permanent as a static modifier record.
 // getPow/getTou/hasKw read enchantments[].mod. Cascade removal handled by zMove.
-// SYSTEMS.md §10 (Card System), §5.2 (Damage Rules)
+// SYSTEMS.md S10 (Card System), S5.2 (Damage Rules)
 if (tgtC && card.mod) {
 const auraRecord = {
 iid:      card.iid,
 name:     card.name,
 mod:      card.mod,
 controller: caster,
-cardData: { …card },
+cardData: { ...card },
 };
-ns = {
-…ns,
-[tgtC.controller]: {
-…ns[tgtC.controller],
+ns = { ...ns,
+[tgtC.controller]: { ...ns[tgtC.controller],
 bf: ns[tgtC.controller].bf.map(c =>
 c.iid === tgtC.iid
-? { …c, enchantments: […(c.enchantments || []), auraRecord] }
+? { ...c, enchantments: [...(c.enchantments || []), auraRecord] }
 : c
 ),
 },
@@ -613,10 +608,10 @@ c.iid === tgtC.iid
 const mods = [];
 if (card.mod.power)      mods.push(`+${card.mod.power}/+0`);
 if (card.mod.toughness)  mods.push(`+0/+${card.mod.toughness}`);
-if (card.mod.keywords)   mods.push(card.mod.keywords.join(“, “));
+if (card.mod.keywords)   mods.push(card.mod.keywords.join(", "));
 if (card.mod.protection) mods.push(`protection from ${card.mod.protection}`);
-ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(“, “) || “modified”}).`, “effect”);
-// Return early — aura stays attached to the permanent, NOT sent to graveyard.
+ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(", ") || "modified"}).`, "effect");
+// Return early ? aura stays attached to the permanent, NOT sent to graveyard.
 // The caller's post-resolution GY logic uses isPerm() which returns true for
 // Enchantments, so the aura card will not be double-added. Verify this holds
 // for both the CAST_SPELL and RESOLVE_STACK handlers.
@@ -624,225 +619,221 @@ return ns;
 }
 break;
 }
-case “pumpPower”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, power: (c.power||0)+1 } : c) } }; ns = dlog(ns, `${tgtC.name} gets +1/+0.`, “effect”); }
+case "pumpPower": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+1 } : c) } }; ns = dlog(ns, `${tgtC.name} gets +1/+0.`, "effect"); }
 break;
 }
-case “pumpToughness”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, toughness: (c.toughness||0)+1 } : c) } }; }
+case "pumpToughness": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, toughness: (c.toughness||0)+1 } : c) } }; }
 break;
 }
-case “pumpSelf”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, power: (c.power||0)+1 } : c) } }; }
+case "pumpSelf": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+1 } : c) } }; }
 break;
 }
-case “pumpX”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, power: (c.power||0)+xVal } : c) } }; }
+case "pumpX": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+xVal } : c) } }; }
 break;
 }
-case “gainFlying”: {
+case "gainFlying": {
 if (tgtC) {
-const kws = […(tgtC.keywords||[])];
-if (!kws.includes(“FLYING”)) kws.push(“FLYING”);
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, keywords: kws } : c) } };
-ns = dlog(ns, `${tgtC.name} gains flying.`, “effect”);
+const kws = [...(tgtC.keywords||[])];
+if (!kws.includes("FLYING")) kws.push("FLYING");
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, keywords: kws } : c) } };
+ns = dlog(ns, `${tgtC.name} gains flying.`, "effect");
 }
 break;
 }
-case “pumpPowerEOT”: {
+case "pumpPowerEOT": {
 // Shivan Dragon R: +1/+0 until end of turn. Stored in eotBuffs[], purged at CLEANUP.
-// SYSTEMS.md §3.1 (End Phase: expire temporary modifiers)
+// SYSTEMS.md S3.1 (End Phase: expire temporary modifiers)
 const host = tgtC || ns[caster].bf.find(c => c.iid === item.card.iid);
 if (host) {
-ns = {
-…ns,
-[host.controller]: {
-…ns[host.controller],
+ns = { ...ns,
+[host.controller]: { ...ns[host.controller],
 bf: ns[host.controller].bf.map(c =>
 c.iid === host.iid
-? { …c, eotBuffs: […(c.eotBuffs || []), { power: 1 }] }
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1 }] }
 : c
 ),
 },
 };
-ns = dlog(ns, `${host.name} gets +1/+0 until end of turn.`, “effect”);
+ns = dlog(ns, `${host.name} gets +1/+0 until end of turn.`, "effect");
 }
 break;
 }
-case “gainFlyingEOT”: {
+case "gainFlyingEOT": {
 // Goblin Balloon Brigade R: gains flying until end of turn.
-// Stored in eotBuffs[], purged at CLEANUP. hasKw() reads eotBuffs. SYSTEMS.md §9
+// Stored in eotBuffs[], purged at CLEANUP. hasKw() reads eotBuffs. SYSTEMS.md S9
 const self = ns[caster].bf.find(c => c.iid === item.card.iid);
-if (self && !hasKw(self, “FLYING”)) {
-ns = {
-…ns,
-[caster]: {
-…ns[caster],
+if (self && !hasKw(self, "FLYING")) {
+ns = { ...ns,
+[caster]: { ...ns[caster],
 bf: ns[caster].bf.map(c =>
 c.iid === self.iid
-? { …c, eotBuffs: […(c.eotBuffs || []), { keywords: [“FLYING”] }] }
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: ["FLYING"] }] }
 : c
 ),
 },
 };
-ns = dlog(ns, `${self.name} gains flying until end of turn.`, “effect”);
+ns = dlog(ns, `${self.name} gains flying until end of turn.`, "effect");
 }
 break;
 }
-case “grantFlying”: {
+case "grantFlying": {
 if (tgtC) {
-const kws2 = […(tgtC.keywords||[])];
-if (!kws2.includes(“FLYING”)) kws2.push(“FLYING”);
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, keywords: kws2 } : c) } };
-ns = dlog(ns, `${tgtC.name} gains flying.`, “effect”);
+const kws2 = [...(tgtC.keywords||[])];
+if (!kws2.includes("FLYING")) kws2.push("FLYING");
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, keywords: kws2 } : c) } };
+ns = dlog(ns, `${tgtC.name} gains flying.`, "effect");
 }
 break;
 }
-case “ping”: {
-if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 1, card.name);
-else if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
+case "ping": {
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case “damage1”: {
-if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 1, card.name);
-else if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
+case "damage1": {
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case “damage2”: {
-if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 2, card.name);
-else if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, damage: c.damage+2 } : c) } }; ns = checkDeath(ns); }
+case "damage2": {
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 2, card.name);
+else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+2 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case “destroyTapped”: {
-if (tgtC && tgtC.tapped) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, “gy”); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, “effect”); }
+case "destroyTapped": {
+if (tgtC && tgtC.tapped) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
-case “regenerate”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, regenerating: true } : c) } }; ns = dlog(ns, `${tgtC.name} will regenerate.`, “effect”); }
+case "regenerate": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, regenerating: true } : c) } }; ns = dlog(ns, `${tgtC.name} will regenerate.`, "effect"); }
 break;
 }
-case “regenerateTarget”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, regenerating: true } : c) } }; }
+case "regenerateTarget": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, regenerating: true } : c) } }; }
 break;
 }
-case “paralyze”: {
-if (tgtC) { ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, paralyzed: true, tapped: true } : c) } }; ns = dlog(ns, `${tgtC?.name} is paralyzed.`, “effect”); }
+case "paralyze": {
+if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, paralyzed: true, tapped: true } : c) } }; ns = dlog(ns, `${tgtC?.name} is paralyzed.`, "effect"); }
 break;
 }
-case “pestilence”: {
-for (const w of [“p”,“o”]) {
-ns = hurt(ns, w, 1, “Pestilence”);
-for (const c of ns[w].bf.filter(isCre)) ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { …x, damage: x.damage+1 } : x) } };
+case "pestilence": {
+for (const w of ["p","o"]) {
+ns = hurt(ns, w, 1, "Pestilence");
+for (const c of ns[w].bf.filter(isCre)) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage+1 } : x) } };
 }
 ns = checkDeath(ns);
 break;
 }
-case “orcishArtillery”: {
-ns = hurt(ns, tgt === “o” || tgt === “p” ? tgt : opp, 2, card.name);
+case "orcishArtillery": {
+ns = hurt(ns, tgt === "o" || tgt === "p" ? tgt : opp, 2, card.name);
 ns = hurt(ns, caster, 3, card.name);
 break;
 }
-case “fog”: {
-ns = { …ns, fogActive: true };
-ns = dlog(ns, `${card.name} — combat damage prevented this turn.`, “effect”);
+case "fog": {
+ns = { ...ns, fogActive: true };
+ns = dlog(ns, `${card.name} ? combat damage prevented this turn.`, "effect");
 break;
 }
-case “balance”: {
+case "balance": {
 const minLands = Math.min(ns.p.bf.filter(isLand).length, ns.o.bf.filter(isLand).length);
 const minHand  = Math.min(ns.p.hand.length, ns.o.hand.length);
-for (const w of [“p”,“o”]) {
+for (const w of ["p","o"]) {
 const excess = ns[w].bf.filter(isLand).slice(minLands);
-for (const l of excess) ns = zMove(ns, l.iid, w, w, “gy”);
-while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = { …ns, [w]: { …ns[w], hand: ns[w].hand.slice(0,-1), gy: […ns[w].gy, disc] } }; }
+for (const l of excess) ns = zMove(ns, l.iid, w, w, "gy");
+while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-1), gy: [...ns[w].gy, disc] } }; }
 }
-ns = dlog(ns, “Balance — players equalize lands and hands.”, “effect”);
+ns = dlog(ns, "Balance ? players equalize lands and hands.", "effect");
 break;
 }
-case “drainPower”: {
+case "drainPower": {
 const oppLands = ns[opp].bf.filter(c => isLand(c) && !c.tapped);
-ns = { …ns, [opp]: { …ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { …c, tapped: true } : c) } };
-const mp = { …ns[caster].mana };
-oppLands.forEach(l => { const m = l.produces?.[0] || “C”; mp[m] = (mp[m] || 0) + 1; });
-ns = { …ns, [caster]: { …ns[caster], mana: mp } };
-ns = dlog(ns, `${card.name} drains opponent's mana.`, “effect”);
+ns = { ...ns, [opp]: { ...ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c) } };
+const mp = { ...ns[caster].mana };
+oppLands.forEach(l => { const m = l.produces?.[0] || "C"; mp[m] = (mp[m] || 0) + 1; });
+ns = { ...ns, [caster]: { ...ns[caster], mana: mp } };
+ns = dlog(ns, `${card.name} drains opponent's mana.`, "effect");
 break;
 }
-case “manaShort”: {
+case "manaShort": {
 const who2 = tgt || opp;
-ns = { …ns, [who2]: { …ns[who2], bf: ns[who2].bf.map(c => isLand(c) ? { …c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
-ns = dlog(ns, `${card.name} taps all lands and drains mana pool.`, “effect”);
+ns = { ...ns, [who2]: { ...ns[who2], bf: ns[who2].bf.map(c => isLand(c) ? { ...c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+ns = dlog(ns, `${card.name} taps all lands and drains mana pool.`, "effect");
 break;
 }
-case “tapTarget”: {
-if (tgtC) ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, tapped: true } : c) } };
-ns = dlog(ns, `${card.name} taps ${tgtC?.name || "target"}.`, “effect”);
+case "tapTarget": {
+if (tgtC) ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+ns = dlog(ns, `${card.name} taps ${tgtC?.name || "target"}.`, "effect");
 break;
 }
-case “mill2”: {
+case "mill2": {
 for (let i = 0; i < 2; i++) {
 if (!ns[opp].lib.length) break;
-const [top, …rest] = ns[opp].lib;
-ns = { …ns, [opp]: { …ns[opp], lib: rest, gy: […ns[opp].gy, top] } };
+const [top, ...rest] = ns[opp].lib;
+ns = { ...ns, [opp]: { ...ns[opp], lib: rest, gy: [...ns[opp].gy, top] } };
 }
-ns = dlog(ns, `${card.name} mills 2 cards.`, “effect”);
+ns = dlog(ns, `${card.name} mills 2 cards.`, "effect");
 break;
 }
-case “sacrificeForMana”: {
+case "sacrificeForMana": {
 const cres = ns[caster].bf.filter(isCre);
 if (cres.length) {
 const sac = cres[0];
-ns = zMove(ns, sac.iid, caster, caster, “gy”);
-const mp3 = { …ns[caster].mana }; mp3.C = (mp3.C || 0) + 2;
-ns = { …ns, [caster]: { …ns[caster], mana: mp3 } };
-ns = dlog(ns, `${sac.name} sacrificed for CC.`, “mana”);
+ns = zMove(ns, sac.iid, caster, caster, "gy");
+const mp3 = { ...ns[caster].mana }; mp3.C = (mp3.C || 0) + 2;
+ns = { ...ns, [caster]: { ...ns[caster], mana: mp3 } };
+ns = dlog(ns, `${sac.name} sacrificed for CC.`, "mana");
 }
 break;
 }
-case “untapLand”: {
+case "untapLand": {
 const tland = tgtC || ns[caster].bf.filter(isLand)[0];
-if (tland) ns = { …ns, [tland.controller]: { …ns[tland.controller], bf: ns[tland.controller].bf.map(c => c.iid === tland.iid ? { …c, tapped: false } : c) } };
+if (tland) ns = { ...ns, [tland.controller]: { ...ns[tland.controller], bf: ns[tland.controller].bf.map(c => c.iid === tland.iid ? { ...c, tapped: false } : c) } };
 break;
 }
-case “untapSelf”: {
+case "untapSelf": {
 const self = tgtC || ns[caster].bf.find(c => c.id === card.id);
-if (self) ns = { …ns, [self.controller]: { …ns[self.controller], bf: ns[self.controller].bf.map(c => c.iid === self.iid ? { …c, tapped: false } : c) } };
+if (self) ns = { ...ns, [self.controller]: { ...ns[self.controller], bf: ns[self.controller].bf.map(c => c.iid === self.iid ? { ...c, tapped: false } : c) } };
 break;
 }
-case “berserk”: {
+case "berserk": {
 if (tgtC) {
 const pow = getPow(tgtC, ns);
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, power: (c.power||0)+pow, keywords: […(c.keywords||[]),“TRAMPLE”], berserked: true } : c) } };
-ns = dlog(ns, `Berserk doubles ${tgtC.name}'s power.`, “effect”);
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+pow, keywords: [...(c.keywords||[]),"TRAMPLE"], berserked: true } : c) } };
+ns = dlog(ns, `Berserk doubles ${tgtC.name}'s power.`, "effect");
 }
 break;
 }
-case “forkSpell”: {
+case "forkSpell": {
 const top = ns.stack[ns.stack.length - 2];
-if (top) { ns = resolveEff(ns, { …top, id: makeId(), caster }); ns = dlog(ns, `Fork copies ${top.card.name}.`, “effect”); }
+if (top) { ns = resolveEff(ns, { ...top, id: makeId(), caster }); ns = dlog(ns, `Fork copies ${top.card.name}.`, "effect"); }
 break;
 }
-case “drainLife”: {
+case "drainLife": {
 if (tgtC) {
-ns = { …ns, [tgtC.controller]: { …ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { …c, damage: c.damage+xVal } : c) } };
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+xVal } : c) } };
 ns = checkDeath(ns);
 ns = hurt(ns, caster, -xVal);
-} else if (tgt === “p” || tgt === “o”) {
-ns = hurt(ns, tgt, xVal, “Drain Life”);
+} else if (tgt === "p" || tgt === "o") {
+ns = hurt(ns, tgt, xVal, "Drain Life");
 ns = hurt(ns, caster, -xVal);
 }
 break;
 }
-case “syphonSoul”: ns = hurt(hurt(ns, opp, 2, “Syphon Soul”), caster, -2); break;
-case “shuffleGraveyardIn”: {
+case "syphonSoul": ns = hurt(hurt(ns, opp, 2, "Syphon Soul"), caster, -2); break;
+case "shuffleGraveyardIn": {
 const who3 = tgt || caster;
-ns = { …ns, [who3]: { …ns[who3], lib: shuffle([…ns[who3].lib, …ns[who3].gy]), gy: [] } };
-ns = dlog(ns, `${card.name} shuffles graveyard into library.`, “effect”);
+ns = { ...ns, [who3]: { ...ns[who3], lib: shuffle([...ns[who3].lib, ...ns[who3].gy]), gy: [] } };
+ns = dlog(ns, `${card.name} shuffles graveyard into library.`, "effect");
 break;
 }
-case “bazaarActivate”: {
+case "bazaarActivate": {
 ns = drawD(ns, caster, 2);
-for (let i = 0; i < 3; i++) { if (!ns[caster].hand.length) break; const disc = ns[caster].hand[ns[caster].hand.length-1]; ns = { …ns, [caster]: { …ns[caster], hand: ns[caster].hand.slice(0,-1), gy: […ns[caster].gy, disc] } }; }
-ns = dlog(ns, “Bazaar: drew 2, discarded 3.”, “draw”);
+for (let i = 0; i < 3; i++) { if (!ns[caster].hand.length) break; const disc = ns[caster].hand[ns[caster].hand.length-1]; ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0,-1), gy: [...ns[caster].gy, disc] } }; }
+ns = dlog(ns, "Bazaar: drew 2, discarded 3.", "draw");
 break;
 }
 case "counterBlack": {
@@ -884,7 +875,7 @@ ns = dlog(ns, `${tgtC.name} must attack this turn.`, "effect");
 }
 break;
 }
-case “triskelionPing”: {
+case "triskelionPing": {
   const tri = ns[caster].bf.find(c => c.iid === card.iid);
   if (tri && (tri.counters?.P1P1 || 0) > 0) {
     ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
@@ -892,48 +883,47 @@ case “triskelionPing”: {
         ? { ...c, counters: { ...c.counters, P1P1: (c.counters.P1P1 || 0) - 1 } }
         : c
     ) } };
-    if (tgt === “p” || tgt === “o”) ns = hurt(ns, tgt, 1, card.name);
+    if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
     else if (tgtC) {
       ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
         c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c
       ) } };
       ns = checkDeath(ns);
     }
-    ns = dlog(ns, `${card.name} removes a counter and deals 1 damage.`, “effect”);
+    ns = dlog(ns, `${card.name} removes a counter and deals 1 damage.`, "effect");
   }
   break;
 }
-case “stub”: console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, “effect”); break;
-default:      ns = dlog(ns, `${card.name} resolves.`, “effect”);
+case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, "effect"); break;
+default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
 }
 
-// ─── COMBAT RESOLUTION ───────────────────────────────────────────────────────
+// --- COMBAT RESOLUTION -------------------------------------------------------
 
 export function resolveCombat(s) {
 let ns = s;
 if (!ns.attackers.length) return ns;
 
 if (ns.fogActive) {
-ns = dlog(ns, “🌫 Fog prevents all combat damage!”, “effect”);
-ns = { …ns, attackers:[], blockers:{}, fogActive:false };
-for (const w of [“p”,“o”]) ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(c => ({ …c, attacking:false, blocking:null })) } };
+ns = dlog(ns, "? Fog prevents all combat damage!", "effect");
+ns = { ...ns, attackers:[], blockers:{}, fogActive:false };
+for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => ({ ...c, attacking:false, blocking:null })) } };
 return ns;
 }
 
-ns = dlog(ns, “⚔ Combat damage resolving…”, “combat”);
+ns = dlog(ns, "? Combat damage resolving?", "combat");
 
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
 if (!att) continue;
 const ap = getPow(att, ns);
 const actrl = att.controller;
-const defW = actrl === “p” ? “o” : “p”;
-const hasLifelink = hasKw(att, “LIFELINK”) || (ns.castleMod?.name === “Death’s Embrace” && actrl === “o”);
+const defW = actrl === "p" ? "o" : "p";
+const hasLifelink = hasKw(att, "LIFELINK") || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
 const blockers = ns[defW].bf.filter(c => c.blocking === attId);
 
-```
 if (!blockers.length) {
   ns = hurt(ns, defW, ap, att.name);
   if (hasLifelink) ns = hurt(ns, actrl, -ap);
@@ -945,7 +935,7 @@ if (!blockers.length) {
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
 
-    // §17.6.3: protection enforced inline, no trigger queue
+    // S17.6.3: protection enforced inline, no trigger queue
     const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
     const attProt = Array.isArray(att.protection) ? att.protection : (att.protection ? [att.protection] : []);
     const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
@@ -971,32 +961,31 @@ if (!blockers.length) {
   }
   if (hasKw(att, "TRAMPLE") && rem > 0) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
-```
 
 }
 
 ns = checkDeath(ns);
-ns = { …ns, attackers:[], blockers:{} };
-for (const w of [“p”,“o”]) ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(c => ({ …c, attacking:false, blocking:null })) } };
+ns = { ...ns, attackers:[], blockers:{} };
+for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => ({ ...c, attacking:false, blocking:null })) } };
 return ns;
 }
 
-// ─── PHASE ADVANCEMENT ───────────────────────────────────────────────────────
+// --- PHASE ADVANCEMENT -------------------------------------------------------
 
 export const PHASE_SEQ = PHASE_SEQUENCE;
 export const PHASE_LBL = {
-  [PHASE.UNTAP]:            “Untap”,
-  [PHASE.UPKEEP]:           “Upkeep”,
-  [PHASE.DRAW]:             “Draw”,
-  [PHASE.MAIN_1]:           “Main 1”,
-  [PHASE.COMBAT_BEGIN]:     “Cbt Begin”,
-  [PHASE.COMBAT_ATTACKERS]: “Attackers”,
-  [PHASE.COMBAT_BLOCKERS]:  “Blockers”,
-  [PHASE.COMBAT_DAMAGE]:    “Combat”,
-  [PHASE.COMBAT_END]:       “Cbt End”,
-  [PHASE.MAIN_2]:           “Main 2”,
-  [PHASE.END]:              “End”,
-  [PHASE.CLEANUP]:          “Cleanup”,
+  [PHASE.UNTAP]:            "Untap",
+  [PHASE.UPKEEP]:           "Upkeep",
+  [PHASE.DRAW]:             "Draw",
+  [PHASE.MAIN_1]:           "Main 1",
+  [PHASE.COMBAT_BEGIN]:     "Cbt Begin",
+  [PHASE.COMBAT_ATTACKERS]: "Attackers",
+  [PHASE.COMBAT_BLOCKERS]:  "Blockers",
+  [PHASE.COMBAT_DAMAGE]:    "Combat",
+  [PHASE.COMBAT_END]:       "Cbt End",
+  [PHASE.MAIN_2]:           "Main 2",
+  [PHASE.END]:              "End",
+  [PHASE.CLEANUP]:          "Cleanup",
 };
 export const COMBAT_PHASES = [
   PHASE.COMBAT_BEGIN,
@@ -1010,18 +999,18 @@ export function advPhase(s) {
 const idx = PHASE_SEQ.indexOf(s.phase);
 const next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
 const turnChange = next === PHASE.UNTAP;
-let ns = { …s, phase: next };
+let ns = { ...s, phase: next };
 
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
-for (const w of [“p”,“o”]) ns = burnMana(ns, w, ns.ruleset);
+for (const w of ["p","o"]) ns = burnMana(ns, w, ns.ruleset);
 
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
-for (const mw of [“p”,”o”]) {
+for (const mw of ["p","o"]) {
 for (const mc of [...ns[mw].bf].filter(x => x.mustAttack)) {
 if (!ns.attackers.includes(mc.iid)) {
-ns = zMove(ns, mc.iid, mw, mw, “gy”);
-ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, “death”);
+ns = zMove(ns, mc.iid, mw, mw, "gy");
+ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, "death");
 } else {
 ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
 }
@@ -1034,24 +1023,24 @@ return ns;
 }
 
 if (turnChange) {
-const whoExtra = [“p”,“o”].find(w => ns[w].extraTurns > 0);
+const whoExtra = ["p","o"].find(w => ns[w].extraTurns > 0);
 if (whoExtra) {
-ns = { …ns, [whoExtra]: { …ns[whoExtra], extraTurns: ns[whoExtra].extraTurns - 1 } };
-ns = dlog(ns, `${whoExtra} takes an extra turn!`, “info”);
+ns = { ...ns, [whoExtra]: { ...ns[whoExtra], extraTurns: ns[whoExtra].extraTurns - 1 } };
+ns = dlog(ns, `${whoExtra} takes an extra turn!`, "info");
 } else {
-const nx = ns.active === “p” ? “o” : “p”;
-ns = { …ns, active: nx };
-ns = dlog(ns, `── Turn ${ns.turn + 1} · ${nx} ──`, “phase”);
+const nx = ns.active === "p" ? "o" : "p";
+ns = { ...ns, active: nx };
+ns = dlog(ns, `-- Turn ${ns.turn + 1} ? ${nx} --`, "phase");
 }
-ns = { …ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0 };
+ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0 };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
 const winterOrbOut = allBF_s.some(x => x.id === "winter_orb" && !x.tapped);
 const smokeOut     = allBF_s.some(x => x.id === "smoke");
 let landsUntapped = 0, cresUntapped = 0;
-ns = { …ns, [ns.active]: { …ns[ns.active], bf: ns[ns.active].bf.map(c => {
-const base = { …c, summoningSick:false, damage:0 };
+ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
+const base = { ...c, summoningSick:false, damage:0 };
 if (isLand(c)) {
 if (winterOrbOut && landsUntapped >= 1) return base;
 landsUntapped++;
@@ -1071,109 +1060,109 @@ return { ...base, tapped:false };
 if (next === PHASE.UPKEEP) {
 ns = emitEvent(ns, { type: 'ON_UPKEEP_START', payload: { activePlayer: ns.active } });
 ns = processTriggerQueue(ns);
-for (const w of [“p”,”o”]) {
-for (const c of […ns[w].bf]) {
+for (const w of ["p","o"]) {
+for (const c of [...ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
 switch (c.upkeep) {
-case “selfDamage1”: ns = hurt(ns, w, 1, c.name); break;
-case “forestChoice”: {
-const pool = { …ns[w].mana };
-if ((pool.G || 0) >= 4) { pool.G -= 4; ns = { …ns, [w]: { …ns[w], mana: pool } }; ns = dlog(ns, `${c.name}: paid GGGG upkeep.`, “mana”); }
+case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
+case "forestChoice": {
+const pool = { ...ns[w].mana };
+if ((pool.G || 0) >= 4) { pool.G -= 4; ns = { ...ns, [w]: { ...ns[w], mana: pool } }; ns = dlog(ns, `${c.name}: paid GGGG upkeep.`, "mana"); }
 else ns = hurt(ns, w, 8, `${c.name} upkeep`);
 break;
 }
-case “lordsUpkeep”: {
+case "lordsUpkeep": {
 const others = ns[w].bf.filter(x => isCre(x) && x.iid !== c.iid);
-if (others.length) { ns = zMove(ns, others[0].iid, w, w, “gy”); ns = dlog(ns, `Lord of the Pit devours ${others[0].name}.`, “death”); }
-else ns = hurt(ns, w, 7, “Lord of the Pit”);
+if (others.length) { ns = zMove(ns, others[0].iid, w, w, "gy"); ns = dlog(ns, `Lord of the Pit devours ${others[0].name}.`, "death"); }
+else ns = hurt(ns, w, 7, "Lord of the Pit");
 break;
 }
-case “sacrificeSelf”: if (next === PHASE.CLEANUP) ns = zMove(ns, c.iid, w, w, “gy”); break;
-case “sacrificeUnless_U”: {
-const mp = { …ns[w].mana };
-if ((mp.U || 0) >= 1) { mp.U–; ns = { …ns, [w]: { …ns[w], mana: mp } }; }
-else { ns = zMove(ns, c.iid, w, w, “gy”); ns = dlog(ns, `${c.name} sacrificed.`, “death”); }
+case "sacrificeSelf": if (next === PHASE.CLEANUP) ns = zMove(ns, c.iid, w, w, "gy"); break;
+case "sacrificeUnless_U": {
+const mp = { ...ns[w].mana };
+if ((mp.U || 0) >= 1) { mp.U--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
 break;
 }
-case “blackVise”: {
-const opp2 = w === “p” ? “o” : “p”;
+case "blackVise": {
+const opp2 = w === "p" ? "o" : "p";
 const over = Math.max(0, ns[opp2].hand.length - 4);
-if (over > 0) ns = hurt(ns, opp2, over, “Black Vise”);
+if (over > 0) ns = hurt(ns, opp2, over, "Black Vise");
 break;
 }
-case “howlingMine”: for (const dw of [“p”,“o”]) ns = drawD(ns, dw, 1); ns = dlog(ns, “Howling Mine: each player draws a card.”, “draw”); break;
-case “ivoryTower”: { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, “Ivory Tower”); break; }
-case “sylvanLibrary”: {
+case "howlingMine": for (const dw of ["p","o"]) ns = drawD(ns, dw, 1); ns = dlog(ns, "Howling Mine: each player draws a card.", "draw"); break;
+case "ivoryTower": { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, "Ivory Tower"); break; }
+case "sylvanLibrary": {
 ns = drawD(ns, w, 2);
-if (w === “o” && ns[w].hand.length >= 2) {
+if (w === "o" && ns[w].hand.length >= 2) {
 const put = ns[w].hand.slice(-2);
-ns = { …ns, [w]: { …ns[w], hand: ns[w].hand.slice(0,-2), lib: […put, …ns[w].lib] } };
+ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-2), lib: [...put, ...ns[w].lib] } };
 }
-if (w === “p”) ns = dlog(ns, “Sylvan Library: drew 2 extra cards.”, “draw”);
+if (w === "p") ns = dlog(ns, "Sylvan Library: drew 2 extra cards.", "draw");
 break;
 }
-case “karmaUpkeep”: {
-const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes(“Swamp”)).length;
-if (kSwamps > 0) ns = hurt(ns, w, kSwamps, “Karma”);
+case "karmaUpkeep": {
+const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length;
+if (kSwamps > 0) ns = hurt(ns, w, kSwamps, "Karma");
 break;
 }
-case “landTax”: {
+case "landTax": {
   if (w !== ns.active) break;
-  const ltOpp = w === “p” ? “o” : “p”;
+  const ltOpp = w === "p" ? "o" : "p";
   if (ns[ltOpp].bf.filter(isLand).length > ns[w].bf.filter(isLand).length) {
-    const basics = ns[w].lib.filter(lc => isLand(lc) && lc.subtype?.startsWith(“Basic”));
+    const basics = ns[w].lib.filter(lc => isLand(lc) && lc.subtype?.startsWith("Basic"));
     const fetched = basics.slice(0, 3);
-    for (const land of fetched) ns = zMove(ns, land.iid, w, w, “hand”);
+    for (const land of fetched) ns = zMove(ns, land.iid, w, w, "hand");
     if (fetched.length) {
       ns = { ...ns, [w]: { ...ns[w], lib: shuffle(ns[w].lib) } };
-      ns = dlog(ns, `Land Tax: ${w} fetches ${fetched.length} basic land(s).`, “effect”);
+      ns = dlog(ns, `Land Tax: ${w} fetches ${fetched.length} basic land(s).`, "effect");
     }
   }
   break;
 }
-case “erhnamsUpkeep”: {
+case "erhnamsUpkeep": {
   if (w !== ns.active) break;
-  const erOpp = w === “p” ? “o” : “p”;
+  const erOpp = w === "p" ? "o" : "p";
   const erTargets = ns[erOpp].bf.filter(isCre);
   if (erTargets.length) {
     const chosen = erTargets[Math.floor(Math.random() * erTargets.length)];
     const kws = [...(chosen.keywords || [])];
-    if (!kws.includes(“FORESTWALK”)) kws.push(“FORESTWALK”);
+    if (!kws.includes("FORESTWALK")) kws.push("FORESTWALK");
     ns = { ...ns, [erOpp]: { ...ns[erOpp], bf: ns[erOpp].bf.map(x =>
       x.iid === chosen.iid ? { ...x, keywords: kws } : x
     ) } };
-    ns = dlog(ns, `Erhnam Djinn grants forestwalk to ${chosen.name}.`, “effect”);
+    ns = dlog(ns, `Erhnam Djinn grants forestwalk to ${chosen.name}.`, "effect");
   }
   break;
 }
-case “demonicHordesUpkeep”: {
+case "demonicHordesUpkeep": {
   const demonPool = { ...ns[w].mana };
   if ((demonPool.B || 0) >= 3) {
     demonPool.B -= 3;
     ns = { ...ns, [w]: { ...ns[w], mana: demonPool } };
-    ns = dlog(ns, `${c.name}: paid BBB upkeep.`, “mana”);
+    ns = dlog(ns, `${c.name}: paid BBB upkeep.`, "mana");
   } else {
     ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
     ns = hurt(ns, w, 3, c.name);
-    ns = dlog(ns, `${c.name}: failed to pay BBB — tapped and took 3 damage.`, “damage”);
+    ns = dlog(ns, `${c.name}: failed to pay BBB ? tapped and took 3 damage.`, "damage");
   }
   break;
 }
-case “powerSurgeUpkeep”: {
+case "powerSurgeUpkeep": {
   // TODO: requires untapped-land count tracked from start of previous upkeep
-  console.warn(`STUB: Power Surge upkeep not yet implemented — needs untapped-land state tracking`);
-  ns = dlog(ns, `Power Surge: upkeep damage pending.`, “effect”);
+  console.warn(`STUB: Power Surge upkeep not yet implemented ? needs untapped-land state tracking`);
+  ns = dlog(ns, `Power Surge: upkeep damage pending.`, "effect");
   break;
 }
 default: break;
 }
 }
 }
-if (ns.fogActive) ns = { …ns, fogActive: false };
+if (ns.fogActive) ns = { ...ns, fogActive: false };
 }
 
 if (next === PHASE.DRAW) {
-if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === “p”)) {
+if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
 ns = drawD(ns, ns.active);
 // SBE: check deck-out
 const drawWin = checkWinConditions(ns);
@@ -1186,26 +1175,26 @@ ns = { ...ns, turnState: { ...ns.turnState, damageLog: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
-ns = { …ns, [ac]: { …ns[ac], hand: ns[ac].hand.slice(0,-1), gy: […ns[ac].gy, disc] } };
+ns = { ...ns, [ac]: { ...ns[ac], hand: ns[ac].hand.slice(0,-1), gy: [...ns[ac].gy, disc] } };
 }
-// Expire all EOT buffs on all permanents. SYSTEMS.md §3.1
-for (const w of [“p”,”o”]) {
-ns = { …ns, [w]: { …ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { …c, eotBuffs: [] } : c) } };
+// Expire all EOT buffs on all permanents. SYSTEMS.md S3.1
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c, eotBuffs: [] } : c) } };
 }
 // Clear mustAttack flags at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, mustAttack: false } : c) } };
 }
 // Castle Inferno modifier
-if (ns.castleMod?.name === “Inferno”) { ns = hurt(ns, “p”, 1, “Inferno”); ns = hurt(ns, “o”, 1, “Inferno”); }
+if (ns.castleMod?.name === "Inferno") { ns = hurt(ns, "p", 1, "Inferno"); ns = hurt(ns, "o", 1, "Inferno"); }
 }
 
 return ns;
 }
 
-// ─── TRIGGERED ABILITY PIPELINE ──────────────────────────────────────────────
-// §17 (SYSTEMS.md): deterministic trigger detection, queuing, and resolution.
-// All helpers are pure functions: (GameState, ...) → GameState.
+// --- TRIGGERED ABILITY PIPELINE ----------------------------------------------
+// S17 (SYSTEMS.md): deterministic trigger detection, queuing, and resolution.
+// All helpers are pure functions: (GameState, ...) ? GameState.
 
 function evaluateCondition(state, card, condition, payload) {
   if (condition.type === 'damagedByThisTurn') {
@@ -1318,11 +1307,11 @@ function processTriggerQueue(state) {
   return s;
 }
 
-// ─── DUEL STATE BUILDER ───────────────────────────────────────────────────────
+// --- DUEL STATE BUILDER -------------------------------------------------------
 
 export function buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled) {
-const pd = shuffle(pDeckIds.map(id => makeCardInstance(id, “p”)).filter(Boolean));
-const od = shuffle((ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck).map(id => makeCardInstance(id, “o”)).filter(Boolean));
+const pd = shuffle(pDeckIds.map(id => makeCardInstance(id, "p")).filter(Boolean));
+const od = shuffle((ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck).map(id => makeCardInstance(id, "o")).filter(Boolean));
 const ph = pd.splice(0, ruleset.startingHandSize);
 const oh = od.splice(0, ruleset.startingHandSize);
 const startLife = overworldHP ?? ruleset.startingLife;
@@ -1332,7 +1321,7 @@ const anteO = anteEnabled && od.length ? od[0] : null;
 return {
 ruleset,
 phase: PHASE.MAIN_1,
-active: “p”,
+active: "p",
 turn: 1,
 landsPlayed: 0,
 spellsThisTurn: 0,
@@ -1344,7 +1333,7 @@ blockers: {},
 selCard: null,
 selTgt: null,
 xVal: 1,
-log: [{ text: “The duel begins.”, type: “info”, turn: 1 }],
+log: [{ text: "The duel begins.", type: "info", turn: 1 }],
 over: null,
 oppArch: ARCHETYPES[oppArchKey],
 castleMod: castleMod || null,
@@ -1361,17 +1350,16 @@ pendingChoice: null,
 };
 }
 
-// ─── DUEL REDUCER ────────────────────────────────────────────────────────────
-// Pure function: (GameState, GameAction) → GameState
+// --- DUEL REDUCER ------------------------------------------------------------
+// Pure function: (GameState, GameAction) ? GameState
 // This is the ONLY place GameState mutations are valid.
 
 export function duelReducer(state, action) {
-if (state.over && action.type !== “RESET”) return state;
+if (state.over && action.type !== "RESET") return state;
 let s = state;
 
 switch (action.type) {
 
-```
 case "TAP_LAND":
   return applyOvergrowthTap(s, action.who, action.iid, action.mana);
 
@@ -1441,7 +1429,7 @@ case "DECLARE_BLOCKER": {
   const bl = s.o.bf.find(x => x.iid === action.blId);
   const att = getBF(s, action.attId);
   if (!bl || !att || !s.attackers.includes(action.attId)) return s;
-  // §17.6.2B: explicit protection enforcement with log message
+  // S17.6.2B: explicit protection enforcement with log message
   if (att.protection) {
     const prot = Array.isArray(att.protection) ? att.protection : [att.protection];
     const PROT_COLOR_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
@@ -1496,13 +1484,13 @@ case "ACTIVATE_ABILITY": {
   if (act.effect === "addManaAny" && !action.chosenColor) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingBop: true };
-    return dlog(s, `${card.name} tapped — choose a color.`, "mana");
+    return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
   }
   // Black Lotus: tap, set pendingLotus + pendingLotusIid, UI shows LotusColorPicker.
   if (act.effect === "addMana3Any") {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingLotus: true, pendingLotusIid: action.iid };
-    return dlog(s, `${card.name} tapped — choose a color.`, "mana");
+    return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
   }
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
@@ -1547,7 +1535,7 @@ case "CITY_OF_BRASS_DAMAGE": {
 }
 
 case "CHOOSE_BOP_COLOR": {
-  // Birds of Paradise color resolution. Adds 1 mana of chosen color. SYSTEMS.md §10
+  // Birds of Paradise color resolution. Adds 1 mana of chosen color. SYSTEMS.md S10
   const mp = { ...s.p.mana };
   mp[action.color] = (mp[action.color] || 0) + 1;
   return dlog({ ...s, p: { ...s.p, mana: mp }, pendingBop: false }, `Birds of Paradise adds 1${action.color}.`, "mana");
@@ -1578,7 +1566,6 @@ case "RESOLVE_CHOICE": {
 }
 
 default: return s;
-```
 
 }
 }

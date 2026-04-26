@@ -1,14 +1,14 @@
 // src/ui/dungeon/TreasureModal.jsx
 // Reveal modal shown when player steps on a TREASURE entity.
 // Treasure is already collected by the time this renders; this is pure reveal UI.
-// Per SYSTEMS.md §9 (Dungeon System).
+// Per SYSTEMS.md S9 (Dungeon System).
 
 import React from 'react';
 
 const RARITY_LABELS = {
-  C: { label: 'A common card glints from the wreckage…',   color: '#a0a090' },
-  U: { label: 'An uncommon card catches the torchlight…',  color: '#90a0c0' },
-  R: { label: 'A rare card shimmers in the chest…',        color: '#d0a040' },
+  C: { label: 'A common card glints from the wreckage?',   color: '#a0a090' },
+  U: { label: 'An uncommon card catches the torchlight?',  color: '#90a0c0' },
+  R: { label: 'A rare card shimmers in the chest?',        color: '#d0a040' },
 };
 
 export default function TreasureModal({ treasure, onCollect }) {
@@ -32,7 +32,7 @@ export default function TreasureModal({ treasure, onCollect }) {
         boxShadow: '0 0 60px rgba(200,140,0,.3)',
       }}>
         {/* Icon */}
-        <div style={{ fontSize: 36, marginBottom: 10 }}>💰</div>
+        <div style={{ fontSize: 36, marginBottom: 10 }}>?</div>
 
         {/* Title */}
         <div style={{

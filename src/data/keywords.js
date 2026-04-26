@@ -1,7 +1,7 @@
 // src/data/keywords.js
-// Keyword registry — stateless definitions only.
+// Keyword registry ? stateless definitions only.
 // DuelCore.js is the sole authority for interpreting these during gameplay.
-// Per design spec §6 and SYSTEMS.md §9
+// Per design spec S6 and SYSTEMS.md S9
 
 export const KEYWORDS = {
   FLYING:        { id:"FLYING",        name:"Flying",        classic:true,  modern:true,  desc:"Can only be blocked by creatures with flying or reach." },
@@ -22,7 +22,7 @@ export const KEYWORDS = {
   BANDING:       {
     id:"BANDING",       name:"Banding",       classic:true,  modern:false,
     combatRole: "attacker_damage_assignment",
-    desc:"Classic banding rules — attacking player assigns blocker damage to the banded group.",
+    desc:"Classic banding rules ? attacking player assigns blocker damage to the banded group.",
   },
   FLASH:         { id:"FLASH",         name:"Flash",         classic:false, modern:true,  desc:"Can be cast any time you could cast an instant." },
   HEXPROOF:      { id:"HEXPROOF",      name:"Hexproof",      classic:false, modern:true,  desc:"Can't be the target of spells or abilities opponents control." },
