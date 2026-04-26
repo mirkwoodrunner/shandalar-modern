@@ -1,22 +1,22 @@
 // src/engine/DungeonGenerator.js
-// Pure dungeon layout generator — no React, no side effects.
-// Belongs to SYSTEMS.md §9 (Dungeon System).
+// Pure dungeon layout generator ? no React, no side effects.
+// Belongs to SYSTEMS.md S9 (Dungeon System).
 //
 // Exports:
-//   generateDungeon(dungeonData, rngSeed) → DungeonState
-//   checkLOS(grid, x0, y0, x1, y1) → boolean
-//   bresenham(x0, y0, x1, y1) → [{x,y}]
+//   generateDungeon(dungeonData, rngSeed) ? DungeonState
+//   checkLOS(grid, x0, y0, x1, y1) ? boolean
+//   bresenham(x0, y0, x1, y1) ? [{x,y}]
 
 import { DUNGEON_ARCHETYPES, MONSTER_TABLE, makeRng } from './MapGenerator.js';
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+// --- CONSTANTS ----------------------------------------------------------------
 
 const DUNGEON_W = 24;
 const DUNGEON_H = 16;
 
 const mkId = () => Math.random().toString(36).slice(2, 9);
 
-// Map color → archetype keys for weighted selection
+// Map color ? archetype keys for weighted selection
 const COLOR_ARCH_MAP = {
   W: ['WHITE_WEENIE'],
   U: ['BLUE_CONTROL', 'BLUE_TEMPO'],
@@ -25,7 +25,7 @@ const COLOR_ARCH_MAP = {
   G: ['GREEN_STOMPY'],
 };
 
-// Build archKey → monster names from MONSTER_TABLE (imported)
+// Build archKey ? monster names from MONSTER_TABLE (imported)
 const ARCH_NAMES = {};
 Object.values(MONSTER_TABLE).forEach(monsters => {
   monsters.forEach(m => {
@@ -35,7 +35,7 @@ Object.values(MONSTER_TABLE).forEach(monsters => {
 });
 ARCH_NAMES['ARTIFACT_CONTROL'] = ['Iron Sentinel', 'Clockwork Guardian'];
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// --- HELPERS ------------------------------------------------------------------
 
 function pickArch(rng, domColor) {
   const dominated = COLOR_ARCH_MAP[domColor] || [];
@@ -57,7 +57,7 @@ function pickHp(rng, tier) {
   return 24 + Math.floor(rng() * 5);
 }
 
-// ─── LINE OF SIGHT ────────────────────────────────────────────────────────────
+// --- LINE OF SIGHT ------------------------------------------------------------
 
 /**
  * Bresenham integer line from (x0,y0) to (x1,y1).
@@ -92,7 +92,7 @@ export function checkLOS(grid, x0, y0, x1, y1) {
   return true;
 }
 
-// ─── ROOM PLACEMENT ───────────────────────────────────────────────────────────
+// --- ROOM PLACEMENT -----------------------------------------------------------
 
 function carveRoom(grid, room) {
   for (let dy = 0; dy < room.h; dy++) {
@@ -121,7 +121,7 @@ function carveCorridor(grid, ax, ay, bx, by, rng) {
   }
 }
 
-// ─── ENTITY PLACEMENT ─────────────────────────────────────────────────────────
+// --- ENTITY PLACEMENT ---------------------------------------------------------
 
 function freePos(rng, room, takenSet) {
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -133,7 +133,7 @@ function freePos(rng, room, takenSet) {
   return null;
 }
 
-// ─── MAIN GENERATOR ───────────────────────────────────────────────────────────
+// --- MAIN GENERATOR -----------------------------------------------------------
 
 /**
  * Generate a self-contained dungeon from dungeonData and a numeric seed.
@@ -145,20 +145,20 @@ function freePos(rng, room, takenSet) {
 export function generateDungeon(dungeonData, rngSeed) {
   const rng = makeRng(rngSeed);
 
-  // ── Grid: all WALL ─────────────────────────────────────────────────────────
+  // -- Grid: all WALL ---------------------------------------------------------
   const grid = Array.from({ length: DUNGEON_H }, (_, y) =>
     Array.from({ length: DUNGEON_W }, (_, x) => ({ x, y, type: 'WALL', revealed: false, lit: false }))
   );
 
-  // ── Room placement ─────────────────────────────────────────────────────────
+  // -- Room placement ---------------------------------------------------------
   const numRooms = Math.max(3, Math.min(5, dungeonData.rooms || 4));
   const rooms = [];
 
   for (let i = 0; i < numRooms; i++) {
     let placed = false;
     for (let attempt = 0; attempt < 120; attempt++) {
-      const w = 4 + Math.floor(rng() * 5); // 4–8
-      const h = 3 + Math.floor(rng() * 3); // 3–5
+      const w = 4 + Math.floor(rng() * 5); // 4?8
+      const h = 3 + Math.floor(rng() * 3); // 3?5
       const rx = 1 + Math.floor(rng() * (DUNGEON_W - w - 2));
       const ry = 1 + Math.floor(rng() * (DUNGEON_H - h - 2));
 
@@ -177,7 +177,7 @@ export function generateDungeon(dungeonData, rngSeed) {
     if (!placed && rooms.length >= 3) break;
   }
 
-  // ── Corridors (L-shaped, room i → room i+1) ────────────────────────────────
+  // -- Corridors (L-shaped, room i ? room i+1) --------------------------------
   for (let i = 0; i < rooms.length - 1; i++) {
     const a = rooms[i];
     const b = rooms[i + 1];
@@ -188,14 +188,14 @@ export function generateDungeon(dungeonData, rngSeed) {
     carveCorridor(grid, ax, ay, bx, by, rng);
   }
 
-  // ── Player start: center of first room ────────────────────────────────────
+  // -- Player start: center of first room ------------------------------------
   const firstRoom = rooms[0];
   const playerStart = {
     x: firstRoom.x + Math.floor(firstRoom.w / 2),
     y: firstRoom.y + Math.floor(firstRoom.h / 2),
   };
 
-  // ── Entities ───────────────────────────────────────────────────────────────
+  // -- Entities ---------------------------------------------------------------
   const entities = [];
   const { domColor } = dungeonData;
 
@@ -219,7 +219,7 @@ export function generateDungeon(dungeonData, rngSeed) {
       });
     }
 
-    // 1–2 ENEMY per non-first room
+    // 1?2 ENEMY per non-first room
     if (!isFirst) {
       const count = 1 + Math.floor(rng() * 2);
       for (let e = 0; e < count; e++) {
@@ -239,7 +239,7 @@ export function generateDungeon(dungeonData, rngSeed) {
       }
     }
 
-    // 0–1 TREASURE per room
+    // 0?1 TREASURE per room
     if (rng() > 0.4) {
       const pos = freePos(rng, room, taken);
       if (pos) {
@@ -263,7 +263,7 @@ export function generateDungeon(dungeonData, rngSeed) {
     }
   });
 
-  // ── Initial LOS reveal from playerStart ────────────────────────────────────
+  // -- Initial LOS reveal from playerStart ------------------------------------
   for (let y = 0; y < DUNGEON_H; y++) {
     for (let x = 0; x < DUNGEON_W; x++) {
       const cell = grid[y][x];

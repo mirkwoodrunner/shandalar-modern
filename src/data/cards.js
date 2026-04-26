@@ -1,16 +1,16 @@
 // src/data/cards.js
 // Immutable card templates and AI archetype deck lists.
-// Per SYSTEMS.md §10 and MECHANICS_INDEX.md §5.1
+// Per SYSTEMS.md S10 and MECHANICS_INDEX.md S5.1
 //
 // CONSTRAINTS:
-//   - Card definitions are static data only — no runtime mutation logic
+//   - Card definitions are static data only ? no runtime mutation logic
 //   - DuelCore.js instantiates cards into gameplay objects via makeCardInstance()
 //   - getCardById() is a convenience lookup only
 
-// ─── CARD DATABASE ────────────────────────────────────────────────────────────
+// --- CARD DATABASE ------------------------------------------------------------
 
 export const CARD_DB = [
-// ── LANDS ──────────────────────────────────────────────────
+// -- LANDS --------------------------------------------------
 {id:"plains",    name:"Plains",   type:"Land",subtype:"Basic Plains",  color:"",cmc:0,cost:"",text:"T: Add W.",produces:["W"],rarity:"C"},
 {id:"island",    name:"Island",   type:"Land",subtype:"Basic Island",  color:"",cmc:0,cost:"",text:"T: Add U.",produces:["U"],rarity:"C"},
 {id:"swamp",     name:"Swamp",    type:"Land",subtype:"Basic Swamp",   color:"",cmc:0,cost:"",text:"T: Add B.",produces:["B"],rarity:"C"},
@@ -32,7 +32,7 @@ export const CARD_DB = [
 {id:"strip_mine",      name:"Strip Mine",      type:"Land",color:"",cmc:0,cost:"",text:"T: Add C. T, Sacrifice: Destroy target land.",produces:["C"],rarity:"U",activated:{cost:"T,sac",effect:"destroyTargetLand"}},
 {id:"library_of_alexandria",name:"Library of Alexandria",type:"Land",color:"",cmc:0,cost:"",text:"T: Add C. T: Draw a card. Activate only if you have exactly seven cards in hand.",produces:["C"],rarity:"U",activated:{cost:"T",effect:"draw1"}},
 
-// ── WHITE CREATURES ─────────────────────────────────────────
+// -- WHITE CREATURES -----------------------------------------
 {id:"savannah_lions",   name:"Savannah Lions",   type:"Creature",subtype:"Cat",          color:"W",cmc:1,cost:"W",   power:2,toughness:1,keywords:[],rarity:"R",text:""},
 {id:"white_knight",     name:"White Knight",     type:"Creature",subtype:"Knight",       color:"W",cmc:2,cost:"WW",  power:2,toughness:2,keywords:["FIRST_STRIKE","PROTECTION"],protection:["black"],rarity:"U",text:"First strike, protection from black."},
 {id:"serra_angel",      name:"Serra Angel",      type:"Creature",subtype:"Angel",        color:"W",cmc:5,cost:"3WW", power:4,toughness:4,keywords:["FLYING","VIGILANCE"],rarity:"U",text:"Flying, vigilance."},
@@ -50,7 +50,7 @@ export const CARD_DB = [
 {id:"wall_of_swords",   name:"Wall of Swords",   type:"Creature",subtype:"Wall",          color:"W",cmc:4,cost:"3W",  power:3,toughness:5,keywords:["FLYING","DEFENDER"],rarity:"U",text:"Flying."},
 {id:"witch_hunter",     name:"Witch Hunter",     type:"Creature",subtype:"Human Cleric",  color:"W",cmc:3,cost:"2W",  power:1,toughness:1,keywords:[],rarity:"U",text:"T: Deals 1 damage to target player. 1W,T: Return target creature an opponent controls to its owner's hand.",activated:{cost:"T",effect:"ping"}},
 
-// ── BLUE CREATURES ──────────────────────────────────────────
+// -- BLUE CREATURES ------------------------------------------
 {id:"merfolk_of_the_pearl_trident",    name:"Merfolk of the Pearl Trident",type:"Creature",subtype:"Merfolk",       color:"U",cmc:1,cost:"U",   power:1,toughness:1,keywords:[],rarity:"C",text:"Islandwalk."},
 {id:"lord_of_atlantis",    name:"Lord of Atlantis",            type:"Creature",subtype:"Merfolk",       color:"U",cmc:2,cost:"UU",  power:2,toughness:2,keywords:[],rarity:"R",text:"Other Merfolk get +1/+1 and have islandwalk."},
 {id:"phantom_warrior",  name:"Phantom Warrior",             type:"Creature",subtype:"Illusion",      color:"U",cmc:3,cost:"1UU", power:2,toughness:2,keywords:[],rarity:"U",text:"Unblockable."},
@@ -60,8 +60,8 @@ export const CARD_DB = [
 {id:"azure_drake",      name:"Azure Drake",                 type:"Creature",subtype:"Drake",         color:"U",cmc:4,cost:"3U",  power:2,toughness:4,keywords:["FLYING"],rarity:"U",text:"Flying."},
 {id:"phantom_monster",  name:"Phantom Monster",             type:"Creature",subtype:"Illusion",      color:"U",cmc:4,cost:"3U",  power:3,toughness:3,keywords:["FLYING"],rarity:"U",text:"Flying."},
 {id:"flying_men",       name:"Flying Men",                  type:"Creature",subtype:"Human",         color:"U",cmc:1,cost:"U",   power:1,toughness:1,keywords:["FLYING"],rarity:"C",text:"Flying."},
-{id:"dandan",           name:"Dandân",                      type:"Creature",subtype:"Fish",          color:"U",cmc:2,cost:"UU",  power:4,toughness:1,keywords:[],rarity:"C",text:"Dandân can’t attack unless defending player controls an Island."},
-{id:"sea_serpent",      name:"Sea Serpent",                 type:"Creature",subtype:"Serpent",       color:"U",cmc:6,cost:"5U",  power:5,toughness:5,keywords:[],rarity:"C",text:"Sea Serpent can’t attack unless defending player controls an Island."},
+{id:"dandan",           name:"Dand?n",                      type:"Creature",subtype:"Fish",          color:"U",cmc:2,cost:"UU",  power:4,toughness:1,keywords:[],rarity:"C",text:"Dand?n can't attack unless defending player controls an Island."},
+{id:"sea_serpent",      name:"Sea Serpent",                 type:"Creature",subtype:"Serpent",       color:"U",cmc:6,cost:"5U",  power:5,toughness:5,keywords:[],rarity:"C",text:"Sea Serpent can't attack unless defending player controls an Island."},
 {id:"phantasmal_forces",name:"Phantasmal Forces",           type:"Creature",subtype:"Illusion",      color:"U",cmc:4,cost:"3U",  power:4,toughness:1,keywords:["FLYING"],rarity:"U",text:"Flying. Upkeep: pay U or sacrifice.",upkeep:"sacrificeUnless_U"},
 {id:"wall_of_air",      name:"Wall of Air",                 type:"Creature",subtype:"Wall",          color:"U",cmc:3,cost:"1UU", power:1,toughness:5,keywords:["FLYING","DEFENDER"],rarity:"U",text:"Flying."},
 {id:"ghost_ship",       name:"Ghost Ship",                  type:"Creature",subtype:"Spirit",        color:"U",cmc:4,cost:"2UU", power:2,toughness:4,keywords:["FLYING"],rarity:"U",text:"Flying. UUU: Regenerate.",activated:{cost:"UUU",effect:"regenerate"}},
@@ -72,7 +72,7 @@ export const CARD_DB = [
 {id:"water_elemental",  name:"Water Elemental",             type:"Creature",subtype:"Elemental",    color:"U",cmc:5,cost:"3UU", power:5,toughness:4,keywords:[],rarity:"U",text:""},
 {id:"zephyr_falcon",    name:"Zephyr Falcon",               type:"Creature",subtype:"Bird",         color:"U",cmc:2,cost:"1U",  power:1,toughness:1,keywords:["FLYING"],rarity:"C",text:"Flying."},
 
-// ── BLACK CREATURES ─────────────────────────────────────────
+// -- BLACK CREATURES -----------------------------------------
 {id:"hypnotic_specter", name:"Hypnotic Specter", type:"Creature",subtype:"Specter",         color:"B",cmc:3,cost:"1BB", power:2,toughness:2,keywords:["FLYING"],rarity:"U",text:"Flying. When deals combat damage, opponent discards a card at random."},
 {id:"sengir_vampire",   name:"Sengir Vampire",   type:"Creature",subtype:"Vampire",         color:"B",cmc:5,cost:"3BB", power:4,toughness:4,keywords:["FLYING"],rarity:"U",text:"Flying. When a creature it damaged dies, put a +1/+1 counter on it.",triggered:"vampireCounter",triggeredAbilities:[{id:"sengir_counter",trigger:{event:"ON_CREATURE_DIES",scope:"global"},condition:{type:"damagedByThisTurn"},effect:{type:"addCounter",counter:"+1/+1",amount:1},optional:false,requiresChoice:false}]},
 {id:"juzam_djinn",      name:"Juzam Djinn",      type:"Creature",subtype:"Djinn",           color:"B",cmc:4,cost:"2BB", power:5,toughness:5,keywords:[],rarity:"R",text:"At upkeep, Juzam Djinn deals 1 damage to you.",upkeep:"selfDamage1"},
@@ -86,7 +86,7 @@ export const CARD_DB = [
 {id:"bog_wraith",       name:"Bog Wraith",       type:"Creature",subtype:"Wraith",          color:"B",cmc:4,cost:"3B",  power:3,toughness:3,keywords:["SWAMPWALK"],rarity:"U",text:"Swampwalk."},
 {id:"scathe_zombies",   name:"Scathe Zombies",   type:"Creature",subtype:"Zombie",          color:"B",cmc:3,cost:"2B",  power:2,toughness:2,keywords:[],rarity:"C",text:""},
 {id:"vampire_bats",     name:"Vampire Bats",     type:"Creature",subtype:"Bat",             color:"B",cmc:1,cost:"B",   power:0,toughness:1,keywords:["FLYING"],rarity:"C",text:"B: Gets +1/+0 until end of turn.",activated:{cost:"B",effect:"pumpSelf"}},
-{id:"zombie_master",    name:"Zombie Master",    type:"Creature",subtype:"Zombie",          color:"B",cmc:3,cost:"1BB", power:2,toughness:3,keywords:[],rarity:"R",text:"All Zombies have swampwalk and ‘B: Regenerate.’"},
+{id:"zombie_master",    name:"Zombie Master",    type:"Creature",subtype:"Zombie",          color:"B",cmc:3,cost:"1BB", power:2,toughness:3,keywords:[],rarity:"R",text:"All Zombies have swampwalk and 'B: Regenerate.'"},
 {id:"walking_dead",     name:"Walking Dead",     type:"Creature",subtype:"Zombie",          color:"B",cmc:1,cost:"B",   power:1,toughness:1,keywords:[],rarity:"C",text:"B: Regenerate.",activated:{cost:"B",effect:"regenerate"}},
 {id:"bog_imp",          name:"Bog Imp",          type:"Creature",subtype:"Imp",             color:"B",cmc:2,cost:"1B",  power:1,toughness:1,keywords:["FLYING"],rarity:"C",text:"Flying."},
 {id:"rag_man",          name:"Rag Man",          type:"Creature",subtype:"Human Minion",    color:"B",cmc:4,cost:"1BBB",power:2,toughness:1,keywords:[],rarity:"R",text:"T: Target opponent randomly discards at start of their next turn.",activated:{cost:"T",effect:"discardOne"}},
@@ -96,16 +96,16 @@ export const CARD_DB = [
 {id:"sorceress_queen",  name:"Sorceress Queen",  type:"Creature",subtype:"Human Wizard",    color:"B",cmc:4,cost:"2BB", power:1,toughness:1,keywords:[],rarity:"R",text:"T: Target creature other than Sorceress Queen has base power and toughness 0/2 until end of turn.",activated:{cost:"T",effect:"setPT02"}},
 {id:"stromgald_cabal",  name:"Stromgald Cabal",  type:"Creature",subtype:"Human Knight",    color:"B",cmc:4,cost:"2BB", power:3,toughness:3,keywords:[],rarity:"R",text:"BB: Counter target white spell.",activated:{cost:"BB",effect:"counterWhite"}},
 
-// ── RED CREATURES ───────────────────────────────────────────
+// -- RED CREATURES -------------------------------------------
 {id:"goblin_king",      name:"Goblin King",              type:"Creature",subtype:"Goblin",    color:"R",cmc:3,cost:"1RR", power:2,toughness:2,keywords:[],rarity:"R",text:"Other Goblins get +1/+1 and mountainwalk."},
 {id:"shivan_dragon",    name:"Shivan Dragon",            type:"Creature",subtype:"Dragon",    color:"R",cmc:6,cost:"4RR", power:5,toughness:5,keywords:["FLYING"],rarity:"R",text:"Flying. R: +1/+0 until end of turn.",activated:{cost:"R",effect:"pumpPower"}},
 {id:"earth_elemental",  name:"Earth Elemental",          type:"Creature",subtype:"Elemental", color:"R",cmc:5,cost:"3RR", power:4,toughness:5,keywords:[],rarity:"U",text:""},
 {id:"goblin_balloon_brigade",   name:"Goblin Balloon Brigade",   type:"Creature",subtype:"Goblin",    color:"R",cmc:1,cost:"R",   power:1,toughness:1,keywords:[],rarity:"C",text:"R: Gains flying until end of turn.",activated:{cost:"R",effect:"gainFlying"}},
-{id:"monss_goblin_raiders",      name:"Mons’s Goblin Raiders",    type:"Creature",subtype:"Goblin",    color:"R",cmc:1,cost:"R",   power:1,toughness:1,keywords:[],rarity:"C",text:""},
+{id:"monss_goblin_raiders",      name:"Mons's Goblin Raiders",    type:"Creature",subtype:"Goblin",    color:"R",cmc:1,cost:"R",   power:1,toughness:1,keywords:[],rarity:"C",text:""},
 {id:"ball_lightning",   name:"Ball Lightning",           type:"Creature",subtype:"Elemental", color:"R",cmc:3,cost:"RRR", power:6,toughness:1,keywords:["TRAMPLE","HASTE"],rarity:"R",text:"Trample, haste. At end step, sacrifice.",upkeep:"sacrificeSelf"},
 {id:"kird_ape",         name:"Kird Ape",                 type:"Creature",subtype:"Ape",       color:"R",cmc:1,cost:"R",   power:1,toughness:1,keywords:[],rarity:"U",text:"Gets +1/+2 as long as you control a Forest.",dynamic:true,dynamicType:"forestBonus"},
 {id:"hill_giant",       name:"Hill Giant",               type:"Creature",subtype:"Giant",     color:"R",cmc:4,cost:"3R",  power:3,toughness:3,keywords:[],rarity:"C",text:""},
-{id:"ironclaw_orcs",    name:"Ironclaw Orcs",            type:"Creature",subtype:"Orc",       color:"R",cmc:2,cost:"1R",  power:2,toughness:2,keywords:[],rarity:"C",text:"Ironclaw Orcs can’t block creatures with power 2 or greater."},
+{id:"ironclaw_orcs",    name:"Ironclaw Orcs",            type:"Creature",subtype:"Orc",       color:"R",cmc:2,cost:"1R",  power:2,toughness:2,keywords:[],rarity:"C",text:"Ironclaw Orcs can't block creatures with power 2 or greater."},
 {id:"orcish_artillery", name:"Orcish Artillery",         type:"Creature",subtype:"Orc",       color:"R",cmc:3,cost:"1RR", power:1,toughness:3,keywords:[],rarity:"U",text:"T: Deals 2 damage to any target and 3 damage to you.",activated:{cost:"T",effect:"orcishArtillery"}},
 {id:"hurloon_minotaur", name:"Hurloon Minotaur",         type:"Creature",subtype:"Minotaur",  color:"R",cmc:3,cost:"1RR", power:2,toughness:3,keywords:[],rarity:"C",text:""},
 {id:"dragon_whelp",     name:"Dragon Whelp",             type:"Creature",subtype:"Dragon",    color:"R",cmc:4,cost:"2RR", power:2,toughness:3,keywords:["FLYING"],rarity:"U",text:"Flying. R: +1/+0 until end of turn.",activated:{cost:"R",effect:"pumpPower"}},
@@ -116,12 +116,12 @@ export const CARD_DB = [
 {id:"granite_gargoyle", name:"Granite Gargoyle",         type:"Creature",subtype:"Gargoyle",  color:"R",cmc:2,cost:"1R",  power:2,toughness:2,keywords:["FLYING"],rarity:"R",text:"Flying. R: +0/+1 until end of turn.",activated:{cost:"R",effect:"pumpToughness"}},
 {id:"two_headed_giant_of_foriys", name:"Two-Headed Giant of Foriys",type:"Creature",subtype:"Giant",    color:"R",cmc:6,cost:"4RR", power:4,toughness:4,keywords:[],rarity:"R",text:"Can block an additional creature each combat."},
 {id:"fire_sprites",     name:"Fire Sprites",             type:"Creature",subtype:"Faerie",    color:"R",cmc:2,cost:"1R",  power:1,toughness:1,keywords:["FLYING"],rarity:"C",text:"Flying. T: Add R.",activated:{cost:"T",effect:"addMana",mana:"R"}},
-{id:"stone_giant",      name:"Stone Giant",              type:"Creature",subtype:"Giant",     color:"R",cmc:4,cost:"2RR", power:3,toughness:4,keywords:[],rarity:"U",text:"T: Target creature with toughness less than Stone Giant’s power gains flying until end of turn.",activated:{cost:"T",effect:"grantFlying"}},
+{id:"stone_giant",      name:"Stone Giant",              type:"Creature",subtype:"Giant",     color:"R",cmc:4,cost:"2RR", power:3,toughness:4,keywords:[],rarity:"U",text:"T: Target creature with toughness less than Stone Giant's power gains flying until end of turn.",activated:{cost:"T",effect:"grantFlying"}},
 {id:"gray_ogre",        name:"Gray Ogre",                type:"Creature",subtype:"Ogre",      color:"R",cmc:3,cost:"2R",  power:2,toughness:2,keywords:[],rarity:"C",text:""},
 {id:"rock_hydra",       name:"Rock Hydra",               type:"Creature",subtype:"Hydra",     color:"R",cmc:2,cost:"XRR", power:0,toughness:0,keywords:[],rarity:"R",text:"Rock Hydra enters with X +1/+1 counters. RRR: Put a +1/+1 counter on it.",effect:"stub" /* STUB: enter with X counters; RRR adds counter; combat damage removes counters */},
 {id:"uthden_troll",     name:"Uthden Troll",             type:"Creature",subtype:"Troll",     color:"R",cmc:3,cost:"2R",  power:2,toughness:2,keywords:[],rarity:"U",text:"R: Regenerate Uthden Troll.",activated:{cost:"R",effect:"regenerate"}},
 
-// ── GREEN CREATURES ─────────────────────────────────────────
+// -- GREEN CREATURES -----------------------------------------
 {id:"llanowar_elves",    name:"Llanowar Elves",   type:"Creature",subtype:"Elf Druid",  color:"G",cmc:1,cost:"G",    power:1,toughness:1,keywords:[],rarity:"C",text:"T: Add G.",activated:{cost:"T",effect:"addMana",mana:"G"}},
 {id:"fyndhorn_elves",    name:"Fyndhorn Elves",   type:"Creature",subtype:"Elf Druid",  color:"G",cmc:1,cost:"G",    power:1,toughness:1,keywords:[],rarity:"C",text:"T: Add G.",activated:{cost:"T",effect:"addMana",mana:"G"}},
 {id:"birds_of_paradise", name:"Birds of Paradise",type:"Creature",subtype:"Bird",       color:"G",cmc:1,cost:"G",    power:0,toughness:1,keywords:["FLYING"],rarity:"R",text:"Flying. T: Add one mana of any color.",activated:{cost:"T",effect:"addManaAny"}},
@@ -129,7 +129,7 @@ export const CARD_DB = [
 {id:"giant_spider",      name:"Giant Spider",     type:"Creature",subtype:"Spider",     color:"G",cmc:4,cost:"3G",   power:2,toughness:4,keywords:["REACH"],rarity:"C",text:"Reach."},
 {id:"craw_wurm",         name:"Craw Wurm",        type:"Creature",subtype:"Wurm",       color:"G",cmc:6,cost:"4GG",  power:6,toughness:4,keywords:[],rarity:"C",text:""},
 {id:"force_of_nature",   name:"Force of Nature",  type:"Creature",subtype:"Elemental",  color:"G",cmc:8,cost:"2GGGG",power:8,toughness:8,keywords:["TRAMPLE"],rarity:"R",text:"Trample. Upkeep: pay GGGG or take 8 damage.",upkeep:"forestChoice",triggeredAbilities:[{id:"fon_upkeep",trigger:{event:"ON_UPKEEP_START",scope:"controller"},effect:{type:"choice",options:[{id:"pay_gggg",label:"Pay GGGG",effect:{type:"payMana",cost:{G:4}}},{id:"take_damage",label:"Take 8 damage",effect:{type:"dealDamageToController",amount:8}}]},optional:false,requiresChoice:true}]},
-{id:"erhnam_djinn",      name:"Erhnam Djinn",     type:"Creature",subtype:"Djinn",      color:"G",cmc:4,cost:"3G",   power:4,toughness:5,keywords:[],rarity:"U",text:"Upkeep: target opponent’s creature gains forestwalk.",upkeep:"erhnamsUpkeep"},
+{id:"erhnam_djinn",      name:"Erhnam Djinn",     type:"Creature",subtype:"Djinn",      color:"G",cmc:4,cost:"3G",   power:4,toughness:5,keywords:[],rarity:"U",text:"Upkeep: target opponent's creature gains forestwalk.",upkeep:"erhnamsUpkeep"},
 {id:"war_mammoth",       name:"War Mammoth",      type:"Creature",subtype:"Elephant",   color:"G",cmc:3,cost:"2G",   power:3,toughness:3,keywords:["TRAMPLE"],rarity:"C",text:"Trample."},
 {id:"whirling_dervish",  name:"Whirling Dervish", type:"Creature",subtype:"Human Monk", color:"G",cmc:2,cost:"GG",   power:1,toughness:1,keywords:[],rarity:"U",text:"At end step, if it damaged an opponent, put a +1/+1 counter on it."},
 {id:"thicket_basilisk",  name:"Thicket Basilisk", type:"Creature",subtype:"Basilisk",   color:"G",cmc:5,cost:"3GG",  power:2,toughness:4,keywords:[],rarity:"U",text:"Any creature blocking or blocked by Thicket Basilisk is destroyed."},
@@ -137,26 +137,26 @@ export const CARD_DB = [
 {id:"ley_druid",         name:"Ley Druid",        type:"Creature",subtype:"Human Druid",color:"G",cmc:3,cost:"2G",   power:1,toughness:1,keywords:[],rarity:"U",text:"T: Untap target land.",activated:{cost:"T",effect:"untapLand"}},
 {id:"verduran_enchantress",name:"Verduran Enchantress",type:"Creature",subtype:"Human Druid",color:"G",cmc:3,cost:"1GG",power:0,toughness:2,keywords:[],rarity:"R",text:"Whenever you cast an enchantment, draw a card."},
 {id:"timber_wolves",     name:"Timber Wolves",    type:"Creature",subtype:"Wolf",       color:"G",cmc:1,cost:"G",    power:1,toughness:1,keywords:["BANDING"],rarity:"R",text:"Banding."},
-{id:"gaea_liege",        name:"Gaea’s Liege",     type:"Creature",subtype:"Avatar",     color:"G",cmc:6,cost:"3GGG", power:0,toughness:0,keywords:[],rarity:"R",text:"P/T = number of forests you control.",dynamic:true,dynamicType:"forestCount"},
+{id:"gaea_liege",        name:"Gaea's Liege",     type:"Creature",subtype:"Avatar",     color:"G",cmc:6,cost:"3GGG", power:0,toughness:0,keywords:[],rarity:"R",text:"P/T = number of forests you control.",dynamic:true,dynamicType:"forestCount"},
 {id:"keldon_warlord",    name:"Keldon Warlord",   type:"Creature",subtype:"Human Barbarian",color:"R",cmc:4,cost:"2RR",power:0,toughness:0,keywords:[],rarity:"U",text:"P/T = number of non-Wall creatures you control.",dynamic:true,dynamicType:"creatureCount"},
 {id:"carnivorous_plant",  name:"Carnivorous Plant",type:"Creature",subtype:"Plant",     color:"G",cmc:4,cost:"3G",   power:4,toughness:5,keywords:["DEFENDER"],rarity:"C",text:""},
 {id:"argothian_treefolk", name:"Argothian Treefolk",type:"Creature",subtype:"Treefolk", color:"G",cmc:5,cost:"3GG",  power:3,toughness:5,keywords:[],rarity:"C",text:""},
-{id:"elven_riders",      name:"Elven Riders",     type:"Creature",subtype:"Elf",        color:"G",cmc:5,cost:"3GG",  power:3,toughness:3,keywords:[],rarity:"U",text:"Can’t be blocked except by flying or forestwalk creatures."},
+{id:"elven_riders",      name:"Elven Riders",     type:"Creature",subtype:"Elf",        color:"G",cmc:5,cost:"3GG",  power:3,toughness:3,keywords:[],rarity:"U",text:"Can't be blocked except by flying or forestwalk creatures."},
 {id:"elvish_archers",    name:"Elvish Archers",   type:"Creature",subtype:"Elf Archer", color:"G",cmc:2,cost:"1G",   power:2,toughness:1,keywords:["FIRST_STRIKE","REACH"],rarity:"R",text:"First strike, reach."},
 {id:"fungusaur",         name:"Fungusaur",         type:"Creature",subtype:"Lizard",     color:"G",cmc:4,cost:"3G",   power:2,toughness:2,keywords:[],rarity:"R",text:"Whenever Fungusaur is dealt damage, put a +1/+1 counter on it."},
 
-// ── ARTIFACT CREATURES ──────────────────────────────────────
+// -- ARTIFACT CREATURES --------------------------------------
 {id:"ornithopter",       name:"Ornithopter",       type:"Artifact Creature",subtype:"Thopter",    color:"",cmc:0,cost:"0",power:0,toughness:2,keywords:["FLYING"],rarity:"U",text:"Flying."},
-{id:"juggernaut",        name:"Juggernaut",        type:"Artifact Creature",subtype:"Juggernaut", color:"",cmc:4,cost:"4",power:5,toughness:3,keywords:[],rarity:"U",text:"Juggernaut attacks each turn if able. Can’t be blocked by Walls."},
+{id:"juggernaut",        name:"Juggernaut",        type:"Artifact Creature",subtype:"Juggernaut", color:"",cmc:4,cost:"4",power:5,toughness:3,keywords:[],rarity:"U",text:"Juggernaut attacks each turn if able. Can't be blocked by Walls."},
 {id:"triskelion",        name:"Triskelion",        type:"Artifact Creature",subtype:"Construct",  color:"",cmc:6,cost:"6",power:1,toughness:1,keywords:[],rarity:"R",text:"Enters with 3 +1/+1 counters. Remove a counter: deal 1 damage to any target.",etbCounters:{P1P1:3},activated:{cost:"counter",effect:"triskelionPing"}},
 {id:"su_chi",            name:"Su-Chi",            type:"Artifact Creature",subtype:"Construct",  color:"",cmc:4,cost:"4",power:4,toughness:4,keywords:[],rarity:"U",text:"When Su-Chi dies, add CCCC."},
-{id:"colossus_of_sardia",name:"Colossus of Sardia",type:"Artifact Creature",subtype:"Golem",     color:"",cmc:9,cost:"9",power:9,toughness:9,keywords:["TRAMPLE"],rarity:"R",text:"Trample. Doesn’t untap during your untap step. 9: Untap it.",activated:{cost:"9",effect:"untapSelf"}},
+{id:"colossus_of_sardia",name:"Colossus of Sardia",type:"Artifact Creature",subtype:"Golem",     color:"",cmc:9,cost:"9",power:9,toughness:9,keywords:["TRAMPLE"],rarity:"R",text:"Trample. Doesn't untap during your untap step. 9: Untap it.",activated:{cost:"9",effect:"untapSelf"}},
 {id:"clay_statue",       name:"Clay Statue",       type:"Artifact Creature",subtype:"Golem",     color:"",cmc:4,cost:"4",power:3,toughness:1,keywords:[],rarity:"C",text:"2: Regenerate.",activated:{cost:"2",effect:"regenerate"}},
-{id:"brass_man",         name:"Brass Man",         type:"Artifact Creature",subtype:"Construct",  color:"",cmc:1,cost:"1",power:1,toughness:3,keywords:[],rarity:"U",text:"Doesn’t untap normally. 1: Untap Brass Man.",activated:{cost:"1",effect:"untapSelf"}},
+{id:"brass_man",         name:"Brass Man",         type:"Artifact Creature",subtype:"Construct",  color:"",cmc:1,cost:"1",power:1,toughness:3,keywords:[],rarity:"U",text:"Doesn't untap normally. 1: Untap Brass Man.",activated:{cost:"1",effect:"untapSelf"}},
 {id:"dragon_engine",     name:"Dragon Engine",     type:"Artifact Creature",subtype:"Construct",  color:"",cmc:3,cost:"3",power:1,toughness:3,keywords:[],rarity:"U",text:"2: Gets +1/+0 until end of turn.",activated:{cost:"2",effect:"pumpPower"}},
 {id:"clockwork_beast",   name:"Clockwork Beast",   type:"Artifact Creature",subtype:"Beast",     color:"",cmc:6,cost:"6",power:7,toughness:4,keywords:[],rarity:"R",text:"Enters with 7 +1/+0 counters. At end of combat, remove one."},
 
-// ── WALLS ──────────────────────────────────────────────────
+// -- WALLS --------------------------------------------------
 {id:"wall_of_ice",      name:"Wall of Ice",      type:"Creature",subtype:"Wall",color:"U",cmc:3,cost:"1UU",power:0,toughness:5,keywords:["DEFENDER"],rarity:"U",text:""},
 {id:"wall_of_stone",    name:"Wall of Stone",    type:"Creature",subtype:"Wall",color:"R",cmc:3,cost:"1RR",power:0,toughness:8,keywords:["DEFENDER"],rarity:"U",text:""},
 {id:"wall_of_fire",     name:"Wall of Fire",     type:"Creature",subtype:"Wall",color:"R",cmc:3,cost:"1RR",power:0,toughness:5,keywords:["DEFENDER"],rarity:"U",text:"R: Gets +1/+0 until end of turn.",activated:{cost:"R",effect:"pumpPower"}},
@@ -164,9 +164,9 @@ export const CARD_DB = [
 {id:"wall_of_bone",     name:"Wall of Bone",     type:"Creature",subtype:"Wall",color:"B",cmc:2,cost:"1B", power:1,toughness:3,keywords:["DEFENDER"],rarity:"U",text:"B: Regenerate.",activated:{cost:"B",effect:"regenerate"}},
 {id:"living_wall",      name:"Living Wall",      type:"Artifact Creature",subtype:"Wall",color:"",cmc:3,cost:"3",power:0,toughness:5,keywords:["DEFENDER"],rarity:"U",text:"1: Regenerate.",activated:{cost:"1",effect:"regenerate"}},
 
-// ── WHITE SPELLS ────────────────────────────────────────────
+// -- WHITE SPELLS --------------------------------------------
 {id:"swords_to_plowshares",         name:"Swords to Plowshares",type:"Instant", color:"W",cmc:1,cost:"W",   text:"Exile target creature. Its controller gains life equal to its power.",effect:"exileCreature",rarity:"U"},
-{id:"wrath_of_god",            name:"Wrath of God",         type:"Sorcery", color:"W",cmc:4,cost:"2WW", text:"Destroy all creatures. They can’t be regenerated.",effect:"wrathAll",rarity:"R"},
+{id:"wrath_of_god",            name:"Wrath of God",         type:"Sorcery", color:"W",cmc:4,cost:"2WW", text:"Destroy all creatures. They can't be regenerated.",effect:"wrathAll",rarity:"R"},
 {id:"disenchant",     name:"Disenchant",           type:"Instant", color:"W",cmc:2,cost:"1W",  text:"Destroy target artifact or enchantment.",effect:"destroyArtOrEnch",rarity:"C"},
 {id:"armageddon",     name:"Armageddon",           type:"Sorcery", color:"W",cmc:4,cost:"3W",  text:"Destroy all lands.",effect:"destroyAllLands",rarity:"R"},
 {id:"healing_salve",  name:"Healing Salve",        type:"Instant", color:"W",cmc:1,cost:"W",   text:"Target player gains 3 life.",effect:"gainLife3",rarity:"C"},
@@ -186,18 +186,18 @@ export const CARD_DB = [
 {id:"reverse_damage",        name:"Reverse Damage",        type:"Instant", color:"W",cmc:3,cost:"1WW", text:"Prevent all damage from one source this turn. You gain life equal to the damage prevented.",effect:"stub" /* STUB: prevent all damage from chosen source; gain that much life */,rarity:"R"},
 {id:"spirit_link",           name:"Spirit Link",           type:"Enchantment",subtype:"Aura",color:"W",cmc:1,cost:"W",   text:"Enchanted creature has lifelink.",effect:"enchantCreature",mod:{keywords:["LIFELINK"]},rarity:"U"},
 
-// ── BLUE SPELLS ─────────────────────────────────────────────
+// -- BLUE SPELLS ---------------------------------------------
 {id:"counterspell",       name:"Counterspell",    type:"Instant", color:"U",cmc:2,cost:"UU",  text:"Counter target spell.",effect:"counter",rarity:"U"},
 {id:"ancestral_recall",          name:"Ancestral Recall",type:"Instant", color:"U",cmc:1,cost:"U",   text:"Target player draws three cards.",effect:"draw3",rarity:"R"},
 {id:"time_walk",          name:"Time Walk",       type:"Sorcery", color:"U",cmc:2,cost:"1U",  text:"Take an extra turn after this one.",effect:"extraTurn",rarity:"R"},
 {id:"braingeyser",        name:"Braingeyser",     type:"Sorcery", color:"U",cmc:3,cost:"XUU", text:"Target player draws X cards.",effect:"drawX",rarity:"R"},
-{id:"unsummon",           name:"Unsummon",        type:"Instant", color:"U",cmc:1,cost:"U",   text:"Return target creature to its owner’s hand.",effect:"bounce",rarity:"C"},
+{id:"unsummon",           name:"Unsummon",        type:"Instant", color:"U",cmc:1,cost:"U",   text:"Return target creature to its owner's hand.",effect:"bounce",rarity:"C"},
 {id:"psionic_blast",      name:"Psionic Blast",   type:"Instant", color:"U",cmc:3,cost:"2U",  text:"Deals 4 damage to any target and 2 damage to you.",effect:"psionicBlast",rarity:"U"},
 {id:"power_sink",         name:"Power Sink",      type:"Instant", color:"U",cmc:2,cost:"XU",  text:"Counter target spell unless its controller pays X; if not, tap all lands.",effect:"powerSink",rarity:"C"},
-{id:"boomerang",          name:"Boomerang",       type:"Instant", color:"U",cmc:2,cost:"UU",  text:"Return target permanent to its owner’s hand.",effect:"bounce",rarity:"C"},
+{id:"boomerang",          name:"Boomerang",       type:"Instant", color:"U",cmc:2,cost:"UU",  text:"Return target permanent to its owner's hand.",effect:"bounce",rarity:"C"},
 {id:"control_magic",      name:"Control Magic",   type:"Enchantment",subtype:"Aura",color:"U",cmc:4,cost:"2UU",text:"You control enchanted creature.",effect:"controlCreature",rarity:"U"},
 {id:"timetwister",        name:"Timetwister",     type:"Sorcery", color:"U",cmc:3,cost:"2U",  text:"Each player shuffles hand+GY into library, draws 7.",effect:"timetwister",rarity:"R"},
-{id:"mana_short",         name:"Mana Short",      type:"Instant", color:"U",cmc:3,cost:"2U",  text:"Tap all target player’s lands and drain their mana pool.",effect:"manaShort",rarity:"R"},
+{id:"mana_short",         name:"Mana Short",      type:"Instant", color:"U",cmc:3,cost:"2U",  text:"Tap all target player's lands and drain their mana pool.",effect:"manaShort",rarity:"R"},
 {id:"remove_soul",        name:"Remove Soul",     type:"Instant", color:"U",cmc:2,cost:"1U",  text:"Counter target creature spell.",effect:"counterCreature",rarity:"C"},
 {id:"force_spike",        name:"Force Spike",     type:"Instant", color:"U",cmc:1,cost:"U",   text:"Counter target spell unless its controller pays 1.",effect:"counter",rarity:"C"},
 {id:"blue_elemental_blast",name:"Blue Elemental Blast",type:"Instant",color:"U",cmc:1,cost:"U",text:"Counter target red spell, or destroy target red permanent.",effect:"destroyRedOrCounter",rarity:"C"},
@@ -214,7 +214,7 @@ export const CARD_DB = [
 {id:"steal_artifact",    name:"Steal Artifact",    type:"Enchantment",subtype:"Aura",color:"U",cmc:4,cost:"3U",  text:"You control enchanted artifact.",effect:"controlCreature",rarity:"U"},
 {id:"twiddle",           name:"Twiddle",           type:"Instant", color:"U",cmc:1,cost:"U",   text:"Tap or untap target artifact, creature, or land.",effect:"tapTarget",rarity:"C"},
 
-// ── BLACK SPELLS ────────────────────────────────────────────
+// -- BLACK SPELLS --------------------------------------------
 {id:"dark_ritual",    name:"Dark Ritual",   type:"Instant", color:"B",cmc:1,cost:"B",   text:"Add BBB.",effect:"addMana",mana:["B","B","B"],rarity:"C"},
 {id:"terror",         name:"Terror",        type:"Instant", color:"B",cmc:2,cost:"1B",  text:"Destroy target non-artifact, non-black creature.",effect:"destroy",restriction:"nonArtifactNonBlack",rarity:"C"},
 {id:"demonic_tutor",  name:"Demonic Tutor", type:"Sorcery", color:"B",cmc:2,cost:"1B",  text:"Search library for any card, put it in your hand, then shuffle.",effect:"tutor",rarity:"U"},
@@ -222,12 +222,12 @@ export const CARD_DB = [
 {id:"animate_dead",   name:"Animate Dead",  type:"Enchantment",subtype:"Aura",color:"B",cmc:2,cost:"1B",text:"Return target creature from a graveyard to the battlefield under your control.",effect:"reanimate",rarity:"U"},
 {id:"dark_banishing", name:"Dark Banishing",type:"Instant", color:"B",cmc:3,cost:"2B",  text:"Destroy target non-black creature.",effect:"destroy",restriction:"nonBlack",rarity:"C"},
 {id:"drain_life",     name:"Drain Life",    type:"Sorcery", color:"B",cmc:2,cost:"X1B", text:"Drain Life deals X damage to target creature; you gain that much life.",effect:"drainLife",rarity:"C"},
-{id:"disintegrate",   name:"Disintegrate",  type:"Sorcery", color:"R",cmc:1,cost:"XR",  text:"Deal X damage; creature can’t regenerate this turn.",effect:"damageX",rarity:"C"},
+{id:"disintegrate",   name:"Disintegrate",  type:"Sorcery", color:"R",cmc:1,cost:"XR",  text:"Deal X damage; creature can't regenerate this turn.",effect:"damageX",rarity:"C"},
 {id:"sinkhole",       name:"Sinkhole",      type:"Sorcery", color:"B",cmc:2,cost:"BB",  text:"Destroy target land.",effect:"destroyTargetLand",rarity:"C"},
 {id:"bad_moon",       name:"Bad Moon",      type:"Enchantment",color:"B",cmc:2,cost:"1B",text:"Black creatures get +1/+1.",effect:"globalPump",targets:"black",mod:{power:1,toughness:1},rarity:"R"},
 {id:"unholy_strength",name:"Unholy Strength",type:"Enchantment",subtype:"Aura",color:"B",cmc:1,cost:"B",text:"Enchanted creature gets +2/+1.",effect:"enchantCreature",mod:{power:2,toughness:1},rarity:"C"},
 {id:"weakness",       name:"Weakness",      type:"Enchantment",subtype:"Aura",color:"B",cmc:1,cost:"B",text:"Enchanted creature gets -2/-1.",effect:"enchantCreature",mod:{power:-2,toughness:-1},rarity:"C"},
-{id:"paralyze",       name:"Paralyze",      type:"Enchantment",subtype:"Aura",color:"B",cmc:1,cost:"B",text:"Enchanted creature doesn’t untap during its controller’s untap step.",effect:"paralyze",rarity:"C"},
+{id:"paralyze",       name:"Paralyze",      type:"Enchantment",subtype:"Aura",color:"B",cmc:1,cost:"B",text:"Enchanted creature doesn't untap during its controller's untap step.",effect:"paralyze",rarity:"C"},
 {id:"pestilence",     name:"Pestilence",    type:"Enchantment",color:"B",cmc:4,cost:"2BB",text:"B: Pestilence deals 1 damage to each creature and each player.",activated:{cost:"B",effect:"pestilence"},rarity:"C"},
 {id:"raise_dead",     name:"Raise Dead",    type:"Sorcery", color:"B",cmc:1,cost:"B",   text:"Return target creature from your graveyard to your hand.",effect:"regrowthCreature",rarity:"C"},
 {id:"consume_spirit",  name:"Consume Spirit",  type:"Sorcery", color:"B",cmc:1,cost:"X1B", text:"Spend only black mana on X. Consume Spirit deals X damage to target creature; you gain X life.",effect:"drainLife",rarity:"U"},
@@ -236,7 +236,7 @@ export const CARD_DB = [
 {id:"gloom",           name:"Gloom",           type:"Enchantment",color:"B",cmc:3,cost:"2B",  text:"White spells cost an additional 3 to cast. Activated abilities of white permanents cost 3 more.",effect:"stub" /* STUB: white spells and abilities cost 3 more to cast or activate */,rarity:"U"},
 {id:"howl_from_beyond",name:"Howl from Beyond",type:"Instant", color:"B",cmc:1,cost:"XB",  text:"Target creature gets +X/+0 until end of turn.",effect:"pumpX",rarity:"C"},
 
-// ── RED SPELLS ──────────────────────────────────────────────
+// -- RED SPELLS ----------------------------------------------
 {id:"lightning_bolt",  name:"Lightning Bolt",  type:"Instant", color:"R",cmc:1,cost:"R",   text:"Deals 3 damage to any target.",effect:"damage3",rarity:"C"},
 {id:"fireball",        name:"Fireball",        type:"Sorcery", color:"R",cmc:2,cost:"XR",  text:"Deals X damage divided among any number of targets.",effect:"damageX",rarity:"C"},
 {id:"chain_lightning", name:"Chain Lightning", type:"Sorcery", color:"R",cmc:1,cost:"R",   text:"Chain Lightning deals 3 damage to any target.",effect:"damage3",rarity:"C"},
@@ -256,7 +256,7 @@ export const CARD_DB = [
 {id:"power_surge",     name:"Power Surge",     type:"Enchantment",color:"R",cmc:2,cost:"1R",  text:"At each player's upkeep, Power Surge deals damage equal to their untapped lands from their last upkeep.",upkeep:"powerSurgeUpkeep",rarity:"R"},
 {id:"smoke",           name:"Smoke",           type:"Enchantment",color:"R",cmc:2,cost:"1R",  text:"Players can't untap more than one creature during their untap steps.",rarity:"R"},
 
-// ── GREEN SPELLS ────────────────────────────────────────────
+// -- GREEN SPELLS --------------------------------------------
 {id:"giant_growth",   name:"Giant Growth",   type:"Instant", color:"G",cmc:1,cost:"G",   text:"Target creature gets +3/+3 until end of turn.",effect:"pumpCreature",mod:{power:3,toughness:3},rarity:"C"},
 {id:"stream_of_life", name:"Stream of Life", type:"Sorcery", color:"G",cmc:2,cost:"XG",  text:"Target player gains X life.",effect:"gainLifeX",rarity:"C"},
 {id:"regrowth",       name:"Regrowth",       type:"Sorcery", color:"G",cmc:2,cost:"1G",  text:"Return target card from your graveyard to your hand.",effect:"regrowth",rarity:"U"},
@@ -278,7 +278,7 @@ export const CARD_DB = [
 {id:"lifeforce",       name:"Lifeforce",       type:"Enchantment",color:"G",cmc:2,cost:"GG",  text:"GG: Counter target black spell.",activated:{cost:"GG",effect:"counterBlack"},rarity:"U"},
 {id:"regeneration",    name:"Regeneration",    type:"Enchantment",subtype:"Aura",color:"G",cmc:2,cost:"1G",  text:"Enchanted creature has 'G: Regenerate this creature.'",effect:"stub" /* STUB: grant activated regeneration ability to enchanted creature */,rarity:"C"},
 
-// ── ARTIFACTS ───────────────────────────────────────────────
+// -- ARTIFACTS -----------------------------------------------
 {id:"black_lotus",     name:"Black Lotus",         type:"Artifact",color:"",cmc:0,cost:"0",text:"T, Sacrifice: Add three mana of any one color.",rarity:"R",activated:{cost:"T,sac",effect:"addMana3Any"}},
 {id:"mox_pearl",       name:"Mox Pearl",           type:"Artifact",color:"",cmc:0,cost:"0",text:"T: Add W.",rarity:"R",activated:{cost:"T",effect:"addMana",mana:"W"}},
 {id:"mox_sapphire",    name:"Mox Sapphire",        type:"Artifact",color:"",cmc:0,cost:"0",text:"T: Add U.",rarity:"R",activated:{cost:"T",effect:"addMana",mana:"U"}},
@@ -287,16 +287,16 @@ export const CARD_DB = [
 {id:"mox_emerald",     name:"Mox Emerald",         type:"Artifact",color:"",cmc:0,cost:"0",text:"T: Add G.",rarity:"R",activated:{cost:"T",effect:"addMana",mana:"G"}},
 {id:"sol_ring",        name:"Sol Ring",            type:"Artifact",color:"",cmc:1,cost:"1",text:"T: Add CC.",rarity:"U",activated:{cost:"T",effect:"addMana",mana:"CC"}},
 {id:"jayemdae_tome",   name:"Jayemdae Tome",       type:"Artifact",color:"",cmc:4,cost:"4",text:"4, T: Draw a card.",rarity:"R",activated:{cost:"4,T",effect:"draw1"}},
-{id:"nevinyrral_disk", name:"Nevinyrral’s Disk",   type:"Artifact",color:"",cmc:4,cost:"4",text:"1,T,Sacrifice: Destroy all creatures, artifacts, and enchantments.",rarity:"U",activated:{cost:"1,T,sac",effect:"armageddonDisk"}},
-{id:"black_vise",      name:"Black Vise",          type:"Artifact",color:"",cmc:1,cost:"1",text:"At opponent’s upkeep, deals damage equal to cards they have over 4.",upkeep:"blackVise",rarity:"U"},
-{id:"howling_mine",    name:"Howling Mine",        type:"Artifact",color:"",cmc:2,cost:"2",text:"At the beginning of each player’s draw step, that player draws an additional card.",upkeep:"howlingMine",rarity:"R"},
+{id:"nevinyrral_disk", name:"Nevinyrral's Disk",   type:"Artifact",color:"",cmc:4,cost:"4",text:"1,T,Sacrifice: Destroy all creatures, artifacts, and enchantments.",rarity:"U",activated:{cost:"1,T,sac",effect:"armageddonDisk"}},
+{id:"black_vise",      name:"Black Vise",          type:"Artifact",color:"",cmc:1,cost:"1",text:"At opponent's upkeep, deals damage equal to cards they have over 4.",upkeep:"blackVise",rarity:"U"},
+{id:"howling_mine",    name:"Howling Mine",        type:"Artifact",color:"",cmc:2,cost:"2",text:"At the beginning of each player's draw step, that player draws an additional card.",upkeep:"howlingMine",rarity:"R"},
 {id:"icy_manipulator", name:"Icy Manipulator",     type:"Artifact",color:"",cmc:4,cost:"4",text:"1, T: Tap target artifact, creature, or land.",activated:{cost:"1,T",effect:"tapTarget"},rarity:"U"},
 {id:"mana_vault",      name:"Mana Vault",          type:"Artifact",color:"",cmc:1,cost:"1",text:"T: Add CC. Upkeep: pay 4 or take 1 damage.",rarity:"R",activated:{cost:"T",effect:"addMana",mana:"CC"}},
 {id:"basalt_monolith", name:"Basalt Monolith",     type:"Artifact",color:"",cmc:3,cost:"3",text:"T: Add CCC. 3: Untap Basalt Monolith.",rarity:"U",activated:{cost:"T",effect:"addMana",mana:"CCC"}},
 {id:"disrupting_scepter",name:"Disrupting Scepter",type:"Artifact",color:"",cmc:3,cost:"3",text:"3, T: Target player discards a card.",activated:{cost:"3,T",effect:"discardOne"},rarity:"R"},
 {id:"rod_of_ruin",     name:"Rod of Ruin",         type:"Artifact",color:"",cmc:4,cost:"4",text:"3, T: Rod of Ruin deals 1 damage to any target.",activated:{cost:"3,T",effect:"damage1"},rarity:"U"},
 {id:"millstone",       name:"Millstone",           type:"Artifact",color:"",cmc:2,cost:"2",text:"2, T: Target player mills two cards.",activated:{cost:"2,T",effect:"mill2"},rarity:"U"},
-{id:"ashnods_altar",   name:"Ashnod’s Altar",      type:"Artifact",color:"",cmc:2,cost:"2",text:"Sacrifice a creature: Add CC.",activated:{cost:"sac",effect:"sacrificeForMana"},rarity:"U"},
+{id:"ashnods_altar",   name:"Ashnod's Altar",      type:"Artifact",color:"",cmc:2,cost:"2",text:"Sacrifice a creature: Add CC.",activated:{cost:"sac",effect:"sacrificeForMana"},rarity:"U"},
 {id:"mana_crypt",      name:"Mana Crypt",          type:"Artifact",color:"",cmc:0,cost:"0",text:"T: Add CC. Upkeep: flip a coin; if you lose, take 3 damage.",rarity:"R",activated:{cost:"T",effect:"addMana",mana:"CC"}},
 {id:"ivory_tower",     name:"Ivory Tower",         type:"Artifact",color:"",cmc:1,cost:"1",text:"At your upkeep, gain life equal to hand size minus 4.",upkeep:"ivoryTower",rarity:"R"},
 {id:"crystal_rod",        name:"Crystal Rod",         type:"Artifact",color:"",cmc:1,cost:"1",text:"Whenever a player casts a blue spell, you may pay 1. If you do, you gain 1 life.",effect:"stub" /* STUB: gain 1 life when any blue spell is cast (pay 1) */,rarity:"U"},
@@ -311,158 +311,88 @@ export const CARD_DB = [
 {id:"wooden_sphere",      name:"Wooden Sphere",       type:"Artifact",color:"",cmc:1,cost:"1",text:"Whenever a player casts a green spell, you may pay 1. If you do, you gain 1 life.",effect:"stub" /* STUB: gain 1 life when any green spell is cast (pay 1) */,rarity:"U"},
 ];
 
-// ─── CONVENIENCE LOOKUP ──────────────────────────────────────────────────────
+// --- CONVENIENCE LOOKUP ------------------------------------------------------
 
 /** Find a card definition by its canonical ID. */
 export const getCardById = (id) => CARD_DB.find(c => c.id === id) || null;
 
-// ─── POWER NINE IDS ──────────────────────────────────────────────────────────
+// --- POWER NINE IDS ----------------------------------------------------------
 
 export const POWERED_NINE_IDS = [
 "black_lotus","mox_pearl","mox_sapphire","mox_jet","mox_ruby","mox_emerald",
 "ancestral_recall","time_walk",
 ];
 
-// ─── ARCHETYPES ──────────────────────────────────────────────────────────────
+// --- ARCHETYPES --------------------------------------------------------------
 // Deck lists for AI opponents. Keys are canonical archetype IDs.
-// See MECHANICS_INDEX.md §2.1 — AI generates GameAction objects only.
+// See MECHANICS_INDEX.md S2.1 ? AI generates GameAction objects only.
 
 export const ARCHETYPES = {
 WHITE_WEENIE: {
 name:"White Weenie", color:"W", strategy:"aggro",
 deck:[
-…Array(4).fill("savannah_lions"), …Array(4).fill("white_knight"),
-…Array(2).fill("benalish_hero"),  …Array(2).fill("tundra_wolves"),
-…Array(2).fill("pearled_unicorn"),…Array(2).fill("moorish_cavalry"),
-…Array(2).fill("serra_angel"),    …Array(2).fill("mesa_pegasus"),
-…Array(2).fill("swords_to_plowshares"),         …Array(2).fill("disenchant"),
-…Array(2).fill("wrath_of_god"),            …Array(1).fill("balance"),
-…Array(1).fill("crusade"),        …Array(2).fill("holy_armor"),
-…Array(17).fill("plains"),
+...Array(4).fill("savannah_lions"), ...Array(4).fill("white_knight"), ...Array(2).fill("benalish_hero"), ...Array(2).fill("tundra_wolves"), ...Array(2).fill("pearled_unicorn"), ...Array(2).fill("moorish_cavalry"), ...Array(2).fill("serra_angel"), ...Array(2).fill("mesa_pegasus"), ...Array(2).fill("swords_to_plowshares"), ...Array(2).fill("disenchant"), ...Array(2).fill("wrath_of_god"), ...Array(1).fill("balance"), ...Array(1).fill("crusade"), ...Array(2).fill("holy_armor"), ...Array(17).fill("plains"),
 ]},
 
 BLUE_CONTROL: {
 name:"Blue Control", color:"U", strategy:"control",
 deck:[
-…Array(4).fill("counterspell"),   …Array(2).fill("force_spike"),
-…Array(2).fill("remove_soul"),    …Array(2).fill("power_sink"),
-…Array(3).fill("unsummon"),       …Array(2).fill("boomerang"),
-…Array(2).fill("psionic_blast"),  …Array(1).fill("braingeyser"),
-…Array(1).fill("ancestral_recall"),      …Array(1).fill("time_walk"),
-…Array(2).fill("phantom_monster"),…Array(2).fill("azure_drake"),
-…Array(2).fill("air_elemental"),  …Array(1).fill("mahamoti_djinn"),
-…Array(2).fill("mana_short"),
-…Array(17).fill("island"),
+...Array(4).fill("counterspell"), ...Array(2).fill("force_spike"), ...Array(2).fill("remove_soul"), ...Array(2).fill("power_sink"), ...Array(3).fill("unsummon"), ...Array(2).fill("boomerang"), ...Array(2).fill("psionic_blast"), ...Array(1).fill("braingeyser"), ...Array(1).fill("ancestral_recall"), ...Array(1).fill("time_walk"), ...Array(2).fill("phantom_monster"), ...Array(2).fill("azure_drake"), ...Array(2).fill("air_elemental"), ...Array(1).fill("mahamoti_djinn"), ...Array(2).fill("mana_short"), ...Array(17).fill("island"),
 ]},
 
 BLUE_TEMPO: {
 name:"Blue Tempo", color:"U", strategy:"control",
 deck:[
-…Array(4).fill("flying_men"),  …Array(4).fill("dandan"),
-…Array(3).fill("phantom_warrior"), …Array(2).fill("azure_drake"),
-…Array(4).fill("counterspell"),…Array(3).fill("unsummon"),
-…Array(3).fill("boomerang"),   …Array(2).fill("force_spike"),
-…Array(2).fill("mana_short"),  …Array(2).fill("psionic_blast"),
-…Array(1).fill("braingeyser"),…Array(1).fill("ancestral_recall"),
-…Array(1).fill("time_walk"),
-…Array(18).fill("island"),
+...Array(4).fill("flying_men"), ...Array(4).fill("dandan"), ...Array(3).fill("phantom_warrior"), ...Array(2).fill("azure_drake"), ...Array(4).fill("counterspell"), ...Array(3).fill("unsummon"), ...Array(3).fill("boomerang"), ...Array(2).fill("force_spike"), ...Array(2).fill("mana_short"), ...Array(2).fill("psionic_blast"), ...Array(1).fill("braingeyser"), ...Array(1).fill("ancestral_recall"), ...Array(1).fill("time_walk"), ...Array(18).fill("island"),
 ]},
 
 BLACK_REANIMATOR: {
 name:"Black Reanimator", color:"B", strategy:"combo",
 deck:[
-…Array(4).fill("dark_ritual"),    …Array(3).fill("hypnotic_specter"),
-…Array(2).fill("sengir_vampire"), …Array(2).fill("lord_of_the_pit"),
-…Array(2).fill("nightmare"),      …Array(2).fill("juzam_djinn"),
-…Array(3).fill("terror"),         …Array(2).fill("sinkhole"),
-…Array(2).fill("demonic_tutor"),  …Array(2).fill("mind_twist"),
-…Array(2).fill("animate_dead"),   …Array(1).fill("drain_life"),
-…Array(2).fill("black_knight"),   …Array(2).fill("royal_assassin"),
-…Array(17).fill("swamp"),
+...Array(4).fill("dark_ritual"), ...Array(3).fill("hypnotic_specter"), ...Array(2).fill("sengir_vampire"), ...Array(2).fill("lord_of_the_pit"), ...Array(2).fill("nightmare"), ...Array(2).fill("juzam_djinn"), ...Array(3).fill("terror"), ...Array(2).fill("sinkhole"), ...Array(2).fill("demonic_tutor"), ...Array(2).fill("mind_twist"), ...Array(2).fill("animate_dead"), ...Array(1).fill("drain_life"), ...Array(2).fill("black_knight"), ...Array(2).fill("royal_assassin"), ...Array(17).fill("swamp"),
 ]},
 
 BLACK_CONTROL: {
 name:"Black Control", color:"B", strategy:"control",
 deck:[
-…Array(4).fill("dark_ritual"),    …Array(4).fill("hypnotic_specter"),
-…Array(3).fill("frozen_shade"),   …Array(3).fill("bog_wraith"),
-…Array(2).fill("vampire_bats"),   …Array(2).fill("zombie_master"),
-…Array(4).fill("terror"),         …Array(2).fill("dark_banishing"),
-…Array(2).fill("sinkhole"),       …Array(2).fill("mind_twist"),
-…Array(2).fill("pestilence"),     …Array(1).fill("demonic_tutor"),
-…Array(1).fill("drain_life"),
-…Array(18).fill("swamp"),
+...Array(4).fill("dark_ritual"), ...Array(4).fill("hypnotic_specter"), ...Array(3).fill("frozen_shade"), ...Array(3).fill("bog_wraith"), ...Array(2).fill("vampire_bats"), ...Array(2).fill("zombie_master"), ...Array(4).fill("terror"), ...Array(2).fill("dark_banishing"), ...Array(2).fill("sinkhole"), ...Array(2).fill("mind_twist"), ...Array(2).fill("pestilence"), ...Array(1).fill("demonic_tutor"), ...Array(1).fill("drain_life"), ...Array(18).fill("swamp"),
 ]},
 
 RED_BURN: {
 name:"Red Burn", color:"R", strategy:"aggro",
 deck:[
-…Array(4).fill("lightning_bolt"), …Array(4).fill("chain_lightning"),
-…Array(3).fill("fireball"),       …Array(2).fill("disintegrate"),
-…Array(2).fill("lava_axe"),       …Array(2).fill("earthquake"),
-…Array(3).fill("monss_goblin_raiders"),    …Array(2).fill("goblin_balloon_brigade"),
-…Array(2).fill("goblin_king"),    …Array(2).fill("hill_giant"),
-…Array(2).fill("dragon_whelp"),   …Array(1).fill("shivan_dragon"),
-…Array(19).fill("mountain"),
+...Array(4).fill("lightning_bolt"), ...Array(4).fill("chain_lightning"), ...Array(3).fill("fireball"), ...Array(2).fill("disintegrate"), ...Array(2).fill("lava_axe"), ...Array(2).fill("earthquake"), ...Array(3).fill("monss_goblin_raiders"), ...Array(2).fill("goblin_balloon_brigade"), ...Array(2).fill("goblin_king"), ...Array(2).fill("hill_giant"), ...Array(2).fill("dragon_whelp"), ...Array(1).fill("shivan_dragon"), ...Array(19).fill("mountain"),
 ]},
 
 RED_AGGRO: {
 name:"Goblin Horde", color:"R", strategy:"aggro",
 deck:[
-…Array(4).fill("monss_goblin_raiders"),    …Array(4).fill("goblin_hero"),
-…Array(3).fill("goblin_balloon_brigade"), …Array(3).fill("goblin_king"),
-…Array(2).fill("ironclaw_orcs"),  …Array(2).fill("orcish_artillery"),
-…Array(2).fill("hurloon_minotaur"),
-…Array(4).fill("lightning_bolt"), …Array(4).fill("chain_lightning"),
-…Array(2).fill("fireball"),       …Array(2).fill("earthquake"),
-…Array(18).fill("mountain"),
+...Array(4).fill("monss_goblin_raiders"), ...Array(4).fill("goblin_hero"), ...Array(3).fill("goblin_balloon_brigade"), ...Array(3).fill("goblin_king"), ...Array(2).fill("ironclaw_orcs"), ...Array(2).fill("orcish_artillery"), ...Array(2).fill("hurloon_minotaur"), ...Array(4).fill("lightning_bolt"), ...Array(4).fill("chain_lightning"), ...Array(2).fill("fireball"), ...Array(2).fill("earthquake"), ...Array(18).fill("mountain"),
 ]},
 
 GREEN_STOMPY: {
 name:"Green Stompy", color:"G", strategy:"aggro",
 deck:[
-…Array(4).fill("llanowar_elves"), …Array(4).fill("fyndhorn_elves"),
-…Array(2).fill("kird_ape"),       …Array(3).fill("grizzly_bears"),
-…Array(2).fill("war_mammoth"),    …Array(2).fill("erhnam_djinn"),
-…Array(2).fill("craw_wurm"),      …Array(1).fill("force_of_nature"),
-…Array(2).fill("birds_of_paradise"),…Array(3).fill("giant_growth"),
-…Array(2).fill("berserk"),        …Array(1).fill("regrowth"),
-…Array(2).fill("tranquility"),
-…Array(2).fill("taiga"),          …Array(16).fill("forest"),
+...Array(4).fill("llanowar_elves"), ...Array(4).fill("fyndhorn_elves"), ...Array(2).fill("kird_ape"), ...Array(3).fill("grizzly_bears"), ...Array(2).fill("war_mammoth"), ...Array(2).fill("erhnam_djinn"), ...Array(2).fill("craw_wurm"), ...Array(1).fill("force_of_nature"), ...Array(2).fill("birds_of_paradise"), ...Array(3).fill("giant_growth"), ...Array(2).fill("berserk"), ...Array(1).fill("regrowth"), ...Array(2).fill("tranquility"), ...Array(2).fill("taiga"), ...Array(16).fill("forest"),
 ]},
 
 ARTIFACT_CONTROL: {
 name:"Artifact Control", color:"", strategy:"control",
 deck:[
-"black_lotus","sol_ring","mana_vault","basalt_monolith",
-…Array(2).fill("ornithopter"), …Array(2).fill("juggernaut"),
-…Array(2).fill("clockwork_beast"), …Array(2).fill("colossus_of_sardia"),
-…Array(2).fill("triskelion"),  …Array(2).fill("su_chi"),
-"nevinyrral_disk","icy_manipulator","disrupting_scepter","rod_of_ruin",
-…Array(2).fill("living_wall"), …Array(2).fill("brass_man"),
-…Array(2).fill("mox_pearl"),   …Array(2).fill("mox_sapphire"),
-…Array(2).fill("mox_jet"),     …Array(2).fill("mox_ruby"),
-…Array(2).fill("mox_emerald"),
-…Array(4).fill("plains"),  …Array(3).fill("island"),
-…Array(3).fill("swamp"),   …Array(3).fill("mountain"), …Array(3).fill("forest"),
+"black_lotus","sol_ring","mana_vault","basalt_monolith", ...Array(2).fill("ornithopter"), ...Array(2).fill("juggernaut"), ...Array(2).fill("clockwork_beast"), ...Array(2).fill("colossus_of_sardia"), ...Array(2).fill("triskelion"), ...Array(2).fill("su_chi"),
+"nevinyrral_disk","icy_manipulator","disrupting_scepter","rod_of_ruin", ...Array(2).fill("living_wall"), ...Array(2).fill("brass_man"), ...Array(2).fill("mox_pearl"), ...Array(2).fill("mox_sapphire"), ...Array(2).fill("mox_jet"), ...Array(2).fill("mox_ruby"), ...Array(2).fill("mox_emerald"), ...Array(4).fill("plains"), ...Array(3).fill("island"), ...Array(3).fill("swamp"), ...Array(3).fill("mountain"), ...Array(3).fill("forest"),
 ]},
 
 FIVE_COLOR_BOMB: {
 name:"Five-Color Chaos", color:"WUBRG", strategy:"bomb",
 deck:[
-"black_lotus","sol_ring","ancestral_recall","time_walk","demonic_tutor",
-…Array(2).fill("mox_pearl"),   …Array(2).fill("mox_sapphire"),
-…Array(2).fill("mox_jet"),     …Array(2).fill("mox_ruby"),
-…Array(2).fill("mox_emerald"),
+"black_lotus","sol_ring","ancestral_recall","time_walk","demonic_tutor", ...Array(2).fill("mox_pearl"), ...Array(2).fill("mox_sapphire"), ...Array(2).fill("mox_jet"), ...Array(2).fill("mox_ruby"), ...Array(2).fill("mox_emerald"),
 "swords_to_plowshares","wrath_of_god","armageddon","balance","counterspell","mind_twist",
 "earthquake","berserk","serra_angel","mahamoti_djinn",
-"shivan_dragon","force_of_nature","juzam_djinn","lord_of_the_pit",
-…Array(3).fill("plains"),  …Array(3).fill("island"),
-…Array(3).fill("swamp"),   …Array(3).fill("mountain"),
-…Array(4).fill("forest"),
+"shivan_dragon","force_of_nature","juzam_djinn","lord_of_the_pit", ...Array(3).fill("plains"), ...Array(3).fill("island"), ...Array(3).fill("swamp"), ...Array(3).fill("mountain"), ...Array(4).fill("forest"),
 ]},
 
-// ─── BOSS DECKS ───────────────────────────────────────────────────────────────
+// --- BOSS DECKS ---------------------------------------------------------------
 // Tied to AI_PROFILES keys in AI.js. profileId on the opponent archetype must
 // match the key exactly (DELENIA, XYLOS, MORTIS, KARAG, SYLVARA).
 
@@ -488,7 +418,7 @@ BOSS_WHITE: {
     // Lands (16)
     ...Array(16).fill("plains"),
   ],
-  // Total: 4+2+2+2+2 + 4+2+2+1+1 + 1+1 + 16 = 40 ✓
+  // Total: 4+2+2+2+2 + 4+2+2+1+1 + 1+1 + 16 = 40 ?
 },
 
 BOSS_BLUE: {
@@ -514,7 +444,7 @@ BOSS_BLUE: {
     // Lands (16)
     ...Array(16).fill("island"),
   ],
-  // Total: 2+2+2+2 + 4+1+1+2+2+2+2 + 1+1 + 16 = 40 ✓
+  // Total: 2+2+2+2 + 4+1+1+2+2+2+2 + 1+1 + 16 = 40 ?
 },
 
 BOSS_BLACK: {
@@ -540,7 +470,7 @@ BOSS_BLACK: {
     // Lands (14)
     ...Array(14).fill("swamp"),
   ],
-  // Total: 4+2+2+2+2 + 4+2+1+1+2+2 + 1+1 + 14 = 40 ✓
+  // Total: 4+2+2+2+2 + 4+2+1+1+2+2 + 1+1 + 14 = 40 ?
 },
 
 BOSS_RED: {
@@ -563,7 +493,7 @@ BOSS_RED: {
     // Lands (14)
     ...Array(14).fill("mountain"),
   ],
-  // Total: 4+4+2+2+2 + 4+4+2 + 1+1 + 14 = 40 ✓
+  // Total: 4+4+2+2+2 + 4+4+2 + 1+1 + 14 = 40 ?
 },
 
 BOSS_GREEN: {
@@ -587,11 +517,11 @@ BOSS_GREEN: {
     // Lands (14)
     ...Array(14).fill("forest"),
   ],
-  // Total: 4+2+4+2+2+2 + 4+2+2 + 1+1 + 14 = 40 ✓
+  // Total: 4+2+4+2+2+2 + 4+2+2 + 1+1 + 14 = 40 ?
 },
 };
 
-// ─── DEV-MODE ID VALIDATOR ───────────────────────────────────────────────────
+// --- DEV-MODE ID VALIDATOR ---------------------------------------------------
 // Run once at game init (dev builds only) to surface ID drift early.
 // Strip or tree-shake for production.
 

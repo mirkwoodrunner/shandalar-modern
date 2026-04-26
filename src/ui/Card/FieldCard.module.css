@@ -1,0 +1,97 @@
+.card {
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  transition:
+    transform .35s cubic-bezier(.4,1.4,.6,1),
+    border-color var(--t-fast),
+    box-shadow var(--t-med);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--brass-hi);
+  outline-offset: 2px;
+}
+
+.nameBar {
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  padding: 2px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cardName {
+  font-family: var(--font-display);
+  color: var(--ink-parchment);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 1px rgba(0,0,0,.8);
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.artWindow {
+  flex: 1;
+  margin: 2px 0;
+}
+
+.typeBar {
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  padding: 1px 4px;
+  font-family: var(--font-display);
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.textBox {
+  background: linear-gradient(180deg, #2a241a 0%, #1e1812 100%);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
+  flex-shrink: 0;
+  padding: 2px 4px;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.ptPlaque {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: linear-gradient(180deg, #1a1410, #0a0806);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  text-shadow: 0 1px 2px rgba(0,0,0,.9);
+  box-shadow: 0 1px 3px rgba(0,0,0,.7);
+}
+
+.summoningOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.summoningLabel {
+  font-size: 8px;
+  color: rgba(220,200,150,.7);
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}

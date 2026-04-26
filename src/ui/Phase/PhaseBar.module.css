@@ -1,0 +1,40 @@
+.bar {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.pill {
+  padding: 4px 9px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: all var(--t-med);
+  background: rgba(20,16,10,.5);
+  border: 1px solid rgba(120,90,40,.25);
+  color: var(--ink-faint);
+}
+
+.pill[aria-current="step"] {
+  font-weight: 700;
+}
+
+.pillBrass[aria-current="step"] {
+  background: linear-gradient(180deg, rgba(196,160,60,.45), rgba(120,90,30,.3));
+  border-color: var(--brass);
+  color: var(--brass-hi);
+  box-shadow: 0 0 10px rgba(196,160,60,.5), inset 0 1px 1px rgba(255,255,255,.1);
+}
+
+.pillCombat[aria-current="step"] {
+  background: linear-gradient(180deg, rgba(196,80,40,.55), rgba(120,40,20,.4));
+  border-color: var(--opp);
+  color: #ffcc88;
+  box-shadow: 0 0 10px rgba(196,80,40,.6), inset 0 1px 1px rgba(255,255,255,.1);
+}

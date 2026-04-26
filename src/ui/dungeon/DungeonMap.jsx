@@ -1,12 +1,12 @@
 // src/ui/dungeon/DungeonMap.jsx
-// Dungeon 24×16 CSS-grid renderer with keyboard movement and entity tokens.
-// Presentation only — all state lives in OverworldGame. Per SYSTEMS.md §9.
+// Dungeon 24?16 CSS-grid renderer with keyboard movement and entity tokens.
+// Presentation only ? all state lives in OverworldGame. Per SYSTEMS.md S9.
 
 import React, { useEffect } from 'react';
 
 const TILE_SIZE = 28;
 
-// ─── TILE STYLE ───────────────────────────────────────────────────────────────
+// --- TILE STYLE ---------------------------------------------------------------
 
 function tileBackground(cell) {
   if (!cell.revealed) return '#050302';
@@ -29,7 +29,7 @@ function isAdjacentToLit(grid, x, y) {
   });
 }
 
-// ─── ENTITY TOKEN ─────────────────────────────────────────────────────────────
+// --- ENTITY TOKEN -------------------------------------------------------------
 
 function EntityToken({ entity }) {
   if (entity.type === 'ENEMY') {
@@ -38,7 +38,7 @@ function EntityToken({ entity }) {
         <span style={{
           fontSize: 14, lineHeight: 1,
           filter: 'drop-shadow(0 0 4px #cc2020)',
-        }}>👹</span>
+        }}>?</span>
         <span style={{
           fontSize: 6, color: '#e06060',
           fontFamily: "'Cinzel', serif",
@@ -56,7 +56,7 @@ function EntityToken({ entity }) {
         fontSize: 14, lineHeight: 1,
         filter: 'drop-shadow(0 0 4px #c0a020)',
         zIndex: 2,
-      }}>💰</span>
+      }}>?</span>
     );
   }
   if (entity.type === 'EXIT') {
@@ -65,7 +65,7 @@ function EntityToken({ entity }) {
         <span style={{
           fontSize: 14, lineHeight: 1,
           filter: 'drop-shadow(0 0 4px rgba(255,255,255,.9))',
-        }}>🚪</span>
+        }}>?</span>
         <span style={{
           fontSize: 6, color: '#d0d0c0',
           fontFamily: "'Cinzel', serif",
@@ -77,10 +77,10 @@ function EntityToken({ entity }) {
   return null;
 }
 
-// ─── DUNGEON MAP ──────────────────────────────────────────────────────────────
+// --- DUNGEON MAP --------------------------------------------------------------
 
 export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInteract }) {
-  // Keyboard handler — Arrow keys + WASD
+  // Keyboard handler ? Arrow keys + WASD
   useEffect(() => {
     const handler = (e) => {
       if (e.key === 'ArrowUp'    || e.key === 'w') { e.preventDefault(); onMove(0, -1); }
@@ -92,7 +92,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
     return () => window.removeEventListener('keydown', handler);
   }, [onMove]);
 
-  // Build entity lookup: "x,y" → entity
+  // Build entity lookup: "x,y" ? entity
   const entityMap = {};
   dungeon.entities.forEach(e => { entityMap[`${e.x},${e.y}`] = e; });
 
@@ -169,7 +169,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
                   zIndex: 10,
                   filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))',
                 }}>
-                  🧙
+                  ?
                 </div>
               )}
             </div>

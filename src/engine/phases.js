@@ -1,6 +1,6 @@
 // src/engine/phases.js
 // Authoritative phase enum and sequence for the Shandalar duel engine.
-// Per design spec §1.1 — consumed by DuelCore, AI, and event system.
+// Per design spec S1.1 ? consumed by DuelCore, AI, and event system.
 
 export const PHASE = {
   UNTAP:            'UNTAP',

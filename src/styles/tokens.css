@@ -1,0 +1,100 @@
+:root {
+  /* Surfaces */
+  --bg-void:        #050302;
+  --bg-deep:        #0a0604;
+  --bg-panel:       #14100a;
+  --bg-panel-hi:    #1a1410;
+
+  /* Ink */
+  --ink-parchment:  #e8dcb0;
+  --ink-muted:      #a89878;
+  --ink-faint:      #7a6a48;
+  --ink-dim:        #5a4a30;
+
+  /* Brass / accent */
+  --brass:          #c4a040;
+  --brass-hi:       #ffe080;
+  --brass-glow:     rgba(196,160,64,.4);
+
+  /* Sides */
+  --you:            #7ab84a;
+  --opp:            #c45040;
+
+  /* Mana pip backgrounds (W U B R G C) */
+  --w: #e8d089;
+  --u: #3d6fa8;
+  --b: #5a3478;
+  --r: #a83a22;
+  --g: #3d7a32;
+  --c: #7a6650;
+
+  /* Card frame triplets — bg / border / glow */
+  --frame-w-bg:   #3a3424; --frame-w-bd: #8a7438; --frame-w-glow: #d4b870;
+  --frame-u-bg:   #1a2638; --frame-u-bd: #3d6fa8; --frame-u-glow: #6a9ad0;
+  --frame-b-bg:   #241a2c; --frame-b-bd: #5a3478; --frame-b-glow: #8c5cb0;
+  --frame-r-bg:   #2c1a16; --frame-r-bd: #8a3422; --frame-r-glow: #c4634a;
+  --frame-g-bg:   #1c2818; --frame-g-bd: #3d6a32; --frame-g-glow: #6a9a5a;
+  --frame-a-bg:   #1f2024; --frame-a-bd: #6a6e76; --frame-a-glow: #9aa0aa;
+
+  /* Typography */
+  --font-display: 'Cinzel', serif;
+  --font-body:    'Crimson Text', serif;
+  --font-mono:    'Fira Code', monospace;
+
+  /* Motion */
+  --t-fast: .15s;
+  --t-med:  .25s;
+  --t-slow: .45s;
+
+  /* Special backgrounds */
+  --bg-radial-center: #1a1208;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: .8; transform: scale(1); }
+  50%       { opacity: 1;  transform: scale(1.04); }
+}
+
+@keyframes damageFlash {
+  0%   { filter: none; transform: translateX(0); }
+  20%  { filter: brightness(2.5) saturate(.2); transform: translateX(-3px); }
+  60%  { transform: translateX(2px); }
+  100% { filter: none; transform: translateX(0); }
+}
+
+@keyframes healFlash {
+  0%, 100% { filter: none; transform: scale(1); }
+  50%       { filter: brightness(1.5) hue-rotate(100deg); transform: scale(1.05); }
+}
+
+@keyframes phaseGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(196,160,64,.5); }
+  50%       { box-shadow: 0 0 16px rgba(196,160,64,.9); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: scale(.85) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Global focus ring */
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+/* Reduced motion — disable decorative animations, keep semantic ones (tap rotate) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

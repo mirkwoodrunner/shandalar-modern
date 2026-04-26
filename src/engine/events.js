@@ -1,6 +1,6 @@
 // src/engine/events.js
 // Event bus constants for the Shandalar duel engine.
-// Per design spec §10.1 — DuelCore emits these; cards subscribe via event bus.
+// Per design spec S10.1 ? DuelCore emits these; cards subscribe via event bus.
 
 export const GAME_EVENTS = {
   PHASE_CHANGED:         'PHASE_CHANGED',
