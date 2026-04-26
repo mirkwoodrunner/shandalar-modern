@@ -1,0 +1,117 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(5, 3, 2, 0.82);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--t-med) ease;
+}
+
+.modal {
+  width: 360px;
+  background: linear-gradient(160deg, var(--bg-panel-hi), var(--bg-deep) 80%);
+  border: 1.5px solid var(--brass);
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(196, 160, 64, 0.3), 0 24px 60px rgba(0, 0, 0, 0.8);
+  padding: 36px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: cardEnter var(--t-slow) cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.victory {
+  color: var(--brass-hi);
+  text-shadow: 0 0 24px rgba(255, 224, 128, 0.6), 0 0 60px rgba(196, 160, 64, 0.4);
+}
+
+.defeat {
+  color: var(--opp);
+  text-shadow: 0 0 24px rgba(196, 80, 64, 0.6), 0 0 60px rgba(196, 80, 64, 0.3);
+}
+
+.flavour {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(196, 160, 64, 0.35), transparent);
+}
+
+.stats {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-parchment);
+  font-family: var(--font-display);
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(232, 220, 176, 0.3);
+}
+
+.newDuelBtn {
+  appearance: none;
+  border: 1.5px solid var(--brass);
+  background: linear-gradient(155deg, rgba(196, 160, 64, 0.2), rgba(196, 160, 64, 0.06));
+  color: var(--brass-hi);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--t-fast), box-shadow var(--t-fast);
+  margin-top: 4px;
+}
+
+.newDuelBtn:hover {
+  background: linear-gradient(155deg, rgba(196, 160, 64, 0.35), rgba(196, 160, 64, 0.12));
+  box-shadow: 0 0 16px rgba(196, 160, 64, 0.3);
+}
+
+.newDuelBtn:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+}

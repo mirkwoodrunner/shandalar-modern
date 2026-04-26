@@ -1,0 +1,28 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--ink-parchment);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-display);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #080502; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5a4020, #3a2810);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #7a5830; }
