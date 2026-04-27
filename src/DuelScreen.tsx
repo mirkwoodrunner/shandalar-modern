@@ -188,7 +188,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
   const [showLotus, setShowLotus] = useState(false);
   const [showBop, setShowBop] = useState(false);
-  const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
+  const [pendingDualLand, setPendingDualLand] = useState<any | null>(null);
   const [graveyardPopover, setGraveyardPopover] = useState<{
     open: boolean; player: string | null; mode: string;
   }>({ open: false, player: null, mode: 'reference' });
@@ -258,7 +258,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
     if (zone === 'pBf') {
       if (isLand(card) && !card.tapped) {
-        if (card.produces && card.produces.length > 1) { setPendingDualLand({ card, colors: card.produces }); return; }
+        if (card.produces && card.produces.length > 1) { setPendingDualLand(card); return; }
         tapLand(card.iid, card.produces?.[0] ?? 'C');
         return;
       }
@@ -594,11 +594,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       )}
       {pendingDualLand && (
         <DualLandColorPicker
-          landName={pendingDualLand.card.name}
-          colors={pendingDualLand.colors}
+          landName={pendingDualLand.name}
+          colors={pendingDualLand.produces}
           onChoose={(color: string) => {
-            dispatch({ type: 'TAP_LAND', who: 'p', iid: pendingDualLand.card.iid, mana: color });
-            if (pendingDualLand.card.id === 'city_of_brass') dispatch({ type: 'CITY_OF_BRASS_DAMAGE' });
+            tapLand(pendingDualLand.iid, color);
+            if (pendingDualLand.id === 'city_of_brass') dispatch({ type: 'CITY_OF_BRASS_DAMAGE' });
             setPendingDualLand(null);
           }}
           onCancel={() => setPendingDualLand(null)}

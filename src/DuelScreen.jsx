@@ -174,7 +174,7 @@ const [tooltip, setTooltip]               = useState(null); // { card, pos }
 const [pendingActivate, setPendingActivate] = useState(null); // card with activated ability
 const [showLotus, setShowLotus]            = useState(false);
 const [showBop, setShowBop]               = useState(false);
-const [pendingDualLand, setPendingDualLand] = useState(null); // { card, colors } | null
+const [pendingDualLand, setPendingDualLand] = useState(null); // card object | null
 const [graveyardPopover, setGraveyardPopover] = useState({
   open: false,
   player: null,
@@ -247,7 +247,7 @@ if (zone === 'pBf') {
   // Tap land for mana
   if (isLand(card) && !card.tapped) {
     if (card.produces && card.produces.length > 1) {
-      setPendingDualLand({ card, colors: card.produces });
+      setPendingDualLand(card);
       return;
     }
     tapLand(card.iid, card.produces?.[0] || 'C');
@@ -802,11 +802,11 @@ fontFamily: "'Crimson Text',serif",
   {/* Dual land / City of Brass color picker */}
   {pendingDualLand && (
     <DualLandColorPicker
-      landName={pendingDualLand.card.name}
-      colors={pendingDualLand.colors}
+      landName={pendingDualLand.name}
+      colors={pendingDualLand.produces}
       onChoose={(color) => {
-        dispatch({ type: 'TAP_LAND', who: 'p', iid: pendingDualLand.card.iid, mana: color });
-        if (pendingDualLand.card.id === 'city_of_brass') {
+        tapLand(pendingDualLand.iid, color);
+        if (pendingDualLand.id === 'city_of_brass') {
           dispatch({ type: 'CITY_OF_BRASS_DAMAGE' });
         }
         setPendingDualLand(null);

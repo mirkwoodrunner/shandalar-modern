@@ -321,8 +321,7 @@ const tgtC = tgt ? getBF(ns, tgt) : null;
 
 // Priority 1: custom card handler (spec S7.2)
 if (card.name && CARD_HANDLERS[card.name]) {
-  const result = CARD_HANDLERS[card.name].onResolve(ns, card, targets || []);
-  if (result) return result;
+  return CARD_HANDLERS[card.name].onResolve(ns, card, targets || []);
 }
 
 switch (card.effect) {
