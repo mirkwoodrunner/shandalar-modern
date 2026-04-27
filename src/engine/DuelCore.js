@@ -502,8 +502,15 @@ ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 break;
 }
 case "wheelOfFortune": {
-for (const w of ["p","o"]) { ns = { ...ns, [w]: { ...ns[w], gy: [...ns[w].gy, ...ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
-ns = dlog(ns, "Wheel of Fortune!", "effect");
+if (card.name === "Timetwister") {
+  // Card instance may carry a stale effect tag; route to Timetwister behaviour.
+  const shuffleArr = (arr) => { const r=[...arr]; for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;};
+  for (const w of ['p','o']) { const newLib=shuffleArr([...ns[w].lib,...ns[w].hand,...ns[w].gy]); ns={...ns,[w]:{...ns[w],lib:newLib,hand:[],gy:[]}}; ns=drawD(ns,w,7); }
+  ns = dlog(ns, 'Timetwister — all players shuffle and draw 7.', 'effect');
+} else {
+  for (const w of ["p","o"]) { ns = { ...ns, [w]: { ...ns[w], gy: [...ns[w].gy, ...ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
+  ns = dlog(ns, "Wheel of Fortune!", "effect");
+}
 break;
 }
 case "timetwister": {
