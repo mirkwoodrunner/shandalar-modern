@@ -287,7 +287,14 @@ return (
 </div>
 {defeated ? (
 <div style={{ textAlign:"center", padding:10 }}>
-<div style={{ fontSize:13, color:"#60a060", fontFamily:"'Cinzel',serif" }}>? Defeated. {mage}'s power is broken.</div>
+<div style={{ fontSize:13, color:"#60a060", fontFamily:"'Cinzel',serif", marginBottom:12 }}>✓ Defeated.</div>
+<button onClick={onClose} style={{
+  background:"transparent", border:"1px solid rgba(100,180,80,.4)",
+  color:"#80b060", padding:"9px 24px", borderRadius:5,
+  cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1,
+}}>
+  Leave Castle
+</button>
 </div>
 ) : (
 <div style={{ display:"flex", gap:10 }}>

@@ -80,8 +80,9 @@ p.generic += parseInt(n);
 return p;
 }
 
-export function canPay(pool, cost) {
+export function canPay(pool, cost, xVal = 0) {
 const r = parseMana(cost);
+r.generic = (r.generic || 0) + xVal;
 const a = { ...pool };
 for (const c of ["W","U","B","R","G","C"]) {
 if (a[c] < r[c]) return false;
@@ -1389,9 +1390,22 @@ case "CAST_SPELL": {
   if (!c) return s;
   if (s.active !== w && !isInst(c)) return s;
   if ((s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) && !isInst(c)) return s;
-  if (!canPay(s[w].mana, c.cost)) return s;
+  const xSpend = c.cost?.toUpperCase().includes('X') ? (action.xVal || s.xVal || 1) : 0;
+  if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
-  s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, c.cost), hand: s[w].hand.filter(x => x.iid !== action.iid) } };
+  let manaAfterPay = payMana(s[w].mana, c.cost);
+  if (xSpend > 0) {
+    let remaining = xSpend;
+    const xmp = { ...manaAfterPay };
+    for (const col of ['W','U','B','R','G','C']) {
+      if (remaining <= 0) break;
+      const take = Math.min(xmp[col] || 0, remaining);
+      xmp[col] = (xmp[col] || 0) - take;
+      remaining -= take;
+    }
+    manaAfterPay = xmp;
+  }
+  s = { ...s, [w]: { ...s[w], mana: manaAfterPay, hand: s[w].hand.filter(x => x.iid !== action.iid) } };
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (isPerm(c) && !isLand(c)) {
@@ -1490,6 +1504,9 @@ case "ACTIVATE_ABILITY": {
   if (act.effect === "addMana3Any") {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingLotus: true, pendingLotusIid: action.iid };
+    if (act.cost?.includes('sac')) {
+      s = zMove(s, action.iid, 'p', 'p', 'gy');
+    }
     return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
   }
   if (act.cost.includes("T")) {
@@ -1508,23 +1525,8 @@ case "ACTIVATE_ABILITY": {
 case "CHOOSE_LOTUS_COLOR": {
   const mp = { ...s.p.mana };
   mp[action.color] = (mp[action.color] || 0) + 3;
-  let ns = { ...s, p: { ...s.p, mana: mp }, pendingLotus: false };
-  const lotusIid = ns.pendingLotusIid;
-  if (lotusIid) {
-    const lotus = ns.p.bf.find(c => c.iid === lotusIid);
-    if (lotus) {
-      ns = {
-        ...ns,
-        pendingLotusIid: null,
-        p: {
-          ...ns.p,
-          bf: ns.p.bf.filter(c => c.iid !== lotusIid),
-          gy: [...ns.p.gy, lotus],
-        },
-      };
-    }
-  }
-  return dlog(ns, `Black Lotus adds 3${action.color} and is sacrificed.`, "mana");
+  const ns = { ...s, p: { ...s.p, mana: mp }, pendingLotus: false, pendingLotusIid: null };
+  return dlog(ns, `Black Lotus adds 3${action.color}.`, "mana");
 }
 
 case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true, pendingLotusIid: action.iid };
