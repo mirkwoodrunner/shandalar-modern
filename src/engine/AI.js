@@ -184,6 +184,7 @@ function planMain(state, profile, phase) {
 
 function planAttack(state, profile) {
   const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
+  console.warn('[AI] planAttack candidates:', candidates.length);
   if (!candidates.length) return passPlan(PHASE.COMBAT_ATTACKERS);
 
   const attackerIds = [];

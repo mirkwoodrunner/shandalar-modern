@@ -1431,12 +1431,13 @@ case "RESOLVE_STACK": {
 }
 
 case "DECLARE_ATTACKER": {
-  if (s.phase !== PHASE.COMBAT_ATTACKERS || s.active !== "p") return s;
-  const c = s.p.bf.find(x => x.iid === action.iid);
+  if (s.phase !== PHASE.COMBAT_ATTACKERS) return s;
+  const side = s.active;
+  const c = s[side].bf.find(x => x.iid === action.iid);
   if (!c || !isCre(c) || c.tapped || c.summoningSick) return s;
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
-  return { ...s, attackers: atts, p: { ...s.p, bf: s.p.bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
+  return { ...s, attackers: atts, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
 }
 
 case "DECLARE_BLOCKER": {
