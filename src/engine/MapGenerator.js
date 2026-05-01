@@ -13,12 +13,12 @@ export const MAP_W = 32;
 export const MAP_H = 22;
 
 export const TERRAIN = {
-PLAINS:   { id:"PLAINS",   color:"#b5c87a", label:"Plains",   icon:"?",  moveC:1,  mana:"W" },
-FOREST:   { id:"FOREST",   color:"#4a7c59", label:"Forest",   icon:"?", moveC:2,  mana:"G" },
-SWAMP:    { id:"SWAMP",    color:"#4a5568", label:"Swamp",    icon:"?", moveC:3,  mana:"B" },
-MOUNTAIN: { id:"MOUNTAIN", color:"#9b7355", label:"Mountain", icon:"?",  moveC:2,  mana:"R" },
-ISLAND:   { id:"ISLAND",   color:"#4a90b8", label:"Island",   icon:"~",  moveC:2,  mana:"U" },
-WATER:    { id:"WATER",    color:"#1a3a5c", label:"Water",    icon:"?",  moveC:99, mana:"U" },
+PLAINS:   { id:"PLAINS",   color:"#b5c87a", label:"Plains",   icon:"🌾",  moveC:1,  mana:"W" },
+FOREST:   { id:"FOREST",   color:"#4a7c59", label:"Forest",   icon:"🌲", moveC:2,  mana:"G" },
+SWAMP:    { id:"SWAMP",    color:"#4a5568", label:"Swamp",    icon:"🐸", moveC:3,  mana:"B" },
+MOUNTAIN: { id:"MOUNTAIN", color:"#9b7355", label:"Mountain", icon:"⛰",  moveC:2,  mana:"R" },
+ISLAND:   { id:"ISLAND",   color:"#4a90b8", label:"Island",   icon:"🏝",  moveC:2,  mana:"U" },
+WATER:    { id:"WATER",    color:"#1a3a5c", label:"Water",    icon:"🌊",  moveC:99, mana:"U" },
 };
 
 export const MANA_HEX = {
@@ -26,7 +26,7 @@ W:"#f9f2d8", U:"#99ccee", B:"#bb99dd", R:"#ee8855", G:"#88cc66", C:"#aaaaaa",
 };
 
 export const MANA_SYM = {
-W:"?", U:"?", B:"?", R:"?", G:"?",
+W:"☀", U:"💧", B:"💀", R:"🔥", G:"🌿",
 };
 
 export const MAGE_NAMES   = { W:"Delenia", U:"Xylos",  B:"Mortis", R:"Karag",  G:"Sylvara" };
@@ -45,12 +45,12 @@ ARZ: { name:"Dominion",        desc:"Arzakon commands all five colors. The final
 };
 
 export const DUNGEON_MODIFIERS = [
-{ id:"POWER_STRUGGLE", name:"Power Struggle",  desc:"Each turn a random card swaps between hands.", icon:"?" },
-{ id:"CURSED_GROUND",  name:"Cursed Ground",   desc:"All creatures enter with a ?1/?1 counter.",   icon:"?" },
-{ id:"MANA_SURGE",     name:"Mana Surge",      desc:"Both players gain +1 mana each turn.",         icon:"?" },
-{ id:"SILENCE",        name:"Silence",         desc:"No instants may be cast.",                     icon:"?" },
-{ id:"TWILIGHT",       name:"Eternal Twilight", desc:"No creatures may attack until turn 3.",        icon:"?" },
-{ id:"OVERLOAD",       name:"Overload",         desc:"All spells cost 1 less (minimum 1).",          icon:"?" },
+{ id:"POWER_STRUGGLE", name:"Power Struggle",  desc:"Each turn a random card swaps between hands.", icon:"🔀" },
+{ id:"CURSED_GROUND",  name:"Cursed Ground",   desc:"All creatures enter with a -1/-1 counter.",   icon:"☠" },
+{ id:"MANA_SURGE",     name:"Mana Surge",      desc:"Both players gain +1 mana each turn.",         icon:"⚡" },
+{ id:"SILENCE",        name:"Silence",         desc:"No instants may be cast.",                     icon:"🔇" },
+{ id:"TWILIGHT",       name:"Eternal Twilight", desc:"No creatures may attack until turn 3.",        icon:"🌙" },
+{ id:"OVERLOAD",       name:"Overload",         desc:"All spells cost 1 less (minimum 1).",          icon:"✨" },
 ];
 
 export const DUNGEON_ARCHETYPES = [

@@ -9,7 +9,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
 generateMap, findPath, revealAround,
 TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
-MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE,
+MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE, MAP_W, MAP_H,
 } from './engine/MapGenerator.js';
 import { isLand } from './engine/DuelCore.js';
 import { ARCHETYPES, CARD_DB } from './data/cards.js';
@@ -32,14 +32,17 @@ import TreasureModal from './ui/dungeon/TreasureModal.jsx';
 
 const mkId = () => Math.random().toString(36).slice(2, 9);
 
+const VIEW_W = 22;
+const VIEW_H = 14;
+
 const ART_REWARD = { W: 'ward', U: 'stone', B: 'amulet', R: 'focus', G: 'boots' };
 
 const OW_ARTS = [
-{ id: 'boots',  name: 'Magical Boots',  icon: '?', desc: 'Movement cost ?1 per tile (min 1).',      owned: false },
-{ id: 'amulet', name: 'Amulet of Life', icon: '?', desc: 'Maximum HP +5.',                           owned: false },
-{ id: 'focus',  name: "Mage's Focus",   icon: '?', desc: 'Draw 1 extra card at duel start.',         owned: false },
-{ id: 'ward',   name: "Arzakon's Ward", icon: '?', desc: 'Mana link threshold raised to 5.',         owned: false },
-{ id: 'stone',  name: 'Scrying Stone',  icon: '?', desc: 'Free dungeon reveal per town visit.',      owned: false },
+{ id: 'boots',  name: 'Magical Boots',  icon: '👢', desc: 'Movement cost -1 per tile (min 1).',      owned: false },
+{ id: 'amulet', name: 'Amulet of Life', icon: '📿', desc: 'Maximum HP +5.',                           owned: false },
+{ id: 'focus',  name: "Mage's Focus",   icon: '🔮', desc: 'Draw 1 extra card at duel start.',         owned: false },
+{ id: 'ward',   name: "Arzakon's Ward", icon: '🛡',  desc: 'Mana link threshold raised to 5.',         owned: false },
+{ id: 'stone',  name: 'Scrying Stone',  icon: '🔭', desc: 'Free dungeon reveal per town visit.',      owned: false },
 ];
 
 const START_DECKS = {
@@ -152,7 +155,7 @@ const [modal, setModal]         = useState(null);
 const [activeTile, setActiveTile] = useState(null);
 const [log, setLog]             = useState(() => {
   const entries = [{ text: `${name} enters the plane of Shandalar.`, type: 'info' }];
-  if (isSandbox) entries.push({ text: '? Sandbox mode: all cards available in binder.', type: 'info' });
+  if (isSandbox) entries.push({ text: '🧪 Sandbox mode: all cards available in binder.', type: 'info' });
   return entries;
 });
 
@@ -256,7 +259,7 @@ setViewOfs({ x: nx, y: ny });
 if (newMoves > 0 && newMoves % 15 === 0) {
   setPlayer(p => {
     const cost = Math.min(p.gold, 8);
-    if (cost < 8) addLog('? Starving! No gold for food.', 'danger');
+    if (cost < 8) addLog('🍖 Starving! No gold for food.', 'danger');
     else addLog(`Hungry. Spent 8g on provisions.`, 'info');
     return { ...p, gold: p.gold - cost };
   });
@@ -284,7 +287,7 @@ if (expiredEvents.length) {
       if (n[ev.ty]?.[ev.tx]) n[ev.ty][ev.tx] = { ...n[ev.ty][ev.tx], manaLink: ev.color };
       return n;
     });
-    addLog(`? ${MAGE_NAMES[ev.color]}'s minion seizes ${ev.townName}! Mana link established.`, 'danger');
+    addLog(`⚠ ${MAGE_NAMES[ev.color]}'s minion seizes ${ev.townName}! Mana link established.`, 'danger');
   });
 }
 
@@ -308,7 +311,7 @@ if (newMoves > 5 && newMoves % 12 === 0 && Math.random() > 0.45) {
         movesLeft: 10,
       };
       setMlEvents(prev => [...prev, newEv]);
-      addLog(`? ${MAGE_NAMES[evColor]} sends ${minionName} to seize ${target.townData.name}!`, 'danger');
+      addLog(`⚠ ${MAGE_NAMES[evColor]} sends ${minionName} to seize ${target.townData.name}!`, 'danger');
     }
   }
 }
@@ -340,7 +343,7 @@ if (t.terrain !== TERRAIN.WATER && Math.random() < t.encChance) {
   const mList = MONSTER_TABLE[t.terrain.id] || MONSTER_TABLE.PLAINS;
   const tier = newMoves < 20 ? 1 : newMoves < 60 ? (Math.random() > 0.5 ? 2 : 1) : 2;
   const monster = { ...mList[Math.min(tier - 1, mList.length - 1)], tier };
-  addLog(`? A ${monster.name} blocks your path!`, 'danger');
+  addLog(`⚔ A ${monster.name} blocks your path!`, 'danger');
   openEncounterPopup(monster.archKey, player.hp, 'monster', null, {}, { monsterName: monster.name, tier: monster.tier });
 }
 
@@ -447,7 +450,7 @@ if (ctx === 'castle') {
     const artId = ART_REWARD[col];
     setArtifacts(prev => prev.map(a => a.id === artId ? { ...a, owned: true } : a));
     const artName = OW_ARTS.find(a => a.id === artId)?.name;
-    addLog(`? ${MAGE_NAMES[col]} is defeated! Artifact gained: ${artName}.`, 'success');
+    addLog(`🏆 ${MAGE_NAMES[col]} is defeated! Artifact gained: ${artName}.`, 'success');
     // Amulet of Life: max HP +5
     if (artId === 'amulet') setPlayer(p => ({ ...p, maxHP: p.maxHP + 5, hp: Math.min(p.hp + 5, p.maxHP + 5) }));
   } else if (!won) {
@@ -509,9 +512,9 @@ if (ctx === 'dungeon') {
       if (pool.length) {
         const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
         setBinder(b => [...b, reward]);
-        addLog(`Dungeon cleared! +${gold}g, +${gems}?, and ${reward.name}.`, 'success');
+        addLog(`Dungeon cleared! +${gold}g, +${gems}💎, and ${reward.name}.`, 'success');
       } else {
-        addLog(`Dungeon cleared! +${gold}g, +${gems}?.`, 'success');
+        addLog(`Dungeon cleared! +${gold}g, +${gems}💎.`, 'success');
       }
       setDungeonProg(null);
     }
@@ -526,7 +529,7 @@ if (ctx === 'dungeon') {
 if (ctx === 'arzakon') {
   if (won) {
     setArzakonDefeated(true);
-    addLog('? Arzakon is defeated! Shandalar is free!', 'success');
+    addLog('🏆 Arzakon is defeated! Shandalar is free!', 'success');
     // Hand off to score screen
     onScore({
       name, color,
@@ -556,7 +559,7 @@ setDuelCfg(null);
 // -------------------------------------------------------------------------
 
 const launchArzakon = useCallback(() => {
-addLog('? Arzakon manifests! The final battle begins!', 'danger');
+addLog('⚡ Arzakon manifests! The final battle begins!', 'danger');
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
 oppArchKey: 'FIVE_COLOR_BOMB',
@@ -636,21 +639,21 @@ addLog(`Traded 5 uncommons ? ${reward.name}.`, 'success');
 
 const handleGemBuy = useCallback((type) => {
 if (type === 'rare') {
-if (player.gems < 3) { addLog('Need 3? for a rare.', 'warn'); return; }
+if (player.gems < 3) { addLog('Need 3💎 for a rare.', 'warn'); return; }
 const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
 if (!pool.length) return;
 const r = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
 setBinder(b => [...b, r]);
 setPlayer(p => ({ ...p, gems: p.gems - 3 }));
-addLog(`Gem merchant: received ${r.name}. ?3?`, 'success');
+addLog(`Gem merchant: received ${r.name}. 💎-3`, 'success');
 } else if (type === 'hp') {
-if (player.gems < 5) { addLog('Need 5? for max HP upgrade.', 'warn'); return; }
+if (player.gems < 5) { addLog('Need 5💎 for max HP upgrade.', 'warn'); return; }
 setPlayer(p => ({ ...p, maxHP: p.maxHP + 5, hp: p.hp + 5, gems: p.gems - 5 }));
-addLog('Max HP +5. ?5?', 'success');
+addLog('Max HP +5. 💎-5', 'success');
 } else if (type === 'heal') {
-if (player.gems < 2) { addLog('Need 2? for a full heal.', 'warn'); return; }
+if (player.gems < 2) { addLog('Need 2💎 for a full heal.', 'warn'); return; }
 setPlayer(p => ({ ...p, hp: p.maxHP, gems: p.gems - 2 }));
-addLog('Fully healed. ?2?', 'success');
+addLog('Fully healed. 💎-2', 'success');
 }
 }, [player.gems, addLog]);
 
@@ -752,7 +755,7 @@ const handleChallenge = useCallback(() => {
 const col = activeTile?.castleData?.color;
 if (!col || activeTile.castleData.defeated) return;
 const mod = CASTLE_MODIFIERS[col];
-addLog(`? You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
+addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
 setModal(null);
 openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
 }, [activeTile, player.hp, openEncounterPopup, addLog]);
@@ -880,7 +883,7 @@ fontFamily: "'Crimson Text', serif",
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600,
       flexDirection: 'column', gap: 12,
     }}>
-      <div style={{ fontSize: 40 }}>?</div>
+      <div style={{ fontSize: 40 }}>💀</div>
       <div style={{ fontSize: 24, fontFamily: "'Cinzel',serif", color: '#e04040' }}>The Plane Falls</div>
       <div style={{ fontSize: 12, color: '#a06040', fontStyle: 'italic' }}>
         Arzakon's mana links have consumed Shandalar--
@@ -895,7 +898,7 @@ fontFamily: "'Crimson Text', serif",
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500,
       flexDirection: 'column', gap: 16,
     }}>
-      <div style={{ fontSize: 36 }}>?</div>
+      <div style={{ fontSize: 36 }}>🏆</div>
       <div style={{ fontSize: 22, fontFamily: "'Cinzel',serif", color: '#e0c040' }}>
         All Five Mages Defeated!
       </div>
@@ -912,7 +915,7 @@ fontFamily: "'Crimson Text', serif",
           boxShadow: '0 0 20px rgba(200,40,20,.4)',
         }}
       >
-        ? Face Arzakon
+        ⚡ Face Arzakon
       </button>
       <button
         onClick={() => {/* dismiss to keep playing */}}
@@ -969,22 +972,22 @@ fontFamily: "'Crimson Text', serif",
     {['up','left','down','right'].map(d => (
       <button key={d} onClick={() => handleScroll(d)}
         style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', width: 22, height: 22, borderRadius: 3, cursor: 'pointer', fontSize: 11 }}>
-        {d === 'up' ? '?' : d === 'down' ? '?' : d === 'left' ? '?' : '?'}
+        {d === 'up' ? '▲' : d === 'down' ? '▼' : d === 'left' ? '◀' : '▶'}
       </button>
     ))}
     <button onClick={handleCenterPlayer}
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      ? Center
+      🎯 Center
     </button>
     <button onClick={() => setZoom(z => z === 1 ? 0.8 : 1)}
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      {zoom === 1 ? '? Zoom Out' : '? Zoom In'}
+      {zoom === 1 ? '🔍 Zoom Out' : '🔍 Zoom In'}
     </button>
 
     {/* Deck button */}
     <button onClick={() => setModal('deck')}
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.3)', color: '#f0c040', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      ? Deck ({deck.length})
+      🃏 Deck ({deck.length})
     </button>
 
     {/* Quit + sandbox badge */}
@@ -1000,12 +1003,12 @@ fontFamily: "'Crimson Text', serif",
           padding: "2px 7px",
           letterSpacing: 1,
         }}>
-          ? SANDBOX
+          🧪 SANDBOX
         </div>
       )}
       <button onClick={onQuit}
         style={{ background: 'transparent', border: '1px solid rgba(180,80,40,.3)', color: '#a06040', padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-        ? Quit
+        🚪 Quit
       </button>
     </div>
   </div>
@@ -1024,13 +1027,19 @@ fontFamily: "'Crimson Text', serif",
 
     {/* -- MAP ----------------------------------------------------------- */}
     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
       <WorldMap
         tiles={tiles}
-        pos={pos}
-        viewOfs={viewOfs}
-        zoom={zoom}
+        playerPos={pos}
+        viewport={{
+          x: Math.max(0, Math.min(MAP_W - VIEW_W, viewOfs.x - Math.floor(VIEW_W / 2))),
+          y: Math.max(0, Math.min(MAP_H - VIEW_H, viewOfs.y - Math.floor(VIEW_H / 2))),
+        }}
+        viewW={VIEW_W}
+        viewH={VIEW_H}
         onTileClick={handleTileClick}
       />
+      </div>
       <MapLegend />
       <MageStatusPanel
         manaLinks={manaLinks}
@@ -1112,7 +1121,7 @@ fontFamily: "'Crimson Text', serif",
             style={{ background: 'transparent', border: '1px solid rgba(150,120,60,.3)', color: '#806040', padding: '2px 7px', borderRadius: 3, cursor: 'pointer', fontSize: 9, fontFamily: "'Cinzel',serif" }}
             title="Copy chronicle to clipboard"
           >
-            ?
+            📋
           </button>
         </div>
         <OWLog log={log} />
