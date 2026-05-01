@@ -41,13 +41,13 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
   {/* Structure icons with labels */}
   {s === "TOWN" && (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", zIndex:2, gap:1 }}>
-      <div style={{ fontSize:TILE_SIZE*.42, lineHeight:1 }}>?</div>
+      <div style={{ fontSize:TILE_SIZE*.42, lineHeight:1 }}>🏘</div>
       <div style={{ fontSize:6, color:"#f0d090", fontFamily:"'Cinzel',serif", whiteSpace:"nowrap", textShadow:"0 1px 3px rgba(0,0,0,.9)", overflow:"hidden", maxWidth:TILE_SIZE-4, textAlign:"center" }}>
         {tile.townData?.name?.slice(0,7) || ""}
       </div>
     </div>
   )}
-  {s === "DUNGEON" && <div style={{ fontSize:TILE_SIZE*.38, lineHeight:1, zIndex:2 }}>?</div>}
+  {s === "DUNGEON" && <div style={{ fontSize:TILE_SIZE*.38, lineHeight:1, zIndex:2 }}>⚔</div>}
   {s === "CASTLE" && (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"center", zIndex:2, gap:1 }}>
       <div style={{
@@ -55,7 +55,7 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
         filter: `drop-shadow(0 0 6px ${MANA_HEX[tile.castleData?.color] || "#fff"})`,
         animation: tile.castleData?.defeated ? "none" : "pulse 3s infinite",
       }}>
-        {tile.castleData?.defeated ? "?" : "?"}
+        {tile.castleData?.defeated ? "🏚" : "🏰"}
       </div>
       <div style={{ fontSize:5.5, color:MANA_HEX[tile.castleData?.color]||"#fff", fontFamily:"'Cinzel',serif", textShadow:"0 1px 3px rgba(0,0,0,.9)", opacity:.9 }}>
         {tile.castleData?.mage?.slice(0,6) || ""}
@@ -79,7 +79,7 @@ boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
         display: "flex", alignItems:"center", justifyContent:"center",
         fontSize: TILE_SIZE*.28,
         animation: "wizPulse 2s ease-in-out infinite",
-      }}>?</div>
+      }}>🧙</div>
     </div>
   )}
 </div>
@@ -142,8 +142,8 @@ transition: "width .4s", borderRadius: 6,
 <span style={{ fontSize:11, color:"#e08060", fontFamily:"'Cinzel',serif", minWidth:36 }}>{player.hp}/{player.maxHP}</span>
 </div>
 
-  <span style={{ fontSize:12, color:"#f0c040", fontFamily:"'Cinzel',serif" }}>? {player.gold}g</span>
-  <span style={{ fontSize:12, color:"#a080e0", fontFamily:"'Cinzel',serif" }}>? {player.gems}</span>
+  <span style={{ fontSize:12, color:"#f0c040", fontFamily:"'Cinzel',serif" }}>🪙 {player.gold}g</span>
+  <span style={{ fontSize:12, color:"#a080e0", fontFamily:"'Cinzel',serif" }}>💎 {player.gems}</span>
   <span style={{ fontSize:10, color:"#8090a0", fontFamily:"'Cinzel',serif" }}>Move {moves}</span>
 
   {/* Mana link pips */}
@@ -195,7 +195,7 @@ border:"1px solid rgba(200,160,60,.2)", fontSize:10, color:"#8a7050",
 fontFamily:"'Cinzel',serif",
 }}>
 <div style={{ marginBottom:4, fontSize:9, color:"#6a5030", letterSpacing:1 }}>LEGEND</div>
-{[["?","You"],["?","Town"],["?","Dungeon"],["?","Castle"]].map(([ic, lb]) => (
+{[["🧙","You"],["🏘","Town"],["⚔","Dungeon"],["🏰","Castle"]].map(([ic, lb]) => (
 <div key={lb} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
 <span style={{ fontSize:12 }}>{ic}</span>{lb}
 </div>
@@ -227,7 +227,7 @@ fontSize:10,
 color: def?"#405030":lnk>=threshold?"#e02020":lnk>=threshold-1?"#e08020":"#a09070",
 }}>{MANA_SYM[c]}</span>
 <span style={{ color:def?"#405030":lnk>=threshold?"#e02020":"#a09070", fontSize:10 }}>{MAGE_NAMES[c]}</span>
-<span style={{ color:"#6a5030", fontSize:9 }}>{def?"?":lnk+"/"+threshold}</span>
+<span style={{ color:"#6a5030", fontSize:9 }}>{def?"✓":lnk+"/"+threshold}</span>
 </div>
 );
 })}
@@ -262,7 +262,7 @@ animation:"alertDrop .3s ease-out",
 <button onClick={() => onRespond(ev)} style={{
 flex:2, background:`${hx}20`, border:`1px solid ${hx}`, color:hx,
 padding:"5px 12px", borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11,
-}}>? Rush to {ev.townName}</button>
+}}>⚡ Rush to {ev.townName}</button>
 <button onClick={() => onDismiss(ev)} style={{
 flex:1, background:"transparent", border:"1px solid #5a3020", color:"#806040",
 padding:"5px", borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:10,
