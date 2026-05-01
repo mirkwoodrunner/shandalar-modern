@@ -180,6 +180,62 @@ setLog(prev => [...prev.slice(-80), { text, type }]);
 }, []);
 
 // -------------------------------------------------------------------------
+// ENCOUNTER POPUP BUILDER
+// Must be declared before doMove because doMove references it in its dep array.
+// -------------------------------------------------------------------------
+
+const openEncounterPopup = useCallback((oppArchKey, overworldHP, context, castleMod = null, extraData = {}, monsterMeta = {}) => {
+const arch = ARCHETYPES[oppArchKey];
+
+let monsterName, monsterFlavor, monsterColor, canFlee, fleeCost;
+
+if (context === 'castle') {
+const col = extraData.castleColor;
+monsterName = MAGE_NAMES[col] || oppArchKey;
+monsterFlavor = MAGE_TITLES[col] || '';
+monsterColor = col;
+canFlee = false;
+fleeCost = 0;
+} else {
+monsterName = monsterMeta.monsterName || arch?.name || oppArchKey;
+monsterFlavor = STRATEGY_FLAVORS[arch?.strategy] || 'A dangerous adversary.';
+monsterColor = (arch?.color || '').slice(0, 1);
+canFlee = true;
+const tier = monsterMeta.tier || 1;
+fleeCost = Math.max(5, tier * 15 + Math.floor(Math.random() * 10));
+}
+
+let playerAnteCard = null;
+let opponentAnteCard = null;
+if (anteEnabled) {
+if (deck.length > 0) {
+playerAnteCard = deck[0];
+}
+const archColor = arch?.color || '';
+const colorKey = archColor.length === 1 ? archColor : '';
+const pool = CARD_DB.filter(c => !isLand(c) && c.color === colorKey);
+if (pool.length) {
+opponentAnteCard = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+}
+}
+
+setEncounterPopup({
+oppArchKey,
+overworldHP,
+context,
+castleMod,
+extraData,
+monsterName,
+monsterFlavor,
+monsterColor,
+playerAnteCard,
+opponentAnteCard,
+fleeCost,
+canFlee,
+});
+}, [deck, anteEnabled]);
+
+// -------------------------------------------------------------------------
 // MOVEMENT & ENCOUNTER LOGIC
 // -------------------------------------------------------------------------
 
@@ -333,57 +389,6 @@ anteEnabled,
 context, ...extraData,
 });
 }, [deck, ruleset, anteEnabled]);
-
-const openEncounterPopup = useCallback((oppArchKey, overworldHP, context, castleMod = null, extraData = {}, monsterMeta = {}) => {
-const arch = ARCHETYPES[oppArchKey];
-
-let monsterName, monsterFlavor, monsterColor, canFlee, fleeCost;
-
-if (context === 'castle') {
-const col = extraData.castleColor;
-monsterName = MAGE_NAMES[col] || oppArchKey;
-monsterFlavor = MAGE_TITLES[col] || '';
-monsterColor = col;
-canFlee = false;
-fleeCost = 0;
-} else {
-monsterName = monsterMeta.monsterName || arch?.name || oppArchKey;
-monsterFlavor = STRATEGY_FLAVORS[arch?.strategy] || 'A dangerous adversary.';
-monsterColor = (arch?.color || '').slice(0, 1);
-canFlee = true;
-const tier = monsterMeta.tier || 1;
-fleeCost = Math.max(5, tier * 15 + Math.floor(Math.random() * 10));
-}
-
-let playerAnteCard = null;
-let opponentAnteCard = null;
-if (anteEnabled) {
-if (deck.length > 0) {
-playerAnteCard = deck[0];
-}
-const archColor = arch?.color || '';
-const colorKey = archColor.length === 1 ? archColor : '';
-const pool = CARD_DB.filter(c => !isLand(c) && c.color === colorKey);
-if (pool.length) {
-opponentAnteCard = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-}
-}
-
-setEncounterPopup({
-oppArchKey,
-overworldHP,
-context,
-castleMod,
-extraData,
-monsterName,
-monsterFlavor,
-monsterColor,
-playerAnteCard,
-opponentAnteCard,
-fleeCost,
-canFlee,
-});
-}, [deck, anteEnabled]);
 
 const handleDuelEnd = useCallback((outcome, duelState) => {
 const won      = outcome === 'win';
