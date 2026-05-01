@@ -232,6 +232,35 @@ setTooltip({ card, pos: { x: e.clientX, y: e.clientY } });
 }, []);
 const handleTipLeave = useCallback(() => setTooltip(null), []);
 
+// -- Activated ability handler ----------------------------------------------
+// Must be declared before handleCardClick because handleCardClick references it.
+const handleActivate = useCallback((card) => {
+if (!card.activated) return;
+const { effect } = card.activated;
+
+// Birds of Paradise needs a color choice modal
+if (effect === 'addManaAny') {
+  activateAbility(card.iid, null); // DuelCore taps bird + sets pendingBop
+  return;
+}
+// Black Lotus needs a color choice modal
+if (effect === 'addMana3Any') {
+  activateAbility(card.iid, null); // taps + sets pendingLotusIid in engine
+  setShowLotus(true);
+  setPendingActivate(card);
+  return;
+}
+// Abilities that need a target ? enter pending mode
+if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].includes(effect)) {
+  setPendingActivate(card);
+  selectCard(card.iid);
+  return;
+}
+// No target needed ? fire immediately
+activateAbility(card.iid, null);
+
+}, [activateAbility, selectCard]);
+
 // -- Card click dispatcher --------------------------------------------------
 const handleCardClick = useCallback((card, zone) => {
 if (state.over) return;
@@ -327,34 +356,6 @@ selectCard(null);
 selectTarget(null);
 
 }, [state, playLand, castSpell, selectCard, selectTarget]);
-
-// -- Activated ability handler ----------------------------------------------
-const handleActivate = useCallback((card) => {
-if (!card.activated) return;
-const { effect } = card.activated;
-
-// Birds of Paradise needs a color choice modal
-if (effect === 'addManaAny') {
-  activateAbility(card.iid, null); // DuelCore taps bird + sets pendingBop
-  return;
-}
-// Black Lotus needs a color choice modal
-if (effect === 'addMana3Any') {
-  activateAbility(card.iid, null); // taps + sets pendingLotusIid in engine
-  setShowLotus(true);
-  setPendingActivate(card);
-  return;
-}
-// Abilities that need a target ? enter pending mode
-if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].includes(effect)) {
-  setPendingActivate(card);
-  selectCard(card.iid);
-  return;
-}
-// No target needed ? fire immediately
-activateAbility(card.iid, null);
-
-}, [activateAbility, selectCard]);
 
 // -- New ability handler (uses getActivatedAbilities type system) -----------
 const handleActivateAbility = useCallback((card) => {
