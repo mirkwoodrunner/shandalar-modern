@@ -1,0 +1,12 @@
+# Sandbox Decklist
+# Edit this file to change the starting deck in sandbox mode.
+# Format: Card Name x<quantity>
+# Card names must match exactly (case-insensitive).
+
+Savannah Lions x1
+White Knight x1
+Serra Angel x1
+Swords to Plowshares x1
+Healing Salve x1
+Wrath of God x1
+Plains x9
