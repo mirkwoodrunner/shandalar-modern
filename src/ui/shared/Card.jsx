@@ -305,7 +305,7 @@ position: "relative",
 <Cost cost={card.cost} size={11} />
 </div>
 <div style={{ flex:1, margin:"3px 5px", background:`linear-gradient(135deg,${bg}dd,rgba(0,0,0,.5))`, borderRadius:4, display:"flex", alignItems:"center", justifyContent:"center", border:`1px solid ${bd}50` }}>
-<CardArtDisplay card={card} sm={sm} />
+<CardArtDisplay card={card} sm={false} />
 </div>
 <div style={{ padding:"2px 5px", fontSize:7, color:"#b0a070", fontFamily:"'Crimson Text',serif", flexShrink:0 }}>{card.subtype || card.type}</div>
 {card.text && <div style={{ padding:"0 5px 2px", fontSize:7, color:"#c0b080", lineHeight:1.3, overflow:"hidden", maxHeight:26 }}>{card.text.slice(0,55)}{card.text.length>55?"?":""}</div>}
