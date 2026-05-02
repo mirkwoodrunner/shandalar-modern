@@ -115,7 +115,7 @@ hp: startDef.hp, maxHP: startDef.maxHP,
 gold: isSandbox ? 9999 : startDef.gold,
 gems: isSandbox ? 99 : 0,
 });
-const [deck, setDeck]         = useState(() => buildDeck(startDef.deckIds));
+const [deck, setDeck]         = useState(() => isSandbox ? [] : buildDeck(startDef.deckIds));
 const [binder, setBinder]     = useState(() => {
   if (!isSandbox) return [];
   return CARD_DB.flatMap(card =>
@@ -181,6 +181,32 @@ const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDef
 const addLog = useCallback((text, type = 'info') => {
 setLog(prev => [...prev.slice(-80), { text, type }]);
 }, []);
+
+// Load sandbox starting deck from public/sandbox-decklist.txt
+useEffect(() => {
+  if (!isSandbox) return;
+  fetch('/sandbox-decklist.txt')
+    .then(r => r.text())
+    .then(text => {
+      const ids = [];
+      for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const m = trimmed.match(/^(.+?)\s+x(\d+)$/i);
+        if (!m) continue;
+        const cardName = m[1].trim();
+        const qty = parseInt(m[2], 10);
+        const card = CARD_DB.find(c => c.name.toLowerCase() === cardName.toLowerCase());
+        if (card) {
+          for (let i = 0; i < qty; i++) ids.push(card.id);
+        } else {
+          console.error(`[Sandbox] Unknown card in sandbox-decklist.txt: "${cardName}"`);
+        }
+      }
+      setDeck(buildDeck(ids));
+    })
+    .catch(err => console.error('[Sandbox] Failed to load sandbox-decklist.txt:', err));
+}, [isSandbox]);
 
 // -------------------------------------------------------------------------
 // ENCOUNTER POPUP BUILDER
