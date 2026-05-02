@@ -38,7 +38,7 @@ import { Tooltip } from './ui/shared/Tooltip.jsx';
 // -----------------------------------------------------------------------------
 
 function getManaSymbol(color: string): string {
-  const map: Record<string, string> = { W: '?', U: '?', B: '?', R: '?', G: '?' };
+  const map: Record<string, string> = { W: '☀', U: '💧', B: '💀', R: '🔥', G: '🌿' };
   return map[color] ?? '?';
 }
 

@@ -136,7 +136,7 @@ return (
 export function LandPip({ card, tapped, selected, onClick, onMouseMove, onMouseLeave, isPlayer = false }) {
 const manaColor = card.produces?.[0] || "C";
 const bg  = { W:"#c8a830", U:"#2860b0", B:"#6030a0", R:"#b02810", G:"#208030", C:"#606060" };
-const sym = { W:"?", U:"?", B:"?", R:"?", G:"?", C:"?" };
+const sym = { W:"☀", U:"💧", B:"💀", R:"🔥", G:"🌿", C:"◇" };
 const baseColor = bg[manaColor] || "#555";
 
 return (

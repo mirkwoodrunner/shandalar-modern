@@ -11,7 +11,7 @@ const MANA_BG: Record<ManaSym, string> = {
 };
 
 const GLYPH: Record<ManaSym, string> = {
-  W: '?', U: '?', B: '?', R: '?', G: '?', C: '?',
+  W: '☀', U: '💧', B: '💀', R: '🔥', G: '🌿', C: '◇',
 };
 
 interface LandPipProps {

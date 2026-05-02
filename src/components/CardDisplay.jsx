@@ -20,11 +20,11 @@ function getDualLandColors(card) {
 
 function getManaSymbol(color) {
   const symbols = {
-    W: '?',
-    U: '?',
-    B: '?',
-    R: '?',
-    G: '?',
+    W: '☀',
+    U: '💧',
+    B: '💀',
+    R: '🔥',
+    G: '🌿',
   };
   return symbols[color] || '?';
 }
