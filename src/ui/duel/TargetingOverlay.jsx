@@ -223,7 +223,7 @@ export function BopColorPicker({ onChoose, onCancel }) {
 export function DualLandColorPicker({ landName, colors, onChoose, onCancel }) {
   const bg    = { W:"#f9f0d0", U:"#3366bb", B:"#6633aa", R:"#bb3311", G:"#226611" };
   const label = { W:"White",   U:"Blue",    B:"Black",   R:"Red",     G:"Green"   };
-  const sym   = { W:"?",      U:"?",      B:"?",      R:"?",      G:"?"      };
+  const sym   = { W:"☀",     U:"💧",     B:"💀",     R:"🔥",     G:"🌿"     };
 
   return (
     <div style={{
