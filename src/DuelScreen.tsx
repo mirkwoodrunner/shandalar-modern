@@ -447,7 +447,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         }}>
           <span style={{ color: '#e08040', letterSpacing: 1 }}>CASTLE MODIFIER:</span>
           <span style={{ color: '#f0c060' }}>{s.castleMod.name}</span>
-          <span style={{ color: '#a07040', fontStyle: 'italic' }}>? {s.castleMod.desc}</span>
+          <span style={{ color: '#a07040', fontStyle: 'italic' }}>— {s.castleMod.desc}</span>
         </div>
       )}
 
@@ -567,7 +567,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                   color: f.v === true ? '#60ee60' : f.v === false ? '#ee4040' : '#e0c040',
                   fontWeight: 700,
                 }}>
-                  {typeof f.v === 'boolean' ? (f.v ? '?' : '?') : f.v}
+                  {typeof f.v === 'boolean' ? (f.v ? '✓' : '✗') : f.v}
                 </span>
               </div>
             ))}

@@ -10,8 +10,8 @@
 export const RULESETS = {
 CLASSIC: {
 id: "CLASSIC",
-name: "Classic (Alpha?4th Ed.)",
-description: "Original 1993?1995 rules. Mana burn, banding, LIFO stack, 7-card mulligan (no free).",
+name: "Classic (Alpha/4th Ed.)",
+description: "Original 1993–1995 rules. Mana burn, banding, LIFO stack, 7-card mulligan (no free).",
 manaBurn: true,
 freeMulligan: false,
 londonMulligan: false,

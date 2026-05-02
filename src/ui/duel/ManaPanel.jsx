@@ -39,7 +39,7 @@ return (
 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
 <span style={{ fontSize:10, color:"#706040" }}>Pool:</span>
 <PoolDisplay pool={pool} size={size} />
-{manaBurn && <span style={{ fontSize:10, color:"#ee6030", fontWeight:700 }}>? BURN</span>}
+{manaBurn && <span style={{ fontSize:10, color:"#ee6030", fontWeight:700 }}>🔥 BURN</span>}
 </div>
 );
 }
