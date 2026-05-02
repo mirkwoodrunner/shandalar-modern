@@ -9,7 +9,4 @@ Time Walk x4
 Timetwister x4
 Ancestral Recall x4
 Mahamoti Djinn x4
-Tundra x1
-Volcanic Island x1
-Underground Sea x1
-Tropical Island x1
+Island x4
