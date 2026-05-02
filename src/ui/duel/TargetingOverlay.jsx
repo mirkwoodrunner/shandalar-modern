@@ -113,7 +113,7 @@ display: "flex", alignItems: "center", gap: 8, minHeight: 44,
         padding: "6px 18px", borderRadius: 6, cursor: "pointer",
         fontSize: 12, fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: 1,
       }}>
-        {state.phase === "CLEANUP" ? "? End Turn" : "Next Phase ?"}
+        {state.phase === "CLEANUP" ? "↩ End Turn" : "Next Phase →"}
       </button>
     )}
     {!isMyTurn && (
@@ -145,9 +145,9 @@ border:"2px solid rgba(200,160,40,.5)", borderRadius:10,
 padding:24, textAlign:"center",
 boxShadow:"0 0 60px rgba(0,0,0,.9)",
 }}>
-<div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#f0c040", marginBottom:6 }}>? Black Lotus</div>
+<div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#f0c040", marginBottom:6 }}>◆ Black Lotus</div>
 <div style={{ fontSize:12, color:"#a09060", marginBottom:18, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
-Choose which color of mana to add (?3).
+Choose which color of mana to add (+3).
 </div>
 <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
 {colors.map(col => (
@@ -190,10 +190,10 @@ export function BopColorPicker({ onChoose, onCancel }) {
         boxShadow:"0 0 60px rgba(0,0,0,.9)",
       }}>
         <div style={{ fontSize:18, fontFamily:"'Cinzel',serif", color:"#80ee60", marginBottom:6 }}>
-          ? Birds of Paradise
+          ◆ Birds of Paradise
         </div>
         <div style={{ fontSize:12, color:"#80a060", marginBottom:18, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
-          Choose which color of mana to add (?1).
+          Choose which color of mana to add (+1).
         </div>
         <div style={{ display:"flex", gap:12, justifyContent:"center" }}>
           {colors.map(col => (
@@ -238,7 +238,7 @@ export function DualLandColorPicker({ landName, colors, onChoose, onCancel }) {
         minWidth: 220,
       }}>
         <div style={{ fontSize: 16, fontFamily: "'Cinzel',serif", color: "#a0c8f0", marginBottom: 4 }}>
-          ? {landName}
+          ◆ {landName}
         </div>
         <div style={{ fontSize: 12, color: "#7090a0", marginBottom: 18, fontFamily: "'Crimson Text',serif", fontStyle: "italic" }}>
           Tap for which color--

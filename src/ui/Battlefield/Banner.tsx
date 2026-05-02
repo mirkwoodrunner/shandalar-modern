@@ -48,8 +48,8 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
         anim={player.lifeAnim}
         onClick={onLifeClick}
       />
-      <ZoneCount label="Library" count={player.lib} glyph="?" />
-      <ZoneCount label="Graveyard" count={player.gy} glyph="?" onClick={onGraveyardClick} />
+      <ZoneCount label="Library" count={player.lib} glyph="📚" />
+      <ZoneCount label="Graveyard" count={player.gy} glyph="⚰" onClick={onGraveyardClick} />
 
       {manaTotal > 0 && (
         <div style={{

@@ -353,7 +353,7 @@ const fB = apply(binder);
 const lands = deck.filter(isLand).length;
 const avgCmc = deck.filter(c=>!isLand(c)).length
 ? (deck.filter(c=>!isLand(c)).reduce((a,c)=>a+(c.cmc||0),0)/deck.filter(c=>!isLand(c)).length).toFixed(1)
-: "?";
+: "—";
 
 return (
 <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"stretch", justifyContent:"center", zIndex:200, padding:16 }}>
@@ -470,9 +470,9 @@ return (
 <div style={{ minHeight:"100vh", background:"#060402", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Cinzel',serif", backgroundImage:"radial-gradient(ellipse at 50% 30%,rgba(100,60,10,.5) 0%,transparent 70%)" }}>
 <div style={{ width:520, background:"linear-gradient(160deg,#1a1408,#0e0c04)", border:"2px solid rgba(200,160,40,.4)", borderRadius:12, padding:36, boxShadow:"0 0 60px rgba(0,0,0,.9)" }}>
 <div style={{ textAlign:"center", marginBottom:28 }}>
-<div style={{ fontSize:36, marginBottom:8 }}>{won?"?":"?"}</div>
+<div style={{ fontSize:36, marginBottom:8 }}>{won?"🏆":"💀"}</div>
 <div style={{ fontSize:24, fontFamily:"'Cinzel Decorative',serif", color:won?"#f0d060":"#e04040", marginBottom:4 }}>{won?"Shandalar Saved!":"The Plane Falls"}</div>
-<div style={{ fontSize:13, color:"#a09060", fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>{playerName} ? {colorName} Mage ? {magesDefeated.length}/5 Mages Defeated</div>
+<div style={{ fontSize:13, color:"#a09060", fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>{playerName} · {colorName} Mage · {magesDefeated.length}/5 Mages Defeated</div>
 </div>
 <div style={{ marginBottom:24 }}>
 {rows.filter(r=>r.show!==false).map((r,i) => (

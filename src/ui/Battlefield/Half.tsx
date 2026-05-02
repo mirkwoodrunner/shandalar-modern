@@ -20,7 +20,7 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
 
   const landLabelColor = isOpp ? 'var(--ink-faint)' : '#6a8848';
   const landBorderColor = isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)';
-  const landLabel = isOpp ? `LANDS ? ${lands.length}` : `YOUR LANDS ? ${lands.length}`;
+  const landLabel = isOpp ? `LANDS (${lands.length})` : `YOUR LANDS (${lands.length})`;
 
   const isSelected = (iid: string) => selCard === iid || selTgt === iid;
 

@@ -32,7 +32,7 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
             SHANDALAR
           </span>
 
-          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>?</span>
+          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
 
           <span style={{
             fontSize: 11, color: 'var(--ink-muted)',
@@ -41,7 +41,7 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
             {rulesetName}
           </span>
 
-          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>?</span>
+          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
 
           <span style={{
             fontSize: 11, color: 'var(--brass)',

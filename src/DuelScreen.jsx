@@ -25,11 +25,11 @@ import { Tooltip } from './ui/shared/Tooltip.jsx';
 
 function getManaSymbol(color) {
   const symbols = {
-    W: '?',
-    U: '?',
-    B: '?',
-    R: '?',
-    G: '?',
+    W: '☀',
+    U: '💧',
+    B: '💀',
+    R: '🔥',
+    G: '🌿',
   };
   return symbols[color] || '?';
 }
@@ -467,7 +467,7 @@ fontFamily: "'Crimson Text',serif",
       zIndex: 500,
     }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>{s.over.winner === 'p' ? '?' : '?'}</div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>{s.over.winner === 'p' ? '🏆' : '💀'}</div>
         <div style={{
           fontSize: 24, fontFamily: "'Cinzel',serif",
           color: s.over.winner === 'p' ? '#80e080' : '#e04040',
@@ -497,7 +497,7 @@ fontFamily: "'Crimson Text',serif",
         {s.castleMod.name}
       </span>
       <span style={{ fontSize: 10, color: '#a07040', fontStyle: 'italic' }}>
-        ? {s.castleMod.desc}
+        — {s.castleMod.desc}
       </span>
     </div>
   )}
@@ -541,7 +541,7 @@ fontFamily: "'Crimson Text',serif",
         <span style={{ fontSize: 10, color: '#a09050', whiteSpace: 'nowrap' }}>T{s.turn}</span>
         {config.ruleset.manaBurn && (
           <span style={{ fontSize: 9, color: '#ee6030', fontFamily: "'Cinzel',serif", fontWeight: 700, whiteSpace: 'nowrap' }}>
-            ? BURN
+            🔥 BURN
           </span>
         )}
         {s.active === 'o' && (
@@ -607,7 +607,7 @@ fontFamily: "'Crimson Text',serif",
             </div>
           </div>
           <span style={{ fontSize: 11, color: '#907050' }}>
-            ?{s.o.lib.length} ?{s.o.hand.length} ?{s.o.gy.length}
+            📚{s.o.lib.length} ✋{s.o.hand.length} ⚰{s.o.gy.length}
           </span>
           {oMana > 0 && <ManaPoolDisplay pool={s.o.mana} size={13} />}
           {/* Face-down hand */}
@@ -678,7 +678,7 @@ fontFamily: "'Crimson Text',serif",
             }} />
           </div>
         </div>
-        <span style={{ fontSize: 11, color: '#706850' }}>?{s.p.lib.length} ?{s.p.gy.length}</span>
+        <span style={{ fontSize: 11, color: '#706850' }}>📚{s.p.lib.length} ⚰{s.p.gy.length}</span>
         {pMana > 0 && (
           <ManaPoolDisplay
             pool={s.p.mana}
@@ -772,7 +772,7 @@ fontFamily: "'Crimson Text',serif",
               color: f.v === true ? '#60ee60' : f.v === false ? '#ee4040' : '#e0c040',
               fontWeight: 700,
             }}>
-              {typeof f.v === 'boolean' ? (f.v ? '?' : '?') : f.v}
+              {typeof f.v === 'boolean' ? (f.v ? '✓' : '✗') : f.v}
             </span>
           </div>
         ))}
