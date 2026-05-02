@@ -12,11 +12,11 @@ import { HandCard } from '../shared/Card.jsx';
   */
   function canCastNow(card, state) {
   const active = state.active === "p";
-  const mainPhase = state.phase === "MAIN1" || state.phase === "MAIN2";
+  const mainPhase = state.phase === "MAIN_1" || state.phase === "MAIN_2";
   const isInstant = card.type === "Instant";
 
 if (isLand(card)) return active && mainPhase && state.landsPlayed < 1;
-if (isInstant)    return canPay(state.p.manaPool || state.p.mana, card.cost);
+if (isInstant)    return canPay(state.p.mana, card.cost);
 return active && mainPhase && state.stack.length === 0 && canPay(state.p.mana, card.cost);
 }
 

@@ -19,7 +19,7 @@ pendingActivate,
 onCancelActivate,
 }) {
 const selDef  = state.p.hand.find(c => c.iid === state.selCard);
-const inMain  = state.phase === "MAIN1" || state.phase === "MAIN2";
+const inMain  = state.phase === "MAIN_1" || state.phase === "MAIN_2";
 const isMyTurn = state.active === "p";
 
 return (
