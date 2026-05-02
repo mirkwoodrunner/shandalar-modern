@@ -29,7 +29,7 @@ onMouseMove={e => onTipEnter(c, e)}
 onMouseLeave={onTipLeave}
 />
 ))}
-{!lands.length && <span style={{ fontSize:9, color:"#2a1808", fontStyle:"italic", lineHeight:"28px" }}>?</span>}
+{!lands.length && <span style={{ fontSize:9, color:"#2a1808", fontStyle:"italic", lineHeight:"28px" }}>—</span>}
 </div>
 </div>
 
