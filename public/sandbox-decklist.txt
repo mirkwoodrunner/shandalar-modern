@@ -3,7 +3,7 @@
 # Format: Card Name x<quantity>
 # Card names must match exactly (case-insensitive).
 
-Black Lotue x4
+Black Lotus x4
 Mox Sapphire x4
 Time Walk x4
 Timetwister x4
