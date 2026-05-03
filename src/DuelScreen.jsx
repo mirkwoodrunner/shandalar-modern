@@ -9,7 +9,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 // -- Engine / hooks -----------------------------------------------------------
 import { useDuel } from './hooks/useDuel.js';
 import { aiDecide } from './engine/AI.js';
-import { isLand, isInst, isArt, isCre, canPay } from './engine/DuelCore.js';
+import { isLand, isInst, isArt, isCre, canPay, PHASE_SEQ, PHASE_LBL, COMBAT_PHASES } from './engine/DuelCore.js';
 
 // -- UI sub-components --------------------------------------------------------
 import { OpponentBattlefield, PlayerBattlefield } from './ui/duel/Battlefield.jsx';
@@ -18,6 +18,7 @@ import { PhaseBar, ManaPoolDisplay } from './ui/duel/ManaPanel.jsx';
 import { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
 import { DuelLog } from './ui/layout/TechnicalLog.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
+import { LandPip, FieldCard } from './ui/shared/Card.jsx';
 
 // -----------------------------------------------------------------------------
 // MANA CHOICE POPOVER
@@ -123,6 +124,12 @@ function getActivatedAbilities(card) {
 }
 
 // -----------------------------------------------------------------------------
+// MANA PIP COLOR MAP
+// -----------------------------------------------------------------------------
+
+const MANA_COLORS = { W: '#e8d089', U: '#3d6fa8', B: '#8c5cb0', R: '#c4634a', G: '#6a9a5a', C: '#7a6650' };
+
+// -----------------------------------------------------------------------------
 // DUEL SCREEN
 // -----------------------------------------------------------------------------
 
@@ -136,7 +143,7 @@ function getActivatedAbilities(card) {
 - @param {object}   [config.castleMod]  - Castle modifier if applicable
 - @param {boolean}  [config.anteEnabled]- Whether ante is active
 - @param {string}   [config.context]    - "monster" | "castle" | "dungeon" | "arzakon"
-- 
+-
 - @param {function} onDuelEnd(outcome, duelState)
 - outcome: "win" | "lose" | "forfeit"
   */
@@ -446,16 +453,17 @@ const handleManaChoice = (color) => {
 // -------------------------------------------------------------------------
 
 const s = state;
-const pMana = Object.values(s.p.mana).reduce((a, b) => a + b, 0);
-const oMana = Object.values(s.o.mana).reduce((a, b) => a + b, 0);
+const selDef   = s.p.hand.find(c => c.iid === s.selCard);
+const inMain   = s.phase === 'MAIN_1' || s.phase === 'MAIN_2';
+const isMyTurn = s.active === 'p';
 
 return (
 <div style={{
-height: '100vh', width: '100vw',
-background: '#0a0e08',
-display: 'flex', flexDirection: 'column',
-overflow: 'hidden',
-fontFamily: "'Crimson Text',serif",
+  height: '100vh', width: '100vw',
+  background: '#0a0e08',
+  display: 'flex', flexDirection: 'column',
+  overflow: 'hidden',
+  fontFamily: "'Crimson Text',serif",
 }}>
 
   {/* -- GAME OVER OVERLAY ----------------------------------------------- */}
@@ -476,7 +484,7 @@ fontFamily: "'Crimson Text',serif",
           {s.over.winner === 'p' ? 'Victory!' : 'Defeat'}
         </div>
         <div style={{ fontSize: 12, color: '#a08060', marginBottom: 16 }}>{s.over.reason}</div>
-        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld?</div>
+        <div style={{ fontSize: 11, color: '#6a5030', fontStyle: 'italic' }}>Returning to overworld…</div>
       </div>
     </div>
   )}
@@ -525,267 +533,417 @@ fontFamily: "'Crimson Text',serif",
     </div>
   )}
 
-  {/* -- TOP BAR: ruleset / turn / phase tracker / forfeit -------------- */}
+  {/* -- TOPBAR ---------------------------------------------------------- */}
   <div style={{
-    padding: '5px 10px',
-    borderBottom: '2px solid rgba(200,160,40,.3)',
-    background: 'rgba(0,0,0,.7)',
-    display: 'flex', flexDirection: 'column', gap: 4,
-    flexShrink: 0,
+    height: 32, background: '#080402',
+    borderBottom: '1px solid rgba(100,60,20,.4)',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '0 14px', flexShrink: 0,
   }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 11, fontFamily: "'Cinzel',serif", color: '#d0a040', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {config.ruleset.name}
-        </span>
-        <span style={{ fontSize: 10, color: '#a09050', whiteSpace: 'nowrap' }}>T{s.turn}</span>
-        {config.ruleset.manaBurn && (
-          <span style={{ fontSize: 9, color: '#ee6030', fontFamily: "'Cinzel',serif", fontWeight: 700, whiteSpace: 'nowrap' }}>
-            🔥 BURN
-          </span>
-        )}
-        {s.active === 'o' && (
-          <span style={{ fontSize: 10, color: '#9090dd', animation: 'pulse 1s infinite', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-            Opp thinking--
-          </span>
-        )}
-      </div>
-      <button
-        onClick={() => onDuelEnd('forfeit', s)}
-        style={{
-          background: 'rgba(60,20,10,.7)',
-          border: '1px solid rgba(180,80,40,.5)',
-          color: '#e07050',
-          padding: '3px 10px', borderRadius: 5,
-          cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
-          flexShrink: 0,
-        }}
-      >
-        Forfeit
-      </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 13, fontFamily: "'Cinzel',serif", color: '#c4a040', letterSpacing: 3, fontWeight: 600 }}>
+        SHANDALAR
+      </span>
+      <span style={{ fontSize: 10, color: '#5a4a30' }}>·</span>
+      <span style={{ fontSize: 10, color: '#5a4a30' }}>MODERN</span>
+      <div style={{ width: 1, height: 14, background: 'rgba(100,70,20,.4)', margin: '0 2px' }} />
+      <span style={{ fontSize: 10, color: '#a08060' }}>TURN {s.turn}</span>
+      <span style={{
+        fontSize: 10, fontFamily: "'Cinzel',serif", fontWeight: 600,
+        color: isMyTurn ? '#50c030' : '#e04040',
+      }}>
+        {isMyTurn ? 'YOUR TURN' : "OPPONENT'S TURN"}
+      </span>
     </div>
-    <PhaseBar phase={s.phase} />
+    <button
+      onClick={() => onDuelEnd('forfeit', s)}
+      style={{
+        background: 'transparent',
+        border: '1px solid rgba(180,80,40,.5)',
+        color: '#e07050',
+        padding: '3px 10px', borderRadius: 4,
+        cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
+      }}
+    >
+      FORFEIT
+    </button>
   </div>
 
-  {/* -- MAIN LAYOUT ----------------------------------------------------- */}
+  {/* -- PHASE BAR ------------------------------------------------------- */}
+  <div style={{
+    height: 28, background: '#0a0604',
+    borderBottom: '1px solid rgba(80,50,10,.4)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    gap: 3, padding: '0 8px', flexShrink: 0, overflowX: 'auto',
+  }}>
+    {PHASE_SEQ.map(p => {
+      const active = p === s.phase;
+      return (
+        <div key={p} style={{
+          padding: '2px 6px', borderRadius: 10, whiteSpace: 'nowrap',
+          fontSize: 8, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+          background: active ? '#c4a040' : 'transparent',
+          color: active ? '#1a1000' : '#5a4a30',
+          fontWeight: active ? 700 : 400,
+          boxShadow: active ? '0 0 8px rgba(196,160,64,.4)' : 'none',
+        }}>
+          {PHASE_LBL[p]}
+        </div>
+      );
+    })}
+  </div>
+
+  {/* -- MAIN AREA ------------------------------------------------------- */}
   <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-    {/* -- BATTLEFIELD COLUMN -------------------------------------------- */}
+    {/* -- LEFT COLUMN --------------------------------------------------- */}
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* Opponent side */}
+      {/* Opponent info bar */}
       <div style={{
-        flex: '0 0 auto', maxHeight: '45vh', overflow: 'hidden',
-        borderBottom: '2px solid #6a2010',
-        background: 'linear-gradient(180deg,#1a0c08,#120808)',
-      }}>
-        {/* Opponent info bar */}
-        <div style={{
-          padding: '7px 14px',
-          display: 'flex', alignItems: 'center', gap: 12,
-          borderBottom: '1px solid rgba(180,80,30,.3)',
-          background: 'rgba(0,0,0,.4)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: '#e05030', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
-              OPPONENT
-            </span>
-            <span style={{
-              fontSize: 24, fontWeight: 700, fontFamily: "'Cinzel',serif",
-              color: s.o.life <= 5 ? '#ff2020' : s.o.life <= 10 ? '#e06030' : '#ff9060',
-              animation: s.o.life <= 5 ? 'pulse 1s infinite' : s.o.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.o.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
-            }}>
-              {s.o.life}
-            </span>
-            <div style={{ width: 70, height: 8, background: '#1a0800', borderRadius: 4, overflow: 'hidden', border: '1px solid #6a3010' }}>
-              <div style={{
-                width: `${Math.max(0, (s.o.life / config.ruleset.startingLife) * 100)}%`,
-                height: '100%',
-                background: s.o.life <= 5 ? '#cc1010' : 'linear-gradient(90deg,#aa3010,#dd5020)',
-                transition: 'width .4s', borderRadius: 4,
-              }} />
-            </div>
-          </div>
-          <span style={{ fontSize: 11, color: '#907050' }}>
-            📚{s.o.lib.length} ✋{s.o.hand.length} ⚰{s.o.gy.length}
-          </span>
-          {oMana > 0 && <ManaPoolDisplay pool={s.o.mana} size={13} />}
-          {/* Face-down hand */}
-          <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
-            {s.o.hand.map((_, i) => (
-              <div key={i} style={{
-                width: 26, height: 40,
-                background: 'linear-gradient(135deg,#2a1a10,#1a100a)',
-                border: '1px solid #5a3820', borderRadius: 4,
-                boxShadow: '0 2px 4px rgba(0,0,0,.5)',
-              }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Opponent battlefield */}
-        <OpponentBattlefield
-          state={s}
-          onCardClick={handleCardClick}
-          onTipEnter={handleTipEnter}
-          onTipLeave={handleTipLeave}
-        />
-      </div>
-
-      {/* Action bar */}
-      <ActionBar
-        state={s}
-        onCast={handleCast}
-        onAdvancePhase={advancePhase}
-        onResolveStack={resolveStack}
-        onSetX={setX}
-        pendingActivate={pendingActivate}
-        onCancelActivate={handleCancelActivate}
-      />
-
-      {/* Player battlefield */}
-      <PlayerBattlefield
-        state={s}
-        onCardClick={handleCardClick}
-        onActivate={handleActivateAbility}
-        onTipEnter={handleTipEnter}
-        onTipLeave={handleTipLeave}
-      />
-
-      {/* Player info bar */}
-      <div style={{
-        flexShrink: 0,
-        padding: '6px 14px',
-        borderTop: '1px solid rgba(80,160,40,.3)',
-        background: 'rgba(0,0,0,.6)',
-        display: 'flex', alignItems: 'center', gap: 12,
+        flexShrink: 0, height: 40,
+        background: 'rgba(0,0,0,.5)',
+        borderBottom: '1px solid rgba(180,80,30,.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 14px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#60ee60', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>YOU</span>
+          <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#e05030', letterSpacing: 1 }}>OPPONENT</span>
           <span style={{
-            fontSize: 24, fontWeight: 700, fontFamily: "'Cinzel',serif",
-            color: s.p.life <= 5 ? '#ff2020' : s.p.life <= 10 ? '#e06030' : '#60ee60',
-            animation: s.p.life <= 5 ? 'pulse 1s infinite' : s.p.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.p.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
+            fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
+            color: s.o.life <= 5 ? '#ff2020' : s.o.life <= 10 ? '#e06030' : '#ff9060',
+            animation: s.o.life <= 5 ? 'pulse 1s infinite' : s.o.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.o.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
           }}>
-            {s.p.life}
+            {s.o.life}
           </span>
-          <div style={{ width: 70, height: 8, background: '#081808', borderRadius: 4, overflow: 'hidden', border: '1px solid #2a6020' }}>
+          <div style={{ width: 80, height: 6, background: '#1a0800', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
-              width: `${Math.max(0, (s.p.life / config.ruleset.startingLife) * 100)}%`,
+              width: `${Math.max(0, (s.o.life / config.ruleset.startingLife) * 100)}%`,
               height: '100%',
-              background: s.p.life <= 5 ? '#cc1010' : 'linear-gradient(90deg,#208020,#40cc40)',
-              transition: 'width .4s', borderRadius: 4,
+              background: s.o.life <= 5 ? '#cc1010' : 'linear-gradient(90deg,#aa3010,#dd5020)',
+              transition: 'width .4s', borderRadius: 3,
             }} />
           </div>
         </div>
-        <span style={{ fontSize: 11, color: '#706850' }}>📚{s.p.lib.length} ⚰{s.p.gy.length}</span>
-        {pMana > 0 && (
-          <ManaPoolDisplay
-            pool={s.p.mana}
-            manaBurn={config.ruleset.manaBurn}
-            size={14}
-          />
-        )}
-        <button
-          onClick={mulligan}
-          style={{
-            marginLeft: 'auto',
-            background: 'rgba(0,0,0,.4)',
-            border: '1px solid rgba(160,120,60,.4)',
-            color: '#c0a050',
-            padding: '4px 10px', borderRadius: 5,
-            cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
-          }}
-        >
-          Mulligan
-        </button>
-      </div>
-
-      {/* Player hand */}
-      <Hand
-        state={s}
-        onCardClick={handleCardClick}
-        onTipEnter={handleTipEnter}
-        onTipLeave={handleTipLeave}
-      />
-    </div>
-
-    {/* -- RIGHT SIDEBAR: graveyards / exile / ruleset flags / log ------- */}
-    <div style={{
-      width: 'clamp(160px,22vw,210px)',
-      borderLeft: '2px solid rgba(180,140,60,.25)',
-      display: 'flex', flexDirection: 'column',
-      background: 'linear-gradient(180deg,#0e0c08,#0a0a08)',
-      flexShrink: 0,
-    }}>
-      {/* Graveyards */}
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(180,140,60,.2)' }}>
-        <div style={{ fontSize: 11, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
-          GRAVEYARDS
-        </div>
-        {/* Player graveyard */}
-        <div
-          className="zone graveyard player-graveyard"
-          onClick={() => openGraveyardPopover('p', 'reference')}
-        >
-          <h4>Graveyard ({s.p.gy.length})</h4>
-          {s.p.gy.length > 0 && (
-            <div className="card-preview">{s.p.gy[s.p.gy.length - 1].name}</div>
-          )}
-        </div>
-
-        {/* AI graveyard */}
-        <div
-          className="zone graveyard ai-graveyard"
-          onClick={() => openGraveyardPopover('a', 'reference')}
-        >
-          <h4>Graveyard ({s.o.gy.length})</h4>
-          {s.o.gy.length > 0 && (
-            <div className="card-preview">{s.o.gy[s.o.gy.length - 1].name}</div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: '#806040' }}>
+          <span>🂠 {s.o.lib.length}</span>
+          <span>🗑 {s.o.gy.length}</span>
         </div>
       </div>
 
-      {/* Exile zone (Modern+ only) */}
-      {config.ruleset.exileZone && (
-        <div style={{ padding: '6px 12px', borderBottom: '1px solid rgba(180,140,60,.15)' }}>
-          <div style={{ fontSize: 10, color: '#7060a0', fontFamily: "'Cinzel',serif" }}>
-            EXILE: {s.p.exile.length} / {s.o.exile.length}
-          </div>
+      {/* Opponent lands row */}
+      <div style={{ flexShrink: 0, minHeight: 44, background: 'rgba(0,0,0,.2)', padding: '4px 10px' }}>
+        <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#706028', letterSpacing: 1, marginBottom: 3 }}>
+          LANDS
         </div>
-      )}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {s.o.bf.filter(isLand).map(c => (
+            <LandPip
+              key={c.iid} card={c} tapped={c.tapped}
+              selected={s.selTgt === c.iid}
+              onClick={() => handleCardClick(c, 'oBf')}
+              onMouseMove={e => handleTipEnter(c, e)}
+              onMouseLeave={handleTipLeave}
+            />
+          ))}
+        </div>
+      </div>
 
-      {/* Ruleset flags */}
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(180,140,60,.15)' }}>
-        <div style={{ fontSize: 11, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
-          RULESET
-        </div>
-        {[
-          { l: 'Mana Burn',   v: config.ruleset.manaBurn },
-          { l: 'Stack',       v: config.ruleset.stackType },
-          { l: 'Deathtouch', v: config.ruleset.deathtouch },
-          { l: 'Exile',       v: config.ruleset.exileZone },
-        ].map(f => (
-          <div key={f.l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: "'Fira Code',monospace", marginBottom: 3 }}>
-            <span style={{ color: '#908060' }}>{f.l}</span>
-            <span style={{
-              color: f.v === true ? '#60ee60' : f.v === false ? '#ee4040' : '#e0c040',
-              fontWeight: 700,
-            }}>
-              {typeof f.v === 'boolean' ? (f.v ? '✓' : '✗') : f.v}
-            </span>
+      {/* Opponent creatures zone */}
+      <div style={{
+        flex: 1, minHeight: 80,
+        background: 'linear-gradient(180deg,#1a0c08,#120808)',
+        padding: '6px 10px', display: 'flex', flexWrap: 'wrap', gap: 5,
+        alignContent: 'flex-start', overflow: 'auto',
+      }}>
+        {s.o.bf.filter(c => !isLand(c)).map(c => (
+          <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+            <FieldCard
+              card={c} state={s}
+              selected={s.selTgt === c.iid}
+              attacking={s.attackers.includes(c.iid)}
+              onClick={() => handleCardClick(c, 'oBf')}
+              sm
+            />
           </div>
         ))}
       </div>
 
-      {/* Game log */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '6px 0' }}>
-        <div style={{ fontSize: 11, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1, padding: '0 12px 6px', fontWeight: 700 }}>
-          GAME LOG
+      {/* Phase banner */}
+      <div style={{ flexShrink: 0, height: 28, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+        <div style={{ flex: 1, height: 1, background: 'rgba(120,100,40,.2)' }} />
+        <div style={{
+          padding: '3px 16px', margin: '0 12px',
+          background: 'rgba(20,16,10,.9)',
+          border: '1px solid rgba(120,100,40,.4)',
+          borderRadius: 20,
+        }}>
+          <span style={{ fontSize: 9, fontFamily: "'Cinzel',serif", color: '#a89060', letterSpacing: 2 }}>
+            {PHASE_LBL[s.phase]}
+          </span>
         </div>
-        <DuelLog log={s.log} />
+        <div style={{ flex: 1, height: 1, background: 'rgba(120,100,40,.2)' }} />
       </div>
+
+      {/* Player creatures zone */}
+      <div style={{
+        flex: 1, minHeight: 80,
+        background: 'linear-gradient(180deg,#0c1408,#0a100a)',
+        padding: '6px 10px', display: 'flex', flexWrap: 'wrap', gap: 5,
+        alignContent: 'flex-start', overflow: 'auto',
+      }}>
+        {s.p.bf.filter(c => !isLand(c)).map(c => (
+          <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+            <FieldCard
+              card={c} state={s}
+              selected={s.selCard === c.iid || s.selTgt === c.iid}
+              attacking={s.attackers.includes(c.iid)}
+              onClick={() => handleCardClick(c, 'pBf')}
+              onActivate={handleActivateAbility}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Player lands row */}
+      <div style={{ flexShrink: 0, minHeight: 44, background: 'rgba(0,0,0,.2)', padding: '4px 10px' }}>
+        <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#407028', letterSpacing: 1, marginBottom: 3 }}>
+          YOUR LANDS
+        </div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {s.p.bf.filter(isLand).map(c => (
+            <LandPip
+              key={c.iid} card={c} tapped={c.tapped}
+              selected={s.selCard === c.iid || s.selTgt === c.iid}
+              isPlayer
+              onClick={() => handleCardClick(c, 'pBf')}
+              onMouseMove={e => handleTipEnter(c, e)}
+              onMouseLeave={handleTipLeave}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Player info bar */}
+      <div style={{
+        flexShrink: 0, height: 40,
+        background: 'rgba(0,0,0,.5)',
+        borderTop: '1px solid rgba(60,120,30,.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 14px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#50a030', letterSpacing: 1 }}>YOU</span>
+          <span style={{
+            fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
+            color: s.p.life <= 5 ? '#ff2020' : s.p.life <= 10 ? '#e06030' : '#90d050',
+            animation: s.p.life <= 5 ? 'pulse 1s infinite' : s.p.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.p.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
+          }}>
+            {s.p.life}
+          </span>
+          <div style={{ width: 80, height: 6, background: '#081808', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.max(0, (s.p.life / config.ruleset.startingLife) * 100)}%`,
+              height: '100%',
+              background: s.p.life <= 5 ? '#cc1010' : 'linear-gradient(90deg,#208020,#40cc40)',
+              transition: 'width .4s', borderRadius: 3,
+            }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#806040' }}>🂠 {s.p.lib.length}</span>
+          <span style={{ fontSize: 11, color: '#806040' }}>🗑 {s.p.gy.length}</span>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {Object.entries(s.p.mana)
+              .flatMap(([color, count]) => Array(Math.max(0, count)).fill(color))
+              .slice(0, 10)
+              .map((color, i) => (
+                <div key={i} style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: MANA_COLORS[color] || '#7a6650',
+                }} />
+              ))}
+          </div>
+          <button
+            onClick={mulligan}
+            style={{
+              background: 'rgba(0,0,0,.4)',
+              border: '1px solid rgba(160,120,60,.4)',
+              color: '#c0a050',
+              padding: '3px 8px', borderRadius: 4,
+              cursor: 'pointer', fontSize: 9, fontFamily: "'Cinzel',serif",
+            }}
+          >
+            Mulligan
+          </button>
+        </div>
+      </div>
+
     </div>
+
+    {/* -- RIGHT COLUMN: Chronicle ---------------------------------------- */}
+    <div style={{
+      width: 220, flexShrink: 0,
+      background: '#0a0806',
+      borderLeft: '1px solid rgba(100,70,20,.3)',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        padding: '8px 12px 6px', flexShrink: 0,
+        borderBottom: '1px solid rgba(100,70,20,.2)',
+      }}>
+        <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#c4a040', letterSpacing: 2 }}>
+          CHRONICLE
+        </span>
+      </div>
+      <DuelLog log={s.log} />
+    </div>
+  </div>
+
+  {/* -- ACTION BAR ------------------------------------------------------ */}
+  <div style={{
+    flexShrink: 0, minHeight: 44, background: '#080604',
+    borderTop: '1px solid rgba(80,60,20,.3)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    gap: 10, padding: '0 14px', flexWrap: 'wrap',
+  }}>
+
+    {/* Cast / Play button */}
+    {isMyTurn && inMain && selDef && (
+      <button onClick={handleCast} style={{
+        background: 'rgba(20,16,8,.8)',
+        border: '1px solid rgba(200,160,40,.5)',
+        color: '#f0d060',
+        padding: '5px 14px', borderRadius: 5, cursor: 'pointer',
+        fontSize: 10, fontFamily: "'Cinzel',serif", fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}>
+        {isLand(selDef) ? '⬡ Play' : '✦ Cast'} {selDef.name}
+      </button>
+    )}
+
+    {/* X input */}
+    {selDef?.cost?.includes('X') && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 10, color: '#c0a050', fontFamily: "'Cinzel',serif" }}>X=</span>
+        <input
+          type="number" min={0} max={20} value={s.xVal}
+          onChange={e => setX(parseInt(e.target.value) || 0)}
+          style={{ width: 40, background: 'rgba(20,15,0,.8)', border: '1px solid #7a6020', color: '#f0d050', padding: '3px 5px', borderRadius: 4, fontSize: 13, fontFamily: "'Fira Code',monospace" }}
+        />
+      </div>
+    )}
+
+    {/* Stack display */}
+    {s.stack.length > 0 && (
+      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: '#b090e0', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>STACK:</span>
+        {s.stack.map(item => (
+          <div key={item.id} style={{
+            padding: '3px 8px', borderRadius: 5, fontSize: 10,
+            background: 'rgba(100,60,180,.35)', border: '1px solid rgba(140,100,220,.6)',
+            color: '#d0b0ff', fontFamily: "'Cinzel',serif",
+          }}>
+            {item.card.name}
+          </div>
+        ))}
+        <button onClick={resolveStack} style={{
+          background: 'rgba(60,40,0,.7)', border: '1px solid rgba(200,140,40,.6)', color: '#f0c040',
+          padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
+        }}>Resolve →</button>
+      </div>
+    )}
+
+    {/* Pending activate prompt */}
+    {pendingActivate && (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(200,160,40,.15)', border: '1px solid #a08030', borderRadius: 5, padding: '4px 10px' }}>
+        <span style={{ fontSize: 10, color: '#f0c040', fontFamily: "'Cinzel',serif" }}>◎ {pendingActivate.name}: select a target</span>
+        <button onClick={handleCancelActivate} style={{ background: 'transparent', border: '1px solid #5a3020', color: '#c08060', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>Cancel</button>
+      </div>
+    )}
+
+    {/* Combat prompts */}
+    {s.phase === 'COMBAT_ATTACKERS' && isMyTurn && !pendingActivate && (
+      <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+        ⚔ Click your creatures to declare attackers
+      </span>
+    )}
+    {s.phase === 'COMBAT_BLOCKERS' && isMyTurn && !pendingActivate && (
+      <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+        ⚔ Click an attacker, then your blocker
+      </span>
+    )}
+
+    {/* Attacker count */}
+    {s.attackers.length > 0 && (
+      <span style={{ fontSize: 10, color: '#ff9040', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+        ⚔ {s.attackers.length} attacker{s.attackers.length !== 1 ? 's' : ''}
+        {Object.keys(s.blockers).length > 0 ? ` · ⚔ ${Object.keys(s.blockers).length} blocked` : ''}
+      </span>
+    )}
+
+    {/* Action pill buttons */}
+    {isMyTurn && (
+      <>
+        {s.phase === 'COMBAT_ATTACKERS' && (
+          <button onClick={advancePhase} style={{
+            border: '1px solid rgba(196,160,40,.6)',
+            background: 'rgba(60,50,10,.3)',
+            color: '#c4a040',
+            padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
+            fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+          }}>
+            ATTACK
+          </button>
+        )}
+        {s.phase === 'COMBAT_BLOCKERS' && (
+          <button onClick={advancePhase} style={{
+            border: '1px solid rgba(196,160,40,.6)',
+            background: 'rgba(60,50,10,.3)',
+            color: '#c4a040',
+            padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
+            fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+          }}>
+            BLOCK
+          </button>
+        )}
+        {s.phase !== 'COMBAT_ATTACKERS' && s.phase !== 'COMBAT_BLOCKERS' && (
+          <button onClick={advancePhase} style={{
+            border: '1px solid rgba(120,100,40,.4)',
+            background: 'transparent',
+            color: '#a89060',
+            padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
+            fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+          }}>
+            PASS PRIORITY
+          </button>
+        )}
+        <button onClick={advancePhase} style={{
+          border: '1px solid rgba(100,160,60,.4)',
+          background: 'rgba(40,80,20,.3)',
+          color: '#80c040',
+          padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
+          fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+        }}>
+          END TURN ▾
+        </button>
+      </>
+    )}
+    {!isMyTurn && (
+      <span style={{ fontSize: 10, color: '#6a5a30', fontFamily: "'Cinzel',serif", fontStyle: 'italic' }}>
+        Opponent's turn—
+      </span>
+    )}
+  </div>
+
+  {/* -- HAND ------------------------------------------------------------ */}
+  <div style={{ background: '#060402', padding: '4px 0 0', flexShrink: 0 }}>
+    <Hand
+      state={s}
+      onCardClick={handleCardClick}
+      onTipEnter={handleTipEnter}
+      onTipLeave={handleTipLeave}
+    />
   </div>
 
   {/* -- MODALS ---------------------------------------------------------- */}
