@@ -1,52 +1,56 @@
-# Shandalar Modern
+# Shandalar: Modern Edition
 
-## Project Overview
-The Shandalar Modern project represents a reimagining of classic strategy game mechanics within a modern architecture. It aims to create a robust gaming experience through sound software development principles.
+A browser-based reimplementation of the 1996 MicroProse *Magic: The Gathering* roguelike, built as a personal hobby project. Playable in desktop and mobile browsers.
 
-## Quick Links to Documentation
-- [Project Setup](link-to-setup-docs)
-- [API Reference](link-to-api-docs)
-- [Contribution Guidelines](link-to-contribution-guidelines)
+## What It Is
 
-## Core Principles
-1. **Determinism**: Ensuring reproducibility in game outcomes by maintaining a consistent game logic implementation.
-2. **Single Source of Truth**: All game state is managed centrally to avoid discrepancies and ensure integrity.
-3. **Layer Separation**: Clear separation of concerns in the architecture to facilitate maintainability and scalability.
-4. **Action Pipeline**: Implementation of a structured approach to manage actions within the game.
+A faithful but modernized recreation of the classic Shandalar game loop:
+- Procedural overworld exploration (32×22 map)
+- Ante-based duels against enemy wizards and dungeon creatures
+- Town services: card trades, inn healing, gem merchant
+- Mage castle boss fights and Arzakon final encounter
+- Card art sourced from Scryfall (oldest classic printing preferred)
 
-## Multi-AI Coordination Framework
-The multi-AI coordination framework outlines specific roles for each AI involved in the game, promoting effective collaboration and strategy:
-- **Game Master AI**: Oversees game flow and enforces rules.
-- **Player AI**: Engages with the game mechanics and makes strategic decisions.
+## Tech Stack
 
-### GameAction Contract
-Defines the structure and behavior of actions taken within the game, ensuring consistency across AI implementations.
+- **React + Vite** — browser-based, no backend
+- **GitHub Codespaces** — primary development environment
+- **Claude Code** — AI coding agent used for implementation
 
-## System Boundaries
-Clearly defined boundaries help manage interactions between components, reducing complexity and enhancing performance.
+## Current Status
 
-## Getting Started Instructions
-1. Clone the repository: `git clone <repo-url>`
-2. Install dependencies: `npm install`
-3. Run the application: `npm start`
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Overworld map, fog of war, town/dungeon/castle modals | ✅ Complete |
+| 2 | Duel engine, card DB, AI, combat pipeline | ✅ Complete |
+| 3 | Overworld↔duel integration, ante, progression | ✅ Complete |
+| 4 | Boss encounters, Arzakon endgame, stub resolution | ✅ Complete |
+| 5 | Scryfall card art integration | ✅ Complete |
 
-## Development with AI Models
-When working with AI models, adhere to best practices for integration and testing to ensure robust performance.
+See [`docs/gdd.md`](docs/gdd.md) for the full design document and [`docs/CURRENT_SPRINT.md`](docs/CURRENT_SPRINT.md) for active work items.
 
-## Prompt Organization
-Prompts should be structured logically to maximize efficiency and clarity in AI responses.
+## Running Locally
 
-## Anti-Patterns
-Avoid common pitfalls such as:
-- Overcomplicated logic
-- Failing to validate game actions
+```bash
+git clone <repo-url>
+cd shandalar-modern
+npm install
+npm run dev
+```
 
-## Game State Model
-Document the structure of the game state, including all relevant variables and their interactions.
+Requires Node 18+. Open `http://localhost:5173` in a browser.
 
-## Non-Goals
-- Avoiding the replication of existing games without innovation.
-- Striving for absolute realism over fun and engaging gameplay.
+## Documentation
+
+|Document                                                    |Purpose                                          |
+|------------------------------------------------------------|-------------------------------------------------|
+|[`docs/gdd.md`](docs/gdd.md)                                |Game design document — authoritative design bible|
+|[`docs/SYSTEMS.md`](docs/SYSTEMS.md)                        |Technical system specifications                  |
+|[`docs/MECHANICS_INDEX.md`](docs/MECHANICS_INDEX.md)        |Mechanic-to-code traceability                    |
+|[`docs/CURRENT_SPRINT.md`](docs/CURRENT_SPRINT.md)          |Active sprint and next items                     |
+|[`scryfall/SCRYFALL_STATUS.md`](scryfall/SCRYFALL_STATUS.md)|Card database pipeline status                    |
+|[`docs/AI.md`](docs/AI.md)                                  |AI coordination rules                            |
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+
+MIT — see `LICENSE` for details.
