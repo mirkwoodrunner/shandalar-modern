@@ -17,6 +17,7 @@ import {
   canPay, parseMana,
 } from './DuelCore.js';
 import { PHASE } from './phases.js';
+import { getBestMove } from './MCTS.js';
 
 // --- OPPONENT PROFILES --------------------------------------------------------
 // Pure data ? no logic. Weights range 0.0?1.0.
@@ -235,8 +236,16 @@ function planAttack(state, profile) {
         continue;
       }
 
-      // Risky attack ? defer to aggression roll.
-      if (Math.random() < profile.aggression) {
+      // Risky attack: use MCR to evaluate if aggression profile warrants it.
+      if (profile.aggression >= 0.8) {
+        // High aggression profiles (KARAG, ARZAKON, MORTIS) use MCR for risky attacks.
+        const candidateMoves = [
+          { action: { type: 'DECLARE_ATTACKER', iid: att.iid }, label: `attack_${att.iid}` },
+          { action: { type: 'ADVANCE_PHASE' }, label: 'pass' },
+        ];
+        const best = getBestMove(state, candidateMoves, 400);
+        if (best?.label?.startsWith('attack')) attackerIds.push(att.iid);
+      } else if (Math.random() < profile.aggression) {
         attackerIds.push(att.iid);
       }
     }
