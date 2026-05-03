@@ -141,6 +141,7 @@ const baseColor = bg[manaColor] || "#555";
 
 return (
 <div
+data-iid={card.iid}
 onClick={onClick}
 onMouseMove={onMouseMove}
 onMouseLeave={onMouseLeave}
@@ -229,6 +230,7 @@ const rarityColor = card.rarity === "R" ? "#f0c040" : card.rarity === "U" ? "#90
 
 return (
 <div
+data-iid={card.iid}
 onClick={onClick}
 title={`${card.name}\n${card.text || ""}`}
 style={{
@@ -286,6 +288,7 @@ const ca = CCOLOR[card.color] || "#aaa";
 
 return (
 <div
+data-iid={card.iid}
 onClick={onClick}
 title={`${card.name}\n${card.text || ""}`}
 style={{
