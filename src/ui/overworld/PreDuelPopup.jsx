@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { CCOLOR } from '../shared/Card.jsx';
+import { MANA_SYM } from '../../engine/MapGenerator.js';
 
 const RARITY_COLORS = { R: '#f0c040', U: '#88b8d0', C: '#909090' };
 const RARITY_LABELS = { R: 'Rare', U: 'Uncommon', C: 'Common' };
@@ -63,7 +64,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
   } = popup;
 
   const accentColor = CCOLOR[monsterColor] || CCOLOR[''];
-  const icon = context === 'castle' ? '?' : '?';
+  const icon = context === 'castle' ? (MANA_SYM[monsterColor] || '⚔') : '⚔';
   const canAffordFlee = player.gold >= fleeCost;
   const showAnte = anteEnabled && (playerAnteCard !== null || opponentAnteCard !== null);
 
@@ -113,7 +114,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                 fontSize: 10, fontFamily: "'Cinzel',serif",
                 color: '#8a6030', textAlign: 'center', letterSpacing: 2, marginBottom: 10,
               }}>
-                ? The Stakes ?
+                ⚔ The Stakes ⚔
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <AnteCardBox
@@ -154,7 +155,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                 letterSpacing: 1,
               }}
             >
-              ? Fight
+              ⚔ Fight
             </button>
 
             {/* Flee ? or "cannot be bought off" when canFlee is false */}
@@ -176,7 +177,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                   fontSize: 11,
                 }}
               >
-                ? Pay {fleeCost}g to Flee
+                → Pay {fleeCost}g to Flee
               </button>
             ) : (
               <div style={{
@@ -210,7 +211,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
                   fontFamily: "'Cinzel',serif",
                 }}
               >
-                ? Withdraw
+                ← Withdraw
               </button>
             </div>
           )}
