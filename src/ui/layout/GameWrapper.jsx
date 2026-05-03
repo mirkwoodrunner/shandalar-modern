@@ -8,7 +8,7 @@ import { MANA_HEX, MANA_SYM, COLORS } from '../../engine/MapGenerator.js';
 const COLOR_META = {
 W: { name:"White", label:"Order & Protection",  hp:22, gold:40, flavor:"The light of justice guides your blade." },
 U: { name:"Blue",  label:"Control & Knowledge", hp:18, gold:50, flavor:"Knowledge is the mightiest spell of all." },
-B: { name:"Black", label:"Power & Sacrifice",   hp:18, gold:35, flavor:"Power demands sacrifice ? others' or yours." },
+B: { name:"Black", label:"Power & Sacrifice",   hp:18, gold:35, flavor:"Power demands sacrifice — others' or yours." },
 R: { name:"Red",   label:"Speed & Chaos",       hp:20, gold:40, flavor:"Strike first. Strike hard. Ask questions never." },
 G: { name:"Green", label:"Growth & Might",      hp:22, gold:30, flavor:"The land itself rises to answer your call." },
 };
@@ -32,7 +32,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
   <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:"linear-gradient(90deg,transparent,rgba(200,160,40,.6),transparent)" }} />
 
   <div style={{ textAlign:"center", maxWidth:620, padding:"0 20px" }}>
-    <div style={{ marginBottom:6, fontSize:11, letterSpacing:4, color:"rgba(180,140,40,.5)" }}>? ? ? MAGIC: THE GATHERING ? ? ?</div>
+    <div style={{ marginBottom:6, fontSize:11, letterSpacing:4, color:"rgba(180,140,40,.5)" }}>✦ ✦ ✦ MAGIC: THE GATHERING ✦ ✦ ✦</div>
     <h1 style={{
       fontSize:52, fontFamily:"'Cinzel Decorative',serif", color:"transparent",
       background:"linear-gradient(180deg,#f0d080,#8a6010)",
@@ -59,9 +59,9 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
             border:"1px solid rgba(96,192,255,.35)", color:"rgba(96,192,255,.7)",
             padding:"8px 22px", borderRadius:5, cursor:"pointer",
             fontSize:11, fontFamily:"'Cinzel',serif", letterSpacing:1,
-          }}>? Sandbox Mode</button>
+          }}>⚗ Sandbox Mode</button>
           <div style={{ fontSize:9, color:"rgba(96,192,255,.35)", marginTop:5, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
-            All cards ? unlimited copies ? dev testing
+            All cards · unlimited copies · dev testing
           </div>
         </div>
       </div>
@@ -86,15 +86,15 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
                 <div style={{ fontSize:38, marginBottom:6, textAlign:"center", color:hx, lineHeight:1 }}><span className="mana-sym">{MANA_SYM[c]}</span></div>
                 <div style={{ fontSize:11, fontFamily:"'Cinzel',serif", color:sel?hx:"#6a5030", marginBottom:3 }}>{m.name}</div>
                 <div style={{ fontSize:8, color:"#5a4020", lineHeight:1.4 }}>{m.label}</div>
-                <div style={{ marginTop:6, fontSize:9, color:sel?hx:"#4a3010" }}>?{m.hp} ?{m.gold}g</div>
+                <div style={{ marginTop:6, fontSize:9, color:sel?hx:"#4a3010" }}>♥{m.hp} ◆{m.gold}g</div>
               </div>
             );
           })}
         </div>
         {col && <div style={{ marginBottom:14, fontStyle:"italic", fontSize:12, color:"#a09060", fontFamily:"'Crimson Text',serif" }}>"{COLOR_META[col].flavor}"</div>}
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={() => setStep("intro")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>? Back</button>
-          <button disabled={!col} onClick={() => setStep("name")} style={{ background:col?"linear-gradient(135deg,#1a1004,#2e1c08)":"rgba(0,0,0,.3)", border:`1px solid ${col?MANA_HEX[col]:"#2a1804"}`, color:col?MANA_HEX[col]:"#3a2810", padding:"9px 26px", borderRadius:5, cursor:col?"pointer":"not-allowed", fontSize:12, fontFamily:"'Cinzel',serif" }}>Name Your Wizard ?</button>
+          <button onClick={() => setStep("intro")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>← Back</button>
+          <button disabled={!col} onClick={() => setStep("name")} style={{ background:col?"linear-gradient(135deg,#1a1004,#2e1c08)":"rgba(0,0,0,.3)", border:`1px solid ${col?MANA_HEX[col]:"#2a1804"}`, color:col?MANA_HEX[col]:"#3a2810", padding:"9px 26px", borderRadius:5, cursor:col?"pointer":"not-allowed", fontSize:12, fontFamily:"'Cinzel',serif" }}>Name Your Wizard →</button>
         </div>
       </div>
     )}
@@ -112,20 +112,20 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
         />
         <br/>
         <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={() => setStep("choose")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>? Back</button>
+          <button onClick={() => setStep("choose")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>← Back</button>
           <button onClick={() => onStart({ color:col, name:name.trim()||`The ${COLOR_META[col].name} Mage`, seed:Date.now() })} style={{
             background:`linear-gradient(135deg,${MANA_HEX[col]}20,${MANA_HEX[col]}10)`,
             border:`2px solid ${MANA_HEX[col]}`, color:MANA_HEX[col],
             padding:"11px 30px", borderRadius:6, cursor:"pointer",
             fontSize:13, fontFamily:"'Cinzel',serif", letterSpacing:2,
-          }}>? Enter Shandalar</button>
+          }}>→ Enter Shandalar</button>
         </div>
       </div>
     )}
   </div>
 
   <div style={{ position:"absolute", bottom:18, fontSize:10, color:"rgba(100,80,40,.4)", letterSpacing:2 }}>
-    ALPHA?FOURTH EDITION ? CLASSIC RULES
+    ALPHA · FOURTH EDITION · CLASSIC RULES
   </div>
 </div>
 
