@@ -1,28 +1,40 @@
 # Contributing to Shandalar Modern
 
-Welcome to the Shandalar Modern project! We appreciate your interest in contributing to our repository. This guide outlines the contribution guidelines for both human developers and AI models.
+This is a solo hobby project. Development is driven by the owner using **Claude Code** as an AI implementation agent.
 
-## Contribution Guidelines for Human Developers
+## How Development Works
 
-1. **Fork the Repository**: Start by forking the repository to your own GitHub account.
-2. **Create a New Branch**: Before making changes, create a new branch from `main` for your feature or fix.
-   - Naming Convention: Use descriptive names like `feature/add-new-feature` or `fix/bug-description`.
-3. **Write Meaningful Commits**: Write clear and concise commit messages that explain the changes you have made.
-4. **Follow Code Style**: Adhere to the project's code style guidelines. Ensure code quality and perform testing.
-5. **Submit a Pull Request**: Once your changes are ready, submit a pull request (PR) to merge your branch back to `main`. Provide a detailed description of your changes.
-   - Include any relevant issue numbers in the PR description using `#issue_number`.
+1. The owner designs features and writes detailed prompt files (in `/prompts/` or ad-hoc).
+2. Claude Code executes those prompts against the codebase.
+3. Results are reviewed and iterated on by the owner.
 
-## Contribution Guidelines for AI Models
+## Key Rules for AI Agents (Claude Code)
 
-1. **Understand the Framework**: Familiarize yourself with the multi-AI coordination framework that governs how AI models interact within the system.
-2. **Determinism Requirements**: Ensure that all operations and outputs of AI models are deterministic, meaning that the same input will produce the same output every time.
-3. **System Architecture Principles**: Follow the architecture principles defined in the project. This includes understanding the modules, data flow, and how different components interact.
-4. **Model Training and Evaluation**: AI models should be trained and evaluated according to the specifications outlined by the maintainers. Ensure thorough documentation of model training processes and performance metrics.
-5. **Collaboration with Human Developers**: AI contributions should be reviewed and complemented by human developers to ensure quality and adherence to project standards.
+These rules apply to any AI working in this repo:
 
-## General Principles
+- **Never modify engine files** without explicit instruction: `DuelCore.js`, `cards.js`, `AI.js`, and state reducers are off-limits for feature work.
+- **SYSTEMS.md is authoritative.** All mechanic implementation must reference a SYSTEMS.md section. Do not invent behavior not defined there.
+- **No unsolicited refactoring.** Only change what the prompt explicitly requests.
+- **Non-breaking by default.** All changes must include graceful fallbacks. Do not break existing functionality.
+- **Determinism required.** All game logic must be fully deterministic given `GameState` + `rngSeed`. No hidden randomness.
+- **Encoding hygiene.** Do not introduce smart quotes, em-dashes, or non-ASCII characters into `.js` or `.jsx` files.
 
-- **Communication**: Maintain open communication through GitHub issues or discussions, allowing for collaboration and transparency.
-- **Respect License**: All contributions must respect the project's license agreement.
+## Architecture Constraints
 
-Thank you for contributing to the Shandalar Modern project! Together, we can continue to evolve and enhance this project for all users.
+- World Map, Duel Engine, and Card Database logic must remain strictly separated.
+- State transitions between systems (e.g., overworld → duel) must be explicitly defined.
+- New features should use the event/listener system rather than hard-coded if/else chains for card effects.
+
+## Documentation
+
+Update the following docs when completing a feature:
+- `docs/gdd.md` — add a changelog entry and update phase completion status
+- `docs/SYSTEMS.md` — add or update the relevant system section
+- `docs/CURRENT_SPRINT.md` — mark deliverables complete; update "Up Next"
+- `docs/MECHANICS_INDEX.md` — add traceability entry for new mechanics
+
+## Reference Documents
+
+- [`docs/gdd.md`](docs/gdd.md) — Design intent and phase history
+- [`docs/SYSTEMS.md`](docs/SYSTEMS.md) — Mechanical specifications (source of truth)
+- [`docs/AI.md`](docs/AI.md) — Full AI coordination rules and role definitions

@@ -1,6 +1,6 @@
 # Shandalar: Modern Edition — Game Design Document
-### Version 0.6 | Design Bible
-### Last updated: Post-Phase 4 bug-fix pass + priority improvements
+### Version 0.7 | Design Bible
+### Last updated: Phase 5 complete (Scryfall art integration)
 
 ---
 
