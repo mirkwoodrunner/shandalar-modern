@@ -612,15 +612,26 @@ return (
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#e05030', letterSpacing: 1 }}>OPPONENT</span>
-          <span
+          <div
             data-iid="player-o"
+            onClick={() => { if (s.selCard) selectTarget(s.selTgt === 'player-o' ? null : 'player-o'); }}
             style={{
-            fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
-            color: s.o.life <= 5 ? '#ff2020' : s.o.life <= 10 ? '#e06030' : '#ff9060',
-            animation: s.o.life <= 5 ? 'pulse 1s infinite' : s.o.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.o.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
-          }}>
-            {s.o.life}
-          </span>
+              cursor: s.selCard ? 'crosshair' : 'default',
+              borderRadius: 4,
+              padding: '0 4px',
+              outline: s.selTgt === 'player-o' ? '2px solid #ff6040' : 'none',
+              outlineOffset: 2,
+              transition: 'outline 0.1s',
+            }}
+          >
+            <span style={{
+              fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
+              color: s.o.life <= 5 ? '#ff2020' : s.o.life <= 10 ? '#e06030' : '#ff9060',
+              animation: s.o.life <= 5 ? 'pulse 1s infinite' : s.o.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.o.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
+            }}>
+              {s.o.life}
+            </span>
+          </div>
           <div style={{ width: 80, height: 6, background: '#1a0800', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
               width: `${Math.max(0, (s.o.life / config.ruleset.startingLife) * 100)}%`,
@@ -739,15 +750,26 @@ return (
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#50a030', letterSpacing: 1 }}>YOU</span>
-          <span
+          <div
             data-iid="player-p"
+            onClick={() => { if (s.selCard) selectTarget(s.selTgt === 'player-p' ? null : 'player-p'); }}
             style={{
-            fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
-            color: s.p.life <= 5 ? '#ff2020' : s.p.life <= 10 ? '#e06030' : '#90d050',
-            animation: s.p.life <= 5 ? 'pulse 1s infinite' : s.p.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.p.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
-          }}>
-            {s.p.life}
-          </span>
+              cursor: s.selCard ? 'crosshair' : 'default',
+              borderRadius: 4,
+              padding: '0 4px',
+              outline: s.selTgt === 'player-p' ? '2px solid #60c040' : 'none',
+              outlineOffset: 2,
+              transition: 'outline 0.1s',
+            }}
+          >
+            <span style={{
+              fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
+              color: s.p.life <= 5 ? '#ff2020' : s.p.life <= 10 ? '#e06030' : '#90d050',
+              animation: s.p.life <= 5 ? 'pulse 1s infinite' : s.p.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.p.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
+            }}>
+              {s.p.life}
+            </span>
+          </div>
           <div style={{ width: 80, height: 6, background: '#081808', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
               width: `${Math.max(0, (s.p.life / config.ruleset.startingLife) * 100)}%`,
