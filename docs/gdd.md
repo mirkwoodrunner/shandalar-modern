@@ -15,7 +15,7 @@
 | 0.5 | Post-Phase 4 | AI overhaul; 8 stub effects completed; castle modifier mechanics enforced; Arzakon final fight; run score screen; gem merchant; map town/castle labels; life flash animations; activated ability UI; Black Lotus color picker; bug fixes documented |
 | 0.6 | Post-Phase 4 fixes | Mana burn per-phase fix; land layout (horizontal pip row); AI mana simulation; priority improvements: auto-center map, clipboard log, deck manager overhaul, always-attack AI |
 | 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
-| 0.8 | Phase 6 (partial) | Triggered ability pipeline activated: Sengir Vampire counter trigger, Force of Nature upkeep choice UI |
+| 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard |
 
 ---
 
@@ -733,13 +733,13 @@ Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequen
 - Map Labels — town names displayed under ⌂ icon; mage names displayed under ♔ icon with color glow; defeated castles show ✓
 - Run Stat Tracking — `dungeonsCleared`, `townsSaved`, `manaLinksTotal`, `arzakonDefeated` tracked throughout run
 
-**Deferred to Phase 5:**
-- Sengir Vampire triggered counter (data defined, trigger handler deferred)
-- Force of Nature upkeep choice UI (currently auto-damages)
-- Birds of Paradise any-color selection (currently produces first color in `produces[]`)
-- Holy Ground full protection enforcement in combat
-- Unlockables persistence (localStorage)
-- `enchantments` and `tokens` fields wired to aura/token mechanics
+**Deferred items — resolved in later phases:**
+- Sengir Vampire triggered counter → Phase 6 ✅
+- Force of Nature upkeep choice UI → Phase 6 ✅
+- Holy Ground full protection enforcement in combat → Phase 6 (planned)
+- Birds of Paradise any-color selection → Resolved in Phase 5 (pendingBop color picker)
+- Unlockables persistence (localStorage) → Phase 7
+- `enchantments` and `tokens` fields wired to aura/token mechanics → Phase 7
 
 ### Priority Improvements (Post-Phase 4) *(in progress)*
 
@@ -753,11 +753,6 @@ These items were identified during playtesting and are being addressed before Ph
 | P4 | AI mana burn fix (always-attack, correct mana sim) | ✅ Done | See B8, B9 in bug log |
 | P5 | Deck Manager overhaul | ✅ Done | Full-featured: add from binder, remove to binder, sort by CMC/color/type, search filter, deck validation (min 40), land count warning |
 | P6 | AI always attacks with all eligible creatures | ✅ Done | Simplified attack declaration: all untapped non-sick creatures attack every turn |
-
-### Phase 6 — Engine Depth 🔄 In Progress
-Triggered ability pipeline activated · Sengir Vampire +1/+1 counter trigger · Force of Nature upkeep choice modal · ON_UPKEEP_START event emission · RESOLVE_CHOICE reducer + AI auto-resolution · SILENCE modifier guard on upkeep triggers
-
----
 
 ### Phase 5 — Polish & Completion *(complete)*
 
@@ -781,6 +776,41 @@ Triggered ability pipeline activated · Sengir Vampire +1/+1 counter trigger · 
 - First Strike combat phase (separate damage step for first strikers)
 - Arzakon challenge mode (Five-Color Chaos as a selectable starter)
 - Sound hook stubs for future audio
+
+### Phase 6 — Engine Depth 🔄 In Progress
+
+**Goal:** Activate the triggered ability pipeline for cards that require it, enforce Holy Ground combat protection fully, and resolve the remaining effect stubs that have been deferred since Phase 4. Concludes with the priority window / instant-speed interaction system.
+
+**Deliverable 1 — Triggered Abilities: Sengir Vampire + Force of Nature** 🔄 In Progress
+- Sengir Vampire — `triggeredAbilities` entry added to `cards.js`; `ON_CREATURE_DIES` event + `damageLog` condition already in engine; `addCounter` effect handler already in `resolveTriggeredEffect()`; no engine surgery required
+- Force of Nature — `triggeredAbilities` entry added to `cards.js`; `ON_UPKEEP_START` event emitted in `advPhase()`; `requiresChoice: true` suspends trigger queue; `RESOLVE_CHOICE` reducer case added; `ChoiceModal` component added to `DuelScreen.jsx`; AI auto-resolves (pays if able, takes damage if not)
+- `payMana` effect type added to `resolveTriggeredEffect()` for GGGG deduction
+- SILENCE dungeon modifier suppresses `ON_UPKEEP_START` trigger emission
+
+**Deliverable 2 — Holy Ground Combat Enforcement** *(Planned)*
+- Castle modifier for Delenia (White); currently display-only
+- Full enforcement: player creatures cannot be targeted by opponent spells or abilities; opponent creatures cannot deal combat damage to the player; does not affect creature-to-creature damage
+- Enforced inline in combat damage resolution (no trigger queue interaction); per [SYSTEMS.md](http://SYSTEMS.md) §17.6.3
+
+**Deliverable 3 — Remaining Effect Stubs** *(Planned)*
+
+| Card | Effect ID | Implementation Plan |
+|------|-----------|-------------------|
+| Regeneration (aura) | `regeneration` | Aura grants `regenerate` activated ability (`G: regenerate`) to enchanted creature; routes through existing `ACTIVATE_ABILITY` handler |
+| Channel | `channel` | Sets `channelActive: true` flag on player state; during active player's turn, any mana spend may instead pay 1 life per 1 colorless; cleared at end of turn |
+| Fastbond | `fastbond` | Sets `fastbondActive: true` on player state; `PLAY_LAND` no longer checks `landsPlayedThisTurn > 0`; each land played beyond the first deals 1 damage to controller |
+| Power Surge (upkeep) | `powerSurgeUpkeep` | Tracks `untappedLandsAtUpkeepStart` in `turnState`; upkeep damage = count of untapped lands at previous upkeep start; currently stubbed with console warning |
+| Kudzu (upkeep) | `kudzu` | Each upkeep: destroy enchanted land; if controller controls another land, Kudzu re-attaches to a random one (seeded RNG); if no lands remain, Kudzu goes to graveyard |
+
+**Deliverable 4 — Priority Window / Instant-Speed Interaction** *(Planned)*
+- Player offered a response window at each priority-eligible phase transition ([SYSTEMS.md](http://SYSTEMS.md) `PRIORITY_PHASES`)
+- Window suppressed when player has no instants in hand and no usable activated abilities on battlefield
+- Window suppressed entirely under SILENCE dungeon modifier
+- AI evaluates instant-speed responses per archetype logic; control archetypes prioritize counterspells; aggro passes priority immediately
+- New state fields: `priorityWindow: boolean`, `priorityPasser: "p"|"o"|null`
+- `PASS_PRIORITY` action advances phase when both players have passed
+- `InstantPriorityBar` component in `TargetingOverlay.jsx`; shown only when window is open and player has relevant cards
+- Nothing calls `ADVANCE_PHASE` while a priority window is open
 
 ---
 
@@ -844,7 +874,7 @@ Triggered ability pipeline activated · Sengir Vampire +1/+1 counter trigger · 
 ---
 
 *Document status: Living design bible. Validated against source code.*
-*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Next: Phase 5 — Polish & completion.*
+*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 🔄 In Progress*
 
 ---
 
