@@ -972,64 +972,90 @@ return (
     padding: '0 14px',
   }}>
 
-    {/* Primary button row — fixed layout, never shifts */}
-    <div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+    {/* Contextual row — cast, stack, prompts (above nav buttons) */}
+    {(isMyTurn && inMain && selDef) || selDef?.cost?.includes('X') || s.stack.length > 0 || pendingActivate || (isMyTurn && !pendingActivate && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS' || s.attackers.length > 0)) ? (
+      <div style={{ paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
 
-      {/* Cast / Play button */}
-      {isMyTurn && inMain && selDef && (
-        <button onClick={handleCast} style={{
-          background: 'rgba(20,16,8,.8)',
-          border: '1px solid rgba(200,160,40,.5)',
-          color: '#f0d060',
-          padding: '5px 14px', borderRadius: 5, cursor: 'pointer',
-          fontSize: 10, fontFamily: "'Cinzel',serif", fontWeight: 700,
-          whiteSpace: 'nowrap',
-        }}>
-          {isLand(selDef) ? '⬡ Play' : '✦ Cast'} {selDef.name}
-        </button>
-      )}
+        {/* Cast / Play button */}
+        {isMyTurn && inMain && selDef && (
+          <button onClick={handleCast} style={{
+            background: 'rgba(20,16,8,.8)',
+            border: '1px solid rgba(200,160,40,.5)',
+            color: '#f0d060',
+            padding: '5px 14px', borderRadius: 5, cursor: 'pointer',
+            fontSize: 10, fontFamily: "'Cinzel',serif", fontWeight: 700,
+            whiteSpace: 'nowrap',
+          }}>
+            {isLand(selDef) ? '⬡ Play' : '✦ Cast'} {selDef.name}
+          </button>
+        )}
 
-      {/* X input */}
-      {selDef?.cost?.includes('X') && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 10, color: '#c0a050', fontFamily: "'Cinzel',serif" }}>X=</span>
-          <input
-            type="number" min={0} max={20} value={s.xVal}
-            onChange={e => setX(parseInt(e.target.value) || 0)}
-            style={{ width: 40, background: 'rgba(20,15,0,.8)', border: '1px solid #7a6020', color: '#f0d050', padding: '3px 5px', borderRadius: 4, fontSize: 13, fontFamily: "'Fira Code',monospace" }}
-          />
-        </div>
-      )}
+        {/* X input */}
+        {selDef?.cost?.includes('X') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 10, color: '#c0a050', fontFamily: "'Cinzel',serif" }}>X=</span>
+            <input
+              type="number" min={0} max={20} value={s.xVal}
+              onChange={e => setX(parseInt(e.target.value) || 0)}
+              style={{ width: 40, background: 'rgba(20,15,0,.8)', border: '1px solid #7a6020', color: '#f0d050', padding: '3px 5px', borderRadius: 4, fontSize: 13, fontFamily: "'Fira Code',monospace" }}
+            />
+          </div>
+        )}
 
-      {/* Stack display */}
-      {s.stack.length > 0 && (
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color: '#b090e0', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>STACK:</span>
-          {s.stack.map(item => (
-            <div key={item.id} style={{
-              padding: '3px 8px', borderRadius: 5, fontSize: 10,
-              background: 'rgba(100,60,180,.35)', border: '1px solid rgba(140,100,220,.6)',
-              color: '#d0b0ff', fontFamily: "'Cinzel',serif",
-            }}>
-              {item.card.name}
-            </div>
-          ))}
-          <button onClick={resolveStack} style={{
-            background: 'rgba(60,40,0,.7)', border: '1px solid rgba(200,140,40,.6)', color: '#f0c040',
-            padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
-          }}>Resolve →</button>
-        </div>
-      )}
+        {/* Stack display */}
+        {s.stack.length > 0 && (
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: '#b090e0', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>STACK:</span>
+            {s.stack.map(item => (
+              <div key={item.id} style={{
+                padding: '3px 8px', borderRadius: 5, fontSize: 10,
+                background: 'rgba(100,60,180,.35)', border: '1px solid rgba(140,100,220,.6)',
+                color: '#d0b0ff', fontFamily: "'Cinzel',serif",
+              }}>
+                {item.card.name}
+              </div>
+            ))}
+            <button onClick={resolveStack} style={{
+              background: 'rgba(60,40,0,.7)', border: '1px solid rgba(200,140,40,.6)', color: '#f0c040',
+              padding: '3px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif",
+            }}>Resolve →</button>
+          </div>
+        )}
 
-      {/* Pending activate prompt */}
-      {pendingActivate && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(200,160,40,.15)', border: '1px solid #a08030', borderRadius: 5, padding: '4px 10px' }}>
-          <span style={{ fontSize: 10, color: '#f0c040', fontFamily: "'Cinzel',serif" }}>◎ {pendingActivate.name}: select a target</span>
-          <button onClick={handleCancelActivate} style={{ background: 'transparent', border: '1px solid #5a3020', color: '#c08060', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>Cancel</button>
-        </div>
-      )}
+        {/* Pending activate prompt */}
+        {pendingActivate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(200,160,40,.15)', border: '1px solid #a08030', borderRadius: 5, padding: '4px 10px' }}>
+            <span style={{ fontSize: 10, color: '#f0c040', fontFamily: "'Cinzel',serif" }}>◎ {pendingActivate.name}: select a target</span>
+            <button onClick={handleCancelActivate} style={{ background: 'transparent', border: '1px solid #5a3020', color: '#c08060', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>Cancel</button>
+          </div>
+        )}
 
-      {/* Action pill buttons */}
+        {/* Combat prompts */}
+        {isMyTurn && !pendingActivate && (
+          <>
+            {s.phase === 'COMBAT_ATTACKERS' && (
+              <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+                ⚔ Click your creatures to declare attackers
+              </span>
+            )}
+            {s.phase === 'COMBAT_BLOCKERS' && (
+              <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+                ⚔ Click an attacker, then your blocker
+              </span>
+            )}
+            {s.attackers.length > 0 && (
+              <span style={{ fontSize: 10, color: '#ff9040', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
+                ⚔ {s.attackers.length} attacker{s.attackers.length !== 1 ? 's' : ''}
+                {Object.keys(s.blockers).length > 0 ? ` · ⚔ ${Object.keys(s.blockers).length} blocked` : ''}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    ) : null}
+
+    {/* Navigation button row — Pass Priority / End Turn always on bottom */}
+    <div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
       {isMyTurn && (
         <>
           {s.phase === 'COMBAT_ATTACKERS' && (
@@ -1082,28 +1108,6 @@ return (
         </span>
       )}
     </div>
-
-    {/* Combat prompts — below buttons so their position never shifts */}
-    {isMyTurn && !pendingActivate && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS' || s.attackers.length > 0) && (
-      <div style={{ paddingBottom: 6, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center' }}>
-        {s.phase === 'COMBAT_ATTACKERS' && (
-          <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
-            ⚔ Click your creatures to declare attackers
-          </span>
-        )}
-        {s.phase === 'COMBAT_BLOCKERS' && (
-          <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
-            ⚔ Click an attacker, then your blocker
-          </span>
-        )}
-        {s.attackers.length > 0 && (
-          <span style={{ fontSize: 10, color: '#ff9040', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
-            ⚔ {s.attackers.length} attacker{s.attackers.length !== 1 ? 's' : ''}
-            {Object.keys(s.blockers).length > 0 ? ` · ⚔ ${Object.keys(s.blockers).length} blocked` : ''}
-          </span>
-        )}
-      </div>
-    )}
   </div>
 
   {/* -- HAND ------------------------------------------------------------ */}
