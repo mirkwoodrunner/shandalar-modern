@@ -292,7 +292,7 @@ bf: s[who].bf.map(x => x.iid === iid ? { ...x, tapped: true } : x),
 mana: { ...s[who].mana, [m]: (s[who].mana[m] || 0) + amount },
 },
 };
-ns = dlog(ns, `${who} taps ${c.name} ? +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, "mana");
+ns = dlog(ns, `${who} taps ${c.name} → +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, "mana");
 const allBF_tap = [...ns.p.bf, ...ns.o.bf];
 if (allBF_tap.some(x => x.id === "mana_flare")) {
 ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, [m]: (ns[who].mana[m] || 0) + 1 } } };
@@ -414,12 +414,12 @@ else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === "
 break;
 }
 case "wrathAll": {
-ns = dlog(ns, "Wrath of God ? all creatures destroyed!", "effect");
+ns = dlog(ns, "Wrath of God — all creatures destroyed!", "effect");
 for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isCre)) ns = zMove(ns, c.iid, w, w, "gy");
 break;
 }
 case "destroyAllLands": {
-ns = dlog(ns, "Armageddon ? all lands destroyed!", "effect");
+ns = dlog(ns, "Armageddon — all lands destroyed!", "effect");
 for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isLand)) ns = zMove(ns, c.iid, w, w, "gy");
 break;
 }
@@ -910,13 +910,13 @@ let ns = s;
 if (!ns.attackers.length) return ns;
 
 if (ns.fogActive) {
-ns = dlog(ns, "? Fog prevents all combat damage!", "effect");
+ns = dlog(ns, "Fog prevents all combat damage!", "effect");
 ns = { ...ns, attackers:[], blockers:{}, fogActive:false };
 for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => ({ ...c, attacking:false, blocking:null })) } };
 return ns;
 }
 
-ns = dlog(ns, "? Combat damage resolving?", "combat");
+ns = dlog(ns, "Combat damage resolving.", "combat");
 
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
