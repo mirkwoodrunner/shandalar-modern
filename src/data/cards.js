@@ -245,7 +245,7 @@ export const CARD_DB = [
 {id:"lava_axe",        name:"Lava Axe",        type:"Sorcery", color:"R",cmc:5,cost:"4R",  text:"Lava Axe deals 5 damage to target player.",effect:"damage5",rarity:"C"},
 {id:"stone_rain",      name:"Stone Rain",      type:"Sorcery", color:"R",cmc:3,cost:"2R",  text:"Destroy target land.",effect:"destroyTargetLand",rarity:"C"},
 {id:"earthquake",      name:"Earthquake",      type:"Sorcery", color:"R",cmc:1,cost:"XR",  text:"Deals X damage to each creature without flying and each player.",effect:"earthquake",rarity:"R"},
-{id:"berserk",         name:"Berserk",         type:"Instant", color:"G",cmc:1,cost:"G",   text:"Target creature gains trample and +X/+0 where X is its power. At end step, destroy it.",effect:"berserk",rarity:"R"},
+{id:"berserk",         name:"Berserk",         type:"Instant", color:"G",cmc:1,cost:"G",   text:"Target creature gains trample and +X/+0 where X is its power. At end step, destroy it.",effect:"berserk",rarity:"R",castRestriction:"beforeCombatDamage"},
 {id:"fork",            name:"Fork",            type:"Instant", color:"R",cmc:2,cost:"RR",  text:"Copy target instant or sorcery. You may choose new targets.",effect:"forkSpell",rarity:"R"},
 {id:"pyrotechnics",    name:"Pyrotechnics",    type:"Sorcery", color:"R",cmc:5,cost:"4R",  text:"Deals 4 damage divided as you choose among any number of targets.",effect:"damageX",rarity:"C"},
 {id:"red_elemental_blast",name:"Red Elemental Blast",type:"Instant",color:"R",cmc:1,cost:"R",text:"Counter target blue spell, or destroy target blue permanent.",effect:"destroyBlueOrCounter",rarity:"C"},
