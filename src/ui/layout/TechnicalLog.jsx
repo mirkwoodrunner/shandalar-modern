@@ -45,7 +45,7 @@ color: LOG_COLORS[e.type] || "#a0b090",
 marginBottom: 3, lineHeight: 1.4,
 fontFamily: "'Crimson Text',serif",
 }}>
-? {e.text}
+• {e.text}
 </div>
 ))}
 </div>
