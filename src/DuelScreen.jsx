@@ -501,6 +501,14 @@ const selDef   = s.p.hand.find(c => c.iid === s.selCard);
 const inMain   = s.phase === 'MAIN_1' || s.phase === 'MAIN_2';
 const isMyTurn = s.active === 'p';
 
+// Battlefield splits — computed once, used in JSX directly
+const oNonLands = s.o.bf.filter(c => !isLand(c));
+const oCre      = sortByName(oNonLands.filter(c => isCre(c)));
+const oNonCre   = sortByName(oNonLands.filter(c => !isCre(c)));
+const pNonLands = s.p.bf.filter(c => !isLand(c));
+const pCre      = sortByName(pNonLands.filter(c => isCre(c)));
+const pNonCre   = sortByName(pNonLands.filter(c => !isCre(c)));
+
 return (
 <div ref={duelRootRef} style={{
   height: '100vh', width: '100vw',
@@ -708,51 +716,44 @@ return (
       </div>
 
       {/* Opponent creatures zone */}
-      {(() => {
-        const oNonLands = s.o.bf.filter(c => !isLand(c));
-        const oCre      = sortByName(oNonLands.filter(c => isCre(c)));
-        const oNonCre   = sortByName(oNonLands.filter(c => !isCre(c)));
-        return (
-          <div style={{
-            flex: 1, minHeight: 80,
-            background: 'linear-gradient(180deg,#1a0c08,#120808)',
-            padding: '6px 10px', overflow: 'auto',
-            display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            {oCre.length > 0 && (
-              <>
-                <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0 }}>
-                  CREATURES ({oCre.length})
+      <div style={{
+        flex: 1, minHeight: 80,
+        background: 'linear-gradient(180deg,#1a0c08,#120808)',
+        padding: '6px 10px', overflow: 'auto',
+        display: 'flex', flexDirection: 'column', gap: 4,
+      }}>
+        {oCre.length > 0 && (
+          <>
+            <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0 }}>
+              CREATURES ({oCre.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+              {oCre.map(c => (
+                <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                  <FieldCard card={c} state={s} selected={s.selTgt === c.iid} attacking={s.attackers.includes(c.iid)} onClick={() => handleCardClick(c, 'oBf')} sm />
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-                  {oCre.map(c => (
-                    <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-                      <FieldCard card={c} state={s} selected={s.selTgt === c.iid} attacking={s.attackers.includes(c.iid)} onClick={() => handleCardClick(c, 'oBf')} sm />
-                    </div>
-                  ))}
+              ))}
+            </div>
+          </>
+        )}
+        {oNonCre.length > 0 && (
+          <>
+            <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0, borderTop: oCre.length > 0 ? '1px solid rgba(120,80,20,.15)' : 'none', paddingTop: oCre.length > 0 ? 4 : 0 }}>
+              ENCHANTMENTS / ARTIFACTS ({oNonCre.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+              {oNonCre.map(c => (
+                <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                  <FieldCard card={c} state={s} selected={s.selTgt === c.iid} attacking={false} onClick={() => handleCardClick(c, 'oBf')} sm />
                 </div>
-              </>
-            )}
-            {oNonCre.length > 0 && (
-              <>
-                <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0, borderTop: oCre.length > 0 ? '1px solid rgba(120,80,20,.15)' : 'none', paddingTop: oCre.length > 0 ? 4 : 0 }}>
-                  ENCHANTMENTS / ARTIFACTS ({oNonCre.length})
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-                  {oNonCre.map(c => (
-                    <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-                      <FieldCard card={c} state={s} selected={s.selTgt === c.iid} attacking={false} onClick={() => handleCardClick(c, 'oBf')} sm />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {!oCre.length && !oNonCre.length && (
-              <span style={{ fontSize: 10, color: '#2a1808', fontStyle: 'italic' }}>No creatures in play</span>
-            )}
-          </div>
-        );
-      })()}
+              ))}
+            </div>
+          </>
+        )}
+        {!oCre.length && !oNonCre.length && (
+          <span style={{ fontSize: 10, color: '#2a1808', fontStyle: 'italic' }}>No creatures in play</span>
+        )}
+      </div>
 
       {/* Phase banner */}
       <div style={{ flexShrink: 0, height: 28, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
@@ -771,51 +772,44 @@ return (
       </div>
 
       {/* Player creatures zone */}
-      {(() => {
-        const pNonLands = s.p.bf.filter(c => !isLand(c));
-        const pCre      = sortByName(pNonLands.filter(c => isCre(c)));
-        const pNonCre   = sortByName(pNonLands.filter(c => !isCre(c)));
-        return (
-          <div style={{
-            flex: 1, minHeight: 80,
-            background: 'linear-gradient(180deg,#0c1408,#0a100a)',
-            padding: '6px 10px', overflow: 'auto',
-            display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            {pCre.length > 0 && (
-              <>
-                <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0 }}>
-                  YOUR CREATURES ({pCre.length})
+      <div style={{
+        flex: 1, minHeight: 80,
+        background: 'linear-gradient(180deg,#0c1408,#0a100a)',
+        padding: '6px 10px', overflow: 'auto',
+        display: 'flex', flexDirection: 'column', gap: 4,
+      }}>
+        {pCre.length > 0 && (
+          <>
+            <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0 }}>
+              YOUR CREATURES ({pCre.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+              {pCre.map(c => (
+                <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                  <FieldCard card={c} state={s} selected={s.selCard === c.iid || s.selTgt === c.iid} attacking={s.attackers.includes(c.iid)} onClick={() => handleCardClick(c, 'pBf')} onActivate={handleActivateAbility} />
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-                  {pCre.map(c => (
-                    <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-                      <FieldCard card={c} state={s} selected={s.selCard === c.iid || s.selTgt === c.iid} attacking={s.attackers.includes(c.iid)} onClick={() => handleCardClick(c, 'pBf')} onActivate={handleActivateAbility} />
-                    </div>
-                  ))}
+              ))}
+            </div>
+          </>
+        )}
+        {pNonCre.length > 0 && (
+          <>
+            <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0, borderTop: pCre.length > 0 ? '1px solid rgba(60,120,20,.15)' : 'none', paddingTop: pCre.length > 0 ? 4 : 0 }}>
+              YOUR ENCHANTMENTS / ARTIFACTS ({pNonCre.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+              {pNonCre.map(c => (
+                <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                  <FieldCard card={c} state={s} selected={s.selCard === c.iid || s.selTgt === c.iid} attacking={false} onClick={() => handleCardClick(c, 'pBf')} onActivate={handleActivateAbility} />
                 </div>
-              </>
-            )}
-            {pNonCre.length > 0 && (
-              <>
-                <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0, borderTop: pCre.length > 0 ? '1px solid rgba(60,120,20,.15)' : 'none', paddingTop: pCre.length > 0 ? 4 : 0 }}>
-                  YOUR ENCHANTMENTS / ARTIFACTS ({pNonCre.length})
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-                  {pNonCre.map(c => (
-                    <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-                      <FieldCard card={c} state={s} selected={s.selCard === c.iid || s.selTgt === c.iid} attacking={false} onClick={() => handleCardClick(c, 'pBf')} onActivate={handleActivateAbility} />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {!pCre.length && !pNonCre.length && (
-              <span style={{ fontSize: 10, color: '#182808', fontStyle: 'italic' }}>No permanents in play</span>
-            )}
-          </div>
-        );
-      })()}
+              ))}
+            </div>
+          </>
+        )}
+        {!pCre.length && !pNonCre.length && (
+          <span style={{ fontSize: 10, color: '#182808', fontStyle: 'italic' }}>No permanents in play</span>
+        )}
+      </div>
 
       {/* Player lands row */}
       <div style={{ flexShrink: 0, minHeight: 44, background: 'rgba(0,0,0,.2)', padding: '4px 10px' }}>
