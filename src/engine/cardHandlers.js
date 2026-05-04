@@ -51,7 +51,9 @@ export const CARD_HANDLERS = {
   'Ancestral Recall': {
     onResolve: (state, card, targets) => {
       const rawTgt = targets[0];
-      const who = rawTgt === 'opponent' ? 'o' : rawTgt === 'player' ? 'p' : (rawTgt || 'p');
+      const who = rawTgt === 'opponent' || rawTgt === 'player-o' ? 'o'
+                : rawTgt === 'player'   || rawTgt === 'player-p' ? 'p'
+                : (rawTgt || 'p');
       const ns = drawN(state, who, 3);
       return addLog(ns, `Ancestral Recall: ${who} draws 3.`, 'draw');
     },
