@@ -612,7 +612,9 @@ return (
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#e05030', letterSpacing: 1 }}>OPPONENT</span>
-          <span style={{
+          <span
+            data-iid="player-o"
+            style={{
             fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
             color: s.o.life <= 5 ? '#ff2020' : s.o.life <= 10 ? '#e06030' : '#ff9060',
             animation: s.o.life <= 5 ? 'pulse 1s infinite' : s.o.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.o.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
@@ -737,7 +739,9 @@ return (
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: '#50a030', letterSpacing: 1 }}>YOU</span>
-          <span style={{
+          <span
+            data-iid="player-p"
+            style={{
             fontSize: 22, fontWeight: 700, fontFamily: "'Cinzel',serif",
             color: s.p.life <= 5 ? '#ff2020' : s.p.life <= 10 ? '#e06030' : '#90d050',
             animation: s.p.life <= 5 ? 'pulse 1s infinite' : s.p.lifeAnim === 'damage' ? 'damageFlash .4s ease-out' : s.p.lifeAnim === 'heal' ? 'healFlash .4s ease-out' : 'none',
@@ -1004,6 +1008,8 @@ return (
   <TargetArrow
     sourceIid={state.selCard}
     targetIid={state.selTgt}
+    sourceCard={state.p.hand.find(c => c.iid === state.selCard) ?? null}
+    state={state}
     containerRef={duelRootRef}
   />
 </div>

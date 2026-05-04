@@ -6,16 +6,118 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
 /**
+ * Returns the target category a card accepts, or 'none' if untargeted.
+ * Categories: 'creature' | 'player' | 'any' | 'artifact' | 'land' |
+ *             'permanent' | 'stack' | 'none'
+ */
+function getTargetCategory(card) {
+  if (!card) return 'none';
+
+  if (card.type === 'Enchantment' && card.subtype === 'Aura') return 'creature';
+
+  switch (card.effect) {
+    case 'damage3':
+    case 'damageX':
+    case 'psionicBlast':
+    case 'chainLightning':
+      return 'any';
+
+    case 'draw3':
+    case 'drawX':
+    case 'discardX':
+    case 'returnArtifacts':
+    case 'manaShort':
+    case 'drainPower':
+    case 'damage5':
+      return 'player';
+
+    case 'destroy':
+    case 'exileCreature':
+    case 'bounce':
+    case 'pumpCreature':
+    case 'drainLife':
+    case 'tapTarget':
+    case 'controlCreature':
+    case 'grantFlying':
+    case 'berserk':
+    case 'enchantCreature':
+    case 'paralyze':
+    case 'regrowthCreature':
+      return 'creature';
+
+    case 'destroyArtifact':
+      return 'artifact';
+
+    case 'destroyArtifactEnchantment':
+      return 'artifactOrEnchantment';
+
+    case 'destroyTargetLand':
+      return 'land';
+
+    case 'counter':
+    case 'counterCreature':
+    case 'powerSink':
+    case 'forkSpell':
+    case 'destroyRedOrCounter':
+      return 'stack';
+
+    case 'boomerang':
+      return 'permanent';
+
+    default:
+      return 'none';
+  }
+}
+
+/**
+ * Returns true if targetIid is a legal target for the given category.
+ * Player targets use sentinel strings 'player-p' and 'player-o'.
+ */
+function isLegalTarget(targetIid, category, state) {
+  if (!targetIid || !state) return false;
+  if (category === 'none') return false;
+
+  const isPlayerTarget = targetIid === 'player-p' || targetIid === 'player-o';
+
+  if (category === 'player') return isPlayerTarget;
+  if (category === 'stack')  return false;
+
+  if (isPlayerTarget) {
+    return category === 'any';
+  }
+
+  const allBf = [...(state.p?.bf || []), ...(state.o?.bf || [])];
+  const card = allBf.find(c => c.iid === targetIid);
+  if (!card) return false;
+
+  switch (category) {
+    case 'any':       return true;
+    case 'creature':  return card.type?.startsWith('Creature') ?? false;
+    case 'artifact':  return card.type?.startsWith('Artifact') ?? false;
+    case 'land':      return card.type?.startsWith('Land') ?? false;
+    case 'permanent': return true;
+    case 'artifactOrEnchantment':
+      return (card.type?.startsWith('Artifact') || card.type?.startsWith('Enchantment')) ?? false;
+    default:          return false;
+  }
+}
+
+/**
  * Props:
  *   sourceIid    {string|null}  — iid of the source card (selCard)
  *   targetIid    {string|null}  — iid of the target card (selTgt)
+ *   sourceCard   {object|null}  — card object from player's hand matching sourceIid
+ *   state        {object|null}  — full duel state from useDuel
  *   containerRef {React.Ref}   — ref to the duel screen root div (for coordinate offset)
  */
-export function TargetArrow({ sourceIid, targetIid, containerRef }) {
+export function TargetArrow({ sourceIid, targetIid, sourceCard, state, containerRef }) {
+  const targetCategory = getTargetCategory(sourceCard);
+  const isLegal = isLegalTarget(targetIid, targetCategory, state);
+
   const [arrow, setArrow] = useState(null); // { x1, y1, x2, y2 } in container coords
 
   const computeArrow = useCallback(() => {
-    if (!sourceIid || !targetIid) {
+    if (!sourceIid || !targetIid || !isLegal) {
       setArrow(null);
       return;
     }
@@ -40,7 +142,7 @@ export function TargetArrow({ sourceIid, targetIid, containerRef }) {
     const y2 = tRect.top + tRect.height / 2 - cRect.top;
 
     setArrow({ x1, y1, x2, y2 });
-  }, [sourceIid, targetIid, containerRef]);
+  }, [sourceIid, targetIid, isLegal, containerRef]);
 
   useEffect(() => {
     computeArrow();
@@ -86,6 +188,25 @@ export function TargetArrow({ sourceIid, targetIid, containerRef }) {
       }}
     >
       <defs>
+        <style>{`
+          @keyframes arrowMarch {
+            from { stroke-dashoffset: 18; }
+            to   { stroke-dashoffset: 0; }
+          }
+          @keyframes arrowPulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50%       { opacity: 0.3; transform: scale(1.8); }
+          }
+          .arrow-line {
+            animation: arrowMarch 0.5s linear infinite;
+          }
+          .arrow-pulse {
+            animation: arrowPulse 1s ease-in-out infinite;
+            transform-origin: center;
+            transform-box: fill-box;
+          }
+        `}</style>
+
         <marker
           id="arrowhead"
           markerWidth="8"
@@ -106,7 +227,7 @@ export function TargetArrow({ sourceIid, targetIid, containerRef }) {
         </filter>
       </defs>
 
-      {/* Shadow line for depth */}
+      {/* Shadow */}
       <line
         x1={x1} y1={y1} x2={endX} y2={endY}
         stroke="rgba(0,0,0,0.5)"
@@ -114,8 +235,9 @@ export function TargetArrow({ sourceIid, targetIid, containerRef }) {
         strokeLinecap="round"
       />
 
-      {/* Main gold arrow line */}
+      {/* Animated gold line */}
       <line
+        className="arrow-line"
         x1={x1} y1={y1} x2={endX} y2={endY}
         stroke="#f0c040"
         strokeWidth="2"
@@ -124,31 +246,15 @@ export function TargetArrow({ sourceIid, targetIid, containerRef }) {
         markerEnd="url(#arrowhead)"
         filter="url(#arrowGlow)"
         opacity="0.85"
-      >
-        <animate
-          attributeName="strokeDashoffset"
-          from="18"
-          to="0"
-          dur="0.5s"
-          repeatCount="indefinite"
-        />
-      </line>
+      />
 
-      {/* Pulse dot at source */}
-      <circle cx={x1} cy={y1} r="5" fill="#f0c040" opacity="0.7">
-        <animate
-          attributeName="r"
-          values="4;7;4"
-          dur="1s"
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          values="0.8;0.3;0.8"
-          dur="1s"
-          repeatCount="indefinite"
-        />
-      </circle>
+      {/* Pulsing source dot */}
+      <circle
+        className="arrow-pulse"
+        cx={x1} cy={y1}
+        r="4"
+        fill="#f0c040"
+      />
     </svg>
   );
 }
