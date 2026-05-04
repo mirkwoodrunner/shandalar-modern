@@ -75,6 +75,15 @@ export default function DungeonHUD({
       <span style={{ fontSize: 11, color: '#a09060', fontFamily: "'Cinzel', serif" }}>
         Rooms {roomsCleared}/{totalRooms}
       </span>
+      <span style={{
+        fontSize: 10,
+        color: 'rgba(140,110,50,0.55)',
+        fontFamily: "'Crimson Text', serif",
+        fontStyle: 'italic',
+        marginLeft: 12,
+      }}>
+        Move: Arrow keys / WASD
+      </span>
 
       {/* Controls hint */}
       <span style={{

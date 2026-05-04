@@ -64,17 +64,46 @@ function EntityToken({ entity }) {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
         <span style={{
           fontSize: 14, lineHeight: 1,
-          filter: 'drop-shadow(0 0 4px rgba(255,255,255,.9))',
-        }}>?</span>
+          filter: 'drop-shadow(0 0 6px rgba(255,255,200,.95))',
+          animation: 'exitPulse 1.8s ease-in-out infinite',
+        }}>🚪</span>
         <span style={{
           fontSize: 6, color: '#d0d0c0',
           fontFamily: "'Cinzel', serif",
           lineHeight: 1.1,
-        }}>Exit</span>
+        }}>EXIT</span>
       </div>
     );
   }
   return null;
+}
+
+// --- D-PAD BUTTON -------------------------------------------------------------
+
+function DPadButton({ label, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: 36,
+        height: 36,
+        background: 'rgba(80,50,10,0.6)',
+        border: '1px solid rgba(200,160,40,0.4)',
+        borderRadius: 4,
+        color: '#c0a040',
+        fontSize: 16,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Cinzel', serif",
+        lineHeight: 1,
+      }}
+      onMouseDown={e => e.preventDefault()}
+    >
+      {label}
+    </button>
+  );
 }
 
 // --- DUNGEON MAP --------------------------------------------------------------
@@ -105,11 +134,19 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
     <div style={{
       flex: 1,
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      overflow: 'hidden',
+      overflow: 'auto',
       padding: 8,
+      minHeight: 0,
     }}>
+      <style>{`
+        @keyframes exitPulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.45; }
+        }
+      `}</style>
       <div style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${dungeon.width}, ${TILE_SIZE}px)`,
@@ -175,6 +212,53 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
             </div>
           );
         })}
+      </div>
+
+      {/* D-pad for mouse/touch users */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        marginTop: 12,
+        userSelect: 'none',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <DPadButton label="▲" onClick={() => onMove(0, -1)} />
+        </div>
+        <div style={{ display: 'flex', gap: 2 }}>
+          <DPadButton label="◀" onClick={() => onMove(-1, 0)} />
+          <div style={{ width: 36, height: 36 }} />
+          <DPadButton label="▶" onClick={() => onMove(1, 0)} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <DPadButton label="▼" onClick={() => onMove(0, 1)} />
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{
+        display: 'flex',
+        gap: 16,
+        marginTop: 8,
+        fontSize: 11,
+        color: '#8a6030',
+        fontFamily: "'Cinzel', serif",
+        letterSpacing: 0.5,
+      }}>
+        <span style={{ color: '#e06060' }}>✦ Enemy</span>
+        <span style={{ color: '#c0a020' }}>✦ Treasure</span>
+        <span style={{ color: '#d0d0c0' }}>✦ Exit</span>
+        <span style={{ color: '#f0e060' }}>● You</span>
+      </div>
+      <div style={{
+        marginTop: 4,
+        fontSize: 10,
+        color: '#5a4020',
+        fontFamily: "'Crimson Text', serif",
+        fontStyle: 'italic',
+      }}>
+        Arrow keys / WASD to move · Step on Exit to leave dungeon
       </div>
     </div>
   );
