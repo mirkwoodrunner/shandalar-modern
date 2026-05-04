@@ -851,8 +851,9 @@ return (
     padding: '0 14px',
   }}>
 
-    {/* Primary button row — fixed layout, never shifts */}
-    <div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+    {/* Contextual row: cast/play, stack/resolve, pending activate */}
+    {((isMyTurn && inMain && selDef) || s.stack.length > 0 || pendingActivate) && (
+    <div style={{ paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
 
       {/* Cast / Play button */}
       {isMyTurn && inMain && selDef && (
@@ -908,7 +909,11 @@ return (
         </div>
       )}
 
-      {/* Action pill buttons */}
+    </div>
+    )}
+
+    {/* Fixed nav row: always present, never shifts */}
+    <div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
       {isMyTurn && (
         <>
           {s.phase === 'COMBAT_ATTACKERS' && (
