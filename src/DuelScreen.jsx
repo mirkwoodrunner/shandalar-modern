@@ -16,6 +16,7 @@ import { OpponentBattlefield, PlayerBattlefield } from './ui/duel/Battlefield.js
 import { Hand } from './ui/duel/Hand.jsx';
 import { PhaseBar, ManaPoolDisplay } from './ui/duel/ManaPanel.jsx';
 import { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
+import { TargetArrow } from './ui/duel/TargetArrow.jsx';
 import { DuelLog } from './ui/layout/TechnicalLog.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
 import { LandPip, FieldCard } from './ui/shared/Card.jsx';
@@ -194,6 +195,7 @@ const [manaChoicePopover, setManaChoicePopover] = useState({
   callback: null,
 });
 const aiRef = useRef(false);
+const duelRootRef = useRef(null);
 
 // -- Sync BopColorPicker with engine pendingBop flag -----------------------
 useEffect(() => {
@@ -458,11 +460,12 @@ const inMain   = s.phase === 'MAIN_1' || s.phase === 'MAIN_2';
 const isMyTurn = s.active === 'p';
 
 return (
-<div style={{
+<div ref={duelRootRef} style={{
   height: '100vh', width: '100vw',
   background: '#0a0e08',
   display: 'flex', flexDirection: 'column',
   overflow: 'hidden',
+  position: 'relative',
   fontFamily: "'Crimson Text',serif",
 }}>
 
@@ -997,6 +1000,12 @@ return (
       onClose={closeManaChoicePopover}
     />
   )}
+
+  <TargetArrow
+    sourceIid={state.selCard}
+    targetIid={state.selTgt}
+    containerRef={duelRootRef}
+  />
 </div>
 
 );
