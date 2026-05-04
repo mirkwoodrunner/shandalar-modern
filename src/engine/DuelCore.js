@@ -440,7 +440,8 @@ break;
 }
 case "pumpCreature": {
 if (tgtC && card.mod) {
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+(card.mod.power||0), toughness: (c.toughness||0)+(card.mod.toughness||0) } : c) } };
+// Store in eotBuffs so the boost expires at CLEANUP. SYSTEMS.md S3.1
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: card.mod.power || 0, toughness: card.mod.toughness || 0 }] } : c) } };
 ns = dlog(ns, `${card.name} pumps ${tgtC.name}.`, "effect");
 }
 break;
