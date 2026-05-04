@@ -801,11 +801,13 @@ if (self) ns = { ...ns, [self.controller]: { ...ns[self.controller], bf: ns[self
 break;
 }
 case "berserk": {
-if (tgtC) {
+if (!tgtC) {
+ns = dlog(ns, `Berserk fizzled — no valid target.`, "effect");
+break;
+}
 const pow = getPow(tgtC, ns);
 ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+pow, keywords: [...(c.keywords||[]),"TRAMPLE"], berserked: true } : c) } };
 ns = dlog(ns, `Berserk doubles ${tgtC.name}'s power.`, "effect");
-}
 break;
 }
 case "forkSpell": {
@@ -1010,6 +1012,12 @@ if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
 for (const mw of ["p","o"]) {
 for (const mc of [...ns[mw].bf].filter(x => x.mustAttack)) {
+// Only enforce mustAttack destruction on the active player's creatures.
+// Creatures on the non-active side got mustAttack from an illegal cast — clear silently.
+if (mw !== ns.active) {
+ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
+continue;
+}
 if (!ns.attackers.includes(mc.iid)) {
 ns = zMove(ns, mc.iid, mw, mw, "gy");
 ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, "death");

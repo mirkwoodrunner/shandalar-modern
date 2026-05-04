@@ -126,6 +126,10 @@ function planUpkeep(state, profile) {
   return passPlan(PHASE.UPKEEP);
 }
 
+const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
+  'MAIN_1', 'COMBAT_BEGIN', 'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS',
+]);
+
 function planMain(state, profile, phase) {
   const actions = [];
   const availMana = computeAvailableMana(state);
@@ -148,6 +152,10 @@ function planMain(state, profile, phase) {
     const isInstantOk = isInst(card);
 
     if (!isSorceryOk && !isInstantOk) continue;
+
+    if (card.castRestriction === 'beforeCombatDamage') {
+      if (!BEFORE_COMBAT_DAMAGE_PHASES.has(phase)) continue;
+    }
 
     if (card.cmc > totalMana) continue; // can't afford even with all lands tapped
     if (!canPay(availMana, card.cost)) continue;

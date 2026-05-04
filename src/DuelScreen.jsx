@@ -346,6 +346,14 @@ tapArtifactMana, declareAttacker, declareBlocker, activateAbility,
 handleActivate,
 ]);
 
+// Phases in which "cast only before combat damage" instants are legal.
+const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
+  'MAIN_1', 'MAIN1',
+  'COMBAT_BEGIN',
+  'COMBAT_ATTACKERS', 'DECLARE_ATTACKERS',
+  'COMBAT_BLOCKERS',  'DECLARE_BLOCKERS',
+]);
+
 // -- Cast / play selected card ----------------------------------------------
 const handleCast = useCallback(() => {
 const card = state.p.hand.find(c => c.iid === state.selCard);
@@ -355,6 +363,10 @@ if (isLand(card)) {
   playLand(card.iid);
   selectCard(null);
   return;
+}
+
+if (card.castRestriction === 'beforeCombatDamage') {
+  if (!BEFORE_COMBAT_DAMAGE_PHASES.has(state.phase)) return;
 }
 
 // Resolve target: damage spells default to opponent; draw/life to self
