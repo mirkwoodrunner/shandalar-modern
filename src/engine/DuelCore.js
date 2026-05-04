@@ -997,6 +997,7 @@ export const COMBAT_PHASES = [
 ];
 
 export function advPhase(s) {
+if (s.stack && s.stack.length > 0) return s;
 const idx = PHASE_SEQ.indexOf(s.phase);
 const next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
 const turnChange = next === PHASE.UNTAP;
