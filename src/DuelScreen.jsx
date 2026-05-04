@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDuel } from './hooks/useDuel.js';
 import { aiDecide } from './engine/AI.js';
 import { isLand, isInst, isArt, isCre, canPay, PHASE_SEQ, PHASE_LBL, COMBAT_PHASES } from './engine/DuelCore.js';
+import { CARD_DB } from './data/cards.js';
 
 // -- UI sub-components --------------------------------------------------------
 import { OpponentBattlefield, PlayerBattlefield } from './ui/duel/Battlefield.jsx';
@@ -469,6 +470,32 @@ const handleManaChoice = (color) => {
 // -------------------------------------------------------------------------
 
 const s = state;
+
+// Derive last cast spell for sidebar display
+const lastSpellInfo = React.useMemo(() => {
+  if (!s?.log) return null;
+  for (let i = s.log.length - 1; i >= 0; i--) {
+    const entry = s.log[i];
+    if (entry.type !== 'play') continue;
+    const match = entry.text.match(/^(p|o) casts (.+?)\./);
+    if (!match) continue;
+    const casterKey = match[1];
+    const cardName  = match[2];
+    const zones = [s.p.gy, s.o.gy, s.p.bf, s.o.bf, s.p.hand, s.o.hand];
+    let card = null;
+    for (const zone of zones) {
+      card = zone?.find(c => c.name === cardName) ?? null;
+      if (card) break;
+    }
+    if (!card) {
+      const dbEntry = CARD_DB.find(c => c.name === cardName);
+      if (dbEntry) card = dbEntry;
+    }
+    return { card, casterKey, cardName };
+  }
+  return null;
+}, [s?.log]); // eslint-disable-line react-hooks/exhaustive-deps
+
 const selDef   = s.p.hand.find(c => c.iid === s.selCard);
 const inMain   = s.phase === 'MAIN_1' || s.phase === 'MAIN_2';
 const isMyTurn = s.active === 'p';
@@ -839,6 +866,100 @@ return (
           CHRONICLE
         </span>
       </div>
+
+      {/* Last Spell Cast */}
+      <div style={{
+        padding: '8px 12px',
+        borderBottom: '1px solid rgba(180,140,60,.15)',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          fontSize: 9, color: '#7060a0',
+          fontFamily: 'var(--font-display, "Cinzel",serif)',
+          letterSpacing: 1, marginBottom: 6,
+          textTransform: 'uppercase',
+        }}>
+          Last Spell Cast
+        </div>
+
+        {lastSpellInfo ? (
+          <div style={{
+            background: 'rgba(80,60,140,.2)',
+            border: '1px solid rgba(120,90,200,.35)',
+            borderRadius: 5,
+            padding: '6px 8px',
+          }}>
+            {/* Caster badge */}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{
+                fontSize: 8, fontFamily: "'Cinzel',serif",
+                color: lastSpellInfo.casterKey === 'p' ? '#60c060' : '#e07060',
+                background: lastSpellInfo.casterKey === 'p'
+                  ? 'rgba(40,100,40,.3)' : 'rgba(140,40,40,.3)',
+                padding: '1px 6px', borderRadius: 3,
+                border: `1px solid ${lastSpellInfo.casterKey === 'p' ? 'rgba(60,140,60,.4)' : 'rgba(180,60,60,.4)'}`,
+              }}>
+                {lastSpellInfo.casterKey === 'p' ? 'YOU' : 'OPPONENT'}
+              </span>
+            </div>
+
+            {/* Card name */}
+            <div style={{
+              fontSize: 11, fontFamily: "'Cinzel',serif",
+              color: '#e8d090', fontWeight: 700,
+              marginBottom: 2, lineHeight: 1.2,
+            }}>
+              {lastSpellInfo.cardName}
+            </div>
+
+            {/* Type line + cost */}
+            {lastSpellInfo.card && (
+              <>
+                <div style={{
+                  fontSize: 9, color: '#907840',
+                  fontFamily: "'Fira Code',monospace",
+                  marginBottom: 4,
+                }}>
+                  {lastSpellInfo.card.type ?? ''}
+                  {lastSpellInfo.card.cost
+                    ? <span style={{ color: '#c0a060', marginLeft: 6 }}>{lastSpellInfo.card.cost}</span>
+                    : null}
+                </div>
+
+                {/* Oracle text */}
+                {lastSpellInfo.card.text && (
+                  <div style={{
+                    fontSize: 9, color: '#b09870',
+                    fontFamily: "'Crimson Text',serif",
+                    lineHeight: 1.4,
+                    maxHeight: 80,
+                    overflowY: 'auto',
+                    borderTop: '1px solid rgba(120,90,40,.2)',
+                    paddingTop: 4,
+                  }}>
+                    {lastSpellInfo.card.text}
+                  </div>
+                )}
+
+                {/* P/T for creatures */}
+                {lastSpellInfo.card.power !== undefined && lastSpellInfo.card.toughness !== undefined && (
+                  <div style={{
+                    fontSize: 10, color: '#d0c080',
+                    fontFamily: "'Fira Code',monospace",
+                    textAlign: 'right', marginTop: 4,
+                    fontWeight: 700,
+                  }}>
+                    {lastSpellInfo.card.power}/{lastSpellInfo.card.toughness}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 9, color: '#3a2c18', fontStyle: 'italic' }}>—</div>
+        )}
+      </div>
+
       <DuelLog log={s.log} />
     </div>
   </div>
