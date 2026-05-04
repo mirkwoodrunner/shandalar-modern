@@ -185,6 +185,20 @@ function planMain(state, profile, phase) {
       continue;
     }
 
+    // Berserk: target any creature (prefer own with highest power); skip if no creatures exist.
+    if (card.effect === 'berserk') {
+      const allCreatures = [...state.o.bf.filter(isCre), ...state.p.bf.filter(isCre)];
+      if (!allCreatures.length) continue; // no valid target — cannot cast
+      const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
+      const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
+      if (!pool.length) continue; // no own creature to meaningfully buff
+      const target = pool.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
+      if (Math.random() < profile.greedySpells) {
+        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
+      }
+      continue;
+    }
+
     // Damage/draw/burn spells targeting player.
     const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
       'gainLife2','gainLife6','tutor','regrowth','reanimateOwn'].includes(card.effect);

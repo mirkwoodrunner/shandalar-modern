@@ -1040,7 +1040,7 @@ ns = dlog(ns, `${whoExtra} takes an extra turn!`, "info");
 } else {
 const nx = ns.active === "p" ? "o" : "p";
 ns = { ...ns, active: nx };
-ns = dlog(ns, `-- Turn ${ns.turn + 1} ? ${nx} --`, "phase");
+ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0 };
 {
