@@ -358,8 +358,10 @@ if (isLand(card)) {
 }
 
 // Resolve target: damage spells default to opponent; draw/life to self
-const tgt = state.selTgt || resolveDefaultTarget(card, state);
-if (card.effect === 'enchantCreature' && !tgt) return; // must select a creature first
+const rawTgt = state.selTgt || resolveDefaultTarget(card, state);
+if (card.effect === 'enchantCreature' && !rawTgt) return; // must select a creature first
+// Normalize life-total click sentinels to the engine keys 'p' and 'o'
+const tgt = rawTgt === 'player-p' ? 'p' : rawTgt === 'player-o' ? 'o' : rawTgt;
 castSpell(card.iid, tgt, state.xVal);
 selectCard(null);
 selectTarget(null);
