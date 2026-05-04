@@ -34,9 +34,18 @@
 
 ---
 
-## Up Next
+## Phase 6 — Engine Depth (In Progress)
 
-- Sengir Vampire triggered counter (+1/+1 when a creature it damaged dies)
-- Force of Nature upkeep choice UI (pay GGGG or take 8 damage)
-- Holy Ground full protection enforcement in combat
-- Unlockables persistence (localStorage)
+### Deliverable 1: Triggered Abilities — Sengir Vampire + Force of Nature ✅ Complete
+
+| File | Change |
+|------|--------|
+| `src/data/cards.js` | Added `triggeredAbilities` to `sengir_vampire` and `force_of_nature` |
+| `src/engine/DuelCore.js` | Added `ON_UPKEEP_START` emission; added `payMana` effect type; added `RESOLVE_CHOICE` reducer case; SILENCE modifier guard on upkeep triggers |
+| `src/hooks/useDuel.js` | Exposed `resolveChoice` dispatcher |
+| `src/ui/DuelScreen.jsx` | Added `ChoiceModal` component; AI auto-resolution of `pendingChoice` |
+
+### Up Next (Phase 6)
+- Holy Ground full combat enforcement (currently display-only in castle modifier)
+- Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, Power Surge upkeep, `kudzu`
+- Priority window / instant-speed interaction

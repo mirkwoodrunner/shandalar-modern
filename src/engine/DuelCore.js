@@ -1069,8 +1069,10 @@ return { ...base, tapped:false };
 }
 
 if (next === PHASE.UPKEEP) {
-ns = emitEvent(ns, { type: 'ON_UPKEEP_START', payload: { activePlayer: ns.active } });
-ns = processTriggerQueue(ns);
+if (!ns.dungeonMod || ns.dungeonMod !== 'SILENCE') {
+  ns = emitEvent(ns, { type: 'ON_UPKEEP_START', payload: { activePlayer: ns.active } });
+  ns = processTriggerQueue(ns);
+}
 for (const w of ["p","o"]) {
 for (const c of [...ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
@@ -1274,6 +1276,29 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       let s = { ...state, [who]: { ...state[who], life: newLife } };
       if (newLife <= 0) s = { ...s, over: { winner: who === 'p' ? 'o' : 'p', reason: `${sourceCard.name} triggered damage` } };
       return dlog(s, `${sourceCard.name} deals ${effect.amount} damage to ${who}.`, 'damage');
+    }
+    case 'payMana': {
+      const who = sourceCard.controller;
+      const cost = effect.cost;
+      const pool = { ...state[who].mana };
+      let canAfford = true;
+      for (const [color, amount] of Object.entries(cost)) {
+        if ((pool[color] || 0) < amount) { canAfford = false; break; }
+      }
+      if (!canAfford) {
+        const newLife = state[who].life - 8;
+        let s = { ...state, [who]: { ...state[who], life: newLife } };
+        if (newLife <= 0) s = { ...s, over: { winner: who === 'p' ? 'o' : 'p', reason: 'Force of Nature upkeep' } };
+        return dlog(s, `Force of Nature: ${who} could not pay GGGG — takes 8 damage.`, 'damage');
+      }
+      for (const [color, amount] of Object.entries(cost)) {
+        pool[color] = pool[color] - amount;
+      }
+      return dlog(
+        { ...state, [who]: { ...state[who], mana: pool } },
+        `Force of Nature: ${who} pays GGGG.`,
+        'effect'
+      );
     }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);

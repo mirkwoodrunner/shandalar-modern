@@ -98,6 +98,27 @@ function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }) {
 }
 
 // -----------------------------------------------------------------------------
+// TRIGGERED ABILITY CHOICE MODAL
+// -----------------------------------------------------------------------------
+
+function ChoiceModal({ pendingChoice, allBf, onResolve }) {
+  const sourceCard = allBf.find(c => c.iid === pendingChoice.sourceCardId);
+  return (
+    <div className="popover-overlay">
+      <div className="popover-content" onClick={(e) => e.stopPropagation()}>
+        <h3>{sourceCard ? sourceCard.name : 'Triggered Ability'}</h3>
+        <p>Choose:</p>
+        {pendingChoice.options.map(opt => (
+          <button key={opt.id} className="mana-choice-btn" onClick={() => onResolve(opt.id)}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // ABILITY LOOKUP
 // -----------------------------------------------------------------------------
 
@@ -169,6 +190,7 @@ const MANA_COLORS = { W: '#e8d089', U: '#3d6fa8', B: '#8c5cb0', R: '#c4634a', G:
   activateAbility,
   chooseLotusColor,
   applyAiActions,
+  resolveChoice,
   } = useDuel(
   config.pDeckIds,
   config.oppArchKey,
@@ -217,6 +239,23 @@ return () => clearTimeout(timer);
 // AI produces GameAction[] ? dispatched via applyAiActions ? DuelCore executes.
 useEffect(() => {
 if (state.over) return;
+
+// AI auto-resolves pendingChoice when it is the controller
+if (state.pendingChoice && state.pendingChoice.controller === 'o') {
+  const choice = state.pendingChoice;
+  const payOption = choice.options.find(o => o.id === 'pay_gggg');
+  const damageOption = choice.options.find(o => o.effect?.type === 'dealDamageToController');
+  let canPay = false;
+  if (payOption?.effect?.type === 'payMana') {
+    const cost = payOption.effect.cost;
+    canPay = Object.entries(cost).every(([color, amount]) =>
+      (state.o.mana[color] || 0) >= amount
+    );
+  }
+  resolveChoice(canPay && payOption ? payOption.id : (damageOption?.id || choice.options[0].id));
+  return;
+}
+
 if (state.active !== 'o' || aiRef.current) return;
 
 aiRef.current = true;
@@ -234,7 +273,7 @@ const thinkTimer = setTimeout(() => {
 
 return () => clearTimeout(thinkTimer);
 
-}, [state.phase, state.active, state.turn, state.over]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [state.phase, state.active, state.turn, state.over, state.pendingChoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -- Tooltip handlers -------------------------------------------------------
 const handleTipEnter = useCallback((card, e) => {
@@ -1145,6 +1184,15 @@ return (
         setPendingDualLand(null);
       }}
       onCancel={() => setPendingDualLand(null)}
+    />
+  )}
+
+  {/* Triggered ability choice modal (player only; AI auto-resolves) */}
+  {state.pendingChoice && state.pendingChoice.controller === 'p' && (
+    <ChoiceModal
+      pendingChoice={state.pendingChoice}
+      allBf={[...state.p.bf, ...state.o.bf]}
+      onResolve={resolveChoice}
     />
   )}
 

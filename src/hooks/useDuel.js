@@ -84,6 +84,9 @@ dispatch({ type: "SET_PENDING_LOTUS" }), []);
 const applyAiActions = useCallback((acts) =>
 dispatch({ type: "AI_ACTS", acts }), []);
 
+const resolveChoice = useCallback((optionId) =>
+dispatch({ type: "RESOLVE_CHOICE", optionId }), []);
+
 return {
 state,
 dispatch,
@@ -104,6 +107,7 @@ activateAbility,
 chooseLotusColor,
 setPendingLotus,
 applyAiActions,
+resolveChoice,
 };
 }
 

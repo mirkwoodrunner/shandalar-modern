@@ -15,6 +15,7 @@
 | 0.5 | Post-Phase 4 | AI overhaul; 8 stub effects completed; castle modifier mechanics enforced; Arzakon final fight; run score screen; gem merchant; map town/castle labels; life flash animations; activated ability UI; Black Lotus color picker; bug fixes documented |
 | 0.6 | Post-Phase 4 fixes | Mana burn per-phase fix; land layout (horizontal pip row); AI mana simulation; priority improvements: auto-center map, clipboard log, deck manager overhaul, always-attack AI |
 | 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
+| 0.8 | Phase 6 (partial) | Triggered ability pipeline activated: Sengir Vampire counter trigger, Force of Nature upkeep choice UI |
 
 ---
 
@@ -753,7 +754,12 @@ These items were identified during playtesting and are being addressed before Ph
 | P5 | Deck Manager overhaul | ✅ Done | Full-featured: add from binder, remove to binder, sort by CMC/color/type, search filter, deck validation (min 40), land count warning |
 | P6 | AI always attacks with all eligible creatures | ✅ Done | Simplified attack declaration: all untapped non-sick creatures attack every turn |
 
-### Phase 5 — Polish & Completion *(in progress)*
+### Phase 6 — Engine Depth 🔄 In Progress
+Triggered ability pipeline activated · Sengir Vampire +1/+1 counter trigger · Force of Nature upkeep choice modal · ON_UPKEEP_START event emission · RESOLVE_CHOICE reducer + AI auto-resolution · SILENCE modifier guard on upkeep triggers
+
+---
+
+### Phase 5 — Polish & Completion *(complete)*
 
 **Completed:**
 - ✅ `enchantCreature` — aura attachment system (`enchantments[]`, cascade removal, `getPow`/`getTou`/`hasKw` integration)
