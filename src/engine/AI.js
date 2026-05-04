@@ -173,6 +173,18 @@ function planMain(state, profile, phase) {
       continue;
     }
 
+    // Pump spells that need a target creature on the AI's battlefield.
+    const needsOwnCreature = ['pumpCreature','gainFlying','pumpPower','enchantCreature'].includes(card.effect);
+    if (needsOwnCreature) {
+      const ownCreatures = state.o.bf.filter(isCre);
+      if (!ownCreatures.length) continue; // no valid target — skip
+      const target = ownCreatures.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
+      if (Math.random() < profile.greedySpells) {
+        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
+      }
+      continue;
+    }
+
     // Damage/draw/burn spells targeting player.
     const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
       'gainLife2','gainLife6','tutor','regrowth','reanimateOwn'].includes(card.effect);
@@ -406,6 +418,8 @@ export function aiDecide(state) {
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;
           dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: 3 });
+          // Auto-resolve the stack after casting — no player priority window on AI turns.
+          dcActions.push({ type: 'RESOLVE_STACK' });
         }
         break;
       }
