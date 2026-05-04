@@ -358,7 +358,9 @@ if (isLand(card)) {
 }
 
 // Resolve target: damage spells default to opponent; draw/life to self
-const tgt = state.selTgt || resolveDefaultTarget(card, state);
+// Translate UI sentinels 'player-o'/'player-p' to engine sentinels 'o'/'p'
+const rawTgt = state.selTgt || resolveDefaultTarget(card, state);
+const tgt = rawTgt === 'player-o' ? 'o' : rawTgt === 'player-p' ? 'p' : rawTgt;
 if (card.effect === 'enchantCreature' && !tgt) return; // must select a creature first
 castSpell(card.iid, tgt, state.xVal);
 selectCard(null);
