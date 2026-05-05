@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DuelCore snapshot — fixed action sequence > fixed tap + play land sequence matches snapshot 1`] = `
+{
+  "landsPlayed": 1,
+  "over": null,
+  "pBfCount": 2,
+  "pHandCount": 0,
+  "pMana": {
+    "B": 0,
+    "C": 0,
+    "G": 1,
+    "R": 0,
+    "U": 0,
+    "W": 0,
+  },
+  "phase": "MAIN_1",
+}
+`;
+
+exports[`DuelCore snapshot — fixed action sequence > fresh state structure matches snapshot 1`] = `
+{
+  "active": "p",
+  "oLife": 20,
+  "over": null,
+  "pLife": 20,
+  "phase": "MAIN_1",
+  "turn": 1,
+}
+`;
