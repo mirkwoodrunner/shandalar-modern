@@ -15,7 +15,7 @@
 | 0.5 | Post-Phase 4 | AI overhaul; 8 stub effects completed; castle modifier mechanics enforced; Arzakon final fight; run score screen; gem merchant; map town/castle labels; life flash animations; activated ability UI; Black Lotus color picker; bug fixes documented |
 | 0.6 | Post-Phase 4 fixes | Mana burn per-phase fix; land layout (horizontal pip row); AI mana simulation; priority improvements: auto-center map, clipboard log, deck manager overhaul, always-attack AI |
 | 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
-| 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard |
+| 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard; Priority window / instant-speed interaction system |
 
 ---
 

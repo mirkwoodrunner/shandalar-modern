@@ -733,3 +733,80 @@ Protection is enforced inline. It MUST NOT use the Trigger Queue.
 - No race conditions or timing dependencies
 - Fully reproducible given identical inputs
 - Strict phase blocking until all triggers and choices resolve
+
+---
+
+# 18. Priority Window System
+
+Implements instant-speed interaction at phase transitions. Both players receive a window to cast instants or activate battlefield abilities before the phase advances.
+
+## 18.1 State Shape
+
+Two fields added to GameState (initialized in `buildDuelState`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `priorityWindow` | `boolean` | `true` while a priority window is open |
+| `priorityPasser` | `'p' \| 'o' \| null` | which player has already passed this window |
+
+## 18.2 Open/Close/Pass Flow
+
+1. A phase-advance request goes through `requestPhaseAdvance()` (DuelScreen) rather than dispatching `ADVANCE_PHASE` directly.
+2. `requestPhaseAdvance()` performs a smart-suppression check (see 18.4). If suppressed, it dispatches `ADVANCE_PHASE` directly.
+3. If not suppressed, it dispatches `OPEN_PRIORITY_WINDOW`. The reducer sets `priorityWindow: true, priorityPasser: null`.
+4. Each side passes via `PASS_PRIORITY({ who })`. The reducer records the first passer in `priorityPasser`. When the second distinct side passes, it sets `priorityWindow: false, priorityPasser: null`.
+5. A `useRef`-guarded `useEffect([s.priorityWindow])` in DuelScreen detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
+
+## 18.3 SILENCE Suppression
+
+`OPEN_PRIORITY_WINDOW` is a no-op (returns state unchanged) when:
+
+```
+s.castleMod?.name === 'SILENCE'  OR  s.dungeonMod === 'SILENCE'
+```
+
+The window is silently skipped; `requestPhaseAdvance()` will have dispatched nothing, so the caller must handle this case. In practice DuelScreen's `useEffect` auto-advance does not fire (window never opened), so a separate direct `ADVANCE_PHASE` must follow. This is handled inside `requestPhaseAdvance()` which falls back to direct advance when the dispatcher no-ops.
+
+## 18.4 Smart Suppression Rule
+
+Before opening a window, `requestPhaseAdvance()` checks:
+
+- Either player's hand contains a card with `type === 'Instant'` or `type === 'Interrupt'`
+- Either player's battlefield contains a card with an `activated` property whose `effect` is not in `{ addMana, addManaAny, addMana3Any }`
+
+If neither condition holds for either player, the window is skipped entirely and `ADVANCE_PHASE` fires immediately. This prevents unnecessary pauses when no instant-speed options exist.
+
+## 18.5 ADVANCE_PHASE Blockade
+
+The `ADVANCE_PHASE` reducer case returns state unchanged (with a console warning) while `s.priorityWindow === true`. This prevents the phase from advancing while a priority decision is still pending.
+
+## 18.6 AI Behavior
+
+When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow])` in DuelScreen evaluates the AI's options:
+
+1. Search `s.o.hand` for the first card with `type === 'Instant'` and `canPay(s.o.mana, c.cost) === true`.
+2. If found, dispatch `CAST_SPELL { who: 'o', iid, tgt: 'p', xVal: 1 }`.
+3. Always dispatch `PASS_PRIORITY { who: 'o' }` immediately after (no added delay).
+
+The AI casts at most one instant per window. If the AI has no affordable instant, it passes immediately.
+
+## 18.7 InstantPriorityBar UI
+
+Component: `src/ui/ActionBar/InstantPriorityBar.tsx`
+
+Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && s.priorityPasser !== 'p'` (i.e., the player still holds priority).
+
+- Displays each `type === 'Instant'` card from `s.p.hand` as a clickable button (name + formatted cost). Clicking calls `selectCard(iid)` to enter the standard cast flow.
+- Displays each non-mana activated card from `s.p.bf` as a clickable button. Clicking calls `handleActivate(card)`.
+- Grayed color (but still clickable) when `canAffordCost(mana, card.cost)` returns false.
+- Always shows a "Pass Priority" button that dispatches `PASS_PRIORITY({ who: 'p' })`.
+- Positioned at `z-index: 200` so it does not obscure targeting overlays (which use higher z-index values).
+
+## 18.8 System Files
+
+| File | Role |
+|------|------|
+| `src/engine/DuelCore.js` | State fields, reducer cases, ADVANCE_PHASE guard |
+| `src/hooks/useDuel.js` | `openPriorityWindow`, `passPriority` dispatchers |
+| `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
+| `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |

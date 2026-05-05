@@ -1383,6 +1383,8 @@ pendingBop: false,
 turnState: { damageLog: [] },
 triggerQueue: [],
 pendingChoice: null,
+priorityWindow: false,
+priorityPasser: null,
 };
 }
 
@@ -1496,7 +1498,27 @@ case "DECLARE_BLOCKER": {
   return { ...s, blockers: nb, o: { ...s.o, bf: s.o.bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
 }
 
-case "ADVANCE_PHASE": return advPhase(s);
+case "OPEN_PRIORITY_WINDOW": {
+  if (s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE') return s;
+  return { ...s, priorityWindow: true, priorityPasser: null };
+}
+
+case "PASS_PRIORITY": {
+  if (!s.priorityWindow) return s;
+  const passer = action.who;
+  if (s.priorityPasser !== null && s.priorityPasser !== passer) {
+    return { ...s, priorityWindow: false, priorityPasser: null };
+  }
+  return { ...s, priorityPasser: passer };
+}
+
+case "ADVANCE_PHASE": {
+  if (s.priorityWindow) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: priority window is open');
+    return s;
+  }
+  return advPhase(s);
+}
 
 case "SEL_CARD": return { ...s, selCard: action.iid };
 case "SEL_TGT":  return { ...s, selTgt: action.iid };
