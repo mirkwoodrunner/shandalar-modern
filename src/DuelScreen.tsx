@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // -- Engine / hooks -------------------------------------------------------------
 import { useDuel } from './hooks/useDuel.js';
 import { aiDecide } from './engine/AI.js';
-import { isLand, isArt } from './engine/DuelCore.js';
+import { isLand, isArt, canPay } from './engine/DuelCore.js';
 
 // -- New design system components ----------------------------------------------
 import { Topbar } from './ui/Topbar/Topbar';
@@ -15,6 +15,7 @@ import { Banner } from './ui/Battlefield/Banner';
 import { Battlefield } from './ui/Battlefield/Battlefield';
 import { Hand } from './ui/Hand/Hand';
 import { ActionBar } from './ui/ActionBar/ActionBar';
+import { InstantPriorityBar } from './ui/ActionBar/InstantPriorityBar';
 import { DuelLog } from './ui/Log/DuelLog';
 import type { LogEntry, LogKind } from './ui/Log/DuelLog';
 import { TargetArrow } from './ui/TargetArrow/TargetArrow';
@@ -167,6 +168,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     activateAbility,
     chooseLotusColor,
     applyAiActions,
+    openPriorityWindow,
+    passPriority,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -198,12 +201,52 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const [showMulligan, setShowMulligan] = useState(true);
   const [mulliganCount, setMulliganCount] = useState(0);
   const aiRef = useRef(false);
+  const prevPriorityWindow = useRef(false);
+
+  // -- Smart suppression helper: skip the priority window if neither player
+  // -- has an instant in hand or a non-mana activated battlefield ability.
+  const requestPhaseAdvance = useCallback(() => {
+    const handHasInstant = (hand: any[]) =>
+      hand.some((c: any) => c.type === 'Instant' || c.type === 'Interrupt');
+    const bfHasActivated = (bf: any[]) =>
+      bf.some((c: any) => c.activated && !['addMana','addManaAny','addMana3Any'].includes(c.activated.effect));
+    const anyOptions =
+      handHasInstant(s.p.hand) ||
+      handHasInstant(s.o.hand) ||
+      bfHasActivated(s.p.bf) ||
+      bfHasActivated(s.o.bf);
+    if (anyOptions) {
+      openPriorityWindow();
+    } else {
+      advancePhase();
+    }
+  }, [s.p.hand, s.o.hand, s.p.bf, s.o.bf, openPriorityWindow, advancePhase]);
+
+  // -- Auto-advance phase when priority window closes (both players passed) --
+  useEffect(() => {
+    if (prevPriorityWindow.current === true && s.priorityWindow === false) {
+      advancePhase();
+    }
+    prevPriorityWindow.current = s.priorityWindow;
+  }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- AI priority window handler: evaluate instants, then pass immediately --
+  useEffect(() => {
+    if (!s.priorityWindow) return;
+    const aiInstant = s.o.hand.find(
+      (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
+    );
+    if (aiInstant) {
+      dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
+    }
+    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+  }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Keyboard shortcuts ----------------------------------------------------
   const isIdle = s.active === 'p' && !pendingActivate;
   useKeyboardShortcuts({
-    onPassPriority: () => (s.stack?.length > 0 ? resolveStack() : advancePhase()),
-    onEndTurn: advancePhase,
+    onPassPriority: () => (s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()),
+    onEndTurn: requestPhaseAdvance,
     onCancel: () => { setPendingActivate(null); selectCard(null); selectTarget(null); },
     onQuickCast: (idx: number) => { const c = s.p.hand[idx]; if (c) selectCard(c.iid); },
     isIdle,
@@ -230,7 +273,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     const t = setTimeout(() => {
       const acts = aiDecide(s);
       if (acts.length) applyAiActions(acts);
-      setTimeout(() => { advancePhase(); aiRef.current = false; }, tweaks.aiSpeed);
+      setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
     }, 500 + Math.random() * 350);
     return () => clearTimeout(t);
   }, [s.phase, s.active, s.turn, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -515,14 +558,26 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
           />
 
+          {/* Priority window bar */}
+          {s.priorityWindow && s.priorityPasser !== 'p' && (
+            <InstantPriorityBar
+              hand={s.p.hand as any[]}
+              battlefield={s.p.bf as any[]}
+              mana={s.p.mana as any}
+              onSelectCard={(iid: string) => { selectCard(iid); }}
+              onActivate={(card: any) => { handleActivate(card); }}
+              onPass={() => passPriority('p')}
+            />
+          )}
+
           {/* Action bar */}
           <ActionBar
             phase={s.phase}
             hasSelection={!!s.selCard}
             onCast={handleCast}
-            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : advancePhase()}
+            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={advancePhase}
+            onEndTurn={requestPhaseAdvance}
           />
 
           {/* Player hand */}

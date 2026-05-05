@@ -45,7 +45,24 @@
 | `src/hooks/useDuel.js` | Exposed `resolveChoice` dispatcher |
 | `src/ui/DuelScreen.jsx` | Added `ChoiceModal` component; AI auto-resolution of `pendingChoice` |
 
+### Deliverable 2: Priority Window / Instant-Speed Interaction -- Complete
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | Added `priorityWindow` and `priorityPasser` to initial state; added `OPEN_PRIORITY_WINDOW` and `PASS_PRIORITY` reducer cases; added `ADVANCE_PHASE` blockade guard |
+| `src/hooks/useDuel.js` | Exposed `openPriorityWindow` and `passPriority` dispatchers |
+| `src/ui/ActionBar/InstantPriorityBar.tsx` | New component; shows player's castable instants and non-mana activated battlefield abilities; "Pass Priority" button |
+| `src/DuelScreen.tsx` | Added `requestPhaseAdvance` smart-suppression helper; `useEffect` auto-advances phase when window closes; AI priority handler evaluates and passes immediately; all phase-advance call sites updated |
+
+#### How it works
+
+1. Whenever the player or AI requests a phase advance, `requestPhaseAdvance()` runs a smart-suppression check: if neither player has an instant in hand or a non-mana activated ability on the battlefield, `ADVANCE_PHASE` fires immediately (no window).
+2. If either side has options, `OPEN_PRIORITY_WINDOW` is dispatched. The reducer sets `priorityWindow: true, priorityPasser: null`. The action is a no-op when `castleMod.name === 'SILENCE'` or `dungeonMod === 'SILENCE'`.
+3. The AI priority handler fires via `useEffect([s.priorityWindow])`. It finds the first affordable instant in its hand, casts it (targeting the player), then immediately dispatches `PASS_PRIORITY({ who: 'o' })`.
+4. The player sees `InstantPriorityBar` above the ActionBar (hidden once the player passes). Each instant in hand and each non-mana activated battlefield ability appears as a button. Clicking selects the card for the existing cast/activate flow. "Pass Priority" dispatches `PASS_PRIORITY({ who: 'p' })`.
+5. When both sides have passed, the reducer sets `priorityWindow: false`. A `useRef`-guarded `useEffect` detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
+6. `ADVANCE_PHASE` is blocked (returns state unchanged with a console warning) while `priorityWindow === true`.
+
 ### Up Next (Phase 6)
 - Holy Ground full combat enforcement (currently display-only in castle modifier)
 - Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, Power Surge upkeep, `kudzu`
-- Priority window / instant-speed interaction
