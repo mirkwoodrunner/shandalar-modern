@@ -120,6 +120,37 @@ return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 }
 
+// --- CONNECTIVITY HELPER ------------------------------------------------------
+
+/**
+ * BFS flood-fill over non-water tiles starting from (sx, sy).
+ * Returns a Set of "x,y" keys for all reachable non-water cells.
+ */
+function floodFillLand(tiles, sx, sy) {
+  const reachable = new Set();
+  const key = (x, y) => `${x},${y}`;
+  if (!tiles[sy]?.[sx] || tiles[sy][sx].terrain === TERRAIN.WATER) return reachable;
+
+  const queue = [{ x: sx, y: sy }];
+  reachable.add(key(sx, sy));
+  const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+
+  while (queue.length) {
+    const { x, y } = queue.shift();
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const k = key(nx, ny);
+      if (reachable.has(k)) continue;
+      const t = tiles[ny]?.[nx];
+      if (!t || t.terrain === TERRAIN.WATER) continue;
+      reachable.add(k);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return reachable;
+}
+
 // --- MAP GENERATION -----------------------------------------------------------
 
 /**
@@ -258,6 +289,26 @@ startY += rng() > 0.5 ? 1 : -1;
 startX = Math.max(1, Math.min(MAP_W - 2, startX));
 startY = Math.max(1, Math.min(MAP_H - 2, startY));
 }
+
+  // -- Connectivity enforcement -------------------------------------------------
+  // Flood-fill from player start. Any non-water tile that is unreachable gets
+  // converted to WATER so the player can never be blocked from reaching it
+  // (and can never see a structure they cannot path to).
+  const reachable = floodFillLand(tiles, startX, startY);
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (tiles[y][x].terrain !== TERRAIN.WATER) {
+        if (!reachable.has(`${x},${y}`)) {
+          // Remove any structure that would have been stranded
+          tiles[y][x].structure  = null;
+          tiles[y][x].townData   = null;
+          tiles[y][x].dungeonData = null;
+          tiles[y][x].castleData = null;
+          tiles[y][x].terrain    = TERRAIN.WATER;
+        }
+      }
+    }
+  }
 
 // Reveal 5?5 box around start (GDD S3.1: "5?5 box centered on player")
 for (let dy = -2; dy <= 2; dy++) {
