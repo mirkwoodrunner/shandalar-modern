@@ -1,6 +1,6 @@
 # Shandalar: Modern Edition — Game Design Document
-### Version 0.7 | Design Bible
-### Last updated: Phase 5 complete (Scryfall art integration)
+### Version 0.8 | Design Bible
+### Last updated: Phase 6 partial — Triggered Abilities complete (Sengir Vampire + Force of Nature)
 
 ---
 
@@ -34,6 +34,20 @@
 | B7 | Land cards not visible on battlefield (vertical columns growing infinitely on mobile) | Fixed-width 160px column with `flexWrap`, each land card 100px tall — column grew to 300px+ with 3+ lands | Replaced column layout with horizontal `LandPip` row (30×30px colored tokens, `overflowX:auto`). Opponent zone capped at `maxHeight:45vh`. Player battlefield uses `flex:"1 1 0"` with `minHeight:0` to properly shrink. |
 | B8 | AI still caused mana burn after Phase 4 fix | `vCanPay()` check only fired after tapping colored lands; generic land tap loop had no stop condition for residual generic requirements | Rewrote tap loop to check `vCanPay()` before **each individual land tap** and break immediately when the condition is met |
 | B9 | AI never attacked after Phase 4 fix | `attackIsGood` condition required `!wouldBeBlocked` — but nearly all creatures would be blocked, so this was almost always false | Simplified: AI always attacks with all eligible untapped, non-sick creatures. Removed complex profitability check that was too conservative. |
+
+### Phase 5 → Phase 6 fixes
+
+| # | Bug | Root Cause | Fix |
+|---|-----|-----------|-----|
+| B10 | Phase advancing while spells are on the stack | `advPhase()` had no stack guard; `ADVANCE_PHASE` could fire with pending stack items | Added early-return in `advPhase()` when `stack.length > 0`; spells must resolve before phase can change |
+| B11 | Spell targeting crash when clicking life total | Life total elements had no `data-iid`; `selectTarget` received `null` sentinel string `"player-p"`/`"player-o"` and crashed | Wrapped life total spans in clickable divs with `data-iid="player-o"/"player-p"`; added `"player-p"/"player-o"` sentinel guards throughout target resolution |
+| B12 | TargetArrow component absent | No visual feedback line between selected card and target | Added `src/ui/duel/TargetArrow.jsx`: absolute-positioned SVG overlay with animated gold dashed line; clears when either `selCard` or `selTgt` is null; `pointerEvents:none` prevents click interception |
+| B13 | Giant Growth permanent stat change | `pumpCreature` effect applied power/toughness mod permanently; buff did not expire | Added EOT expiry via `eotBuffs[]` entry `{power:1,toughness:1}`; purged in CLEANUP alongside `gainFlyingEOT` / `pumpPowerEOT` |
+| B14 | Berserk cast with no valid target | Pre-cast target check missing; resolving with null target caused crash | Added pre-cast target validation for spells with `castRestriction:"beforeCombatDamage"`; spell fizzles gracefully and logs if no valid creature target at resolution |
+| B15 | Berserk castable outside combat timing | `castRestriction` field present in card data but not enforced in cast phase gating | Added `castRestriction:"beforeCombatDamage"` enforcement in CAST_SPELL; only legal before COMBAT_DAMAGE phase |
+| B16 | AI freeze when `mustAttack` flag set | `mustAttack` path in `aiDecide` did not clear the attack-declaration step; engine waited indefinitely | Fixed `mustAttack` branch to properly declare and advance attackers |
+| B17 | Chronicle log displaying raw symbol strings | Spell log entries used literal strings like `"{W}"` instead of ManaSymbol components | Updated log entry renderer to parse mana cost strings into `<ManaSymbol>` components inline |
+| B18 | AI casting spells with no valid target | `aiDecide` selected and cast targeted removal even when no legal creatures on board | Added target availability check in AI casting path; AI skips casting a spell if no legal target exists |
 
 ---
 
@@ -394,10 +408,10 @@ Self-contained local database. Scryfall API art integration completed in Phase 5
 | White Spells | 6 | Swords to Plowshares, Wrath of God, Armageddon, Disenchant, Holy Armor, Healing Salve |
 | Blue Spells | 7 | Counterspell, Ancestral Recall, Time Walk, Braingeyser, Unsummon, Psionic Blast, Power Sink |
 | Black Spells | 6 | Dark Ritual, Terror, Demonic Tutor, Mind Twist, Animate Dead (`id:royal_decree`†), Dark Banishing |
-| Red Spells | 6 | Lightning Bolt, Fireball, Chain Lightning, Wheel of Fortune, Shatter, Lava Axe |
-| Green Spells | 4 | Giant Growth, Stream of Life, Regrowth, Hurricane (`id:natural_order`†) |
+| Red Spells | 7 | Lightning Bolt, Fireball, Chain Lightning, Wheel of Fortune, Shatter, Lava Axe, Earthquake |
+| Green Spells | 6 | Giant Growth, Stream of Life, Regrowth, Hurricane (`id:natural_order`†), Berserk, Tranquility |
 | Artifacts | 9 | Black Lotus, Mox Pearl/Sapphire/Jet/Ruby/Emerald, Sol Ring, Jayemdae Tome, Nevinyrral's Disk |
-| **Total (duel DB)** | **79** | |
+| **Total (duel DB)** | **270+** | *DB has grown significantly across Sessions 1–3; see §11 for full tier breakdown* |
 
 *† = ID/name mismatch bug; to be corrected in Phase 4*
 
@@ -408,10 +422,11 @@ Self-contained local database. Scryfall API art integration completed in Phase 5
 - **Plague Rats** — `dynamic:true`; P/T = count of Plague Rats on battlefield, computed at resolution
 - **Prodigal Sorcerer** — `activated:{cost:"T",effect:"ping"}`; data complete, UI click handler Phase 4
 - **Royal Assassin** — `activated:{cost:"T",effect:"destroyTapped"}`; data complete, UI in Phase 4
+- **Berserk** — `castRestriction:"beforeCombatDamage"`; only castable before combat damage step; doubles target creature's power and adds Trample; destroys the creature at end of turn via `berserked:true` flag purged in CLEANUP
 - **Juzam Djinn** — `upkeep:"selfDamage1"`; fully implemented
-- **Force of Nature** — `upkeep:"forestChoice"`; stub (auto-damages; choice UI Phase 4)
-- **Sengir Vampire** — `triggered:"vampireCounter"`; data defined, trigger handler Phase 4
-- **Birds of Paradise** — `activated:{cost:"T",effect:"addManaAny"}`; any-color UI Phase 4
+- **Force of Nature** — `triggeredAbilities` via `ON_UPKEEP_START`; `ChoiceModal` prompts player to pay GGGG or take 8 damage; AI auto-resolves; ✅ Complete (Phase 6)
+- **Sengir Vampire** — `triggeredAbilities` via `ON_CREATURE_DIES` + `damageLog` condition; adds +1/+1 counter when a creature it damaged dies; ✅ Complete (Phase 6)
+- **Birds of Paradise** — `activated:{cost:"T",effect:"addManaAny"}`; `BopColorPicker` modal; ✅ Complete (Phase 5)
 
 ---
 
@@ -597,14 +612,19 @@ Phase 2 — Duel Engine  (shandalar-duel.jsx)
  ├── <SetupScreen>       ruleset selector, player archetype, opponent archetype
  └── <DuelScreen>
       ├── <PhaseTracker>      all phases; active highlighted; combat = red-orange
+      ├── <Battlefield>       split rows: creatures / non-creature perms / lands; sorted by card.id for grouping
       ├── <BattlefieldCard>   tapped rotation, damage counter, keyword badges, P/T, counter pips, sick overlay
-      ├── <HandCard>          playability glow, selection lift, mana cost display
+      ├── <HandCard>          playability glow, selection lift, mana cost display; fan layout
       ├── <ManaSymbol>        color-coded pip; used throughout
       ├── <ManaCost>          tokenized cost string → symbol array
       ├── <ManaPool>          live pool with colored pips
       ├── <GameLog>           type-colored entries, auto-scroll
       ├── <CardTooltip>       hover: full text, keyword explanations, P/T, rarity
-      └── AI Engine           strategy-aware; setTimeout per opponent phase
+      ├── <TargetArrow>       SVG animated gold dashed arrow from selected card to target; position:absolute overlay; pointerEvents:none
+      ├── <ChoiceModal>       modal for triggered ability choices (Force of Nature GGGG/8dmg); dispatches RESOLVE_CHOICE
+      ├── Last Spell Cast     sidebar panel (right Chronicle column) showing last log entry: caster badge, name, type, cost, oracle text, P/T
+      ├── Cast / stack row    cast button + stack display + X input + combat prompts repositioned above Pass Priority / End Turn buttons
+      └── AI Engine           strategy-aware; setTimeout per opponent phase; auto-resolves pendingChoice
 
 Phase 3 — Integration  (shandalar-phase3.jsx)
 <App>
@@ -765,8 +785,6 @@ These items were identified during playtesting and are being addressed before Ph
 - ✅ Scryfall API card art — `src/utils/scryfallArt.js` + `src/utils/useCardArt.js` + `CardArtDisplay` in `Card.jsx`; fetches oldest classic-set printing (Alpha→Beta→Unlimited→Revised→4th Ed); session cache (one request per card name); double-faced card fallback; emoji fallback on any network or parse failure
 
 **Remaining:**
-- Sengir Vampire triggered counter (+1/+1 when a creature it damaged dies)
-- Force of Nature upkeep choice UI (currently auto-damages; needs GGGG-or-8 prompt)
 - Holy Ground full protection enforcement in combat
 - Unlockables persistence (localStorage — run history, defeated mages, found Power Nine)
 - Dungeon atmosphere overlays per modifier type
@@ -781,7 +799,7 @@ These items were identified during playtesting and are being addressed before Ph
 
 **Goal:** Activate the triggered ability pipeline for cards that require it, enforce Holy Ground combat protection fully, and resolve the remaining effect stubs that have been deferred since Phase 4. Concludes with the priority window / instant-speed interaction system.
 
-**Deliverable 1 — Triggered Abilities: Sengir Vampire + Force of Nature** 🔄 In Progress
+**Deliverable 1 — Triggered Abilities: Sengir Vampire + Force of Nature** ✅ Complete
 - Sengir Vampire — `triggeredAbilities` entry added to `cards.js`; `ON_CREATURE_DIES` event + `damageLog` condition already in engine; `addCounter` effect handler already in `resolveTriggeredEffect()`; no engine surgery required
 - Force of Nature — `triggeredAbilities` entry added to `cards.js`; `ON_UPKEEP_START` event emitted in `advPhase()`; `requiresChoice: true` suspends trigger queue; `RESOLVE_CHOICE` reducer case added; `ChoiceModal` component added to `DuelScreen.jsx`; AI auto-resolves (pays if able, takes damage if not)
 - `payMana` effect type added to `resolveTriggeredEffect()` for GGGG deduction
@@ -898,7 +916,7 @@ Total: ~450 cards across four implementation tiers.
 
 These cards use effect handlers that already exist or require only a new entry.
 
-**Total cards in DB as of Session 2: ~200** (up from 80 in Phase 4)
+**Total cards in DB as of Session 3: 270+** (up from ~200 in Session 2; up from 80 in Phase 4)
 
 **Already implemented (Phase 1–4):**
 Plains, Island, Swamp, Mountain, Forest, all 10 dual lands, Savannah Lions, White Knight, Serra Angel, Mesa Pegasus, Benalish Hero, Merfolk of the Pearl Trident, Lord of Atlantis, Phantom Warrior, Air Elemental, Mahamoti Djinn, Prodigal Sorcerer, Hypnotic Specter, Sengir Vampire, Juzam Djinn, Drudge Skeletons, Black Knight, Royal Assassin, Plague Rats, Goblin King, Shivan Dragon, Earth Elemental, Goblin Balloon Brigade, Mons's Goblin Raiders, Llanowar Elves, Fyndhorn Elves, Birds of Paradise, Grizzly Bears, Giant Spider, Craw Wurm, Force of Nature, Swords to Plowshares, Wrath of God, Disenchant, Armageddon, Healing Salve, Holy Armor, Counterspell, Ancestral Recall, Time Walk, Braingeyser, Unsummon, Psionic Blast, Power Sink, Dark Ritual, Terror, Demonic Tutor, Mind Twist, Animate Dead, Dark Banishing, Lightning Bolt, Fireball, Chain Lightning, Wheel of Fortune, Shatter, Lava Axe, Stone Rain, Giant Growth, Stream of Life, Regrowth, Hurricane, Black Lotus, all 5 Moxen, Sol Ring, Jayemdae Tome, Nevinyrral's Disk

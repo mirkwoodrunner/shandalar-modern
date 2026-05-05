@@ -546,4 +546,77 @@ A mechanic is considered fully integrated ONLY if:
 
 ---
 
+---
+
+# 13. TRIGGERED ABILITY PIPELINE
+
+---
+
+## 13.1 Triggered Ability System
+
+### Description
+The deterministic event-driven system responsible for detecting, ordering, and resolving all triggered abilities. Operates entirely within the reducer-driven game state (DuelCore.js). No runtime listeners — triggers are evaluated at explicit state transitions.
+
+---
+
+### GDD Reference
+- §3.2.3 Turn Structure (upkeep triggers: Juzam Djinn, Force of Nature, Sengir Vampire)
+- §3.3 Special Mechanics (Sengir Vampire, Force of Nature)
+- §8 Phase 6 Deliverable 1
+
+---
+
+### SYSTEMS.md Reference
+- Section 17 (Triggered Ability Pipeline)
+- Section 17.1 (Data Model)
+- Section 17.2 (Trigger Registration)
+- Section 17.3 (Supported Event Types)
+- Section 17.4 (Trigger Queue and Resolution Order)
+- Section 17.5 (Upkeep Choice UI Contract)
+- Section 17.6 (Protection Enforcement)
+- Section 17.7 (Example Mapping)
+
+---
+
+### Implementation
+```
+/src/engine/DuelCore.js   — event emission, trigger evaluation, queue processing, RESOLVE_CHOICE reducer
+/src/data/cards.js        — triggeredAbilities declarations on Sengir Vampire and Force of Nature
+/src/hooks/useDuel.js     — resolveChoice dispatcher exposed to UI
+/src/ui/DuelScreen.jsx    — ChoiceModal component (triggered ability choice UI for player)
+```
+
+---
+
+### Responsibilities
+- Emit structured events at all trigger-eligible state transitions (`ON_UPKEEP_START`, `ON_CREATURE_DIES`, `ON_DAMAGE_DEALT`, `ON_BLOCK_DECLARED`)
+- Evaluate `triggeredAbilities[]` declarations against emitted events
+- Enqueue valid Trigger Instances; process queue before phase advance
+- Suspend queue when `pendingChoice` is set (`requiresChoice: true`); resume after `RESOLVE_CHOICE`
+- Maintain `turnState.damageLog` for source-tracking conditions (Sengir Vampire)
+
+---
+
+### Active Triggers
+
+| Card | Event | Behavior |
+|------|-------|---------|
+| Sengir Vampire | `ON_DAMAGE_DEALT` → `ON_CREATURE_DIES` | Logs damage source; adds +1/+1 counter when a damaged creature dies this turn |
+| Force of Nature | `ON_UPKEEP_START` | Opens `ChoiceModal`: pay GGGG or take 8 damage; AI auto-resolves; suppressed by SILENCE modifier |
+
+---
+
+### Strict Constraints
+- All trigger evaluation is synchronous and deterministic
+- No timers, defaults, or implicit auto-resolution for player choices (`Determinism Requirement` §17.5.3)
+- SILENCE dungeon modifier suppresses `ON_UPKEEP_START` emission
+- Protection is enforced inline (not through trigger queue) — see §17.6
+
+---
+
+### Status
+ACTIVE (Phase 6 Deliverable 1 ✅ Complete)
+
+---
+
 # End of MECHANICS INDEX v1.0
