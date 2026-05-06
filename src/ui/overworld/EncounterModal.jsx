@@ -7,6 +7,7 @@ import { isCre, isLand } from '../../engine/DuelCore.js';
 import { thmOf, CCOLOR, Cost } from '../shared/Card.jsx';
 import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS } from '../../engine/MapGenerator.js';
 import { POWERED_NINE_IDS } from '../../data/cards.js';
+import useCardArt from '../../utils/useCardArt.js';
 
 // --- CARD PRICE HELPER -------------------------------------------------------
 
@@ -309,20 +310,14 @@ return (
 
 // --- CARD PREVIEW PANEL -------------------------------------------------------
 
-function CardPreviewPanel({ card, side }) {
-if (!card) return null;
+function CardPreviewPanel({ card }) {
+const { url: artUrl, loading: artLoading } = useCardArt(card.name);
 const bd = thmOf(card).bd;
 const bandColor = card.color ? (MANA_HEX[card.color] || "#888") : "#888";
 const rarityDot = card.rarity === "R" ? "#f0c040" : card.rarity === "U" ? "#a0b8d0" : "#707070";
-const pos = side === "left"
-  ? { left: 24 }
-  : { right: 24 };
 return (
-<>
-  <style>{`@keyframes cpFadeIn { from { opacity:0 } to { opacity:1 } }`}</style>
   <div style={{
-    position:"fixed", top:"50%", transform:"translateY(-50%)", ...pos, zIndex:9999,
-    width:220, height:320,
+    width:220,
     background:"linear-gradient(160deg,#12100a,#0e0c06)",
     border:`2px solid ${bd}`,
     borderRadius:8,
@@ -341,6 +336,17 @@ return (
     {/* Color band */}
     <div style={{ height:8, background:bandColor, flexShrink:0 }} />
 
+    {/* Art window */}
+    <div style={{ height:150, background:"#080604", overflow:"hidden", flexShrink:0 }}>
+      {artUrl ? (
+        <img src={artUrl} alt={card.name} style={{ width:"100%", height:"100%", objectFit:"cover", opacity:artLoading?0:1, transition:"opacity 0.3s ease" }} />
+      ) : (
+        <div style={{ width:"100%", height:"100%", background:`linear-gradient(135deg,${bandColor}18,#08060418)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <span style={{ fontSize:10, color:"#2a1a08", fontFamily:"'Cinzel',serif", letterSpacing:2 }}>{ artLoading ? "..." : card.type }</span>
+        </div>
+      )}
+    </div>
+
     {/* Type + Rarity */}
     <div style={{ padding:"5px 8px 4px", display:"flex", alignItems:"center", gap:6, borderBottom:`1px solid ${bd}40`, flexShrink:0 }}>
       <span style={{ fontSize:10, fontFamily:"'Cinzel',serif", color:"#a08030", flex:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
@@ -350,7 +356,7 @@ return (
     </div>
 
     {/* Rules text */}
-    <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", scrollbarWidth:"thin" }}>
+    <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", scrollbarWidth:"thin", minHeight:60 }}>
       <span style={{ fontSize:11, fontFamily:"'Crimson Text',serif", fontStyle:"italic", color:"#d8cdb0", lineHeight:1.5 }}>{card.text||""}</span>
     </div>
 
@@ -361,7 +367,6 @@ return (
       </div>
     )}
   </div>
-</>
 );
 }
 
@@ -417,9 +422,15 @@ const avgCmc = deck.filter(c=>!isLand(c)).length
 
 return (
 <>
-<CardPreviewPanel card={previewCard} side={previewSide} />
-<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"stretch", justifyContent:"center", zIndex:200, padding:16 }}>
-<div style={{ width:"100%", maxWidth:760, background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
+<style>{`@keyframes cpFadeIn { from { opacity:0 } to { opacity:1 } }`}</style>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding:16, gap:12 }}>
+
+  {/* Left preview: shown when a deck card is selected */}
+  <div style={{ width:220, flexShrink:0, alignSelf:"center" }}>
+    {previewCard && previewSide==="left" && <CardPreviewPanel card={previewCard} />}
+  </div>
+
+<div style={{ width:"100%", maxWidth:760, alignSelf:"stretch", background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
 
     {/* Header */}
     <div style={{ padding:"12px 16px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
@@ -502,6 +513,12 @@ return (
       Click a card in one panel to select it · Select from both to swap · Select from one to move
     </div>
   </div>
+
+  {/* Right preview: shown when a binder card is selected */}
+  <div style={{ width:220, flexShrink:0, alignSelf:"center" }}>
+    {previewCard && previewSide==="right" && <CardPreviewPanel card={previewCard} />}
+  </div>
+
 </div>
 </>
 
