@@ -122,7 +122,21 @@ const [binder, setBinder]     = useState(() => {
     Array.from({ length: 4 }, () => ({ ...card, iid: mkId() }))
   );
 });
-const [artifacts, setArtifacts] = useState([...OW_ARTS]);
+const [artifacts, setArtifacts] = useState(() => {
+  try {
+    const stored = localStorage.getItem("shandalar_unlockables");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return OW_ARTS.map(art => ({
+        ...art,
+        owned: parsed[art.id] ?? false,
+      }));
+    }
+  } catch (e) {
+    console.error("[Shandalar] Failed to read shandalar_unlockables from localStorage:", e);
+  }
+  return [...OW_ARTS];
+});
 
 // -- World pressure -------------------------------------------------------
 const [manaLinks, setManaLinks]       = useState({ W:0, U:0, B:0, R:0, G:0 });
@@ -207,6 +221,18 @@ useEffect(() => {
     })
     .catch(err => console.error('[Sandbox] Failed to load sandbox-decklist.txt:', err));
 }, [isSandbox]);
+
+useEffect(() => {
+  try {
+    const toStore = {};
+    for (const art of artifacts) {
+      toStore[art.id] = art.owned;
+    }
+    localStorage.setItem("shandalar_unlockables", JSON.stringify(toStore));
+  } catch (e) {
+    console.error("[Shandalar] Failed to write shandalar_unlockables to localStorage:", e);
+  }
+}, [artifacts]);
 
 // -------------------------------------------------------------------------
 // ENCOUNTER POPUP BUILDER

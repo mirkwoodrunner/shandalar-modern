@@ -758,7 +758,7 @@ Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequen
 - Force of Nature upkeep choice UI → Phase 6 ✅
 - Holy Ground full protection enforcement in combat → Phase 6 (planned)
 - Birds of Paradise any-color selection → Resolved in Phase 5 (pendingBop color picker)
-- Unlockables persistence (localStorage) → Phase 7
+- Unlockables persistence (localStorage) → Resolved in Phase 6 (P5) ✅
 - `enchantments` and `tokens` fields wired to aura/token mechanics → Phase 7
 
 ### Priority Improvements (Post-Phase 4) *(in progress)*
@@ -786,7 +786,7 @@ These items were identified during playtesting and are being addressed before Ph
 
 **Remaining:**
 - Holy Ground full protection enforcement in combat
-- Unlockables persistence (localStorage — run history, defeated mages, found Power Nine)
+- ~~Unlockables persistence (localStorage)~~ ✅ Complete (Phase 6 P5) — artifact `owned` flags persisted in `shandalar_unlockables` key; merged onto canonical OW_ARTS on load
 - Dungeon atmosphere overlays per modifier type
 - LocalStorage save state (full run persistence across browser sessions)
 - Additional card sets (Ice Age, Mirage) as optional pool expansions
@@ -813,6 +813,14 @@ These items were identified during playtesting and are being addressed before Ph
 - AI opponent: auto-resolves inline (pay if >= 4G, take damage otherwise); no modal rendered
 - `ADVANCE_PHASE` blocked while `pendingUpkeepChoice !== null`; AI loop guarded with early return
 - Style: Cinzel font, dark background, gold border (consistent with existing modals)
+
+**Deliverable P5 — Unlockables Persistence (localStorage)** ✅ Complete
+- `artifacts` state in `OverworldGame.jsx` initialized via lazy `useState` that reads `shandalar_unlockables` from localStorage on mount
+- Stored format: flat object keyed by artifact id, value boolean — `{ "boots": true, "amulet": false, ... }`
+- `OW_ARTS` remains source of truth for id, name, icon, desc; localStorage provides only `owned` flag per id
+- `useEffect([artifacts])` writes updated owned flags on every `setArtifacts` call
+- Both read and write wrapped in try/catch; malformed JSON falls back to OW_ARTS defaults silently
+- Applies in sandbox mode and normal play alike
 
 **Deliverable 2 — Holy Ground Combat Enforcement** *(Planned)*
 - Castle modifier for Delenia (White); currently display-only
