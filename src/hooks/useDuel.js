@@ -87,6 +87,9 @@ dispatch({ type: "AI_ACTS", acts }), []);
 const resolveChoice = useCallback((optionId) =>
 dispatch({ type: "RESOLVE_CHOICE", optionId }), []);
 
+const resolveUpkeepChoice = useCallback((choice) =>
+dispatch({ type: "UPKEEP_CHOICE_RESOLVE", choice }), []);
+
 const openPriorityWindow = useCallback(() =>
 dispatch({ type: "OPEN_PRIORITY_WINDOW" }), []);
 
@@ -114,6 +117,7 @@ chooseLotusColor,
 setPendingLotus,
 applyAiActions,
 resolveChoice,
+resolveUpkeepChoice,
 openPriorityWindow,
 passPriority,
 };

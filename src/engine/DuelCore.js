@@ -1092,10 +1092,23 @@ for (const c of [...ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
 switch (c.upkeep) {
 case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
-case "forestChoice": {
-const pool = { ...ns[w].mana };
-if ((pool.G || 0) >= 4) { pool.G -= 4; ns = { ...ns, [w]: { ...ns[w], mana: pool } }; ns = dlog(ns, `${c.name}: paid GGGG upkeep.`, "mana"); }
-else ns = hurt(ns, w, 8, `${c.name} upkeep`);
+case "forceOfNatureUpkeep": {
+if (w !== ns.active) break;
+if (w === "o") {
+  if ((ns.o.mana.G ?? 0) >= 4) {
+    ns = { ...ns, o: { ...ns.o, mana: { ...ns.o.mana, G: ns.o.mana.G - 4 } } };
+    ns = dlog(ns, "Force of Nature: opponent paid GGGG upkeep.", "mana");
+  } else {
+    ns = hurt(ns, "o", 8, "Force of Nature");
+    ns = dlog(ns, "Force of Nature: opponent takes 8 damage (could not pay GGGG).", "damage");
+  }
+} else {
+  ns = { ...ns, pendingUpkeepChoice: {
+    cardName: "Force of Nature",
+    handlerKey: "forceOfNatureUpkeep",
+    options: ["PAY_GGGG", "TAKE_DAMAGE"]
+  }};
+}
 break;
 }
 case "lordsUpkeep": {
@@ -1432,6 +1445,7 @@ pendingBop: false,
 turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0 },
 triggerQueue: [],
 pendingChoice: null,
+pendingUpkeepChoice: null,
 priorityWindow: false,
 priorityPasser: null,
 };
@@ -1566,6 +1580,10 @@ case "ADVANCE_PHASE": {
     console.warn('[DuelCore] ADVANCE_PHASE blocked: priority window is open');
     return s;
   }
+  if (s.pendingUpkeepChoice) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: upkeep choice pending');
+    return s;
+  }
   return advPhase(s);
 }
 
@@ -1672,6 +1690,19 @@ case "RESOLVE_CHOICE": {
     pendingTrigger?.eventPayload || {}
   );
   return processTriggerQueue(ns);
+}
+
+case "UPKEEP_CHOICE_RESOLVE": {
+  const { choice } = action; // "PAY_GGGG" | "TAKE_DAMAGE"
+  let ns = { ...s, pendingUpkeepChoice: null };
+  if (choice === "PAY_GGGG") {
+    ns = { ...ns, p: { ...ns.p, mana: { ...ns.p.mana, G: (ns.p.mana.G ?? 0) - 4 } } };
+    ns = dlog(ns, "Force of Nature: paid GGGG upkeep.", "mana");
+  } else {
+    ns = hurt(ns, "p", 8, "Force of Nature");
+    ns = dlog(ns, "Force of Nature: player takes 8 damage.", "damage");
+  }
+  return ns;
 }
 
 default: return s;
