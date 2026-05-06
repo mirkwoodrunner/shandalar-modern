@@ -810,3 +810,56 @@ Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && 
 | `src/hooks/useDuel.js` | `openPriorityWindow`, `passPriority` dispatchers |
 | `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
 | `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |
+
+---
+
+# 19. Holy Ground — Landwalk Suppression
+
+Castle modifier for Delenia (White). Implemented as Option B: suppresses all landwalk-type keywords on opponent creatures when the defending player controls Holy Ground.
+
+## 19.1 Implementation Approach
+
+Holy Ground does not use the Trigger Queue. It is enforced statically at two inline evaluation points:
+
+1. **`hasKw(card, keyword, state?)`** — optional third param added. If `keyword` ends in `"WALK"` (e.g. `FORESTWALK`, `ISLANDWALK`, `PLAINSWALK`) and the defending player's battlefield contains a card with `id === "holy_ground"`, the function returns `false` regardless of the card's keyword list.
+2. **`canBlockDuel(attacker, blocker, attackerController, blockerController, state?)`** — optional fourth param threads `state` into the LANDWALK blocking-legality check so illegal landwalk-based blocking is also correctly suppressed.
+
+Existing call sites that omit the `state` argument are fully backward-compatible.
+
+## 19.2 Scope
+
+- Suppresses landwalk advantage (cannot be blocked due to landwalk is negated).
+- Does NOT grant protection from colors, prevent targeting, or suppress other keywords.
+- Applies only when the defending player controls Holy Ground on their battlefield.
+
+## 19.3 System File
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `hasKw` + `canBlockDuel` updated with optional `state` param |
+
+---
+
+# 20. Power Surge Upkeep System
+
+Implements the upkeep damage trigger for the Power Surge enchantment. Damage equals the number of untapped lands the active player controlled at the start of their previous upkeep.
+
+## 20.1 State Shape
+
+```js
+turnState: {
+  powerSurgeUntappedCount: number  // snapshot taken during UNTAP; 0 when Power Surge not in play
+}
+```
+
+## 20.2 Snapshot and Damage Flow
+
+1. **UNTAP phase**: Before the untap loop runs, if Power Surge is present on either player's battlefield, `turnState.powerSurgeUntappedCount` is set to the count of the active player's currently-untapped lands.
+2. **UPKEEP phase**: The `powerSurgeUpkeep` handler reads `turnState.powerSurgeUntappedCount` and calls `hurt(state, controller, count)`. If count is 0, a log entry is added and no damage is dealt.
+3. `turnState.powerSurgeUntappedCount` is reset to 0 at the start of each UNTAP phase (whether or not Power Surge is present).
+
+## 20.3 System File
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `turnState.powerSurgeUntappedCount` field; UNTAP snapshot logic; UPKEEP handler reads snapshot and calls `hurt()` |

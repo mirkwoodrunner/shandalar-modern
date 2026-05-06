@@ -86,6 +86,23 @@
 4. Both read and write wrapped in try/catch; errors logged via `console.error`; no user-visible alert; falls back to `OW_ARTS` defaults on any failure.
 5. Sandbox mode: persistence active (sandbox players may test artifact effects).
 
+### Deliverable P3b: Power Surge Upkeep Damage -- Complete
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `turnState.powerSurgeUntappedCount` initialized to 0 in `buildDuelState` and reset each UNTAP; snapshot of active player's tapped land count taken before the untap loop (only when Power Surge is on either battlefield); UPKEEP handler reads snapshot and calls `hurt()` for matching count; 0 untapped lands generates a log entry with no damage; console.warn STUB removed |
+
+### Deliverable P3c: Holy Ground Option B (Landwalk Suppression) -- Complete
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `hasKw(card, keyword, state?)` — optional 3rd param; if `keyword` ends in `"WALK"` and defending player's battlefield contains `holy_ground`, returns `false`; `canBlockDuel(attacker, blocker, ..., state?)` — optional 4th param threads `state` into LANDWALK check; all existing call sites without new args remain backward-compatible |
+
+### Deliverable P3d: CardPreviewPanel in DeckManager -- Complete
+
+| File | Change |
+|------|--------|
+| `src/ui/overworld/EncounterModal.jsx` | `CardPreviewPanel` component renders as inline flex sibling of DeckManager modal (left for deck-side selection, right for binder-side); fetches Scryfall art crop via `useCardArt`; 150px art window between color band and type row; click same card again to dismiss |
+
 ### Up Next (Phase 6)
-- Holy Ground full combat enforcement (currently display-only in castle modifier)
-- Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, Power Surge upkeep, `kudzu`
+- Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, `kudzu`
