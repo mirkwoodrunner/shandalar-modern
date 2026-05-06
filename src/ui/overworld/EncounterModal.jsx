@@ -307,6 +307,64 @@ return (
 );
 }
 
+// --- CARD PREVIEW PANEL -------------------------------------------------------
+
+function CardPreviewPanel({ card, side }) {
+if (!card) return null;
+const bd = thmOf(card).bd;
+const bandColor = card.color ? (MANA_HEX[card.color] || "#888") : "#888";
+const rarityDot = card.rarity === "R" ? "#f0c040" : card.rarity === "U" ? "#a0b8d0" : "#707070";
+const pos = side === "left"
+  ? { left: 24 }
+  : { right: 24 };
+return (
+<>
+  <style>{`@keyframes cpFadeIn { from { opacity:0 } to { opacity:1 } }`}</style>
+  <div style={{
+    position:"fixed", top:"50%", transform:"translateY(-50%)", ...pos, zIndex:9999,
+    width:220, height:320,
+    background:"linear-gradient(160deg,#12100a,#0e0c06)",
+    border:`2px solid ${bd}`,
+    borderRadius:8,
+    boxShadow:"0 8px 32px rgba(0,0,0,0.7)",
+    display:"flex", flexDirection:"column",
+    fontFamily:"'Cinzel',serif",
+    animation:"cpFadeIn 200ms ease",
+    overflow:"hidden",
+  }}>
+    {/* Name + Cost row */}
+    <div style={{ display:"flex", alignItems:"center", padding:"7px 8px 5px", gap:4, flexShrink:0 }}>
+      <span style={{ flex:1, fontSize:13, fontFamily:"'Cinzel',serif", color:"#d4b040", fontWeight:700, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{card.name}</span>
+      <span style={{ fontSize:11, fontFamily:"'Fira Code',monospace", color:"#c0a030", flexShrink:0 }}>{card.cost||""}</span>
+    </div>
+
+    {/* Color band */}
+    <div style={{ height:8, background:bandColor, flexShrink:0 }} />
+
+    {/* Type + Rarity */}
+    <div style={{ padding:"5px 8px 4px", display:"flex", alignItems:"center", gap:6, borderBottom:`1px solid ${bd}40`, flexShrink:0 }}>
+      <span style={{ fontSize:10, fontFamily:"'Cinzel',serif", color:"#a08030", flex:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+        {card.type}{card.subtype ? ` — ${card.subtype}` : ""}
+      </span>
+      <div style={{ width:6, height:6, borderRadius:"50%", background:rarityDot, flexShrink:0 }} />
+    </div>
+
+    {/* Rules text */}
+    <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", scrollbarWidth:"thin" }}>
+      <span style={{ fontSize:11, fontFamily:"'Crimson Text',serif", fontStyle:"italic", color:"#d8cdb0", lineHeight:1.5 }}>{card.text||""}</span>
+    </div>
+
+    {/* Power/Toughness */}
+    {isCre(card) && (
+      <div style={{ padding:"4px 8px 6px", textAlign:"right", flexShrink:0, borderTop:`1px solid ${bd}40` }}>
+        <span style={{ fontSize:13, fontWeight:700, fontFamily:"'Fira Code',monospace", color:"#d4b040" }}>{card.power}/{card.toughness}</span>
+      </div>
+    )}
+  </div>
+</>
+);
+}
+
 // --- DECK MANAGER -------------------------------------------------------------
 
 function DeckCardTile({ c, selected, onClick, side }) {
@@ -335,6 +393,8 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 export function DeckManager({ deck, binder, onClose, onSwap, onMoveToDeck, onMoveToBinder }) {
 const [selD, setSelD] = useState(null);
 const [selB, setSelB] = useState(null);
+const [previewCard, setPreviewCard] = useState(null);
+const [previewSide, setPreviewSide] = useState("left");
 const [colorFilt, setColorFilt] = useState("ALL");
 const [search, setSearch]   = useState("");
 const [sortBy, setSortBy]   = useState("cmc");
@@ -356,6 +416,8 @@ const avgCmc = deck.filter(c=>!isLand(c)).length
 : "—";
 
 return (
+<>
+<CardPreviewPanel card={previewCard} side={previewSide} />
 <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"stretch", justifyContent:"center", zIndex:200, padding:16 }}>
 <div style={{ width:"100%", maxWidth:760, background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
 
@@ -423,7 +485,12 @@ return (
           <div style={{ padding:"8px 12px 6px", fontSize:10, fontFamily:"'Cinzel',serif", color:pi===0?"#d0a040":"#40a0d0", fontWeight:700, borderBottom:"1px solid rgba(180,160,60,.08)", flexShrink:0 }}>{label}</div>
           <div style={{ flex:1, overflowY:"auto", padding:8, display:"flex", flexWrap:"wrap", gap:5, alignContent:"flex-start", scrollbarWidth:"thin" }}>
             {cards.map((c,i) => (
-              <DeckCardTile key={c.iid||i} c={c} selected={sel===i} onClick={()=>setSel(sel===i?null:i)} side={side} />
+              <DeckCardTile key={c.iid||i} c={c} selected={sel===i} onClick={()=>{
+                const alreadySel = sel===i;
+                setSel(alreadySel ? null : i);
+                if (alreadySel) { setPreviewCard(null); }
+                else { setPreviewCard(c); setPreviewSide(side==="deck"?"left":"right"); }
+              }} side={side} />
             ))}
             {!cards.length && <div style={{ fontSize:10, color:"#3a2810", fontStyle:"italic", padding:8 }}>{cards.length===0&&binder.length===0?"Empty.":"No cards match filter."}</div>}
           </div>
@@ -436,6 +503,7 @@ return (
     </div>
   </div>
 </div>
+</>
 
 );
 }
