@@ -72,6 +72,20 @@
 | `src/hooks/useDuel.js` | Exposed `resolveUpkeepChoice` dispatcher |
 | `src/DuelScreen.jsx` | Added `ForceOfNatureUpkeepModal` component (Cinzel font, gold borders, dark background, disabled Pay button when < 4G); AI loop guarded with `if (state.pendingUpkeepChoice) return;`; modal rendered when `state.pendingUpkeepChoice && state.active === 'p'`; phase-advance buttons hidden while modal open |
 
+### Deliverable P5: Unlockables Persistence (localStorage) -- Complete
+
+| File | Change |
+|------|--------|
+| `src/OverworldGame.jsx` | `artifacts` state uses lazy initializer reading `shandalar_unlockables` from localStorage; `useEffect([artifacts])` writes owned flags on every change |
+
+#### How it works
+
+1. On mount, `useState` lazy initializer calls `localStorage.getItem("shandalar_unlockables")`.
+2. If present and valid JSON, merges stored `owned` booleans onto canonical `OW_ARTS` definitions (id/name/icon/desc always from `OW_ARTS`).
+3. On any `setArtifacts` call, `useEffect` serializes `{ id: owned }` pairs and writes to localStorage.
+4. Both read and write wrapped in try/catch; errors logged via `console.error`; no user-visible alert; falls back to `OW_ARTS` defaults on any failure.
+5. Sandbox mode: persistence active (sandbox players may test artifact effects).
+
 ### Up Next (Phase 6)
 - Holy Ground full combat enforcement (currently display-only in castle modifier)
 - Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, Power Surge upkeep, `kudzu`
