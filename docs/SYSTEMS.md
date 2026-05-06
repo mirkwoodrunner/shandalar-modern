@@ -666,7 +666,38 @@ Each Trigger Instance resolves as follows:
 
 ## 17.5 Upkeep Choice UI Contract (Modal Decisions)
 
-### 17.5.1 Game State Shape
+Force of Nature uses a **dedicated upkeep choice path** separate from the general triggered-ability choice path.
+
+### 17.5.1 Upkeep Choice State Shape (`pendingUpkeepChoice`)
+
+```js
+pendingUpkeepChoice: {
+  cardName: string,
+  handlerKey: "forceOfNatureUpkeep",
+  options: [
+    { id: "PAY_GGGG",    label: "Pay {G}{G}{G}{G}" },
+    { id: "TAKE_DAMAGE", label: "Take 8 damage"     }
+  ]
+}
+```
+
+`pendingUpkeepChoice` is set during the UPKEEP phase when the human player controls Force of Nature. AI resolves the same `forceOfNatureUpkeep` case inline without setting this field.
+
+### 17.5.2 Action
+
+Player selection dispatches: `UPKEEP_CHOICE_RESOLVE { choice: "PAY_GGGG" | "TAKE_DAMAGE" }`
+
+- `PAY_GGGG`: deducts 4G from `p.manaPool`; falls back to 8 damage if < 4G available.
+- `TAKE_DAMAGE`: calls `hurt(state, 'p', 8, 'Force of Nature')`.
+- In both cases `pendingUpkeepChoice` is cleared and the reducer returns the new state.
+
+### 17.5.3 ADVANCE_PHASE Blockade
+
+`ADVANCE_PHASE` returns state unchanged while `pendingUpkeepChoice !== null`. This prevents phase skipping before the player resolves the modal.
+
+### 17.5.4 General Triggered-Ability Choice (RESOLVE_CHOICE)
+
+For triggered abilities with `requiresChoice: true` (not Force of Nature), the general path uses:
 
 ```js
 pendingChoice: {
@@ -674,22 +705,14 @@ pendingChoice: {
   type: "triggered_ability_choice",
   sourceCardId: CardID,
   controller: PlayerID,
-  options: [
-    { id: string, label: string, effect: EffectDefinition }
-  ],
+  options: [{ id: string, label: string, effect: EffectDefinition }],
   required: true
 }
 ```
 
-### 17.5.2 Behavior
+Player selection dispatches: `RESOLVE_CHOICE { choiceId, optionId }`. Clears `pendingChoice` and resumes the Trigger Queue.
 
-- When resolving a trigger with `requiresChoice = true`:
-1. Populate `pendingChoice`
-1. Suspend Trigger Queue processing
-- Player selection dispatches: `RESOLVE_CHOICE(optionId)`
-- Upon resolution: execute selected effect, clear `pendingChoice`, resume Trigger Queue
-
-### 17.5.3 Determinism Requirement
+### 17.5.5 Determinism Requirement
 
 No timers, defaults, or implicit selections allowed. Game cannot advance without explicit input.
 
@@ -721,9 +744,21 @@ Protection is enforced inline. It MUST NOT use the Trigger Queue.
 
 ## 17.7 Example Mapping
 
-- **Sengir Vampire**: ON_DAMAGE_DEALT → populate damageLog; ON_CREATURE_DIES → check damageLog → enqueue counter trigger
-- **Force of Nature**: ON_UPKEEP_START → pendingChoice (pay GGGG or take 8 damage)
+- **Sengir Vampire**: ON_DAMAGE_DEALT → append to `turnState.sengirDamagedIids`; ON_CREATURE_DIES → check `sengirDamagedIids` for `cardId` → enqueue `sengirCounter` trigger → add `P1P1` counter if still on battlefield. **Implementation is card-specific** (checks `card.triggered === 'sengirCounter'`), not a general trigger registry. General registry is deferred.
+- **Force of Nature**: upkeep switch case `forceOfNatureUpkeep` → sets `pendingUpkeepChoice` for human player; AI resolves inline. Dispatches `UPKEEP_CHOICE_RESOLVE`.
 - **Protection**: enforced during targeting, blocking, and damage; no trigger registration
+
+### damageLog shape
+
+```js
+turnState: {
+  damageLog: [{ sourceId: string, targetId: string, amount: number, turnId: number }],
+  sengirDamagedIids: string[],   // IIDs of creatures Sengir damaged this turn
+  powerSurgeUntappedCount: number
+}
+```
+
+All three fields are cleared / reset at UNTAP (sengirDamagedIids, powerSurgeUntappedCount) or CLEANUP (damageLog).
 
 ---
 
@@ -863,3 +898,44 @@ turnState: {
 | File | Change |
 |------|--------|
 | `src/engine/DuelCore.js` | `turnState.powerSurgeUntappedCount` field; UNTAP snapshot logic; UPKEEP handler reads snapshot and calls `hurt()` |
+
+---
+
+# 21. Persistence System
+
+Cross-run unlockables are persisted via `localStorage`. In-run game state is not persisted.
+
+## 21.1 Scope
+
+Cross-run unlockables only. In-run state is ephemeral — closing the browser mid-run discards it.
+
+## 21.2 Storage Key
+
+`shandalar_unlockables` in `localStorage`.
+
+## 21.3 Data Shape
+
+```js
+{
+  magesDefeated:       string[],  // color codes e.g. ["W", "B"]
+  powerNineFound:      string[],  // card ids
+  arzakonDefeated:     boolean,
+  chaosStarterUnlocked: boolean
+}
+```
+
+In the current implementation, artifact ownership is stored as a flat `{ [id]: boolean }` object keyed by artifact id, merged onto the canonical `OW_ARTS` definitions on load. `OW_ARTS` remains the source of truth for id, name, icon, and description.
+
+## 21.4 Error Handling
+
+All read/write operations are wrapped in `try/catch`. Failure is silent — `console.warn` is the maximum noise level. The game falls back to `OW_ARTS` defaults on any `localStorage` error (quota exceeded, private browsing, malformed JSON).
+
+## 21.5 Implementation
+
+`src/OverworldGame.jsx` — `artifacts` state uses a lazy `useState` initializer that reads from `localStorage` on mount. A `useEffect([artifacts])` writes updated owned flags on every `setArtifacts` call.
+
+## 21.6 System File
+
+| File | Role |
+|------|------|
+| `src/OverworldGame.jsx` | Read on mount (lazy initializer); write on every artifact state change |
