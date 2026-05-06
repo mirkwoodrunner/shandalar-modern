@@ -33,11 +33,18 @@ export const isSort   = c => c?.type === "Sorcery";
 export const isArt    = c => c?.type === "Artifact";
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
-export function hasKw(c, kw) {
-  if ((c.keywords     || []).includes(kw)) return true;
-  if ((c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw))) return true;
-  if ((c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw))) return true;
-  return false;
+export function hasKw(c, kw, state = null) {
+  const found =
+    (c.keywords     || []).includes(kw) ||
+    (c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw)) ||
+    (c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw));
+  if (!found) return false;
+  // Holy Ground (Option B): suppress landwalk keywords when defending player controls Holy Ground.
+  if (state && kw.endsWith("WALK")) {
+    const defender = c.controller === "p" ? "o" : "p";
+    if (state[defender].bf.some(h => h.name === "Holy Ground")) return false;
+  }
+  return true;
 }
 
 // --- CARD INSTANTIATION -------------------------------------------------------
@@ -138,7 +145,7 @@ const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughnes
 return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou);
 }
 
-export function canBlockDuel(bl, at, defBf) {
+export function canBlockDuel(bl, at, defBf, state = null) {
 if (hasKw(at, "FLYING") && !hasKw(bl, "FLYING") && !hasKw(bl, "REACH")) return false;
 // Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
@@ -153,7 +160,7 @@ if (bl.protection) {
 if (hasKw(at, "FEAR") && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional ? skipped if not provided).
-if (hasKw(at, "LANDWALK") && at.landwalkType && defBf) {
+if (hasKw(at, "LANDWALK", state) && at.landwalkType && defBf) {
   const landSubtype = at.landwalkType.charAt(0).toUpperCase() + at.landwalkType.slice(1).toLowerCase();
   if (defBf.some(c => isLand(c) && c.subtype?.includes(landSubtype))) return false;
 }
@@ -1554,7 +1561,7 @@ case "DECLARE_BLOCKER": {
       }
     }
   }
-  if (!canBlockDuel(bl, att, s.o.bf)) return s;
+  if (!canBlockDuel(bl, att, s.o.bf, s)) return s;
   const already = s.blockers[action.blId] === action.attId;
   const nb = { ...s.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
