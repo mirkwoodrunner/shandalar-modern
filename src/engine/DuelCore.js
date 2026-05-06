@@ -1050,9 +1050,16 @@ ns = { ...ns, active: nx };
 ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
-  turnState: { ...ns.turnState, sengirDamagedIids: [] } };
+  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0 } };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
+// Power Surge: snapshot tapped land count before untapping (SYSTEMS.md §17, Option A)
+const powerSurgeOnField = ns[ns.active].bf.some(c => c.name === "Power Surge") ||
+                          ns[ns.active === "p" ? "o" : "p"].bf.some(c => c.name === "Power Surge");
+if (powerSurgeOnField) {
+  const tappedLandCount = ns[ns.active].bf.filter(c => isLand(c) && c.tapped).length;
+  ns = { ...ns, turnState: { ...ns.turnState, powerSurgeUntappedCount: tappedLandCount } };
+}
 const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
 const winterOrbOut = allBF_s.some(x => x.id === "winter_orb" && !x.tapped);
 const smokeOut     = allBF_s.some(x => x.id === "smoke");
@@ -1169,9 +1176,13 @@ case "demonicHordesUpkeep": {
   break;
 }
 case "powerSurgeUpkeep": {
-  // TODO: requires untapped-land count tracked from start of previous upkeep
-  console.warn(`STUB: Power Surge upkeep not yet implemented ? needs untapped-land state tracking`);
-  ns = dlog(ns, `Power Surge: upkeep damage pending.`, "effect");
+  const dmg = ns.turnState.powerSurgeUntappedCount ?? 0;
+  if (dmg > 0) {
+    ns = hurt(ns, ns.active, dmg, "Power Surge");
+    ns = dlog(ns, `Power Surge: ${ns.active} takes ${dmg} damage (${dmg} land(s) did not untap).`, "damage");
+  } else {
+    ns = dlog(ns, "Power Surge: no damage (all lands untapped).", "effect");
+  }
   break;
 }
 default: break;
@@ -1418,7 +1429,7 @@ fogActive: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0 },
 triggerQueue: [],
 pendingChoice: null,
 priorityWindow: false,
