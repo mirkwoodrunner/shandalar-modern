@@ -805,6 +805,15 @@ These items were identified during playtesting and are being addressed before Ph
 - `payMana` effect type added to `resolveTriggeredEffect()` for GGGG deduction
 - SILENCE dungeon modifier suppresses `ON_UPKEEP_START` trigger emission
 
+**Deliverable P3 — Force of Nature Upkeep Choice UI (dedicated modal)** ✅ Complete
+- Replaced double-handling (triggered ability + upkeep switch conflict) with single `forceOfNatureUpkeep` upkeep switch case
+- Human player's turn: sets `pendingUpkeepChoice`; `ForceOfNatureUpkeepModal` renders (blocks all interaction, no dismiss on outside click)
+- "Pay GGGG" button disabled when player has < 4G; on click dispatches `UPKEEP_CHOICE_RESOLVE` with `choice: "PAY_GGGG"`
+- "Take 8 Damage" always enabled; dispatches `UPKEEP_CHOICE_RESOLVE` with `choice: "TAKE_DAMAGE"`
+- AI opponent: auto-resolves inline (pay if >= 4G, take damage otherwise); no modal rendered
+- `ADVANCE_PHASE` blocked while `pendingUpkeepChoice !== null`; AI loop guarded with early return
+- Style: Cinzel font, dark background, gold border (consistent with existing modals)
+
 **Deliverable 2 — Holy Ground Combat Enforcement** *(Planned)*
 - Castle modifier for Delenia (White); currently display-only
 - Full enforcement: player creatures cannot be targeted by opponent spells or abilities; opponent creatures cannot deal combat damage to the player; does not affect creature-to-creature damage

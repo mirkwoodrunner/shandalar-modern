@@ -63,6 +63,15 @@
 5. When both sides have passed, the reducer sets `priorityWindow: false`. A `useRef`-guarded `useEffect` detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
 6. `ADVANCE_PHASE` is blocked (returns state unchanged with a console warning) while `priorityWindow === true`.
 
+### Deliverable 3: Force of Nature Upkeep Choice Modal (P3) -- Complete
+
+| File | Change |
+|------|--------|
+| `src/data/cards.js` | Renamed `upkeep` key from `forestChoice` to `forceOfNatureUpkeep`; removed conflicting `triggeredAbilities` (double-handling bug) |
+| `src/engine/DuelCore.js` | Added `pendingUpkeepChoice: null` to initial state; renamed `case "forestChoice":` to `case "forceOfNatureUpkeep":` with human-player modal path; AI auto-resolves inline; added `UPKEEP_CHOICE_RESOLVE` reducer case; `ADVANCE_PHASE` blocked when `pendingUpkeepChoice !== null` |
+| `src/hooks/useDuel.js` | Exposed `resolveUpkeepChoice` dispatcher |
+| `src/DuelScreen.jsx` | Added `ForceOfNatureUpkeepModal` component (Cinzel font, gold borders, dark background, disabled Pay button when < 4G); AI loop guarded with `if (state.pendingUpkeepChoice) return;`; modal rendered when `state.pendingUpkeepChoice && state.active === 'p'`; phase-advance buttons hidden while modal open |
+
 ### Up Next (Phase 6)
 - Holy Ground full combat enforcement (currently display-only in castle modifier)
 - Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, Power Surge upkeep, `kudzu`

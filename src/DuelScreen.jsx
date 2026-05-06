@@ -119,6 +119,66 @@ function ChoiceModal({ pendingChoice, allBf, onResolve }) {
 }
 
 // -----------------------------------------------------------------------------
+// FORCE OF NATURE UPKEEP MODAL
+// -----------------------------------------------------------------------------
+
+function ForceOfNatureUpkeepModal({ greenMana, onResolve }) {
+  const canPay = (greenMana ?? 0) >= 4;
+  return (
+    <div className="popover-overlay">
+      <div className="popover-content" onClick={(e) => e.stopPropagation()} style={{
+        border: '2px solid #c4a040',
+        background: 'rgba(10, 20, 10, 0.97)',
+        fontFamily: "'Cinzel', serif",
+      }}>
+        <h3 style={{ color: '#c4a040', fontFamily: "'Cinzel', serif", marginBottom: 8 }}>
+          Force of Nature
+        </h3>
+        <p style={{ color: '#ccc', marginBottom: 12 }}>
+          Force of Nature demands tribute. Pay GGGG or take 8 damage.
+        </p>
+        <p style={{ color: '#6a9a5a', fontSize: 12, marginBottom: 16 }}>
+          Green mana available: {greenMana ?? 0}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={() => onResolve("PAY_GGGG")}
+            disabled={!canPay}
+            style={{
+              border: canPay ? '1px solid #6a9a5a' : '1px solid #444',
+              background: canPay ? 'rgba(40, 80, 20, 0.6)' : 'rgba(40, 40, 40, 0.4)',
+              color: canPay ? '#80c040' : '#555',
+              padding: '8px 16px',
+              borderRadius: 4,
+              cursor: canPay ? 'pointer' : 'not-allowed',
+              fontFamily: "'Cinzel', serif",
+              fontSize: 13,
+            }}
+          >
+            Pay GGGG
+          </button>
+          <button
+            onClick={() => onResolve("TAKE_DAMAGE")}
+            style={{
+              border: '1px solid #a04040',
+              background: 'rgba(80, 20, 20, 0.5)',
+              color: '#e06060',
+              padding: '8px 16px',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontFamily: "'Cinzel', serif",
+              fontSize: 13,
+            }}
+          >
+            Take 8 Damage
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // ABILITY LOOKUP
 // -----------------------------------------------------------------------------
 
@@ -191,6 +251,7 @@ const MANA_COLORS = { W: '#e8d089', U: '#3d6fa8', B: '#8c5cb0', R: '#c4634a', G:
   chooseLotusColor,
   applyAiActions,
   resolveChoice,
+  resolveUpkeepChoice,
   } = useDuel(
   config.pDeckIds,
   config.oppArchKey,
@@ -239,6 +300,7 @@ return () => clearTimeout(timer);
 // AI produces GameAction[] ? dispatched via applyAiActions ? DuelCore executes.
 useEffect(() => {
 if (state.over) return;
+if (state.pendingUpkeepChoice) return;
 
 // AI auto-resolves pendingChoice when it is the controller
 if (state.pendingChoice && state.pendingChoice.controller === 'o') {
@@ -273,7 +335,7 @@ const thinkTimer = setTimeout(() => {
 
 return () => clearTimeout(thinkTimer);
 
-}, [state.phase, state.active, state.turn, state.over, state.pendingChoice]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [state.phase, state.active, state.turn, state.over, state.pendingChoice, state.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -- Tooltip handlers -------------------------------------------------------
 const handleTipEnter = useCallback((card, e) => {
@@ -1095,7 +1157,7 @@ return (
 
     {/* Navigation button row — Pass Priority / End Turn always on bottom */}
     <div style={{ minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-      {isMyTurn && (
+      {isMyTurn && !s.pendingUpkeepChoice && (
         <>
           {s.phase === 'COMBAT_ATTACKERS' && (
             <button onClick={advancePhase} style={{
@@ -1184,6 +1246,14 @@ return (
         setPendingDualLand(null);
       }}
       onCancel={() => setPendingDualLand(null)}
+    />
+  )}
+
+  {/* Force of Nature upkeep choice modal (player only; AI auto-resolves inline) */}
+  {state.pendingUpkeepChoice && state.active === 'p' && (
+    <ForceOfNatureUpkeepModal
+      greenMana={state.p.mana.G ?? 0}
+      onResolve={resolveUpkeepChoice}
     />
   )}
 
