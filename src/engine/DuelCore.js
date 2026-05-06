@@ -950,6 +950,9 @@ if (!blockers.length) {
       if (bp > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
+        if (bl.name === "Sengir Vampire") {
+          ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), attId] } };
+        }
       }
     }
     if (!blockerProtectsFromAtt) {
@@ -957,6 +960,9 @@ if (!blockers.length) {
       if (dbl > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: attId, targetId: bl.iid, amount: dbl, combat: true } });
+        if (att.name === "Sengir Vampire") {
+          ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), bl.iid] } };
+        }
       }
     }
     if (!blockerProtectsFromAtt) rem = Math.max(0, rem - dbl);
@@ -1043,7 +1049,8 @@ const nx = ns.active === "p" ? "o" : "p";
 ns = { ...ns, active: nx };
 ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
-ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0 };
+ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
+  turnState: { ...ns.turnState, sengirDamagedIids: [] } };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
@@ -1242,6 +1249,23 @@ function emitEvent(state, event) {
     }
   }
 
+  if (event.type === 'ON_CREATURE_DIES') {
+    for (const who of allPlayers) {
+      for (const card of state[who].bf) {
+        if (card.triggered === 'sengirCounter' &&
+            (state.turnState.sengirDamagedIids || []).includes(event.payload.cardId)) {
+          newTriggers.push({
+            triggerId: 'sengirCounter',
+            sourceCardId: card.iid,
+            controller: who,
+            eventPayload: event.payload,
+            timestamp: ts++,
+          });
+        }
+      }
+    }
+  }
+
   if (!newTriggers.length) return state;
   // APNAP ordering: active player's triggers first
   const sorted = [
@@ -1338,7 +1362,21 @@ function processTriggerQueue(state) {
   while (s.triggerQueue.length > 0 && !s.pendingChoice) {
     const [next, ...rest] = s.triggerQueue;
     s = { ...s, triggerQueue: rest };
-    s = resolveTrigger(s, next);
+    if (next.triggerId === 'sengirCounter') {
+      const allBf = [...s.p.bf, ...s.o.bf];
+      const sengir = allBf.find(c => c.name === "Sengir Vampire");
+      if (sengir) {
+        const who = sengir.controller;
+        s = { ...s, [who]: { ...s[who], bf: s[who].bf.map(c =>
+          c.iid === sengir.iid
+            ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + 1 } }
+            : c
+        ) } };
+        s = dlog(s, "Sengir Vampire: +1/+1 counter (creature it damaged died).", "effect");
+      }
+    } else {
+      s = resolveTrigger(s, next);
+    }
   }
   return s;
 }
@@ -1380,7 +1418,7 @@ fogActive: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [] },
+turnState: { damageLog: [], sengirDamagedIids: [] },
 triggerQueue: [],
 pendingChoice: null,
 priorityWindow: false,

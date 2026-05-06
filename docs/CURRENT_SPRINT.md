@@ -41,7 +41,7 @@
 | File | Change |
 |------|--------|
 | `src/data/cards.js` | Added `triggeredAbilities` to `sengir_vampire` and `force_of_nature` |
-| `src/engine/DuelCore.js` | Added `ON_UPKEEP_START` emission; added `payMana` effect type; added `RESOLVE_CHOICE` reducer case; SILENCE modifier guard on upkeep triggers |
+| `src/engine/DuelCore.js` | Added `ON_UPKEEP_START` emission; added `payMana` effect type; added `RESOLVE_CHOICE` reducer case; SILENCE modifier guard on upkeep triggers; `sengirDamagedIids` tracking in combat; `sengirCounter` trigger in `emitEvent` + `processTriggerQueue` (P1 complete) |
 | `src/hooks/useDuel.js` | Exposed `resolveChoice` dispatcher |
 | `src/ui/DuelScreen.jsx` | Added `ChoiceModal` component; AI auto-resolution of `pendingChoice` |
 
