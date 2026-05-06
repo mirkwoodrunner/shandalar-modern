@@ -619,4 +619,102 @@ ACTIVE (Phase 6 Deliverable 1 ✅ Complete)
 
 ---
 
+---
+
+# 14. HOLY GROUND — LANDWALK SUPPRESSION
+
+---
+
+## 14.1 Holy Ground System
+
+### Description
+Castle modifier for Delenia (White). Suppresses all landwalk-type keywords on opponent creatures when the defending player controls Holy Ground. Enforced statically at keyword evaluation points — no trigger queue involvement.
+
+---
+
+### GDD Reference
+- §4 (The Five Mages — Delenia Holy Ground)
+- §8 Phase 6 Deliverable 2
+
+---
+
+### SYSTEMS.md Reference
+- Section 19 (Holy Ground — Landwalk Suppression)
+
+---
+
+### Implementation
+```
+/src/engine/DuelCore.js  — hasKw (optional state param); canBlockDuel (optional state param)
+```
+
+---
+
+### Responsibilities
+- Return `false` for any `*WALK` keyword when defending player has `holy_ground` on battlefield
+- Thread `state` into `canBlockDuel` blocking-legality check
+- No cascade into trigger queue; pure inline enforcement
+
+---
+
+### Strict Constraints
+- Does NOT grant protection, prevent targeting, or affect non-landwalk keywords
+- Backward-compatible: existing call sites without `state` arg behave identically
+
+---
+
+### Status
+ACTIVE (Phase 6 ✅ Complete — Option B)
+
+---
+
+# 15. POWER SURGE UPKEEP SYSTEM
+
+---
+
+## 15.1 Power Surge System
+
+### Description
+Upkeep damage trigger for Power Surge enchantment. Damage equals the number of lands the active player controlled that were untapped at the start of their previous upkeep (snapshot taken during UNTAP before the untap loop runs).
+
+---
+
+### GDD Reference
+- §3.3 Special Mechanics (Power Surge)
+- §8 Phase 6 Deliverable 3
+
+---
+
+### SYSTEMS.md Reference
+- Section 20 (Power Surge Upkeep System)
+
+---
+
+### Implementation
+```
+/src/engine/DuelCore.js  — turnState.powerSurgeUntappedCount; UNTAP snapshot; UPKEEP handler
+```
+
+---
+
+### Responsibilities
+- Snapshot untapped land count during UNTAP (only when Power Surge is in play)
+- Apply snapshot as damage during UPKEEP via `hurt()`
+- Reset snapshot to 0 each UNTAP regardless of Power Surge presence
+
+---
+
+### Active Trigger
+
+| Card | Snapshot Event | Damage Event | Behavior |
+|------|---------------|-------------|---------|
+| Power Surge | UNTAP start | UPKEEP | Deals X damage where X = untapped lands at previous upkeep start |
+
+---
+
+### Status
+ACTIVE (Phase 6 ✅ Complete)
+
+---
+
 # End of MECHANICS INDEX v1.0

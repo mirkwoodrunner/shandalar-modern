@@ -1,6 +1,6 @@
 # Shandalar: Modern Edition — Game Design Document
-### Version 0.8 | Design Bible
-### Last updated: Phase 6 partial — Triggered Abilities complete (Sengir Vampire + Force of Nature)
+### Version 0.9 | Design Bible
+### Last updated: Phase 6 partial — Power Surge upkeep, Holy Ground (landwalk suppression), CardPreviewPanel in DeckManager
 
 ---
 
@@ -16,6 +16,7 @@
 | 0.6 | Post-Phase 4 fixes | Mana burn per-phase fix; land layout (horizontal pip row); AI mana simulation; priority improvements: auto-center map, clipboard log, deck manager overhaul, always-attack AI |
 | 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
 | 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard; Priority window / instant-speed interaction system |
+| 0.9 | Phase 6 (Engine Depth — partial) | Power Surge upkeep damage implemented (snapshot at UNTAP, damage at UPKEEP); Holy Ground Option B (landwalk suppression via hasKw state param + canBlockDuel threading); CardPreviewPanel added to DeckManager (Scryfall art crop on click-to-preview, inline flex sibling positioning) |
 
 ---
 
@@ -539,7 +540,7 @@ Six archetypes with curated ~40-card lists:
 
 | Mage | Color | Archetype | Castle Name | Castle Modifier | Minions | Reward |
 |------|-------|-----------|-------------|-----------------|---------|--------|
-| Delenia | W | White Weenie | White Keep | *Holy Ground*: all creatures have protection from non-white | Holy Crusader, Serra's Knight | Arzakon's Ward |
+| Delenia | W | White Weenie | White Keep | *Holy Ground*: opponent creatures lose all landwalk keywords (implemented via `hasKw` state param) | Holy Crusader, Serra's Knight | Arzakon's Ward |
 | Xylos | U | Blue Control | Azure Tower | *Tidal Lock*: player casts only 1 spell/turn | Tidal Phantom, Xylos's Agent | Scrying Stone |
 | Mortis | B | Black Reanimator | Shadow Spire | *Death's Embrace*: Mortis's creatures gain lifelink | Skeletal Minion, Mortis's Shade | Amulet of Life |
 | Karag | R | Red Burn | Fire Citadel | *Inferno*: 1 damage to all players each end step | Goblin Horde, Karag's Raider | Mage's Focus |
@@ -602,7 +603,7 @@ Phase 1 — Overworld  (shandalar.jsx)
       ├── <DungeonModal> name, rooms, modifier, known loot, enter/retreat
       ├── <CastleModal>  mage flavor, color border, challenge/withdraw
       ├── <EncounterModal> monster stats, engage/flee, outcome, win/lose result
-      ├── <DeckManager>  binder ↔ deck, color filter, swap, 40-card warning
+      ├── <DeckManager>  binder ↔ deck, color filter, swap, 40-card warning; <CardPreviewPanel> shows Scryfall art crop on click
       ├── <ManaLinkAlert> timed banner, respond/dismiss
       ├── <LogPanel>     scrolling chronicle, type-colored entries
       └── Victory / Defeat overlays
@@ -622,6 +623,7 @@ Phase 2 — Duel Engine  (shandalar-duel.jsx)
       ├── <CardTooltip>       hover: full text, keyword explanations, P/T, rarity
       ├── <TargetArrow>       SVG animated gold dashed arrow from selected card to target; position:absolute overlay; pointerEvents:none
       ├── <ChoiceModal>       modal for triggered ability choices (Force of Nature GGGG/8dmg); dispatches RESOLVE_CHOICE
+      ├── <InstantPriorityBar> shown above ActionBar when priority window is open; castable instants + activated abilities + Pass Priority button
       ├── Last Spell Cast     sidebar panel (right Chronicle column) showing last log entry: caster badge, name, type, cost, oracle text, P/T
       ├── Cast / stack row    cast button + stack display + X input + combat prompts repositioned above Pass Priority / End Turn buttons
       └── AI Engine           strategy-aware; setTimeout per opponent phase; auto-resolves pendingChoice
@@ -740,7 +742,7 @@ Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequen
 - *Overgrowth* (Sylvara) — `TAP_LAND` action now routes through `applyOvergrowthTap()`; lands produce 2 mana when this modifier is active
 - *Tidal Lock* (Xylos) — player cannot cast more than 1 spell per turn (`spellsThisTurn` counter added to state, reset each turn)
 - *Death's Embrace* (Mortis) — opponent's creatures gain lifelink during combat (applied via `hasLifelink` flag in `resolveCombat`)
-- *Holy Ground* (Delenia) — display-only; full protection enforcement Phase 5
+- *Holy Ground* (Delenia) — Option B implemented (Phase 6): opponent creatures lose all landwalk-type keywords during combat; enforced via optional `state` param in `hasKw` and `canBlockDuel`
 - *Dominion* (Arzakon) — player HP reset to `ruleset.startingLife` before the fight
 
 **New Systems:**
@@ -756,7 +758,7 @@ Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequen
 **Deferred items — resolved in later phases:**
 - Sengir Vampire triggered counter → Phase 6 ✅
 - Force of Nature upkeep choice UI → Phase 6 ✅
-- Holy Ground full protection enforcement in combat → Phase 6 (planned)
+- Holy Ground (Option B) landwalk suppression → Phase 6 ✅
 - Birds of Paradise any-color selection → Resolved in Phase 5 (pendingBop color picker)
 - Unlockables persistence (localStorage) → Resolved in Phase 6 (P5) ✅
 - `enchantments` and `tokens` fields wired to aura/token mechanics → Phase 7
@@ -822,30 +824,52 @@ These items were identified during playtesting and are being addressed before Ph
 - Both read and write wrapped in try/catch; malformed JSON falls back to OW_ARTS defaults silently
 - Applies in sandbox mode and normal play alike
 
-**Deliverable 2 — Holy Ground Combat Enforcement** *(Planned)*
-- Castle modifier for Delenia (White); currently display-only
-- Full enforcement: player creatures cannot be targeted by opponent spells or abilities; opponent creatures cannot deal combat damage to the player; does not affect creature-to-creature damage
-- Enforced inline in combat damage resolution (no trigger queue interaction); per [SYSTEMS.md](http://SYSTEMS.md) §17.6.3
+**Deliverable 2 — Holy Ground Combat Enforcement (Option B)** ✅ Complete
 
-**Deliverable 3 — Remaining Effect Stubs** *(Planned)*
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `hasKw` gains optional `state` 3rd param; if keyword ends in `WALK` and defending player has Holy Ground on battlefield, returns `false`; `canBlockDuel` gains optional `state` 4th param and threads it into the `hasKw` LANDWALK check; all existing call sites without the new args remain backward-compatible |
 
-| Card | Effect ID | Implementation Plan |
-|------|-----------|-------------------|
-| Regeneration (aura) | `regeneration` | Aura grants `regenerate` activated ability (`G: regenerate`) to enchanted creature; routes through existing `ACTIVATE_ABILITY` handler |
-| Channel | `channel` | Sets `channelActive: true` flag on player state; during active player's turn, any mana spend may instead pay 1 life per 1 colorless; cleared at end of turn |
-| Fastbond | `fastbond` | Sets `fastbondActive: true` on player state; `PLAY_LAND` no longer checks `landsPlayedThisTurn > 0`; each land played beyond the first deals 1 damage to controller |
-| Power Surge (upkeep) | `powerSurgeUpkeep` | Tracks `untappedLandsAtUpkeepStart` in `turnState`; upkeep damage = count of untapped lands at previous upkeep start; currently stubbed with console warning |
-| Kudzu (upkeep) | `kudzu` | Each upkeep: destroy enchanted land; if controller controls another land, Kudzu re-attaches to a random one (seeded RNG); if no lands remain, Kudzu goes to graveyard |
+#### How it works
 
-**Deliverable 4 — Priority Window / Instant-Speed Interaction** *(Planned)*
-- Player offered a response window at each priority-eligible phase transition ([SYSTEMS.md](http://SYSTEMS.md) `PRIORITY_PHASES`)
-- Window suppressed when player has no instants in hand and no usable activated abilities on battlefield
-- Window suppressed entirely under SILENCE dungeon modifier
-- AI evaluates instant-speed responses per archetype logic; control archetypes prioritize counterspells; aggro passes priority immediately
-- New state fields: `priorityWindow: boolean`, `priorityPasser: "p"|"o"|null`
-- `PASS_PRIORITY` action advances phase when both players have passed
-- `InstantPriorityBar` component in `TargetingOverlay.jsx`; shown only when window is open and player has relevant cards
-- Nothing calls `ADVANCE_PHASE` while a priority window is open
+1. When an attacker's landwalk is evaluated (blocking legality and damage routing), `hasKw(card, keyword, state)` is called with the current game state.
+2. If `keyword` ends in `"WALK"` (e.g. `FORESTWALK`, `ISLANDWALK`), the function checks whether the defending player's battlefield contains a card with id `holy_ground`.
+3. If Holy Ground is present, the function returns `false` regardless of the attacker's keyword list, suppressing the landwalk advantage.
+4. `canBlockDuel(attacker, blocker, state)` threads `state` into the LANDWALK check so blocking legality also respects Holy Ground suppression.
+
+**Deliverable 3 — Remaining Effect Stubs** *(Partial)*
+
+| Card | Effect ID | Status | Implementation Notes |
+|------|-----------|--------|---------------------|
+| Power Surge (upkeep) | `powerSurgeUpkeep` | ✅ Complete | `turnState.powerSurgeUntappedCount` snapshot taken before UNTAP loop when Power Surge is on either battlefield; UPKEEP handler reads snapshot and calls `hurt()`; 0 tapped lands logs and skips damage |
+| Regeneration (aura) | `regeneration` | Planned | Aura grants `regenerate` activated ability (`G: regenerate`) to enchanted creature; routes through existing `ACTIVATE_ABILITY` handler |
+| Channel | `channel` | Planned | Sets `channelActive: true` flag on player state; during active player's turn, any mana spend may instead pay 1 life per 1 colorless; cleared at end of turn |
+| Fastbond | `fastbond` | Planned | Sets `fastbondActive: true` on player state; `PLAY_LAND` no longer checks `landsPlayedThisTurn > 0`; each land played beyond the first deals 1 damage to controller |
+| Kudzu (upkeep) | `kudzu` | Planned | Each upkeep: destroy enchanted land; if controller controls another land, Kudzu re-attaches to a random one (seeded RNG); if no lands remain, Kudzu goes to graveyard |
+
+**Deliverable 4 — Priority Window / Instant-Speed Interaction** ✅ Complete
+
+See `docs/SYSTEMS.md` §18 for full specification. Summary:
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | `priorityWindow` + `priorityPasser` state fields; `OPEN_PRIORITY_WINDOW` + `PASS_PRIORITY` reducer cases; `ADVANCE_PHASE` blockade guard |
+| `src/hooks/useDuel.js` | `openPriorityWindow`, `passPriority` dispatchers |
+| `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI — castable instants + non-mana activated abilities + "Pass Priority" button |
+| `src/DuelScreen.tsx` | `requestPhaseAdvance` smart-suppression helper; auto-advance `useEffect`; AI priority handler |
+
+**Deliverable 5 — CardPreviewPanel in DeckManager** ✅ Complete
+
+| File | Change |
+|------|--------|
+| `src/ui/overworld/EncounterModal.jsx` | `CardPreviewPanel` component added; clicking any card in deck or binder shows art crop + card details; deck-side selection shows panel as left flex sibling; binder-side shows as right sibling; `useCardArt` hook fetches Scryfall art crop; clicking same card again dismisses panel |
+
+#### How it works
+
+1. Clicking a card in the deck list or binder list sets `previewCard` state (and `previewSide: 'deck'|'binder'`).
+2. `CardPreviewPanel` renders as an inline flex sibling of the DeckManager modal — left of modal for deck selections, right for binder. This keeps the modal visually centered.
+3. `useCardArt(card.name)` is called inside the panel; Scryfall art crop fills a 150px art window between the color band and the type row.
+4. Clicking the same card clears the preview (toggle dismiss).
 
 ---
 
