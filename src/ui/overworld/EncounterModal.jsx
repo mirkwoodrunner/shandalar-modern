@@ -390,7 +390,20 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 <div style={{ position:"absolute", top:3, right:4, fontSize:7, color:ca, fontFamily:"'Fira Code',monospace", fontWeight:700 }}>{c.cost||""}</div>
 <div style={{ fontSize:8, fontFamily:"'Cinzel',serif", color:"#e0d080", fontWeight:700, lineHeight:1.3, marginBottom:2, paddingLeft:8, paddingRight:20 }}>{c.name}</div>
 <div style={{ fontSize:7, color:"#806040", marginBottom:2 }}>{c.subtype||c.type}</div>
-{isCre(c) && <div style={{ fontSize:9, fontWeight:700, color:ca, fontFamily:"'Fira Code',monospace", textAlign:"right" }}>{c.power}/{c.toughness}</div>}
+{c.type?.includes("Creature") && (
+<div style={{
+  textAlign: "right",
+  fontSize: 9,
+  fontFamily: "'Fira Code', monospace",
+  fontWeight: 700,
+  color: "#d4b040",
+  marginTop: 3,
+  paddingTop: 2,
+  borderTop: "1px solid rgba(180,160,60,0.2)",
+}}>
+  {c.power}/{c.toughness}
+</div>
+)}
 </div>
 );
 }
