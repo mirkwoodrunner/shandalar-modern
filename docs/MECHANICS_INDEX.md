@@ -23,6 +23,45 @@ It ensures:
 
 ---
 
+## 1.2 Triggered Ability System
+
+### Description
+Card-triggered event pipeline within DuelCore. Detects, enqueues, and resolves card-specific triggered abilities at explicit state transitions. Currently implemented card-specifically (no general registry).
+
+### SYSTEMS.md Reference
+- Section 17 (Triggered Ability Pipeline)
+- Section 17.1 (Data Model / damageLog shape)
+- Section 17.5 (Upkeep Choice UI Contract)
+
+### Implementation
+```
+/src/engine/DuelCore.js   — emitEvent, processTriggerQueue, resolveTrigger, RESOLVE_CHOICE, UPKEEP_CHOICE_RESOLVE
+/src/data/cards.js        — triggeredAbilities declarations
+/src/hooks/useDuel.js     — resolveChoice, resolveUpkeepChoice dispatchers
+/src/ui/DuelScreen.jsx    — ChoiceModal, ForceOfNatureUpkeepModal components
+```
+
+### Active Card Triggers
+
+#### Sengir Vampire (+1/+1 counter)
+```
+Status: ACTIVE (card-specific implementation; general registry deferred)
+Event flow: ON_DAMAGE_DEALT -> sengirDamagedIids[] -> ON_CREATURE_DIES -> sengirCounter trigger -> P1P1 counter
+Tracking field: turnState.sengirDamagedIids  (cleared each UNTAP)
+```
+
+#### Force of Nature (upkeep choice)
+```
+Status: ACTIVE
+Event flow: UPKEEP forceOfNatureUpkeep case -> pendingUpkeepChoice (human) | inline resolution (AI)
+Action: UPKEEP_CHOICE_RESOLVE { choice: "PAY_GGGG" | "TAKE_DAMAGE" }
+```
+
+### Status
+ACTIVE (Phase 5 Completion Sprint)
+
+---
+
 ## 1.1 DuelCore System (Combat + Turn Engine)
 
 ### Description
@@ -268,6 +307,32 @@ ACTIVE
 ---
 
 # 5. CARD SYSTEM
+
+---
+
+## 5.2 Power Surge Upkeep Trigger
+
+### Description
+Enchantment that deals X damage to the active player at upkeep, where X equals the number of untapped lands they controlled at the beginning of their previous upkeep. Uses a snapshot taken during UNTAP.
+
+### SYSTEMS.md Reference
+- Section 20 (Power Surge Upkeep System)
+
+### Implementation
+```
+/src/engine/DuelCore.js  — turnState.powerSurgeUntappedCount; UNTAP snapshot; UPKEEP handler
+```
+
+### Mechanism
+```
+turnState field: powerSurgeUntappedCount
+Snapshot timing: UNTAP phase (before untap loop), only when Power Surge is on either battlefield
+Consumption: UPKEEP forceOfNatureUpkeep case reads snapshot -> hurt()
+Reset: set to 0 at start of every UNTAP
+```
+
+### Status
+ACTIVE (Phase 5 Completion Sprint)
 
 ---
 
@@ -714,6 +779,44 @@ Upkeep damage trigger for Power Surge enchantment. Damage equals the number of l
 
 ### Status
 ACTIVE (Phase 6 ✅ Complete)
+
+---
+
+---
+
+# 16. PERSISTENCE SYSTEM
+
+---
+
+## 16.1 Unlockables Persistence
+
+### Description
+Cross-run persistence of artifact ownership flags via `localStorage`. Allows unlocked artifacts to survive browser refreshes and new runs. In-run game state is not persisted.
+
+### GDD Reference
+- §5 (Artifacts and Unlockables)
+
+### SYSTEMS.md Reference
+- Section 21 (Persistence System)
+
+### Implementation
+```
+/src/OverworldGame.jsx   — lazy useState initializer reads on mount; useEffect([artifacts]) writes on every change
+```
+
+### Responsibilities
+- Read `shandalar_unlockables` from `localStorage` on app mount
+- Write updated owned flags on every `setArtifacts` call
+- Fail silently on any `localStorage` error (quota, private browsing, malformed JSON)
+- `OW_ARTS` remains source of truth for artifact metadata; only `owned` flags are persisted
+
+### Strict Constraints
+- UI-layer concern only — no DuelCore involvement
+- No migration logic — `OW_ARTS` defaults are always the safe fallback
+- No user-visible errors; `console.warn` is the maximum noise level
+
+### Status
+ACTIVE (Phase 5 Completion Sprint)
 
 ---
 

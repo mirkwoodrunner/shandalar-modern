@@ -104,5 +104,25 @@
 |------|--------|
 | `src/ui/overworld/EncounterModal.jsx` | `CardPreviewPanel` component renders as inline flex sibling of DeckManager modal (left for deck-side selection, right for binder-side); fetches Scryfall art crop via `useCardArt`; 150px art window between color band and type row; click same card again to dismiss |
 
+---
+
+## Phase 5 Completion Sprint — 2026-05-06
+
+| Task | File(s) Changed | Status |
+|------|----------------|--------|
+| Sengir Vampire triggered counter | `DuelCore.js`, `cards.js` | Done |
+| Force of Nature choice UI | `DuelCore.js`, `DuelScreen.jsx`, `ForceOfNatureUpkeepModal` (inline) | Done |
+| Holy Ground landwalk suppression | `DuelCore.js` | Done |
+| Unlockables localStorage persistence | `src/OverworldGame.jsx` | Done |
+| Power Surge upkeep damage | `DuelCore.js` | Done |
+
+### Implementation notes
+
+- **Sengir Vampire**: Uses a card-specific implementation (`triggered === 'sengirCounter'`) rather than a general trigger registry. `sengirDamagedIids` tracks IIDs of creatures damaged this turn; on `ON_CREATURE_DIES` the IID is checked against this list. Counter stored as `P1P1` in `card.counters`.
+- **Force of Nature**: Human player gets `pendingUpkeepChoice` modal (`ForceOfNatureUpkeepModal`); AI resolves inline in the `forceOfNatureUpkeep` UPKEEP case. Phase advance blocked while `pendingUpkeepChoice !== null`. Uses `UPKEEP_CHOICE_RESOLVE` action (not the triggered-ability `RESOLVE_CHOICE` path).
+- **Holy Ground**: Option B confirmed. `hasKw(card, kw, state?)` returns `false` for any `*WALK` keyword when the defending player's battlefield contains `holy_ground`. `canBlockDuel` threads `state` through. Backward-compatible: all call sites without `state` arg unchanged.
+- **Unlockables**: Persisted via `shandalar_unlockables` key in `localStorage`. `OverworldGame.jsx` lazy-initializes `artifacts` state from storage; `useEffect([artifacts])` writes on every change. Fail-silent on any `localStorage` error.
+- **Power Surge**: `turnState.powerSurgeUntappedCount` snapshot taken at the top of UNTAP (before the untap loop), only when Power Surge is on either battlefield. Read and consumed in the `powerSurgeUpkeep` UPKEEP case via `hurt()`. Reset to 0 each UNTAP.
+
 ### Up Next (Phase 6)
 - Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, `kudzu`

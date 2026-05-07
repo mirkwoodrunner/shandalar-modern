@@ -1060,7 +1060,7 @@ ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, sp
   turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0 } };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
-// Power Surge: snapshot tapped land count before untapping (SYSTEMS.md §17, Option A)
+// Power Surge: snapshot tapped land count before untapping (SYSTEMS.md S20, Option A)
 const powerSurgeOnField = ns[ns.active].bf.some(c => c.name === "Power Surge") ||
                           ns[ns.active === "p" ? "o" : "p"].bf.some(c => c.name === "Power Surge");
 if (powerSurgeOnField) {

@@ -786,9 +786,14 @@ These items were identified during playtesting and are being addressed before Ph
 - ✅ `powerSink` — confirmed complete (Phase 4)
 - ✅ Scryfall API card art — `src/utils/scryfallArt.js` + `src/utils/useCardArt.js` + `CardArtDisplay` in `Card.jsx`; fetches oldest classic-set printing (Alpha→Beta→Unlimited→Revised→4th Ed); session cache (one request per card name); double-faced card fallback; emoji fallback on any network or parse failure
 
-**Remaining:**
-- Holy Ground full protection enforcement in combat
-- ~~Unlockables persistence (localStorage)~~ ✅ Complete (Phase 6 P5) — artifact `owned` flags persisted in `shandalar_unlockables` key; merged onto canonical OW_ARTS on load
+**Completed (Phase 5 Completion Sprint):**
+- ✅ Holy Ground — Option B landwalk suppression (`hasKw` state param + `canBlockDuel` threading); full protection deferred
+- ✅ Unlockables persistence (localStorage) — artifact `owned` flags persisted in `shandalar_unlockables` key; merged onto canonical OW_ARTS on load
+- ✅ Sengir Vampire triggered counter — `ON_CREATURE_DIES` + `sengirDamagedIids` tracking; `P1P1` counter applied
+- ✅ Force of Nature upkeep choice UI — `pendingUpkeepChoice` modal; AI inline resolution; `UPKEEP_CHOICE_RESOLVE`
+- ✅ Power Surge upkeep damage — `powerSurgeUntappedCount` snapshot at UNTAP; consumed at UPKEEP
+
+**Remaining (deferred):**
 - Dungeon atmosphere overlays per modifier type
 - LocalStorage save state (full run persistence across browser sessions)
 - Additional card sets (Ice Age, Mirage) as optional pool expansions
@@ -889,6 +894,10 @@ See `docs/SYSTEMS.md` §18 for full specification. Summary:
 | Dynamic P/T? | Computed at resolution time via pure functions | Handles Plague Rats and counter states |
 | Stone Rain? | Shop-only until Phase 3 | Missing from duel DB; corrected in Phase 3 |
 | Card ID bugs? | Deferred to Phase 3 | `natural_order`/`royal_decree` corrected |
+| Force of Nature: who resolves the choice? | Player gets modal; AI resolves inline | Deterministic; modal only meaningful for human decisions |
+| Holy Ground: full protection or landwalk suppression? | Landwalk suppression only (Option B) | Full protection deferred; suppression covers the primary use case |
+| Power Surge snapshot timing | UNTAP phase (Option A) | Consistent with printed card text; avoids mid-upkeep state reads |
+| Unlockables storage | localStorage, silent fail | No backend; private browsing gracefully degrades |
 
 ---
 
