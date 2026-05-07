@@ -320,6 +320,9 @@ if (state.pendingChoice && state.pendingChoice.controller === 'o') {
 }
 
 if (state.active !== 'o' || aiRef.current) return;
+// During COMBAT_BLOCKERS on the AI's turn the human is the defender.
+// Do not auto-advance — the BLOCK button calls advancePhase directly.
+if (state.phase === 'COMBAT_BLOCKERS') return;
 
 aiRef.current = true;
 
