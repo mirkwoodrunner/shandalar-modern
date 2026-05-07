@@ -409,6 +409,12 @@ if (zone === 'pBf') {
     declareAttacker(card.iid);
     return;
   }
+  // Assign blocker: opponent is attacking, player clicks own creature to block
+  if (state.phase === 'COMBAT_BLOCKERS' && state.active !== 'p' && state.selTgt) {
+    declareBlocker(state.selTgt, card.iid);
+    selectTarget(null);
+    return;
+  }
   // Pending activated ability ? this creature is the target
   if (pendingActivate) {
     activateAbility(pendingActivate.iid, card.iid);
@@ -1078,7 +1084,7 @@ return (
   }}>
 
     {/* Contextual row — cast, stack, prompts (above nav buttons) */}
-    {(isMyTurn && inMain && selDef) || selDef?.cost?.includes('X') || s.stack.length > 0 || pendingActivate || (isMyTurn && !pendingActivate && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS' || s.attackers.length > 0)) ? (
+    {(isMyTurn && inMain && selDef) || selDef?.cost?.includes('X') || s.stack.length > 0 || pendingActivate || (isMyTurn && !pendingActivate && (s.phase === 'COMBAT_ATTACKERS' || s.attackers.length > 0)) || (!isMyTurn && s.phase === 'COMBAT_BLOCKERS') ? (
       <div style={{ paddingTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
 
         {/* Cast / Play button */}
@@ -1136,16 +1142,16 @@ return (
         )}
 
         {/* Combat prompts */}
-        {isMyTurn && !pendingActivate && (
+        {!pendingActivate && (
           <>
-            {s.phase === 'COMBAT_ATTACKERS' && (
+            {isMyTurn && s.phase === 'COMBAT_ATTACKERS' && (
               <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
                 ⚔ Click your creatures to declare attackers
               </span>
             )}
-            {s.phase === 'COMBAT_BLOCKERS' && (
+            {!isMyTurn && s.phase === 'COMBAT_BLOCKERS' && (
               <span style={{ fontSize: 10, color: '#ffaa40', fontFamily: "'Cinzel',serif", fontWeight: 700 }}>
-                ⚔ Click an attacker, then your blocker
+                ⚔ Click an attacker, then your blocker to block
               </span>
             )}
             {s.attackers.length > 0 && (
@@ -1174,17 +1180,6 @@ return (
               ATTACK
             </button>
           )}
-          {s.phase === 'COMBAT_BLOCKERS' && (
-            <button onClick={advancePhase} style={{
-              border: '1px solid rgba(196,160,40,.6)',
-              background: 'rgba(60,50,10,.3)',
-              color: '#c4a040',
-              padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
-              fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
-            }}>
-              BLOCK
-            </button>
-          )}
           {s.phase !== 'COMBAT_ATTACKERS' && s.phase !== 'COMBAT_BLOCKERS' && (
             <button onClick={advancePhase} style={{
               border: '1px solid rgba(120,100,40,.4)',
@@ -1207,7 +1202,19 @@ return (
           </button>
         </>
       )}
-      {!isMyTurn && (
+      {/* BLOCK button: shown to the DEFENDER (non-active player) during COMBAT_BLOCKERS */}
+      {!isMyTurn && s.phase === 'COMBAT_BLOCKERS' && (
+        <button onClick={advancePhase} style={{
+          border: '1px solid rgba(196,160,40,.6)',
+          background: 'rgba(60,50,10,.3)',
+          color: '#c4a040',
+          padding: '6px 20px', borderRadius: 20, cursor: 'pointer',
+          fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+        }}>
+          BLOCK
+        </button>
+      )}
+      {!isMyTurn && s.phase !== 'COMBAT_BLOCKERS' && (
         <span style={{ fontSize: 10, color: '#6a5a30', fontFamily: "'Cinzel',serif", fontStyle: 'italic' }}>
           Opponent's turn—
         </span>
