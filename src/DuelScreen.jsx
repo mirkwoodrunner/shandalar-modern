@@ -740,7 +740,8 @@ return (
   </div>
 
   {/* -- MAIN AREA ------------------------------------------------------- */}
-  <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+  <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
     {/* -- LEFT COLUMN --------------------------------------------------- */}
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1065,7 +1066,7 @@ return (
       <DuelLog log={s.log} />
     </div>
 
-    {/* -- AI DEBUG PANEL (sandbox only) ---------------------------------- */}
+    </div>
     {config.sandbox && <AIDebugPanel hand={s.o.hand} lib={s.o.lib} />}
   </div>
 
