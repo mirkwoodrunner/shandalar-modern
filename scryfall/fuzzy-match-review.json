@@ -5,15 +5,15 @@
     "proposedName": "Pearled Unicorn",
     "currentText": "",
     "proposedOracleText": "",
-    "approved": false
+    "approved": true
   },
   {
     "cardDbId": "dandan",
     "proposedPoolId": "dandân",
     "proposedName": "Dandân",
-    "currentText": "Dand?n can't attack unless defending player controls an Island.",
+    "currentText": "Dandân can't attack unless defending player controls an Island.",
     "proposedOracleText": "This creature can't attack unless defending player controls an Island.\nWhen you control no Islands, sacrifice this creature.",
-    "approved": false
+    "approved": true
   },
   {
     "cardDbId": "juzam_djinn",
@@ -21,7 +21,7 @@
     "proposedName": "Juzám Djinn",
     "currentText": "At upkeep, Juzam Djinn deals 1 damage to you.",
     "proposedOracleText": "At the beginning of your upkeep, this creature deals 1 damage to you.",
-    "approved": false
+    "approved": true
   },
   {
     "cardDbId": "gaea_liege",
@@ -29,7 +29,7 @@
     "proposedName": "Gaea's Liege",
     "currentText": "P/T = number of forests you control.",
     "proposedOracleText": "As long as Gaea's Liege isn't attacking, its power and toughness are each equal to the number of Forests you control. As long as Gaea's Liege is attacking, its power and toughness are each equal to the number of Forests defending player controls.\n{T}: Target land becomes a Forest until this creature leaves the battlefield.",
-    "approved": false
+    "approved": true
   },
   {
     "cardDbId": "nevinyrral_disk",
@@ -37,7 +37,7 @@
     "proposedName": "Nevinyrral's Disk",
     "currentText": "1,T,Sacrifice: Destroy all creatures, artifacts, and enchantments.",
     "proposedOracleText": "This artifact enters tapped.\n{1}, {T}: Destroy all artifacts, creatures, and enchantments.",
-    "approved": false
+    "approved": true
   },
   {
     "cardDbId": "tawnos_coffin",
@@ -45,6 +45,6 @@
     "proposedName": "Tawnos's Coffin",
     "currentText": "{3,T}: Exile target creature and attached Auras. Return them when Tawnos's Coffin leaves the battlefield.",
     "proposedOracleText": "You may choose not to untap this artifact during your untap step.\n{3}, {T}: Exile target creature and all Auras attached to it. Note the number and kind of counters that were on that creature. When this artifact leaves the battlefield or becomes untapped, return that exiled card to the battlefield under its owner's control tapped with the noted number and kind of counters on it. If you do, return the other exiled cards to the battlefield under their owner's control attached to that permanent.",
-    "approved": false
+    "approved": true
   }
 ]
