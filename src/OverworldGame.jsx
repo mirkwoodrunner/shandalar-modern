@@ -442,6 +442,7 @@ overworldHP,
 castleMod,
 anteEnabled,
 context, ...extraData,
+sandbox: isSandbox,
 });
 }, [deck, ruleset, anteEnabled]);
 
@@ -551,6 +552,7 @@ if (ctx === 'dungeon') {
         castleMod: prog.mod,
         anteEnabled: false,
         context: 'dungeon',
+        sandbox: isSandbox,
       });
       return; // skip clearing duelCfg
     } else {
@@ -620,6 +622,7 @@ overworldHP: ruleset.startingLife, // Full HP reset for Arzakon
 castleMod: { name: 'Dominion', desc: 'Arzakon commands all five colors. The final battle for Shandalar begins.' },
 anteEnabled: false,
 context: 'arzakon',
+sandbox: isSandbox,
 });
 }, [deck, ruleset, addLog]);
 
