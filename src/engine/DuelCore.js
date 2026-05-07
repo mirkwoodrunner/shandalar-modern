@@ -1548,7 +1548,10 @@ case "DECLARE_ATTACKER": {
 }
 
 case "DECLARE_BLOCKER": {
-  const bl = s.o.bf.find(x => x.iid === action.blId);
+  const blOnP = s.p.bf.find(x => x.iid === action.blId);
+  const blOnO = s.o.bf.find(x => x.iid === action.blId);
+  const bl = blOnP || blOnO;
+  const blSide = blOnP ? 'p' : 'o';
   const att = getBF(s, action.attId);
   if (!bl || !att || !s.attackers.includes(action.attId)) return s;
   // S17.6.2B: explicit protection enforcement with log message
@@ -1561,11 +1564,11 @@ case "DECLARE_BLOCKER": {
       }
     }
   }
-  if (!canBlockDuel(bl, att, s.o.bf, s)) return s;
+  if (!canBlockDuel(bl, att, s[blSide].bf, s)) return s;
   const already = s.blockers[action.blId] === action.attId;
   const nb = { ...s.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
-  return { ...s, blockers: nb, o: { ...s.o, bf: s.o.bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
+  return { ...s, blockers: nb, [blSide]: { ...s[blSide], bf: s[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
 }
 
 case "OPEN_PRIORITY_WINDOW": {

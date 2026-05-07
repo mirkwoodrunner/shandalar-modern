@@ -4,6 +4,14 @@
 
 import React, { useRef, useEffect } from 'react';
 
+function sanitizeLogText(text) {
+  if (!text) return '';
+  return text
+    .replace(/�/g, '→')
+    .replace(/�/g, '→')
+    .replace(/ \? /g, ' → ');
+}
+
 const LOG_COLORS = {
 info:    "#a8c0a0",
 warn:    "#f0c060",
@@ -45,7 +53,7 @@ color: LOG_COLORS[e.type] || "#a0b090",
 marginBottom: 3, lineHeight: 1.4,
 fontFamily: "'Crimson Text',serif",
 }}>
-• {e.text}
+• {sanitizeLogText(e.text)}
 </div>
 ))}
 </div>
@@ -72,7 +80,7 @@ scrollbarWidth: "thin",
 {log.slice(-60).map((e, i) => (
 <div key={i} style={{ marginBottom: 3, lineHeight: 1.4, color: LOG_COLORS[e.type] || "#c0b070" }}>
 <span style={{ color: "rgba(160,130,60,.5)", marginRight: 4, fontSize: 9 }}>T{e.turn}</span>
-{e.text}
+{sanitizeLogText(e.text)}
 </div>
 ))}
 </div>
