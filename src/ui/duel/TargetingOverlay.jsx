@@ -62,9 +62,9 @@ display: "flex", alignItems: "center", gap: 8, minHeight: 44,
       ⚔ Click your creatures to declare attackers
     </span>
   )}
-  {state.phase === "COMBAT_BLOCKERS" && isMyTurn && (
+  {state.phase === "COMBAT_BLOCKERS" && !isMyTurn && (
     <span style={{ fontSize:11, color:"#ffaa40", fontFamily:"'Cinzel',serif", animation:"pulse 1.5s infinite", fontWeight:700 }}>
-      ⚔ Click an opponent attacker, then your blocker
+      ⚔ Click an attacker, then your blocker to block
     </span>
   )}
 
