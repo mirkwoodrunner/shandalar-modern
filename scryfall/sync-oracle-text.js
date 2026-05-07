@@ -50,9 +50,9 @@ const cardEntries = [];
 for (const m of idMatches) {
   const id = m[1];
   const idIndex = m.index;
-  // Look for text: within 400 chars after the id
-  const window = cardsSource.slice(idIndex, idIndex + 400);
-  const textMatch = window.match(/\btext:\s*"([^"]*)"/);
+  // Look for text: within 2000 chars after the id
+  const window = cardsSource.slice(idIndex, idIndex + 2000);
+  const textMatch = window.match(/\btext:\s*"((?:[^"\\]|\\.)*)"/);
   const currentText = textMatch ? textMatch[1] : null;
   cardEntries.push({ id, currentText });
 }

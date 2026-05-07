@@ -65,12 +65,13 @@ for (const entry of toApply) {
     continue;
   }
 
-  // Find next text: within 400 chars of the id position
-  const window = source.slice(idIndex, idIndex + 400);
-  const textMatch = window.match(/\btext:"([^"]*)"/);
+  // Find next text: within 2000 chars of the id position.
+  // Use (?:[^"\\]|\\.)* to correctly handle escaped quotes inside the value.
+  const window = source.slice(idIndex, idIndex + 2000);
+  const textMatch = window.match(/\btext:"((?:[^"\\]|\\.)*)"/);
 
   if (!textMatch) {
-    console.warn(`Warning: text: field not found within 400 chars of id "${cardDbId}" — skipping`);
+    console.warn(`Warning: text: field not found within 2000 chars of id "${cardDbId}" — skipping`);
     continue;
   }
 
