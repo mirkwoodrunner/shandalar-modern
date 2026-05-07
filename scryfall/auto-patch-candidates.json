@@ -1,0 +1,2018 @@
+[
+  {
+    "cardDbId": "tundra",
+    "proposedPoolId": "tundra",
+    "proposedName": "Tundra",
+    "currentText": "T: Add W or U.",
+    "proposedOracleText": "({T}: Add {W} or {U}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "underground_sea",
+    "proposedPoolId": "underground_sea",
+    "proposedName": "Underground Sea",
+    "currentText": "T: Add U or B.",
+    "proposedOracleText": "({T}: Add {U} or {B}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "badlands",
+    "proposedPoolId": "badlands",
+    "proposedName": "Badlands",
+    "currentText": "T: Add B or R.",
+    "proposedOracleText": "({T}: Add {B} or {R}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "taiga",
+    "proposedPoolId": "taiga",
+    "proposedName": "Taiga",
+    "currentText": "T: Add R or G.",
+    "proposedOracleText": "({T}: Add {R} or {G}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "savannah",
+    "proposedPoolId": "savannah",
+    "proposedName": "Savannah",
+    "currentText": "T: Add G or W.",
+    "proposedOracleText": "({T}: Add {G} or {W}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "scrubland",
+    "proposedPoolId": "scrubland",
+    "proposedName": "Scrubland",
+    "currentText": "T: Add W or B.",
+    "proposedOracleText": "({T}: Add {W} or {B}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "volcanic_island",
+    "proposedPoolId": "volcanic_island",
+    "proposedName": "Volcanic Island",
+    "currentText": "T: Add U or R.",
+    "proposedOracleText": "({T}: Add {U} or {R}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "bayou",
+    "proposedPoolId": "bayou",
+    "proposedName": "Bayou",
+    "currentText": "T: Add B or G.",
+    "proposedOracleText": "({T}: Add {B} or {G}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "plateau",
+    "proposedPoolId": "plateau",
+    "proposedName": "Plateau",
+    "currentText": "T: Add R or W.",
+    "proposedOracleText": "({T}: Add {R} or {W}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "tropical_island",
+    "proposedPoolId": "tropical_island",
+    "proposedName": "Tropical Island",
+    "currentText": "T: Add G or U.",
+    "proposedOracleText": "({T}: Add {G} or {U}.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "city_of_brass",
+    "proposedPoolId": "city_of_brass",
+    "proposedName": "City of Brass",
+    "currentText": "T: Add one mana of any color. City of Brass deals 1 damage to you.",
+    "proposedOracleText": "Whenever this land becomes tapped, it deals 1 damage to you.\n{T}: Add one mana of any color.",
+    "approved": true
+  },
+  {
+    "cardDbId": "strip_mine",
+    "proposedPoolId": "strip_mine",
+    "proposedName": "Strip Mine",
+    "currentText": "T: Add C. T, Sacrifice: Destroy target land.",
+    "proposedOracleText": "{T}: Add {C}.\n{T}, Sacrifice this land: Destroy target land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "library_of_alexandria",
+    "proposedPoolId": "library_of_alexandria",
+    "proposedName": "Library of Alexandria",
+    "currentText": "T: Add C. T: Draw a card. Activate only if you have exactly seven cards in hand.",
+    "proposedOracleText": "{T}: Add {C}.\n{T}: Draw a card. Activate only if you have exactly seven cards in hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "savannah_lions",
+    "proposedPoolId": "savannah_lions",
+    "proposedName": "Savannah Lions",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "white_knight",
+    "proposedPoolId": "white_knight",
+    "proposedName": "White Knight",
+    "currentText": "First strike, protection from black.",
+    "proposedOracleText": "First strike (This creature deals combat damage before creatures without first strike.)\nProtection from black (This creature can't be blocked, targeted, dealt damage, or enchanted by anything black.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "serra_angel",
+    "proposedPoolId": "serra_angel",
+    "proposedName": "Serra Angel",
+    "currentText": "Flying, vigilance.",
+    "proposedOracleText": "Flying\nVigilance (Attacking doesn't cause this creature to tap.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "mesa_pegasus",
+    "proposedPoolId": "mesa_pegasus",
+    "proposedName": "Mesa Pegasus",
+    "currentText": "Flying, banding.",
+    "proposedOracleText": "Flying; banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "benalish_hero",
+    "proposedPoolId": "benalish_hero",
+    "proposedName": "Benalish Hero",
+    "currentText": "Banding.",
+    "proposedOracleText": "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "elder_land_wurm",
+    "proposedPoolId": "elder_land_wurm",
+    "proposedName": "Elder Land Wurm",
+    "currentText": "Trample.",
+    "proposedOracleText": "Defender, trample\nWhen this creature blocks, it loses defender.",
+    "approved": true
+  },
+  {
+    "cardDbId": "northern_paladin",
+    "proposedPoolId": "northern_paladin",
+    "proposedName": "Northern Paladin",
+    "currentText": "WW,T: Destroy target black permanent.",
+    "proposedOracleText": "{W}{W}, {T}: Destroy target black permanent.",
+    "approved": true
+  },
+  {
+    "cardDbId": "samite_healer",
+    "proposedPoolId": "samite_healer",
+    "proposedName": "Samite Healer",
+    "currentText": "T: Prevent the next 1 damage to any target.",
+    "proposedOracleText": "{T}: Prevent the next 1 damage that would be dealt to any target this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "tundra_wolves",
+    "proposedPoolId": "tundra_wolves",
+    "proposedName": "Tundra Wolves",
+    "currentText": "First strike.",
+    "proposedOracleText": "First strike (This creature deals combat damage before creatures without first strike.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "pearled_unicorn",
+    "proposedPoolId": "pearled_unicorn",
+    "proposedName": "Pearled Unicorn",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "pikemen",
+    "proposedPoolId": "pikemen",
+    "proposedName": "Pikemen",
+    "currentText": "First strike, banding.",
+    "proposedOracleText": "First strike; banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "moorish_cavalry",
+    "proposedPoolId": "moorish_cavalry",
+    "proposedName": "Moorish Cavalry",
+    "currentText": "First strike.",
+    "proposedOracleText": "Trample",
+    "approved": true
+  },
+  {
+    "cardDbId": "war_elephant",
+    "proposedPoolId": "war_elephant",
+    "proposedName": "War Elephant",
+    "currentText": "Trample, banding.",
+    "proposedOracleText": "Trample; banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_swords",
+    "proposedPoolId": "wall_of_swords",
+    "proposedName": "Wall of Swords",
+    "currentText": "Flying.",
+    "proposedOracleText": "Defender (This creature can't attack.)\nFlying",
+    "approved": true
+  },
+  {
+    "cardDbId": "witch_hunter",
+    "proposedPoolId": "witch_hunter",
+    "proposedName": "Witch Hunter",
+    "currentText": "T: Deals 1 damage to target player. 1W,T: Return target creature an opponent controls to its owner's hand.",
+    "proposedOracleText": "{T}: This creature deals 1 damage to target player or planeswalker.\n{1}{W}{W}, {T}: Return target creature an opponent controls to its owner's hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "merfolk_of_the_pearl_trident",
+    "proposedPoolId": "merfolk_of_the_pearl_trident",
+    "proposedName": "Merfolk of the Pearl Trident",
+    "currentText": "Islandwalk.",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "lord_of_atlantis",
+    "proposedPoolId": "lord_of_atlantis",
+    "proposedName": "Lord of Atlantis",
+    "currentText": "Other Merfolk get +1/+1 and have islandwalk.",
+    "proposedOracleText": "Other Merfolk get +1/+1 and have islandwalk. (They can't be blocked as long as defending player controls an Island.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "air_elemental",
+    "proposedPoolId": "air_elemental",
+    "proposedName": "Air Elemental",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "mahamoti_djinn",
+    "proposedPoolId": "mahamoti_djinn",
+    "proposedName": "Mahamoti Djinn",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "prodigal_sorcerer",
+    "proposedPoolId": "prodigal_sorcerer",
+    "proposedName": "Prodigal Sorcerer",
+    "currentText": "T: Deals 1 damage to any target.",
+    "proposedOracleText": "{T}: This creature deals 1 damage to any target.",
+    "approved": true
+  },
+  {
+    "cardDbId": "azure_drake",
+    "proposedPoolId": "azure_drake",
+    "proposedName": "Azure Drake",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "phantom_monster",
+    "proposedPoolId": "phantom_monster",
+    "proposedName": "Phantom Monster",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "flying_men",
+    "proposedPoolId": "flying_men",
+    "proposedName": "Flying Men",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "sea_serpent",
+    "proposedPoolId": "sea_serpent",
+    "proposedName": "Sea Serpent",
+    "currentText": "Sea Serpent can't attack unless defending player controls an Island.",
+    "proposedOracleText": "This creature can't attack unless defending player controls an Island.\nWhen you control no Islands, sacrifice this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "phantasmal_forces",
+    "proposedPoolId": "phantasmal_forces",
+    "proposedName": "Phantasmal Forces",
+    "currentText": "Flying. Upkeep: pay U or sacrifice.",
+    "proposedOracleText": "Flying\nAt the beginning of your upkeep, sacrifice this creature unless you pay {U}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_air",
+    "proposedPoolId": "wall_of_air",
+    "proposedName": "Wall of Air",
+    "currentText": "Flying.",
+    "proposedOracleText": "Defender, flying (This creature can't attack, and it can block creatures with flying.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "ghost_ship",
+    "proposedPoolId": "ghost_ship",
+    "proposedName": "Ghost Ship",
+    "currentText": "Flying. UUU: Regenerate.",
+    "proposedOracleText": "Flying\n{U}{U}{U}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "merfolk_assassin",
+    "proposedPoolId": "merfolk_assassin",
+    "proposedName": "Merfolk Assassin",
+    "currentText": "T: Destroy target creature with islandwalk.",
+    "proposedOracleText": "{T}: Destroy target creature with islandwalk.",
+    "approved": true
+  },
+  {
+    "cardDbId": "clone",
+    "proposedPoolId": "clone",
+    "proposedName": "Clone",
+    "currentText": "Enter as a copy of any creature on the battlefield.",
+    "proposedOracleText": "You may have this creature enter as a copy of any creature on the battlefield.",
+    "approved": true
+  },
+  {
+    "cardDbId": "giant_tortoise",
+    "proposedPoolId": "giant_tortoise",
+    "proposedName": "Giant Tortoise",
+    "currentText": "Giant Tortoise gets +0/+3 as long as it's not attacking.",
+    "proposedOracleText": "This creature gets +0/+3 as long as it's untapped.",
+    "approved": true
+  },
+  {
+    "cardDbId": "water_elemental",
+    "proposedPoolId": "water_elemental",
+    "proposedName": "Water Elemental",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "zephyr_falcon",
+    "proposedPoolId": "zephyr_falcon",
+    "proposedName": "Zephyr Falcon",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying, vigilance",
+    "approved": true
+  },
+  {
+    "cardDbId": "hypnotic_specter",
+    "proposedPoolId": "hypnotic_specter",
+    "proposedName": "Hypnotic Specter",
+    "currentText": "Flying. When deals combat damage, opponent discards a card at random.",
+    "proposedOracleText": "Flying\nWhenever this creature deals damage to an opponent, that player discards a card at random.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sengir_vampire",
+    "proposedPoolId": "sengir_vampire",
+    "proposedName": "Sengir Vampire",
+    "currentText": "Flying. When a creature it damaged dies, put a +1/+1 counter on it.",
+    "proposedOracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhenever a creature dealt damage by this creature this turn dies, put a +1/+1 counter on this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "drudge_skeletons",
+    "proposedPoolId": "drudge_skeletons",
+    "proposedName": "Drudge Skeletons",
+    "currentText": "B: Regenerate.",
+    "proposedOracleText": "{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "black_knight",
+    "proposedPoolId": "black_knight",
+    "proposedName": "Black Knight",
+    "currentText": "First strike, protection from white.",
+    "proposedOracleText": "First strike (This creature deals combat damage before creatures without first strike.)\nProtection from white (This creature can't be blocked, targeted, dealt damage, or enchanted by anything white.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "royal_assassin",
+    "proposedPoolId": "royal_assassin",
+    "proposedName": "Royal Assassin",
+    "currentText": "T: Destroy target tapped creature.",
+    "proposedOracleText": "{T}: Destroy target tapped creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "plague_rats",
+    "proposedPoolId": "plague_rats",
+    "proposedName": "Plague Rats",
+    "currentText": "P/T each equal to the number of Plague Rats in play.",
+    "proposedOracleText": "Plague Rats's power and toughness are each equal to the number of creatures named Plague Rats on the battlefield.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lord_of_the_pit",
+    "proposedPoolId": "lord_of_the_pit",
+    "proposedName": "Lord of the Pit",
+    "currentText": "Flying, trample. Upkeep: sacrifice a creature or take 7.",
+    "proposedOracleText": "Flying, trample\nAt the beginning of your upkeep, sacrifice a creature other than this creature. If you can't, this creature deals 7 damage to you.",
+    "approved": true
+  },
+  {
+    "cardDbId": "nightmare",
+    "proposedPoolId": "nightmare",
+    "proposedName": "Nightmare",
+    "currentText": "Flying. P/T = number of Swamps you control.",
+    "proposedOracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nNightmare's power and toughness are each equal to the number of Swamps you control.",
+    "approved": true
+  },
+  {
+    "cardDbId": "frozen_shade",
+    "proposedPoolId": "frozen_shade",
+    "proposedName": "Frozen Shade",
+    "currentText": "B: Gets +1/+1 until end of turn.",
+    "proposedOracleText": "{B}: This creature gets +1/+1 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "bog_wraith",
+    "proposedPoolId": "bog_wraith",
+    "proposedName": "Bog Wraith",
+    "currentText": "Swampwalk.",
+    "proposedOracleText": "Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "scathe_zombies",
+    "proposedPoolId": "scathe_zombies",
+    "proposedName": "Scathe Zombies",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "vampire_bats",
+    "proposedPoolId": "vampire_bats",
+    "proposedName": "Vampire Bats",
+    "currentText": "B: Gets +1/+0 until end of turn.",
+    "proposedOracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)\n{B}: This creature gets +1/+0 until end of turn. Activate no more than twice each turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "zombie_master",
+    "proposedPoolId": "zombie_master",
+    "proposedName": "Zombie Master",
+    "currentText": "All Zombies have swampwalk and 'B: Regenerate.'",
+    "proposedOracleText": "Other Zombie creatures have swampwalk. (They can't be blocked as long as defending player controls a Swamp.)\nOther Zombies have \"{B}: Regenerate this permanent.\"",
+    "approved": true
+  },
+  {
+    "cardDbId": "walking_dead",
+    "proposedPoolId": "walking_dead",
+    "proposedName": "Walking Dead",
+    "currentText": "B: Regenerate.",
+    "proposedOracleText": "{B}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "bog_imp",
+    "proposedPoolId": "bog_imp",
+    "proposedName": "Bog Imp",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "rag_man",
+    "proposedPoolId": "rag_man",
+    "proposedName": "Rag Man",
+    "currentText": "T: Target opponent randomly discards at start of their next turn.",
+    "proposedOracleText": "{B}{B}{B}, {T}: Target opponent reveals their hand and discards a creature card at random. Activate only during your turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "demonic_hordes",
+    "proposedPoolId": "demonic_hordes",
+    "proposedName": "Demonic Hordes",
+    "currentText": "BBB, T: Destroy target land. At upkeep, pay BBB or tap and deal 3 damage to yourself.",
+    "proposedOracleText": "{T}: Destroy target land.\nAt the beginning of your upkeep, unless you pay {B}{B}{B}, tap this creature and sacrifice a land of an opponent's choice.",
+    "approved": true
+  },
+  {
+    "cardDbId": "erg_raiders",
+    "proposedPoolId": "erg_raiders",
+    "proposedName": "Erg Raiders",
+    "currentText": "At end of turn, if Erg Raiders didn't attack, it deals 2 damage to you unless you control no untapped lands.",
+    "proposedOracleText": "At the beginning of your end step, if this creature didn't attack this turn, it deals 2 damage to you unless it came under your control this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "nettling_imp",
+    "proposedPoolId": "nettling_imp",
+    "proposedName": "Nettling Imp",
+    "currentText": "T: Target non-Wall creature must attack this turn if able or be destroyed at end of combat.",
+    "proposedOracleText": "{T}: Choose target non-Wall creature the active player has controlled continuously since the beginning of the turn. That creature attacks this turn if able. Destroy it at the beginning of the next end step if it didn't attack this turn. Activate only during an opponent's turn, before attackers are declared.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sorceress_queen",
+    "proposedPoolId": "sorceress_queen",
+    "proposedName": "Sorceress Queen",
+    "currentText": "T: Target creature other than Sorceress Queen has base power and toughness 0/2 until end of turn.",
+    "proposedOracleText": "{T}: Target creature other than this creature has base power and toughness 0/2 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "goblin_king",
+    "proposedPoolId": "goblin_king",
+    "proposedName": "Goblin King",
+    "currentText": "Other Goblins get +1/+1 and mountainwalk.",
+    "proposedOracleText": "Other Goblins get +1/+1 and have mountainwalk.",
+    "approved": true
+  },
+  {
+    "cardDbId": "shivan_dragon",
+    "proposedPoolId": "shivan_dragon",
+    "proposedName": "Shivan Dragon",
+    "currentText": "Flying. R: +1/+0 until end of turn.",
+    "proposedOracleText": "Flying\n{R}: This creature gets +1/+0 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "earth_elemental",
+    "proposedPoolId": "earth_elemental",
+    "proposedName": "Earth Elemental",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "goblin_balloon_brigade",
+    "proposedPoolId": "goblin_balloon_brigade",
+    "proposedName": "Goblin Balloon Brigade",
+    "currentText": "R: Gains flying until end of turn.",
+    "proposedOracleText": "{R}: This creature gains flying until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "monss_goblin_raiders",
+    "proposedPoolId": "monss_goblin_raiders",
+    "proposedName": "Mons's Goblin Raiders",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "ball_lightning",
+    "proposedPoolId": "ball_lightning",
+    "proposedName": "Ball Lightning",
+    "currentText": "Trample, haste. At end step, sacrifice.",
+    "proposedOracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nAt the beginning of the end step, sacrifice this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "kird_ape",
+    "proposedPoolId": "kird_ape",
+    "proposedName": "Kird Ape",
+    "currentText": "Gets +1/+2 as long as you control a Forest.",
+    "proposedOracleText": "This creature gets +1/+2 as long as you control a Forest.",
+    "approved": true
+  },
+  {
+    "cardDbId": "hill_giant",
+    "proposedPoolId": "hill_giant",
+    "proposedName": "Hill Giant",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "ironclaw_orcs",
+    "proposedPoolId": "ironclaw_orcs",
+    "proposedName": "Ironclaw Orcs",
+    "currentText": "Ironclaw Orcs can't block creatures with power 2 or greater.",
+    "proposedOracleText": "This creature can't block creatures with power 2 or greater.",
+    "approved": true
+  },
+  {
+    "cardDbId": "orcish_artillery",
+    "proposedPoolId": "orcish_artillery",
+    "proposedName": "Orcish Artillery",
+    "currentText": "T: Deals 2 damage to any target and 3 damage to you.",
+    "proposedOracleText": "{T}: This creature deals 2 damage to any target and 3 damage to you.",
+    "approved": true
+  },
+  {
+    "cardDbId": "hurloon_minotaur",
+    "proposedPoolId": "hurloon_minotaur",
+    "proposedName": "Hurloon Minotaur",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "dragon_whelp",
+    "proposedPoolId": "dragon_whelp",
+    "proposedName": "Dragon Whelp",
+    "currentText": "Flying. R: +1/+0 until end of turn.",
+    "proposedOracleText": "Flying\n{R}: This creature gets +1/+0 until end of turn. If this ability has been activated four or more times this turn, sacrifice this creature at the beginning of the next end step.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fire_elemental",
+    "proposedPoolId": "fire_elemental",
+    "proposedName": "Fire Elemental",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "goblin_hero",
+    "proposedPoolId": "goblin_hero",
+    "proposedName": "Goblin Hero",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "sedge_troll",
+    "proposedPoolId": "sedge_troll",
+    "proposedName": "Sedge Troll",
+    "currentText": "Trample. B: Regenerate. Gets +1/+1 if you control a Swamp.",
+    "proposedOracleText": "This creature gets +1/+1 as long as you control a Swamp.\n{B}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "roc_of_kher_ridges",
+    "proposedPoolId": "roc_of_kher_ridges",
+    "proposedName": "Roc of Kher Ridges",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "granite_gargoyle",
+    "proposedPoolId": "granite_gargoyle",
+    "proposedName": "Granite Gargoyle",
+    "currentText": "Flying. R: +0/+1 until end of turn.",
+    "proposedOracleText": "Flying\n{R}: This creature gets +0/+1 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "two_headed_giant_of_foriys",
+    "proposedPoolId": "two_headed_giant_of_foriys",
+    "proposedName": "Two-Headed Giant of Foriys",
+    "currentText": "Can block an additional creature each combat.",
+    "proposedOracleText": "Trample\nThis creature can block an additional creature each combat.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fire_sprites",
+    "proposedPoolId": "fire_sprites",
+    "proposedName": "Fire Sprites",
+    "currentText": "Flying. T: Add R.",
+    "proposedOracleText": "Flying\n{G}, {T}: Add {R}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "stone_giant",
+    "proposedPoolId": "stone_giant",
+    "proposedName": "Stone Giant",
+    "currentText": "T: Target creature with toughness less than Stone Giant's power gains flying until end of turn.",
+    "proposedOracleText": "{T}: Target creature you control with toughness less than this creature's power gains flying until end of turn. Destroy that creature at the beginning of the next end step.",
+    "approved": true
+  },
+  {
+    "cardDbId": "gray_ogre",
+    "proposedPoolId": "gray_ogre",
+    "proposedName": "Gray Ogre",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "rock_hydra",
+    "proposedPoolId": "rock_hydra",
+    "proposedName": "Rock Hydra",
+    "currentText": "Rock Hydra enters with X +1/+1 counters. RRR: Put a +1/+1 counter on it.",
+    "proposedOracleText": "This creature enters with X +1/+1 counters on it.\nFor each 1 damage that would be dealt to this creature, if it has a +1/+1 counter on it, remove a +1/+1 counter from it and prevent that 1 damage.\n{R}: Prevent the next 1 damage that would be dealt to this creature this turn.\n{R}{R}{R}: Put a +1/+1 counter on this creature. Activate only during your upkeep.",
+    "approved": true
+  },
+  {
+    "cardDbId": "uthden_troll",
+    "proposedPoolId": "uthden_troll",
+    "proposedName": "Uthden Troll",
+    "currentText": "R: Regenerate Uthden Troll.",
+    "proposedOracleText": "{R}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "llanowar_elves",
+    "proposedPoolId": "llanowar_elves",
+    "proposedName": "Llanowar Elves",
+    "currentText": "T: Add G.",
+    "proposedOracleText": "{T}: Add {G}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "birds_of_paradise",
+    "proposedPoolId": "birds_of_paradise",
+    "proposedName": "Birds of Paradise",
+    "currentText": "Flying. T: Add one mana of any color.",
+    "proposedOracleText": "Flying\n{T}: Add one mana of any color.",
+    "approved": true
+  },
+  {
+    "cardDbId": "grizzly_bears",
+    "proposedPoolId": "grizzly_bears",
+    "proposedName": "Grizzly Bears",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "giant_spider",
+    "proposedPoolId": "giant_spider",
+    "proposedName": "Giant Spider",
+    "currentText": "Reach.",
+    "proposedOracleText": "Reach (This creature can block creatures with flying.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "craw_wurm",
+    "proposedPoolId": "craw_wurm",
+    "proposedName": "Craw Wurm",
+    "currentText": "",
+    "proposedOracleText": "",
+    "approved": true
+  },
+  {
+    "cardDbId": "force_of_nature",
+    "proposedPoolId": "force_of_nature",
+    "proposedName": "Force of Nature",
+    "currentText": "Trample. Upkeep: pay GGGG or take 8 damage.",
+    "proposedOracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nAt the beginning of your upkeep, this creature deals 8 damage to you unless you pay {G}{G}{G}{G}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "erhnam_djinn",
+    "proposedPoolId": "erhnam_djinn",
+    "proposedName": "Erhnam Djinn",
+    "currentText": "Upkeep: target opponent's creature gains forestwalk.",
+    "proposedOracleText": "At the beginning of your upkeep, target non-Wall creature an opponent controls gains forestwalk until your next upkeep. (It can't be blocked as long as defending player controls a Forest.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "war_mammoth",
+    "proposedPoolId": "war_mammoth",
+    "proposedName": "War Mammoth",
+    "currentText": "Trample.",
+    "proposedOracleText": "Trample",
+    "approved": true
+  },
+  {
+    "cardDbId": "whirling_dervish",
+    "proposedPoolId": "whirling_dervish",
+    "proposedName": "Whirling Dervish",
+    "currentText": "At end step, if it damaged an opponent, put a +1/+1 counter on it.",
+    "proposedOracleText": "Protection from black\nAt the beginning of each end step, if this creature dealt damage to an opponent this turn, put a +1/+1 counter on it.",
+    "approved": true
+  },
+  {
+    "cardDbId": "thicket_basilisk",
+    "proposedPoolId": "thicket_basilisk",
+    "proposedName": "Thicket Basilisk",
+    "currentText": "Any creature blocking or blocked by Thicket Basilisk is destroyed.",
+    "proposedOracleText": "Whenever this creature blocks or becomes blocked by a non-Wall creature, destroy that creature at end of combat.",
+    "approved": true
+  },
+  {
+    "cardDbId": "scryb_sprites",
+    "proposedPoolId": "scryb_sprites",
+    "proposedName": "Scryb Sprites",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "ley_druid",
+    "proposedPoolId": "ley_druid",
+    "proposedName": "Ley Druid",
+    "currentText": "T: Untap target land.",
+    "proposedOracleText": "{T}: Untap target land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "verduran_enchantress",
+    "proposedPoolId": "verduran_enchantress",
+    "proposedName": "Verduran Enchantress",
+    "currentText": "Whenever you cast an enchantment, draw a card.",
+    "proposedOracleText": "Whenever you cast an enchantment spell, you may draw a card.",
+    "approved": true
+  },
+  {
+    "cardDbId": "timber_wolves",
+    "proposedPoolId": "timber_wolves",
+    "proposedName": "Timber Wolves",
+    "currentText": "Banding.",
+    "proposedOracleText": "Banding (Any creatures with banding, and up to one without, can attack in a band. Bands are blocked as a group. If any creatures with banding you control are blocking or being blocked by a creature, you divide that creature's combat damage, not its controller, among any of the creatures it's being blocked by or is blocking.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "keldon_warlord",
+    "proposedPoolId": "keldon_warlord",
+    "proposedName": "Keldon Warlord",
+    "currentText": "P/T = number of non-Wall creatures you control.",
+    "proposedOracleText": "Keldon Warlord's power and toughness are each equal to the number of non-Wall creatures you control.",
+    "approved": true
+  },
+  {
+    "cardDbId": "carnivorous_plant",
+    "proposedPoolId": "carnivorous_plant",
+    "proposedName": "Carnivorous Plant",
+    "currentText": "",
+    "proposedOracleText": "Defender",
+    "approved": true
+  },
+  {
+    "cardDbId": "argothian_treefolk",
+    "proposedPoolId": "argothian_treefolk",
+    "proposedName": "Argothian Treefolk",
+    "currentText": "",
+    "proposedOracleText": "Prevent all damage that would be dealt to this creature by artifact sources.",
+    "approved": true
+  },
+  {
+    "cardDbId": "elven_riders",
+    "proposedPoolId": "elven_riders",
+    "proposedName": "Elven Riders",
+    "currentText": "Can't be blocked except by flying or forestwalk creatures.",
+    "proposedOracleText": "This creature can't be blocked except by Walls and/or creatures with flying.",
+    "approved": true
+  },
+  {
+    "cardDbId": "elvish_archers",
+    "proposedPoolId": "elvish_archers",
+    "proposedName": "Elvish Archers",
+    "currentText": "First strike, reach.",
+    "proposedOracleText": "First strike",
+    "approved": true
+  },
+  {
+    "cardDbId": "fungusaur",
+    "proposedPoolId": "fungusaur",
+    "proposedName": "Fungusaur",
+    "currentText": "Whenever Fungusaur is dealt damage, put a +1/+1 counter on it.",
+    "proposedOracleText": "Whenever this creature is dealt damage, put a +1/+1 counter on it.",
+    "approved": true
+  },
+  {
+    "cardDbId": "ornithopter",
+    "proposedPoolId": "ornithopter",
+    "proposedName": "Ornithopter",
+    "currentText": "Flying.",
+    "proposedOracleText": "Flying",
+    "approved": true
+  },
+  {
+    "cardDbId": "juggernaut",
+    "proposedPoolId": "juggernaut",
+    "proposedName": "Juggernaut",
+    "currentText": "Juggernaut attacks each turn if able. Can't be blocked by Walls.",
+    "proposedOracleText": "This creature attacks each combat if able.\nThis creature can't be blocked by Walls.",
+    "approved": true
+  },
+  {
+    "cardDbId": "triskelion",
+    "proposedPoolId": "triskelion",
+    "proposedName": "Triskelion",
+    "currentText": "Enters with 3 +1/+1 counters. Remove a counter: deal 1 damage to any target.",
+    "proposedOracleText": "This creature enters with three +1/+1 counters on it.\nRemove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+    "approved": true
+  },
+  {
+    "cardDbId": "su_chi",
+    "proposedPoolId": "su_chi",
+    "proposedName": "Su-Chi",
+    "currentText": "When Su-Chi dies, add CCCC.",
+    "proposedOracleText": "When this creature dies, add {C}{C}{C}{C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "colossus_of_sardia",
+    "proposedPoolId": "colossus_of_sardia",
+    "proposedName": "Colossus of Sardia",
+    "currentText": "Trample. Doesn't untap during your untap step. 9: Untap it.",
+    "proposedOracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nThis creature doesn't untap during your untap step.\n{9}: Untap this creature. Activate only during your upkeep.",
+    "approved": true
+  },
+  {
+    "cardDbId": "clay_statue",
+    "proposedPoolId": "clay_statue",
+    "proposedName": "Clay Statue",
+    "currentText": "2: Regenerate.",
+    "proposedOracleText": "{2}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "brass_man",
+    "proposedPoolId": "brass_man",
+    "proposedName": "Brass Man",
+    "currentText": "Doesn't untap normally. 1: Untap Brass Man.",
+    "proposedOracleText": "This creature doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {1}. If you do, untap this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "dragon_engine",
+    "proposedPoolId": "dragon_engine",
+    "proposedName": "Dragon Engine",
+    "currentText": "2: Gets +1/+0 until end of turn.",
+    "proposedOracleText": "{2}: This creature gets +1/+0 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "clockwork_beast",
+    "proposedPoolId": "clockwork_beast",
+    "proposedName": "Clockwork Beast",
+    "currentText": "Enters with 7 +1/+0 counters. At end of combat, remove one.",
+    "proposedOracleText": "This creature enters with seven +1/+0 counters on it.\nAt end of combat, if this creature attacked or blocked this combat, remove a +1/+0 counter from it.\n{X}, {T}: Put up to X +1/+0 counters on this creature. This ability can't cause the total number of +1/+0 counters on this creature to be greater than seven. Activate only during your upkeep.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_ice",
+    "proposedPoolId": "wall_of_ice",
+    "proposedName": "Wall of Ice",
+    "currentText": "",
+    "proposedOracleText": "Defender (This creature can't attack.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_stone",
+    "proposedPoolId": "wall_of_stone",
+    "proposedName": "Wall of Stone",
+    "currentText": "",
+    "proposedOracleText": "Defender (This creature can't attack.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_fire",
+    "proposedPoolId": "wall_of_fire",
+    "proposedName": "Wall of Fire",
+    "currentText": "R: Gets +1/+0 until end of turn.",
+    "proposedOracleText": "Defender (This creature can't attack.)\n{R}: This creature gets +1/+0 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_brambles",
+    "proposedPoolId": "wall_of_brambles",
+    "proposedName": "Wall of Brambles",
+    "currentText": "G: Regenerate.",
+    "proposedOracleText": "Defender (This creature can't attack.)\n{G}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wall_of_bone",
+    "proposedPoolId": "wall_of_bone",
+    "proposedName": "Wall of Bone",
+    "currentText": "B: Regenerate.",
+    "proposedOracleText": "Defender (This creature can't attack.)\n{B}: Regenerate this creature. (The next time this creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "living_wall",
+    "proposedPoolId": "living_wall",
+    "proposedName": "Living Wall",
+    "currentText": "1: Regenerate.",
+    "proposedOracleText": "Defender (This creature can't attack.)\n{1}: Regenerate this creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "swords_to_plowshares",
+    "proposedPoolId": "swords_to_plowshares",
+    "proposedName": "Swords to Plowshares",
+    "currentText": "Exile target creature. Its controller gains life equal to its power.",
+    "proposedOracleText": "Exile target creature. Its controller gains life equal to its power.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wrath_of_god",
+    "proposedPoolId": "wrath_of_god",
+    "proposedName": "Wrath of God",
+    "currentText": "Destroy all creatures. They can't be regenerated.",
+    "proposedOracleText": "Destroy all creatures. They can't be regenerated.",
+    "approved": true
+  },
+  {
+    "cardDbId": "disenchant",
+    "proposedPoolId": "disenchant",
+    "proposedName": "Disenchant",
+    "currentText": "Destroy target artifact or enchantment.",
+    "proposedOracleText": "Destroy target artifact or enchantment.",
+    "approved": true
+  },
+  {
+    "cardDbId": "armageddon",
+    "proposedPoolId": "armageddon",
+    "proposedName": "Armageddon",
+    "currentText": "Destroy all lands.",
+    "proposedOracleText": "Destroy all lands.",
+    "approved": true
+  },
+  {
+    "cardDbId": "healing_salve",
+    "proposedPoolId": "healing_salve",
+    "proposedName": "Healing Salve",
+    "currentText": "Target player gains 3 life.",
+    "proposedOracleText": "Choose one —\n• Target player gains 3 life.\n• Prevent the next 3 damage that would be dealt to any target this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "holy_armor",
+    "proposedPoolId": "holy_armor",
+    "proposedName": "Holy Armor",
+    "currentText": "Enchanted creature gets +0/+2.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets +0/+2.\n{W}: Enchanted creature gets +0/+1 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "balance",
+    "proposedPoolId": "balance",
+    "proposedName": "Balance",
+    "currentText": "Players equalize hand size and lands.",
+    "proposedOracleText": "Each player chooses a number of lands they control equal to the number of lands controlled by the player who controls the fewest, then sacrifices the rest. Players discard cards and sacrifice creatures the same way.",
+    "approved": true
+  },
+  {
+    "cardDbId": "holy_day",
+    "proposedPoolId": "holy_day",
+    "proposedName": "Holy Day",
+    "currentText": "Prevent all combat damage this turn.",
+    "proposedOracleText": "Prevent all combat damage that would be dealt this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "resurrection",
+    "proposedPoolId": "resurrection",
+    "proposedName": "Resurrection",
+    "currentText": "Return target creature from your graveyard to the battlefield.",
+    "proposedOracleText": "Return target creature card from your graveyard to the battlefield.",
+    "approved": true
+  },
+  {
+    "cardDbId": "holy_strength",
+    "proposedPoolId": "holy_strength",
+    "proposedName": "Holy Strength",
+    "currentText": "Enchanted creature gets +1/+2.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets +1/+2.",
+    "approved": true
+  },
+  {
+    "cardDbId": "crusade",
+    "proposedPoolId": "crusade",
+    "proposedName": "Crusade",
+    "currentText": "All white creatures get +1/+1.",
+    "proposedOracleText": "White creatures get +1/+1.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lance",
+    "proposedPoolId": "lance",
+    "proposedName": "Lance",
+    "currentText": "Enchanted creature has first strike.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature has first strike.",
+    "approved": true
+  },
+  {
+    "cardDbId": "death_ward",
+    "proposedPoolId": "death_ward",
+    "proposedName": "Death Ward",
+    "currentText": "Regenerate target creature.",
+    "proposedOracleText": "Regenerate target creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "consecrate_land",
+    "proposedPoolId": "consecrate_land",
+    "proposedName": "Consecrate Land",
+    "currentText": "Enchanted land is indestructible and can't be targeted by spells or abilities.",
+    "proposedOracleText": "Enchant land\nEnchanted land has indestructible and can't be enchanted by other Auras.",
+    "approved": true
+  },
+  {
+    "cardDbId": "conversion",
+    "proposedPoolId": "conversion",
+    "proposedName": "Conversion",
+    "currentText": "All Mountains are Plains.",
+    "proposedOracleText": "At the beginning of your upkeep, sacrifice this enchantment unless you pay {W}{W}.\nAll Mountains are Plains.",
+    "approved": true
+  },
+  {
+    "cardDbId": "divine_transformation",
+    "proposedPoolId": "divine_transformation",
+    "proposedName": "Divine Transformation",
+    "currentText": "Enchanted creature has base power and toughness 5/5.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets +3/+3.",
+    "approved": true
+  },
+  {
+    "cardDbId": "karma",
+    "proposedPoolId": "karma",
+    "proposedName": "Karma",
+    "currentText": "At each player's upkeep, Karma deals damage to that player equal to their Swamp count.",
+    "proposedOracleText": "At the beginning of each player's upkeep, this enchantment deals damage to that player equal to the number of Swamps they control.",
+    "approved": true
+  },
+  {
+    "cardDbId": "righteousness",
+    "proposedPoolId": "righteousness",
+    "proposedName": "Righteousness",
+    "currentText": "Target blocking creature gets +7/+7 until end of turn.",
+    "proposedOracleText": "Target blocking creature gets +7/+7 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "reverse_damage",
+    "proposedPoolId": "reverse_damage",
+    "proposedName": "Reverse Damage",
+    "currentText": "Prevent all damage from one source this turn. You gain life equal to the damage prevented.",
+    "proposedOracleText": "The next time a source of your choice would deal damage to you this turn, prevent that damage. You gain life equal to the damage prevented this way.",
+    "approved": true
+  },
+  {
+    "cardDbId": "spirit_link",
+    "proposedPoolId": "spirit_link",
+    "proposedName": "Spirit Link",
+    "currentText": "Enchanted creature has lifelink.",
+    "proposedOracleText": "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\nWhenever enchanted creature deals damage, you gain that much life.",
+    "approved": true
+  },
+  {
+    "cardDbId": "counterspell",
+    "proposedPoolId": "counterspell",
+    "proposedName": "Counterspell",
+    "currentText": "Counter target spell.",
+    "proposedOracleText": "Counter target spell.",
+    "approved": true
+  },
+  {
+    "cardDbId": "ancestral_recall",
+    "proposedPoolId": "ancestral_recall",
+    "proposedName": "Ancestral Recall",
+    "currentText": "Target player draws three cards.",
+    "proposedOracleText": "Target player draws three cards.",
+    "approved": true
+  },
+  {
+    "cardDbId": "time_walk",
+    "proposedPoolId": "time_walk",
+    "proposedName": "Time Walk",
+    "currentText": "Take an extra turn after this one.",
+    "proposedOracleText": "Take an extra turn after this one.",
+    "approved": true
+  },
+  {
+    "cardDbId": "braingeyser",
+    "proposedPoolId": "braingeyser",
+    "proposedName": "Braingeyser",
+    "currentText": "Target player draws X cards.",
+    "proposedOracleText": "Target player draws X cards.",
+    "approved": true
+  },
+  {
+    "cardDbId": "unsummon",
+    "proposedPoolId": "unsummon",
+    "proposedName": "Unsummon",
+    "currentText": "Return target creature to its owner's hand.",
+    "proposedOracleText": "Return target creature to its owner's hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "psionic_blast",
+    "proposedPoolId": "psionic_blast",
+    "proposedName": "Psionic Blast",
+    "currentText": "Deals 4 damage to any target and 2 damage to you.",
+    "proposedOracleText": "Psionic Blast deals 4 damage to any target and 2 damage to you.",
+    "approved": true
+  },
+  {
+    "cardDbId": "power_sink",
+    "proposedPoolId": "power_sink",
+    "proposedName": "Power Sink",
+    "currentText": "Counter target spell unless its controller pays X; if not, tap all lands.",
+    "proposedOracleText": "Counter target spell unless its controller pays {X}. If that player doesn't, they tap all lands with mana abilities they control and lose all unspent mana.",
+    "approved": true
+  },
+  {
+    "cardDbId": "boomerang",
+    "proposedPoolId": "boomerang",
+    "proposedName": "Boomerang",
+    "currentText": "Return target permanent to its owner's hand.",
+    "proposedOracleText": "Return target permanent to its owner's hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "control_magic",
+    "proposedPoolId": "control_magic",
+    "proposedName": "Control Magic",
+    "currentText": "You control enchanted creature.",
+    "proposedOracleText": "Enchant creature\nYou control enchanted creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "timetwister",
+    "proposedPoolId": "timetwister",
+    "proposedName": "Timetwister",
+    "currentText": "Each player shuffles hand+GY into library, draws 7.",
+    "proposedOracleText": "Each player shuffles their hand and graveyard into their library, then draws seven cards. (Then put Timetwister into its owner's graveyard.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "mana_short",
+    "proposedPoolId": "mana_short",
+    "proposedName": "Mana Short",
+    "currentText": "Tap all target player's lands and drain their mana pool.",
+    "proposedOracleText": "Tap all lands target player controls and that player loses all unspent mana.",
+    "approved": true
+  },
+  {
+    "cardDbId": "remove_soul",
+    "proposedPoolId": "remove_soul",
+    "proposedName": "Remove Soul",
+    "currentText": "Counter target creature spell.",
+    "proposedOracleText": "Counter target creature spell.",
+    "approved": true
+  },
+  {
+    "cardDbId": "force_spike",
+    "proposedPoolId": "force_spike",
+    "proposedName": "Force Spike",
+    "currentText": "Counter target spell unless its controller pays 1.",
+    "proposedOracleText": "Counter target spell unless its controller pays {1}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "blue_elemental_blast",
+    "proposedPoolId": "blue_elemental_blast",
+    "proposedName": "Blue Elemental Blast",
+    "currentText": "Counter target red spell, or destroy target red permanent.",
+    "proposedOracleText": "Choose one —\n• Counter target red spell.\n• Destroy target red permanent.",
+    "approved": true
+  },
+  {
+    "cardDbId": "drain_power",
+    "proposedPoolId": "drain_power",
+    "proposedName": "Drain Power",
+    "currentText": "Target player taps all lands; you add that mana.",
+    "proposedOracleText": "Target player activates a mana ability of each land they control. Then that player loses all unspent mana and you add the mana lost this way.",
+    "approved": true
+  },
+  {
+    "cardDbId": "jump",
+    "proposedPoolId": "jump",
+    "proposedName": "Jump",
+    "currentText": "Target creature gains flying until end of turn.",
+    "proposedOracleText": "Target creature gains flying until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "animate_artifact",
+    "proposedPoolId": "animate_artifact",
+    "proposedName": "Animate Artifact",
+    "currentText": "Enchanted artifact becomes an artifact creature with power and toughness each equal to its mana value.",
+    "proposedOracleText": "Enchant artifact\nAs long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value.",
+    "approved": true
+  },
+  {
+    "cardDbId": "copy_artifact",
+    "proposedPoolId": "copy_artifact",
+    "proposedName": "Copy Artifact",
+    "currentText": "Copy Artifact enters as a copy of any artifact on the battlefield; it's also an enchantment.",
+    "proposedOracleText": "You may have this enchantment enter as a copy of any artifact on the battlefield, except it's an enchantment in addition to its other types.",
+    "approved": true
+  },
+  {
+    "cardDbId": "flight",
+    "proposedPoolId": "flight",
+    "proposedName": "Flight",
+    "currentText": "Enchanted creature has flying.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature has flying.",
+    "approved": true
+  },
+  {
+    "cardDbId": "hurkyls_recall",
+    "proposedPoolId": "hurkyls_recall",
+    "proposedName": "Hurkyl's Recall",
+    "currentText": "Return all artifacts target player owns to their hand.",
+    "proposedOracleText": "Return all artifacts target player owns to their hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lifetap",
+    "proposedPoolId": "lifetap",
+    "proposedName": "Lifetap",
+    "currentText": "Whenever any player taps a Forest for mana, you draw a card.",
+    "proposedOracleText": "Whenever a Forest an opponent controls becomes tapped, you gain 1 life.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sleight_of_mind",
+    "proposedPoolId": "sleight_of_mind",
+    "proposedName": "Sleight of Mind",
+    "currentText": "Change a color word in target spell to a color of your choice.",
+    "proposedOracleText": "Change the text of target spell or permanent by replacing all instances of one color word with another. (For example, you may change \"target black spell\" to \"target blue spell.\" This effect lasts indefinitely.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "spell_blast",
+    "proposedPoolId": "spell_blast",
+    "proposedName": "Spell Blast",
+    "currentText": "Counter target spell with mana value X.",
+    "proposedOracleText": "Counter target spell with mana value X. (For example, if that spell's mana cost is {3}{U}{U}, X is 5.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "stasis",
+    "proposedPoolId": "stasis",
+    "proposedName": "Stasis",
+    "currentText": "Players skip their untap steps. At your upkeep, sacrifice Stasis unless you pay U.",
+    "proposedOracleText": "Players skip their untap steps.\nAt the beginning of your upkeep, sacrifice this enchantment unless you pay {U}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "steal_artifact",
+    "proposedPoolId": "steal_artifact",
+    "proposedName": "Steal Artifact",
+    "currentText": "You control enchanted artifact.",
+    "proposedOracleText": "Enchant artifact\nYou control enchanted artifact.",
+    "approved": true
+  },
+  {
+    "cardDbId": "twiddle",
+    "proposedPoolId": "twiddle",
+    "proposedName": "Twiddle",
+    "currentText": "Tap or untap target artifact, creature, or land.",
+    "proposedOracleText": "You may tap or untap target artifact, creature, or land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "dark_ritual",
+    "proposedPoolId": "dark_ritual",
+    "proposedName": "Dark Ritual",
+    "currentText": "Add BBB.",
+    "proposedOracleText": "Add {B}{B}{B}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "terror",
+    "proposedPoolId": "terror",
+    "proposedName": "Terror",
+    "currentText": "Destroy target non-artifact, non-black creature.",
+    "proposedOracleText": "Destroy target nonartifact, nonblack creature. It can't be regenerated.",
+    "approved": true
+  },
+  {
+    "cardDbId": "demonic_tutor",
+    "proposedPoolId": "demonic_tutor",
+    "proposedName": "Demonic Tutor",
+    "currentText": "Search library for any card, put it in your hand, then shuffle.",
+    "proposedOracleText": "Search your library for a card, put that card into your hand, then shuffle.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mind_twist",
+    "proposedPoolId": "mind_twist",
+    "proposedName": "Mind Twist",
+    "currentText": "Target player discards X cards at random.",
+    "proposedOracleText": "Target player discards X cards at random.",
+    "approved": true
+  },
+  {
+    "cardDbId": "animate_dead",
+    "proposedPoolId": "animate_dead",
+    "proposedName": "Animate Dead",
+    "currentText": "Return target creature from a graveyard to the battlefield under your control.",
+    "proposedOracleText": "Enchant creature card in a graveyard\nWhen this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.\nEnchanted creature gets -1/-0.",
+    "approved": true
+  },
+  {
+    "cardDbId": "drain_life",
+    "proposedPoolId": "drain_life",
+    "proposedName": "Drain Life",
+    "currentText": "Drain Life deals X damage to target creature; you gain that much life.",
+    "proposedOracleText": "Spend only black mana on X.\nDrain Life deals X damage to any target. You gain life equal to the damage dealt, but not more life than the player's life total before the damage was dealt, the planeswalker's loyalty before the damage was dealt, or the creature's toughness.",
+    "approved": true
+  },
+  {
+    "cardDbId": "disintegrate",
+    "proposedPoolId": "disintegrate",
+    "proposedName": "Disintegrate",
+    "currentText": "Deal X damage; creature can't regenerate this turn.",
+    "proposedOracleText": "Disintegrate deals X damage to any target. If it's a creature, it can't be regenerated this turn, and if it would die this turn, exile it instead.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sinkhole",
+    "proposedPoolId": "sinkhole",
+    "proposedName": "Sinkhole",
+    "currentText": "Destroy target land.",
+    "proposedOracleText": "Destroy target land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "bad_moon",
+    "proposedPoolId": "bad_moon",
+    "proposedName": "Bad Moon",
+    "currentText": "Black creatures get +1/+1.",
+    "proposedOracleText": "Black creatures get +1/+1.",
+    "approved": true
+  },
+  {
+    "cardDbId": "unholy_strength",
+    "proposedPoolId": "unholy_strength",
+    "proposedName": "Unholy Strength",
+    "currentText": "Enchanted creature gets +2/+1.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets +2/+1.",
+    "approved": true
+  },
+  {
+    "cardDbId": "weakness",
+    "proposedPoolId": "weakness",
+    "proposedName": "Weakness",
+    "currentText": "Enchanted creature gets -2/-1.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets -2/-1.",
+    "approved": true
+  },
+  {
+    "cardDbId": "paralyze",
+    "proposedPoolId": "paralyze",
+    "proposedName": "Paralyze",
+    "currentText": "Enchanted creature doesn't untap during its controller's untap step.",
+    "proposedOracleText": "Enchant creature\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.\nAt the beginning of the upkeep of enchanted creature's controller, that player may pay {4}. If the player does, untap the creature.",
+    "approved": true
+  },
+  {
+    "cardDbId": "pestilence",
+    "proposedPoolId": "pestilence",
+    "proposedName": "Pestilence",
+    "currentText": "B: Pestilence deals 1 damage to each creature and each player.",
+    "proposedOracleText": "At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment.\n{B}: This enchantment deals 1 damage to each creature and each player.",
+    "approved": true
+  },
+  {
+    "cardDbId": "raise_dead",
+    "proposedPoolId": "raise_dead",
+    "proposedName": "Raise Dead",
+    "currentText": "Return target creature from your graveyard to your hand.",
+    "proposedOracleText": "Return target creature card from your graveyard to your hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "deathgrip",
+    "proposedPoolId": "deathgrip",
+    "proposedName": "Deathgrip",
+    "currentText": "BB: Counter target green spell.",
+    "proposedOracleText": "{B}{B}: Counter target green spell.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fear",
+    "proposedPoolId": "fear",
+    "proposedName": "Fear",
+    "currentText": "Enchanted creature has fear (can't be blocked except by artifact or black creatures).",
+    "proposedOracleText": "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\nEnchanted creature has fear. (It can't be blocked except by artifact creatures and/or black creatures.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "gloom",
+    "proposedPoolId": "gloom",
+    "proposedName": "Gloom",
+    "currentText": "White spells cost an additional 3 to cast. Activated abilities of white permanents cost 3 more.",
+    "proposedOracleText": "White spells cost {3} more to cast.\nActivated abilities of white enchantments cost {3} more to activate.",
+    "approved": true
+  },
+  {
+    "cardDbId": "howl_from_beyond",
+    "proposedPoolId": "howl_from_beyond",
+    "proposedName": "Howl from Beyond",
+    "currentText": "Target creature gets +X/+0 until end of turn.",
+    "proposedOracleText": "Target creature gets +X/+0 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lightning_bolt",
+    "proposedPoolId": "lightning_bolt",
+    "proposedName": "Lightning Bolt",
+    "currentText": "Deals 3 damage to any target.",
+    "proposedOracleText": "Lightning Bolt deals 3 damage to any target.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fireball",
+    "proposedPoolId": "fireball",
+    "proposedName": "Fireball",
+    "currentText": "Deals X damage divided among any number of targets.",
+    "proposedOracleText": "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of targets.",
+    "approved": true
+  },
+  {
+    "cardDbId": "chain_lightning",
+    "proposedPoolId": "chain_lightning",
+    "proposedName": "Chain Lightning",
+    "currentText": "Chain Lightning deals 3 damage to any target.",
+    "proposedOracleText": "Chain Lightning deals 3 damage to any target. Then that player or that permanent's controller may pay {R}{R}. If the player does, they may copy this spell and may choose a new target for that copy.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wheel_of_fortune",
+    "proposedPoolId": "wheel_of_fortune",
+    "proposedName": "Wheel of Fortune",
+    "currentText": "Each player discards their hand, then draws seven cards.",
+    "proposedOracleText": "Each player discards their hand, then draws seven cards.",
+    "approved": true
+  },
+  {
+    "cardDbId": "shatter",
+    "proposedPoolId": "shatter",
+    "proposedName": "Shatter",
+    "currentText": "Destroy target artifact.",
+    "proposedOracleText": "Destroy target artifact.",
+    "approved": true
+  },
+  {
+    "cardDbId": "stone_rain",
+    "proposedPoolId": "stone_rain",
+    "proposedName": "Stone Rain",
+    "currentText": "Destroy target land.",
+    "proposedOracleText": "Destroy target land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "earthquake",
+    "proposedPoolId": "earthquake",
+    "proposedName": "Earthquake",
+    "currentText": "Deals X damage to each creature without flying and each player.",
+    "proposedOracleText": "Earthquake deals X damage to each creature without flying and each player.",
+    "approved": true
+  },
+  {
+    "cardDbId": "berserk",
+    "proposedPoolId": "berserk",
+    "proposedName": "Berserk",
+    "currentText": "Target creature gains trample and +X/+0 where X is its power. At end step, destroy it.",
+    "proposedOracleText": "Cast this spell only before the combat damage step.\nTarget creature gains trample and gets +X/+0 until end of turn, where X is its power. At the beginning of the next end step, destroy that creature if it attacked this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fork",
+    "proposedPoolId": "fork",
+    "proposedName": "Fork",
+    "currentText": "Copy target instant or sorcery. You may choose new targets.",
+    "proposedOracleText": "Copy target instant or sorcery spell, except that the copy is red. You may choose new targets for the copy.",
+    "approved": true
+  },
+  {
+    "cardDbId": "pyrotechnics",
+    "proposedPoolId": "pyrotechnics",
+    "proposedName": "Pyrotechnics",
+    "currentText": "Deals 4 damage divided as you choose among any number of targets.",
+    "proposedOracleText": "Pyrotechnics deals 4 damage divided as you choose among any number of targets.",
+    "approved": true
+  },
+  {
+    "cardDbId": "red_elemental_blast",
+    "proposedPoolId": "red_elemental_blast",
+    "proposedName": "Red Elemental Blast",
+    "currentText": "Counter target blue spell, or destroy target blue permanent.",
+    "proposedOracleText": "Choose one —\n• Counter target blue spell.\n• Destroy target blue permanent.",
+    "approved": true
+  },
+  {
+    "cardDbId": "flashfires",
+    "proposedPoolId": "flashfires",
+    "proposedName": "Flashfires",
+    "currentText": "Destroy all Plains.",
+    "proposedOracleText": "Destroy all Plains.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fissure",
+    "proposedPoolId": "fissure",
+    "proposedName": "Fissure",
+    "currentText": "Destroy target creature or land. It can't be regenerated.",
+    "proposedOracleText": "Destroy target creature or land. It can't be regenerated.",
+    "approved": true
+  },
+  {
+    "cardDbId": "manabarbs",
+    "proposedPoolId": "manabarbs",
+    "proposedName": "Manabarbs",
+    "currentText": "Whenever a player taps a land for mana, Manabarbs deals 1 damage to that player.",
+    "proposedOracleText": "Whenever a player taps a land for mana, this enchantment deals 1 damage to that player.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mana_flare",
+    "proposedPoolId": "mana_flare",
+    "proposedName": "Mana Flare",
+    "currentText": "Whenever a player taps a land for mana, that player adds one mana of any type that land produced.",
+    "proposedOracleText": "Whenever a player taps a land for mana, that player adds one mana of any type that land produced.",
+    "approved": true
+  },
+  {
+    "cardDbId": "power_surge",
+    "proposedPoolId": "power_surge",
+    "proposedName": "Power Surge",
+    "currentText": "At each player's upkeep, Power Surge deals damage equal to their untapped lands from their last upkeep.",
+    "proposedOracleText": "At the beginning of each player's upkeep, this enchantment deals X damage to that player, where X is the number of untapped lands they controlled at the beginning of this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "smoke",
+    "proposedPoolId": "smoke",
+    "proposedName": "Smoke",
+    "currentText": "Players can't untap more than one creature during their untap steps.",
+    "proposedOracleText": "Players can't untap more than one creature during their untap steps.",
+    "approved": true
+  },
+  {
+    "cardDbId": "giant_growth",
+    "proposedPoolId": "giant_growth",
+    "proposedName": "Giant Growth",
+    "currentText": "Target creature gets +3/+3 until end of turn.",
+    "proposedOracleText": "Target creature gets +3/+3 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "stream_of_life",
+    "proposedPoolId": "stream_of_life",
+    "proposedName": "Stream of Life",
+    "currentText": "Target player gains X life.",
+    "proposedOracleText": "Target player gains X life.",
+    "approved": true
+  },
+  {
+    "cardDbId": "regrowth",
+    "proposedPoolId": "regrowth",
+    "proposedName": "Regrowth",
+    "currentText": "Return target card from your graveyard to your hand.",
+    "proposedOracleText": "Return target card from your graveyard to your hand.",
+    "approved": true
+  },
+  {
+    "cardDbId": "hurricane",
+    "proposedPoolId": "hurricane",
+    "proposedName": "Hurricane",
+    "currentText": "Deals X damage to each creature with flying and each player.",
+    "proposedOracleText": "Hurricane deals X damage to each creature with flying and each player.",
+    "approved": true
+  },
+  {
+    "cardDbId": "tranquility",
+    "proposedPoolId": "tranquility",
+    "proposedName": "Tranquility",
+    "currentText": "Destroy all enchantments.",
+    "proposedOracleText": "Destroy all enchantments.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fog",
+    "proposedPoolId": "fog",
+    "proposedName": "Fog",
+    "currentText": "Prevent all combat damage this turn.",
+    "proposedOracleText": "Prevent all combat damage that would be dealt this turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wild_growth",
+    "proposedPoolId": "wild_growth",
+    "proposedName": "Wild Growth",
+    "currentText": "Enchanted land produces an additional G when tapped.",
+    "proposedOracleText": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lure",
+    "proposedPoolId": "lure",
+    "proposedName": "Lure",
+    "currentText": "All creatures able to block enchanted creature do so.",
+    "proposedOracleText": "Enchant creature\nAll creatures able to block enchanted creature do so.",
+    "approved": true
+  },
+  {
+    "cardDbId": "instill_energy",
+    "proposedPoolId": "instill_energy",
+    "proposedName": "Instill Energy",
+    "currentText": "Enchanted creature has haste and can untap once each turn.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature can attack as though it had haste.\n{0}: Untap enchanted creature. Activate only during your turn and only once each turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sylvan_library",
+    "proposedPoolId": "sylvan_library",
+    "proposedName": "Sylvan Library",
+    "currentText": "At start of draw step, draw 2 extra; pay 4 life each or put back.",
+    "proposedOracleText": "At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library.",
+    "approved": true
+  },
+  {
+    "cardDbId": "land_tax",
+    "proposedPoolId": "land_tax",
+    "proposedName": "Land Tax",
+    "currentText": "At upkeep, if opponent controls more lands, fetch up to 3 basic lands to hand.",
+    "proposedOracleText": "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.",
+    "approved": true
+  },
+  {
+    "cardDbId": "tsunami",
+    "proposedPoolId": "tsunami",
+    "proposedName": "Tsunami",
+    "currentText": "Destroy all Islands.",
+    "proposedOracleText": "Destroy all Islands.",
+    "approved": true
+  },
+  {
+    "cardDbId": "ice_storm",
+    "proposedPoolId": "ice_storm",
+    "proposedName": "Ice Storm",
+    "currentText": "Destroy target land.",
+    "proposedOracleText": "Destroy target land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "channel",
+    "proposedPoolId": "channel",
+    "proposedName": "Channel",
+    "currentText": "Until end of turn, any time you could cast an instant, you may pay 1 life to add C.",
+    "proposedOracleText": "Until end of turn, any time you could activate a mana ability, you may pay 1 life. If you do, add {C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "crumble",
+    "proposedPoolId": "crumble",
+    "proposedName": "Crumble",
+    "currentText": "Destroy target artifact. Its controller gains life equal to its mana value.",
+    "proposedOracleText": "Destroy target artifact. It can't be regenerated. That artifact's controller gains life equal to its mana value.",
+    "approved": true
+  },
+  {
+    "cardDbId": "fastbond",
+    "proposedPoolId": "fastbond",
+    "proposedName": "Fastbond",
+    "currentText": "You may play any number of lands each turn. You lose 1 life for each land played beyond the first.",
+    "proposedOracleText": "You may play any number of lands on each of your turns.\nWhenever you play a land, if it wasn't the first land you played this turn, this enchantment deals 1 damage to you.",
+    "approved": true
+  },
+  {
+    "cardDbId": "giant_strength",
+    "proposedPoolId": "giant_strength",
+    "proposedName": "Giant Strength",
+    "currentText": "Enchanted creature gets +2/+2.",
+    "proposedOracleText": "Enchant creature\nEnchanted creature gets +2/+2.",
+    "approved": true
+  },
+  {
+    "cardDbId": "kudzu",
+    "proposedPoolId": "kudzu",
+    "proposedName": "Kudzu",
+    "currentText": "Enchanted land is destroyed at each upkeep. Kudzu then attaches to a land that player controls.",
+    "proposedOracleText": "Enchant land\nWhen enchanted land becomes tapped, destroy it. That land's controller may attach this Aura to a land of their choice.",
+    "approved": true
+  },
+  {
+    "cardDbId": "lifeforce",
+    "proposedPoolId": "lifeforce",
+    "proposedName": "Lifeforce",
+    "currentText": "GG: Counter target black spell.",
+    "proposedOracleText": "{G}{G}: Counter target black spell.",
+    "approved": true
+  },
+  {
+    "cardDbId": "regeneration",
+    "proposedPoolId": "regeneration",
+    "proposedName": "Regeneration",
+    "currentText": "Enchanted creature has 'G: Regenerate this creature.'",
+    "proposedOracleText": "Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\n{G}: Regenerate enchanted creature. (The next time that creature would be destroyed this turn, instead tap it, remove it from combat, and heal all damage on it.)",
+    "approved": true
+  },
+  {
+    "cardDbId": "black_lotus",
+    "proposedPoolId": "black_lotus",
+    "proposedName": "Black Lotus",
+    "currentText": "T, Sacrifice: Add three mana of any one color.",
+    "proposedOracleText": "{T}, Sacrifice this artifact: Add three mana of any one color.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mox_pearl",
+    "proposedPoolId": "mox_pearl",
+    "proposedName": "Mox Pearl",
+    "currentText": "T: Add W.",
+    "proposedOracleText": "{T}: Add {W}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mox_sapphire",
+    "proposedPoolId": "mox_sapphire",
+    "proposedName": "Mox Sapphire",
+    "currentText": "T: Add U.",
+    "proposedOracleText": "{T}: Add {U}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mox_jet",
+    "proposedPoolId": "mox_jet",
+    "proposedName": "Mox Jet",
+    "currentText": "T: Add B.",
+    "proposedOracleText": "{T}: Add {B}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mox_ruby",
+    "proposedPoolId": "mox_ruby",
+    "proposedName": "Mox Ruby",
+    "currentText": "T: Add R.",
+    "proposedOracleText": "{T}: Add {R}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mox_emerald",
+    "proposedPoolId": "mox_emerald",
+    "proposedName": "Mox Emerald",
+    "currentText": "T: Add G.",
+    "proposedOracleText": "{T}: Add {G}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sol_ring",
+    "proposedPoolId": "sol_ring",
+    "proposedName": "Sol Ring",
+    "currentText": "T: Add CC.",
+    "proposedOracleText": "{T}: Add {C}{C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "jayemdae_tome",
+    "proposedPoolId": "jayemdae_tome",
+    "proposedName": "Jayemdae Tome",
+    "currentText": "4, T: Draw a card.",
+    "proposedOracleText": "{4}, {T}: Draw a card.",
+    "approved": true
+  },
+  {
+    "cardDbId": "black_vise",
+    "proposedPoolId": "black_vise",
+    "proposedName": "Black Vise",
+    "currentText": "At opponent's upkeep, deals damage equal to cards they have over 4.",
+    "proposedOracleText": "As this artifact enters, choose an opponent.\nAt the beginning of the chosen player's upkeep, this artifact deals X damage to that player, where X is the number of cards in their hand minus 4.",
+    "approved": true
+  },
+  {
+    "cardDbId": "howling_mine",
+    "proposedPoolId": "howling_mine",
+    "proposedName": "Howling Mine",
+    "currentText": "At the beginning of each player's draw step, that player draws an additional card.",
+    "proposedOracleText": "At the beginning of each player's draw step, if this artifact is untapped, that player draws an additional card.",
+    "approved": true
+  },
+  {
+    "cardDbId": "icy_manipulator",
+    "proposedPoolId": "icy_manipulator",
+    "proposedName": "Icy Manipulator",
+    "currentText": "1, T: Tap target artifact, creature, or land.",
+    "proposedOracleText": "{1}, {T}: Tap target artifact, creature, or land.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mana_vault",
+    "proposedPoolId": "mana_vault",
+    "proposedName": "Mana Vault",
+    "currentText": "T: Add CC. Upkeep: pay 4 or take 1 damage.",
+    "proposedOracleText": "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "basalt_monolith",
+    "proposedPoolId": "basalt_monolith",
+    "proposedName": "Basalt Monolith",
+    "currentText": "T: Add CCC. 3: Untap Basalt Monolith.",
+    "proposedOracleText": "This artifact doesn't untap during your untap step.\n{T}: Add {C}{C}{C}.\n{3}: Untap this artifact.",
+    "approved": true
+  },
+  {
+    "cardDbId": "disrupting_scepter",
+    "proposedPoolId": "disrupting_scepter",
+    "proposedName": "Disrupting Scepter",
+    "currentText": "3, T: Target player discards a card.",
+    "proposedOracleText": "{3}, {T}: Target player discards a card. Activate only during your turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "rod_of_ruin",
+    "proposedPoolId": "rod_of_ruin",
+    "proposedName": "Rod of Ruin",
+    "currentText": "3, T: Rod of Ruin deals 1 damage to any target.",
+    "proposedOracleText": "{3}, {T}: This artifact deals 1 damage to any target.",
+    "approved": true
+  },
+  {
+    "cardDbId": "millstone",
+    "proposedPoolId": "millstone",
+    "proposedName": "Millstone",
+    "currentText": "2, T: Target player mills two cards.",
+    "proposedOracleText": "{2}, {T}: Target player mills two cards.",
+    "approved": true
+  },
+  {
+    "cardDbId": "ashnods_altar",
+    "proposedPoolId": "ashnods_altar",
+    "proposedName": "Ashnod's Altar",
+    "currentText": "Sacrifice a creature: Add CC.",
+    "proposedOracleText": "Sacrifice a creature: Add {C}{C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "mana_crypt",
+    "proposedPoolId": "mana_crypt",
+    "proposedName": "Mana Crypt",
+    "currentText": "T: Add CC. Upkeep: flip a coin; if you lose, take 3 damage.",
+    "proposedOracleText": "At the beginning of your upkeep, flip a coin. If you lose the flip, this artifact deals 3 damage to you.\n{T}: Add {C}{C}.",
+    "approved": true
+  },
+  {
+    "cardDbId": "ivory_tower",
+    "proposedPoolId": "ivory_tower",
+    "proposedName": "Ivory Tower",
+    "currentText": "At your upkeep, gain life equal to hand size minus 4.",
+    "proposedOracleText": "At the beginning of your upkeep, you gain X life, where X is the number of cards in your hand minus 4.",
+    "approved": true
+  },
+  {
+    "cardDbId": "crystal_rod",
+    "proposedPoolId": "crystal_rod",
+    "proposedName": "Crystal Rod",
+    "currentText": "Whenever a player casts a blue spell, you may pay 1. If you do, you gain 1 life.",
+    "proposedOracleText": "Whenever a player casts a blue spell, you may pay {1}. If you do, you gain 1 life.",
+    "approved": true
+  },
+  {
+    "cardDbId": "jade_monolith",
+    "proposedPoolId": "jade_monolith",
+    "proposedName": "Jade Monolith",
+    "currentText": "{1}: Until end of turn, damage that would be dealt to you is dealt to Jade Monolith instead.",
+    "proposedOracleText": "{1}: The next time a source of your choice would deal damage to target creature this turn, that source deals that damage to you instead.",
+    "approved": true
+  },
+  {
+    "cardDbId": "meekstone",
+    "proposedPoolId": "meekstone",
+    "proposedName": "Meekstone",
+    "currentText": "Creatures with power 3 or greater don't untap during their controllers' untap steps.",
+    "proposedOracleText": "Creatures with power 3 or greater don't untap during their controllers' untap steps.",
+    "approved": true
+  },
+  {
+    "cardDbId": "relic_barrier",
+    "proposedPoolId": "relic_barrier",
+    "proposedName": "Relic Barrier",
+    "currentText": "T: Tap target artifact.",
+    "proposedOracleText": "{T}: Tap target artifact.",
+    "approved": true
+  },
+  {
+    "cardDbId": "rocket_launcher",
+    "proposedPoolId": "rocket_launcher",
+    "proposedName": "Rocket Launcher",
+    "currentText": "{2,T}: Rocket Launcher deals 1 damage to any target. Activate only if it's been under your control since your last turn began.",
+    "proposedOracleText": "{2}: This artifact deals 1 damage to any target. Destroy this artifact at the beginning of the next end step. Activate only if you've controlled this artifact continuously since the beginning of your most recent turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "staff_of_zegon",
+    "proposedPoolId": "staff_of_zegon",
+    "proposedName": "Staff of Zegon",
+    "currentText": "{2,T}: Target creature gets -1/-0 until end of turn.",
+    "proposedOracleText": "{3}, {T}: Target creature gets -2/-0 until end of turn.",
+    "approved": true
+  },
+  {
+    "cardDbId": "sunglasses_of_urza",
+    "proposedPoolId": "sunglasses_of_urza",
+    "proposedName": "Sunglasses of Urza",
+    "currentText": "Plains you control can tap to produce R in addition to W.",
+    "proposedOracleText": "You may spend white mana as though it were red mana.",
+    "approved": true
+  },
+  {
+    "cardDbId": "winter_orb",
+    "proposedPoolId": "winter_orb",
+    "proposedName": "Winter Orb",
+    "currentText": "As long as Winter Orb is untapped, players can't untap more than one land during their untap steps.",
+    "proposedOracleText": "As long as this artifact is untapped, players can't untap more than one land during their untap steps.",
+    "approved": true
+  },
+  {
+    "cardDbId": "wooden_sphere",
+    "proposedPoolId": "wooden_sphere",
+    "proposedName": "Wooden Sphere",
+    "currentText": "Whenever a player casts a green spell, you may pay 1. If you do, you gain 1 life.",
+    "proposedOracleText": "Whenever a player casts a green spell, you may pay {1}. If you do, you gain 1 life.",
+    "approved": true
+  }
+]
