@@ -21,6 +21,7 @@ import { TargetArrow } from './ui/duel/TargetArrow.jsx';
 import { DuelLog } from './ui/layout/TechnicalLog.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
 import { LandPip, FieldCard } from './ui/shared/Card.jsx';
+import AIDebugPanel from './ui/duel/AIDebugPanel.jsx';
 
 // -----------------------------------------------------------------------------
 // MANA CHOICE POPOVER
@@ -1063,6 +1064,9 @@ return (
 
       <DuelLog log={s.log} />
     </div>
+
+    {/* -- AI DEBUG PANEL (sandbox only) ---------------------------------- */}
+    {config.sandbox && <AIDebugPanel hand={s.o.hand} lib={s.o.lib} />}
   </div>
 
   {/* -- ACTION BAR ------------------------------------------------------ */}
