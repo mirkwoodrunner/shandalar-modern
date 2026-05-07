@@ -414,7 +414,7 @@ if (zone === 'pBf') {
   }
   // Assign blocker: opponent is attacking, player clicks own creature to block
   if (state.phase === 'COMBAT_BLOCKERS' && state.active !== 'p' && state.selTgt) {
-    declareBlocker(state.selTgt, card.iid);
+    declareBlocker(card.iid, state.selTgt);
     selectTarget(null);
     return;
   }
