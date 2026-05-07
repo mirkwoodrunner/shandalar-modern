@@ -27,10 +27,10 @@ return r;
 // --- CARD TYPE GUARDS ---------------------------------------------------------
 
 export const isLand   = c => c?.type === "Land";
-export const isCre    = c => c?.type?.startsWith("Creature");
+export const isCre    = c => !!c?.type?.includes("Creature");
 export const isInst   = c => c?.type === "Instant";
 export const isSort   = c => c?.type === "Sorcery";
-export const isArt    = c => c?.type === "Artifact";
+export const isArt    = c => !!c?.type?.includes("Artifact");
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
 export function hasKw(c, kw, state = null) {
