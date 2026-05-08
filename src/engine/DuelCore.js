@@ -1159,12 +1159,18 @@ for (const w of ["p","o"]) ns = burnMana(ns, w, ns.ruleset);
 // Issue B11: auto-declare MUST_ATTACK creatures as attackers at start of declare-attackers step.
 if (next === PHASE.COMBAT_ATTACKERS) {
   const activeWho = ns.active;
+  // Snapshot eligibility before auto-declaring so we can distinguish "couldn't attack" from "chose not to" post-combat.
+  const eligibleIids = ns[activeWho].bf
+    .filter(c => c.keywords?.includes("MUST_ATTACK") && !c.tapped && !c.summoningSick)
+    .map(c => c.iid);
+  ns = { ...ns, turnState: { ...ns.turnState, mustAttackEligible: eligibleIids } };
   ns[activeWho].bf.forEach(c => {
     const mustAttack = c.keywords?.includes("MUST_ATTACK");
     if (mustAttack && !c.tapped && !c.summoningSick && !ns.attackers.includes(c.iid)) {
       ns = {
         ...ns,
         attackers: [...ns.attackers, c.iid],
+        turnState: { ...ns.turnState, attackedThisCombat: [...ns.turnState.attackedThisCombat, c.iid] },
         [activeWho]: {
           ...ns[activeWho],
           bf: ns[activeWho].bf.map(x => x.iid === c.iid
@@ -1179,21 +1185,15 @@ if (next === PHASE.COMBAT_ATTACKERS) {
 
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
-for (const mw of ["p","o"]) {
-for (const mc of [...ns[mw].bf].filter(x => x.mustAttack)) {
-// Only enforce mustAttack destruction on the active player's creatures.
-// Creatures on the non-active side got mustAttack from an illegal cast — clear silently.
-if (mw !== ns.active) {
-ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
-continue;
-}
-if (!ns.attackers.includes(mc.iid)) {
-ns = zMove(ns, mc.iid, mw, mw, "gy");
-ns = dlog(ns, `${mc.name} destroyed for failing to attack.`, "death");
-} else {
-ns = { ...ns, [mw]: { ...ns[mw], bf: ns[mw].bf.map(x => x.iid === mc.iid ? { ...x, mustAttack: false } : x) } };
-}
-}
+for (const iid of ns.turnState.mustAttackEligible ?? []) {
+  if (!ns.turnState.attackedThisCombat.includes(iid)) {
+    const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
+    if (who) {
+      const c = ns[who].bf.find(x => x.iid === iid);
+      ns = zMove(ns, iid, who, who, 'gy');
+      ns = dlog(ns, `${c?.name ?? iid} destroyed for failing to attack.`, 'effect');
+    }
+  }
 }
 // Check win conditions after combat damage resolves.
 const combatWin = checkWinConditions(ns);
@@ -1212,7 +1212,7 @@ ns = { ...ns, active: nx };
 ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
-  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0 } };
+  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [] } };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 // Power Surge: snapshot tapped land count before untapping (SYSTEMS.md S20, Option A)
@@ -1654,7 +1654,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0 },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [] },
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
@@ -1765,7 +1765,10 @@ case "DECLARE_ATTACKER": {
   if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, "HASTE", s))) return s;
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
-  return { ...s, attackers: atts, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
+  const atc = att
+    ? (s.turnState.attackedThisCombat || []).filter(id => id !== action.iid)
+    : [...(s.turnState.attackedThisCombat || []), action.iid];
+  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
 }
 
 case "DECLARE_BLOCKER": {
