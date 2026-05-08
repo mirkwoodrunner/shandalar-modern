@@ -7,114 +7,401 @@ import { TERRAIN, MANA_HEX, MANA_SYM, MAGE_NAMES, COLORS } from '../../engine/Ma
 
 const TILE_SIZE = 34;
 
-// --- SINGLE TILE -------------------------------------------------------------
-
-export function MapTile({ tile, isPlayer, onClick }) {
-const t = tile.terrain;
-const s = tile.structure;
-
-if (!tile.revealed) {
-return (
-<div onClick={() => onClick(tile)}
-style={{ width:TILE_SIZE, height:TILE_SIZE, background:"#0a0806", border:"1px solid #100e08", cursor:"pointer" }}
-/>
-);
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-const ml = tile.manaLink;
+const TERRAIN_CLASS = {
+  PLAINS:   'ow-plains',
+  FOREST:   'ow-forest',
+  SWAMP:    'ow-swamp',
+  MOUNTAIN: 'ow-mountain',
+  ISLAND:   'ow-island',
+  WATER:    'ow-water',
+};
 
-return (
-<div onClick={() => onClick(tile)} style={{
-width: TILE_SIZE, height: TILE_SIZE,
-background: t.color,
-border: "1px solid rgba(0,0,0,.25)",
-cursor: "pointer",
-display: "flex", alignItems: "center", justifyContent: "center",
-position: "relative", overflow: "hidden",
-boxShadow: isPlayer ? "0 0 10px rgba(255,240,100,.8)" : "none",
-}}>
-{/* Mana link corruption overlay */}
-{ml && (
-<div style={{ position:"absolute", inset:0, background:`${MANA_HEX[ml]}40`, border:`2px solid ${MANA_HEX[ml]}80`, animation:"pulse 2s infinite" }} />
-)}
+const TERRAIN_BG = {
+  PLAINS:   '#b09858',
+  FOREST:   '#2d5a2d',
+  SWAMP:    '#3d3825',
+  MOUNTAIN: '#706050',
+  ISLAND:   '#2d4a62',
+  WATER:    '#111e30',
+};
 
-  {/* Structure icons with labels */}
-  {s === "TOWN" && (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", zIndex:2, gap:1 }}>
-      <div style={{ fontSize:TILE_SIZE*.42, lineHeight:1 }}>🏘</div>
-      <div style={{ fontSize:6, color:"#f0d090", fontFamily:"'Cinzel',serif", whiteSpace:"nowrap", textShadow:"0 1px 3px rgba(0,0,0,.9)", overflow:"hidden", maxWidth:TILE_SIZE-4, textAlign:"center" }}>
-        {tile.townData?.name?.slice(0,7) || ""}
-      </div>
+// --- SINGLE TILE -------------------------------------------------------------
+
+export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
+  const t = tile.terrain;
+  const s = tile.structure;
+
+  if (!tile.revealed) {
+    return (
+      <div
+        className="ow-tile ow-fog"
+        onClick={() => onClick(tile)}
+      />
+    );
+  }
+
+  const terrainClass = TERRAIN_CLASS[t.id] ?? '';
+  const fogEdgeClass = isFogEdge ? 'ow-fog-edge' : '';
+  const ml = tile.manaLink;
+  const tileBg = TERRAIN_BG[t.id] ?? t.color;
+
+  const castleColor   = tile.castleData?.color ? MANA_HEX[tile.castleData.color] : '#c4a040';
+  const castleDefeated = tile.castleData?.defeated ?? false;
+  const plaqueStyle   = s === 'CASTLE' ? {
+    '--ring':      castleColor,
+    '--ring-glow': hexToRgba(castleColor, 0.55),
+  } : undefined;
+
+  return (
+    <div
+      className={`ow-tile ${terrainClass} ${fogEdgeClass}`}
+      style={{ background: tileBg }}
+      onClick={() => onClick(tile)}
+    >
+      {/* Mana link corruption overlay */}
+      {ml && (
+        <div
+          className="ow-mana"
+          style={{
+            background: `radial-gradient(ellipse at 50% 50%, ${hexToRgba(MANA_HEX[ml], 0.65)}, transparent 70%)`,
+          }}
+        />
+      )}
+
+      {/* Structure — plaque + label */}
+      {s && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          zIndex: 2,
+        }}>
+          <div
+            className={[
+              'ow-plaque',
+              s === 'DUNGEON' ? 'ow-plaque-dungeon' : '',
+              s === 'CASTLE'  ? 'ow-plaque-castle'  : '',
+              s === 'CASTLE' && castleDefeated ? 'ow-plaque-castle-defeated' : '',
+            ].join(' ').trim()}
+            style={plaqueStyle}
+          >
+            {s === 'TOWN'    && '🏘'}
+            {s === 'DUNGEON' && '⚔'}
+            {s === 'CASTLE'  && (castleDefeated ? '🏚' : '🏰')}
+          </div>
+
+          {s === 'TOWN' && tile.townData?.name && (
+            <div className="ow-label">
+              {tile.townData.name.slice(0, 7)}
+            </div>
+          )}
+          {s === 'CASTLE' && tile.castleData?.mage && (
+            <div className="ow-label" style={{ color: castleColor }}>
+              {tile.castleData.mage.slice(0, 6)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Terrain icon — no structure tiles only, not water */}
+      {!s && t.id !== 'WATER' && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, opacity: 0.30, pointerEvents: 'none', zIndex: 1,
+        }}>
+          {t.icon}
+        </div>
+      )}
+
+      {/* Player token */}
+      {isPlayer && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10,
+        }}>
+          <div className="ow-player-disc">
+            🧙
+            <div className="ow-player-ring" />
+          </div>
+        </div>
+      )}
     </div>
-  )}
-  {s === "DUNGEON" && <div style={{ fontSize:TILE_SIZE*.38, lineHeight:1, zIndex:2 }}>⚔</div>}
-  {s === "CASTLE" && (
-    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", zIndex:2, gap:1 }}>
-      <div style={{
-        fontSize: TILE_SIZE*.38, lineHeight:1,
-        filter: `drop-shadow(0 0 6px ${MANA_HEX[tile.castleData?.color] || "#fff"})`,
-        animation: tile.castleData?.defeated ? "none" : "pulse 3s infinite",
-      }}>
-        {tile.castleData?.defeated ? "🏚" : "🏰"}
-      </div>
-      <div style={{ fontSize:5.5, color:MANA_HEX[tile.castleData?.color]||"#fff", fontFamily:"'Cinzel',serif", textShadow:"0 1px 3px rgba(0,0,0,.9)", opacity:.9 }}>
-        {tile.castleData?.mage?.slice(0,6) || ""}
-      </div>
-    </div>
-  )}
-
-  {/* Terrain icon (no structure) */}
-  {!s && t !== TERRAIN.WATER && (
-    <div style={{ fontSize:TILE_SIZE*.36, opacity:.45 }}>{t.icon}</div>
-  )}
-
-  {/* Player wizard token */}
-  {isPlayer && (
-    <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:10 }}>
-      <div style={{
-        width: TILE_SIZE*.55, height: TILE_SIZE*.55, borderRadius:"50%",
-        background: "radial-gradient(circle at 35% 35%,#fff8e0,#e0c050)",
-        border: "2px solid rgba(255,255,255,.8)",
-        boxShadow: "0 0 10px rgba(255,240,100,.8)",
-        display: "flex", alignItems:"center", justifyContent:"center",
-        fontSize: TILE_SIZE*.28,
-        animation: "wizPulse 2s ease-in-out infinite",
-      }}>🧙</div>
-    </div>
-  )}
-</div>
-
-);
+  );
 }
 
 // --- MAP GRID -----------------------------------------------------------------
 
+const OW_STYLES = `
+.ow-tile {
+  width: 34px;
+  height: 34px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.ow-tile::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+}
+
+.ow-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 40% 30%, rgba(255,235,180,.05), transparent 65%);
+  pointer-events: none;
+}
+
+.ow-plains::before {
+  background: repeating-linear-gradient(
+    42deg,
+    transparent 0 3px,
+    rgba(80,55,15,.20) 3px 4px
+  );
+}
+
+.ow-forest::before {
+  background:
+    radial-gradient(circle at 25% 35%, rgba(10,25,8,.50) 0 2px, transparent 3px),
+    radial-gradient(circle at 72% 62%, rgba(10,25,8,.45) 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 85%, rgba(10,25,8,.40) 0 2px, transparent 3px);
+  mix-blend-mode: normal;
+  opacity: 0.75;
+}
+
+.ow-swamp::before {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 4px, rgba(0,0,0,.18) 4px 5px),
+    radial-gradient(circle at 60% 70%, rgba(120,160,70,.15) 0 2px, transparent 3px);
+  mix-blend-mode: normal;
+  opacity: 0.65;
+}
+
+.ow-mountain::before {
+  background: repeating-linear-gradient(
+    120deg,
+    transparent 0 4px,
+    rgba(0,0,0,.12) 4px 5px
+  );
+}
+
+.ow-island::before {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 3px,
+    rgba(255,255,255,.06) 3px 4px
+  );
+}
+
+.ow-water::before {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 5px,
+    rgba(140,200,235,.10) 5px 6px,
+    transparent 6px 11px
+  );
+  background-size: 22px 100%;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  animation: waterShimmer 7s linear infinite;
+}
+
+.ow-fog::before {
+  background:
+    radial-gradient(circle at 30% 40%, rgba(40,30,20,.45) 0 4px, transparent 6px),
+    radial-gradient(circle at 70% 65%, rgba(40,30,20,.35) 0 3px, transparent 5px);
+  mix-blend-mode: normal;
+  opacity: 0.55;
+  animation: fogDrift 14s ease-in-out infinite;
+}
+.ow-fog::after { background: none; }
+
+.ow-fog-edge {
+  box-shadow: inset 0 0 18px 3px rgba(0,0,0,.70);
+}
+
+.ow-mana {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.50;
+  mix-blend-mode: screen;
+  animation: manaPulse 3.2s ease-in-out infinite;
+}
+
+.ow-plaque {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #1a140a, #0a0604 75%);
+  box-shadow:
+    0 0 0 1.5px rgba(196,160,64,.60),
+    0 0 0 3px rgba(0,0,0,.65),
+    0 1px 3px rgba(0,0,0,.80);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ow-plaque-dungeon {
+  background: radial-gradient(circle at 35% 30%, #2a0a0a, #100404 75%);
+  box-shadow:
+    0 0 0 1.5px rgba(180,60,60,.55),
+    0 0 0 3px rgba(0,0,0,.65),
+    0 1px 3px rgba(0,0,0,.80);
+}
+
+.ow-plaque-castle {
+  width: 24px;
+  height: 24px;
+  box-shadow:
+    0 0 0 1.5px var(--ring, #c4a040),
+    0 0 0 3px rgba(0,0,0,.70),
+    0 0 10px var(--ring-glow, rgba(196,160,64,.50));
+  animation: castleBreath 4s ease-in-out infinite;
+}
+
+.ow-plaque-castle-defeated {
+  animation: none;
+  filter: grayscale(0.70) brightness(0.70);
+  box-shadow:
+    0 0 0 1.5px rgba(80,70,55,.60),
+    0 0 0 2px rgba(0,0,0,.70);
+}
+
+.ow-label {
+  position: absolute;
+  bottom: 1px;
+  left: 0;
+  right: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 5.5px;
+  letter-spacing: .08em;
+  text-align: center;
+  color: rgba(240,210,140,.90);
+  text-shadow: 0 1px 0 #000, 0 0 3px #000;
+  text-transform: uppercase;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ow-player-disc {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f5d97a, #c4a040 45%, #6a4f1c);
+  box-shadow:
+    0 0 0 1px #2a1a08,
+    0 0 0 2px rgba(245,217,122,.85),
+    0 0 14px 4px rgba(255,220,120,.65),
+    inset 0 0 4px rgba(0,0,0,.40);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  position: relative;
+  animation: wizPulse 2.4s ease-in-out infinite;
+}
+
+.ow-player-ring {
+  position: absolute;
+  inset: -5px;
+  border: 1px dashed rgba(255,220,120,.50);
+  border-radius: 50%;
+  animation: wizSpin 9s linear infinite;
+}
+
+@keyframes manaPulse {
+  0%, 100% { opacity: .30; }
+  50%       { opacity: .65; }
+}
+
+@keyframes waterShimmer {
+  0%   { background-position: 0 0; }
+  100% { background-position: -22px 0; }
+}
+
+@keyframes fogDrift {
+  0%,  100% { transform: translate(0,   0);  opacity: .55; }
+  50%        { transform: translate(2px,-1px); opacity: .75; }
+}
+
+@keyframes castleBreath {
+  0%,  100% { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0  6px var(--ring-glow); }
+  50%        { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0 16px var(--ring-glow); }
+}
+
+@keyframes wizSpin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+`;
+
 export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick }) {
-return (
-<div style={{
-display: "grid",
-gridTemplateColumns: `repeat(${viewW},${TILE_SIZE}px)`,
-gridTemplateRows:    `repeat(${viewH},${TILE_SIZE}px)`,
-gap: 1, padding: 8, background: "#080604",
-}}>
-{Array.from({ length: viewH }, (_, vy) =>
-Array.from({ length: viewW }, (_, vx) => {
-const x = viewport.x + vx;
-const y = viewport.y + vy;
-const tile = tiles[y]?.[x];
-if (!tile) return <div key={`${vx}-${vy}`} style={{ width:TILE_SIZE, height:TILE_SIZE, background:"#030202" }} />;
-return (
-<MapTile
-key={`${x}-${y}`}
-tile={tile}
-isPlayer={x === playerPos.x && y === playerPos.y}
-onClick={onTileClick}
-/>
-);
-})
-)}
-</div>
-);
+  const tileAt = (x, y) => tiles[y]?.[x] ?? null;
+  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  return (
+    <>
+      <style>{OW_STYLES}</style>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${viewW}, 34px)`,
+        gridTemplateRows:    `repeat(${viewH}, 34px)`,
+        gap: 0,
+        padding: 8,
+        background: 'radial-gradient(ellipse at center, #0c0906 0%, #050302 100%)',
+        boxShadow: 'inset 0 0 60px rgba(0,0,0,.80)',
+        borderRadius: 2,
+      }}>
+        {Array.from({ length: viewH }, (_, vy) =>
+          Array.from({ length: viewW }, (_, vx) => {
+            const x = viewport.x + vx;
+            const y = viewport.y + vy;
+            const tile = tileAt(x, y);
+
+            if (!tile) {
+              return (
+                <div
+                  key={`${vx}-${vy}`}
+                  style={{ width: 34, height: 34, background: '#030202' }}
+                />
+              );
+            }
+
+            const isFogEdge = tile.revealed && DIRS.some(([dx, dy]) => {
+              const n = tileAt(x + dx, y + dy);
+              return n && !n.revealed;
+            });
+
+            return (
+              <MapTile
+                key={`${x}-${y}`}
+                tile={tile}
+                isPlayer={x === playerPos.x && y === playerPos.y}
+                isFogEdge={isFogEdge}
+                onClick={onTileClick}
+              />
+            );
+          })
+        )}
+      </div>
+    </>
+  );
 }
 
 // --- HUD BAR -----------------------------------------------------------------
