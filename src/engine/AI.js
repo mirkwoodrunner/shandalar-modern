@@ -199,9 +199,27 @@ function planMain(state, profile, phase) {
       continue;
     }
 
+    // Disintegrate / Drain Life — deal X damage to lowest-toughness creature or player.
+    if (card.effect === "disintegrate" || card.effect === "drainLife") {
+      const threats = state.p.bf.filter(isCre);
+      const target = threats.length && Math.random() < 0.7
+        ? threats.reduce((a, b) => getTou(a, state) < getTou(b, state) ? a : b)
+        : "p";
+      actions.push({ type: "PLAY_CARD", cardId: card.iid, targets: [typeof target === "string" ? target : target.iid] });
+      continue;
+    }
+
+    // Raise Dead / Resurrection — use only when own graveyard has creatures.
+    if (card.effect === "regrowthCreature" || card.effect === "reanimateOwn") {
+      if (state.o.gy.some(isCre)) {
+        actions.push({ type: "PLAY_CARD", cardId: card.iid, targets: [] });
+      }
+      continue;
+    }
+
     // Damage/draw/burn spells targeting player.
     const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
-      'gainLife2','gainLife6','tutor','regrowth','reanimateOwn'].includes(card.effect);
+      'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
     const targetsOpp  = ['damage3','damage5','damageX','psionicBlast','chainLightning',
       'damage1','damage2','ping'].includes(card.effect);
 

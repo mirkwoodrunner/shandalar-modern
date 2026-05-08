@@ -242,8 +242,9 @@ while (changed) {
     );
     for (const c of dead) {
       const dyingCard = c;
-      ns = zMove(ns, c.iid, w, w, "gy");
-      ns = dlog(ns, `${c.name} is destroyed.`, "death");
+      // Disintegrate exile override: if exileNextDeath is set, exile instead of GY.
+      ns = zMove(ns, c.iid, w, w, ns.exileNextDeath ? "exile" : "gy");
+      ns = dlog(ns, `${c.name} is ${ns.exileNextDeath ? "exiled" : "destroyed"}.`, "death");
       ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w } });
       ns = processTriggerQueue(ns);
       changed = true;
@@ -903,6 +904,23 @@ case "triskelionPing": {
     }
     ns = dlog(ns, `${card.name} removes a counter and deals 1 damage.`, "effect");
   }
+  break;
+}
+// --- GROUP A NEW EFFECTS (Batch 2) -------------------------------------------
+case "disintegrate": {
+  const t2 = tgt === "p" || tgt === "o" ? tgt : opp;
+  if (t2 === "p" || t2 === "o") {
+    ns = hurt(ns, t2, xVal, card.name);
+  } else if (tgtC) {
+    ns = { ...ns, exileNextDeath: true,
+      [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+        c.iid === tgtC.iid ? { ...c, damage: c.damage + xVal } : c
+      )}
+    };
+    ns = checkDeath(ns);
+    ns = { ...ns, exileNextDeath: false };
+  }
+  ns = dlog(ns, `${card.name} deals ${xVal} damage${tgtC ? ` to ${tgtC.name}` : ""}.`, "damage");
   break;
 }
 case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, "effect"); break;
