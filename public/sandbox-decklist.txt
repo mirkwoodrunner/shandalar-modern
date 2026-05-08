@@ -3,9 +3,13 @@
 # Format: Card Name x<quantity>
 # Card names must match exactly (case-insensitive).
 
-Urza's Tower x4
-Urza's Mine x4
-Urza's Power Plant x4
-Mishra's Factory x4
+Flying Men x4
+Black Lotus x4
 Mox Sapphire x4
-Juggernaut x4
+Time Walk x4
+Timetwister x4
+Ancestral Recall x4
+Mahamoti Djinn x4
+Volcanic Island x4
+Lightning Bolt x4
+Mox Ruby x4
