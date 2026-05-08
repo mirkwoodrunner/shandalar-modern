@@ -335,6 +335,18 @@ if (ns[who].bf.some(x => x.id === "sunglasses_of_urza") && c.subtype?.includes("
 ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, R: (ns[who].mana.R || 0) + 1 } } };
 ns = dlog(ns, `Sunglasses of Urza: ${who} gets +1R.`, "mana");
 }
+// Tron bonus: if this is a Tron piece and all three are in play, add extra colorless.
+if (c.tronPiece) {
+const ownerBf = ns[who].bf;
+const hasTower = ownerBf.some(x => x.tronPiece === "tower");
+const hasMine  = ownerBf.some(x => x.tronPiece === "mine");
+const hasPlant = ownerBf.some(x => x.tronPiece === "plant");
+if (hasTower && hasMine && hasPlant) {
+  const bonus = c.tronPiece === "tower" ? 2 : 1;
+  ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, C: (ns[who].mana.C || 0) + bonus } } };
+  ns = dlog(ns, `Tron bonus: ${c.name} tapped for ${1 + bonus} colorless.`, "mana");
+}
+}
 return ns;
 }
 
@@ -1131,12 +1143,39 @@ export const COMBAT_PHASES = [
 export function advPhase(s) {
 if (s.stack && s.stack.length > 0) return s;
 const idx = PHASE_SEQ.indexOf(s.phase);
-const next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
+let next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
+
+// Issue B14: skip blockers and damage when no attackers were declared.
+if (next === PHASE.COMBAT_BLOCKERS && (!s.attackers || s.attackers.length === 0)) {
+  next = PHASE.MAIN_2;
+}
+
 const turnChange = next === PHASE.UNTAP;
 let ns = { ...s, phase: next };
 
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
 for (const w of ["p","o"]) ns = burnMana(ns, w, ns.ruleset);
+
+// Issue B11: auto-declare MUST_ATTACK creatures as attackers at start of declare-attackers step.
+if (next === PHASE.COMBAT_ATTACKERS) {
+  const activeWho = ns.active;
+  ns[activeWho].bf.forEach(c => {
+    const mustAttack = c.keywords?.includes("MUST_ATTACK");
+    if (mustAttack && !c.tapped && !c.summoningSick && !ns.attackers.includes(c.iid)) {
+      ns = {
+        ...ns,
+        attackers: [...ns.attackers, c.iid],
+        [activeWho]: {
+          ...ns[activeWho],
+          bf: ns[activeWho].bf.map(x => x.iid === c.iid
+            ? { ...x, tapped: !hasKw(x, "VIGILANCE"), attacking: true, mustAttack: true }
+            : x
+          ),
+        },
+      };
+    }
+  });
+}
 
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
@@ -1374,6 +1413,14 @@ ns = { ...ns, [ac]: { ...ns[ac], hand: ns[ac].hand.slice(0,-1), gy: [...ns[ac].g
 // Expire all EOT buffs on all permanents. SYSTEMS.md S3.1
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c, eotBuffs: [] } : c) } };
+}
+// Revert animated lands (e.g. Mishra's Factory) at end of turn.
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => {
+  if (!c.eotRevert) return c;
+  const { isAnimatedLand, power, toughness, subtype, eotRevert, ...rest } = c;
+  return rest;
+}) } };
 }
 // Clear mustAttack flags at end of turn
 for (const w of ["p","o"]) {
@@ -1799,9 +1846,56 @@ case "MULLIGAN": {
 }
 
 case "ACTIVATE_ABILITY": {
-  const { iid, tgt, chosenColor } = action;
+  const { iid, tgt, chosenColor, abilityId } = action;
   const card = s.p.bf.find(c => c.iid === iid);
-  if (!card || !card.activated) return s;
+  if (!card) return s;
+
+  // Handle cards with activatedAbilities array (e.g. Mishra's Factory).
+  if (card.activatedAbilities && abilityId) {
+    const ab = card.activatedAbilities.find(a => a.id === abilityId);
+    if (!ab) return s;
+
+    if (ab.effect === "animateLand") {
+      // Pay {1} generic from pool.
+      const totalMana = Object.values(s.p.mana).reduce((a, b) => a + b, 0);
+      if (totalMana < 1) return dlog(s, "Not enough mana to animate Mishra's Factory.", "info");
+      let ns = s;
+      for (const col of ["C","W","U","B","R","G"]) {
+        if ((ns.p.mana[col] || 0) > 0) {
+          ns = { ...ns, p: { ...ns.p, mana: { ...ns.p.mana, [col]: ns.p.mana[col] - 1 } } };
+          break;
+        }
+      }
+      if (card.isAnimatedLand) return dlog(ns, "Mishra's Factory is already animated.", "info");
+      ns = { ...ns, p: { ...ns.p, bf: ns.p.bf.map(c => c.iid === iid
+        ? { ...c, isAnimatedLand: true, power: 2, toughness: 2, subtype: "Assembly-Worker", eotRevert: true }
+        : c
+      ) } };
+      return dlog(ns, "Mishra's Factory becomes a 2/2 Assembly-Worker until end of turn.", "effect");
+    }
+
+    if (ab.effect === "pumpAssemblyWorker") {
+      if (card.tapped) return dlog(s, "Mishra's Factory is already tapped.", "info");
+      if (!tgt) return dlog(s, "No target selected for pump ability.", "info");
+      // Tap the factory.
+      let ns = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+      // Apply +1/+1 EOT buff to target (search both battlefields).
+      const inP = ns.p.bf.find(c => c.iid === tgt);
+      const inO = ns.o.bf.find(c => c.iid === tgt);
+      if (inP) {
+        ns = { ...ns, p: { ...ns.p, bf: ns.p.bf.map(c => c.iid === tgt
+          ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] } : c) } };
+      } else if (inO) {
+        ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(c => c.iid === tgt
+          ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] } : c) } };
+      }
+      return dlog(ns, `Mishra's Factory pumps target Assembly-Worker +1/+1.`, "effect");
+    }
+
+    return s;
+  }
+
+  if (!card.activated) return s;
   const act = card.activated;
   // Birds of Paradise: tap the bird, set pendingBop flag, UI shows BopColorPicker.
   if (act.effect === "addManaAny" && !action.chosenColor) {

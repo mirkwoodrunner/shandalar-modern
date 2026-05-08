@@ -255,7 +255,7 @@ flexShrink: 0, display: "flex", flexDirection: "column", overflow: "hidden",
 {/* Art */}
 <div style={{ flex:1, margin:"3px 5px", background:`linear-gradient(135deg,${bg}dd,rgba(0,0,0,.55))`, borderRadius:4, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden", border:`1px solid ${bd}60` }}>
 <CardArtDisplay card={card} sm={sm} />
-{card.damage > 0 && <div style={{ position:"absolute", top:2, right:2, background:"#cc0a0a", color:"#fff", fontSize:9, fontWeight:700, padding:"1px 4px", borderRadius:3 }}>?{card.damage}</div>}
+{card.damage > 0 && <div style={{ position:"absolute", top:4, right:4, background:"rgba(180,20,20,0.85)", color:"#fff", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:"bold", fontFamily:"'Fira Code',monospace", border:"1px solid #ff4444", zIndex:10, boxShadow:"0 0 4px rgba(255,0,0,0.5)" }}>🩸{card.damage}</div>}
 {card.summoningSick && isCre(card) && <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.45)", display:"flex", alignItems:"center", justifyContent:"center", borderRadius:4 }}><span style={{ fontSize:8, color:"rgba(255,220,150,.65)", fontFamily:"'Cinzel',serif" }}>SICK</span></div>}
 </div>
 {/* Keywords */}

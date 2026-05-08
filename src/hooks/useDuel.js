@@ -71,8 +71,8 @@ dispatch({ type: "SET_X", val }), []);
 const mulligan = useCallback(() =>
 dispatch({ type: "MULLIGAN", who: "p" }), []);
 
-const activateAbility = useCallback((iid, tgt = null, chosenColor = null) =>
-dispatch({ type: "ACTIVATE_ABILITY", iid, tgt, chosenColor }), []);
+const activateAbility = useCallback((iid, tgt = null, chosenColor = null, abilityId = null) =>
+dispatch({ type: "ACTIVATE_ABILITY", iid, tgt, chosenColor, abilityId }), []);
 
 const chooseLotusColor = useCallback((color) =>
 dispatch({ type: "CHOOSE_LOTUS_COLOR", color }), []);

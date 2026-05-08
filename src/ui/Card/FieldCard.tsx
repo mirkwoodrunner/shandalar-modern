@@ -90,6 +90,31 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
         {card.text ?? ''}
       </div>
 
+      {(card.damage ?? 0) > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          background: 'rgba(180,20,20,0.85)',
+          color: '#fff',
+          borderRadius: '50%',
+          width: 22,
+          height: 22,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 9,
+          fontWeight: 'bold',
+          fontFamily: "'Fira Code', monospace",
+          border: '1px solid #ff4444',
+          zIndex: 10,
+          boxShadow: '0 0 4px rgba(255,0,0,0.5)',
+          flexShrink: 0,
+        }}>
+          🩸{card.damage}
+        </div>
+      )}
+
       {isCre && (
         <div
           className={styles.ptPlaque}
