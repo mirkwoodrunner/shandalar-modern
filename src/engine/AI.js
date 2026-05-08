@@ -137,6 +137,10 @@ function planMain(state, profile, phase) {
 
   const sorted = [...state.o.hand].sort((a, b) => b.cmc - a.cmc);
 
+  // Virtual state tracks which lands have already been designated for spells this
+  // turn, so we don't over-commit mana across multiple PLAY_CARDs in one plan.
+  let virtualState = state;
+
   for (const card of sorted) {
     // Land: always play one if available, no mana cost required.
     if (isLand(card) && state.landsPlayed < 1) {
@@ -158,77 +162,89 @@ function planMain(state, profile, phase) {
     }
 
     if (card.cmc > totalMana) continue; // can't afford even with all lands tapped
-    if (!canPay(availMana, card.cost)) continue;
+
+    // --- Build the spell action FIRST; only tap if the spell is actually valid ---
+
+    let spellTargets = null; // null = not yet resolved; [] = no target; [id] = targeted
 
     // Removal: target highest-power threat on the player's battlefield.
     const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
       'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
     if (isRemoval) {
       const threats = state.p.bf.filter(isCre);
-      if (!threats.length) continue; // no valid target ? skip to avoid mana burn
+      if (!threats.length) continue; // no valid target — skip without tapping
       const target = threats.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-      if (Math.random() < profile.removalPriority) {
-        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
-      }
-      continue;
+      if (Math.random() < profile.removalPriority) spellTargets = [target.iid];
+      else continue;
     }
 
     // Pump spells that need a target creature on the AI's battlefield.
-    const needsOwnCreature = ['pumpCreature','gainFlying','pumpPower','enchantCreature'].includes(card.effect);
-    if (needsOwnCreature) {
-      const ownCreatures = state.o.bf.filter(isCre);
-      if (!ownCreatures.length) continue; // no valid target — skip
-      const target = ownCreatures.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-      if (Math.random() < profile.greedySpells) {
-        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
+    if (spellTargets === null) {
+      const needsOwnCreature = ['pumpCreature','gainFlying','pumpPower','enchantCreature'].includes(card.effect);
+      if (needsOwnCreature) {
+        const ownCreatures = state.o.bf.filter(isCre);
+        if (!ownCreatures.length) continue; // no valid target — skip without tapping
+        const target = ownCreatures.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
+        if (Math.random() < profile.greedySpells) spellTargets = [target.iid];
+        else continue;
       }
-      continue;
     }
 
-    // Berserk: target any creature (prefer own with highest power); skip if no creatures exist.
-    if (card.effect === 'berserk') {
-      const allCreatures = [...state.o.bf.filter(isCre), ...state.p.bf.filter(isCre)];
-      if (!allCreatures.length) continue; // no valid target — cannot cast
+    // Berserk.
+    if (spellTargets === null && card.effect === 'berserk') {
       const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
       const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
-      if (!pool.length) continue; // no own creature to meaningfully buff
+      if (!pool.length) continue; // no valid target — skip without tapping
       const target = pool.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-      if (Math.random() < profile.greedySpells) {
-        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [target.iid] });
-      }
-      continue;
+      if (Math.random() < profile.greedySpells) spellTargets = [target.iid];
+      else continue;
     }
 
-    // Disintegrate / Drain Life — deal X damage to lowest-toughness creature or player.
-    if (card.effect === "disintegrate" || card.effect === "drainLife") {
+    // Disintegrate / Drain Life.
+    if (spellTargets === null && (card.effect === "disintegrate" || card.effect === "drainLife")) {
       const threats = state.p.bf.filter(isCre);
       const target = threats.length && Math.random() < 0.7
         ? threats.reduce((a, b) => getTou(a, state) < getTou(b, state) ? a : b)
         : "p";
-      actions.push({ type: "PLAY_CARD", cardId: card.iid, targets: [typeof target === "string" ? target : target.iid] });
-      continue;
+      spellTargets = [typeof target === "string" ? target : target.iid];
     }
 
-    // Raise Dead / Resurrection — use only when own graveyard has creatures.
-    if (card.effect === "regrowthCreature" || card.effect === "reanimateOwn") {
-      if (state.o.gy.some(isCre)) {
-        actions.push({ type: "PLAY_CARD", cardId: card.iid, targets: [] });
+    // Raise Dead / Resurrection.
+    if (spellTargets === null && (card.effect === "regrowthCreature" || card.effect === "reanimateOwn")) {
+      if (!state.o.gy.some(isCre)) continue; // nothing to recur — skip without tapping
+      spellTargets = [];
+    }
+
+    // Generic spells (damage/draw/burn).
+    if (spellTargets === null) {
+      const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
+        'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
+      const targetsOpp  = ['damage3','damage5','damageX','psionicBlast','chainLightning',
+        'damage1','damage2','ping'].includes(card.effect);
+      if (!(isSorceryOk || isInstantOk)) continue;
+      if (Math.random() >= profile.greedySpells) continue;
+      const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
+      spellTargets = tgt ? [tgt] : [];
+    }
+
+    // spellTargets is now resolved. Only NOW check affordability and build tap actions.
+    const { tapActions, affordable } = buildTapActions(virtualState, card.cost);
+    if (!affordable) continue;
+
+    // Mark the virtually tapped lands so subsequent spells don't over-commit.
+    for (const ta of tapActions) {
+      if (ta.type === 'TAP_LAND' || ta.type === 'TAP_ART_MANA') {
+        virtualState = {
+          ...virtualState,
+          o: {
+            ...virtualState.o,
+            bf: virtualState.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
+          },
+        };
       }
-      continue;
     }
 
-    // Damage/draw/burn spells targeting player.
-    const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
-      'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
-    const targetsOpp  = ['damage3','damage5','damageX','psionicBlast','chainLightning',
-      'damage1','damage2','ping'].includes(card.effect);
-
-    if (isSorceryOk || isInstantOk) {
-      if (Math.random() < profile.greedySpells) {
-        const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
-        actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: tgt ? [tgt] : [] });
-      }
-    }
+    actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions });
   }
 
   actions.push({ type: 'PASS_PRIORITY' });
@@ -456,12 +472,17 @@ export function aiDecide(state) {
         if (isLand(card)) {
           dcActions.push({ type: 'PLAY_LAND', who: 'o', iid: card.iid });
         } else {
-          // Tap lands to cover cost before casting.
-          const { tapActions, affordable } = buildTapActions(state, card.cost);
-          if (!affordable) {
-            console.warn(`[AI] PLAY_CARD: cannot afford ${card.name} ? skipping.`);
-            break;
-          }
+          // Use pre-built tap actions from planMain if present (avoids double-tapping
+          // when multiple spells are planned in the same turn — see Bug B13).
+          const tapActions = action._tapActions || (() => {
+            const r = buildTapActions(state, card.cost);
+            if (!r.affordable) {
+              console.warn(`[AI] PLAY_CARD: cannot afford ${card.name} — skipping.`);
+              return null;
+            }
+            return r.tapActions;
+          })();
+          if (!tapActions) break;
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;
           dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: 3 });

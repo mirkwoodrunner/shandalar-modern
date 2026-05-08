@@ -88,6 +88,36 @@ function ManaChoicePopover({ colors, cardName, onSelect, onClose }: {
   );
 }
 
+// Small popover that lists a card's activatedAbilities for the player to choose.
+function AbilityMenuPopover({ card, onSelect, onClose }: {
+  card: any;
+  onSelect: (abilityId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="popover-overlay" onClick={onClose}>
+      <div className="popover-content" onClick={e => e.stopPropagation()}>
+        <h3>{card.name}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* Always offer the basic tap-for-mana option */}
+          <button className="mana-choice-btn" onClick={() => onSelect('tap_mana')}>
+            {'{T}'}: Add {'{C}'}
+          </button>
+          {(card.activatedAbilities ?? []).map((ab: any) => (
+            <button
+              key={ab.id}
+              className="mana-choice-btn"
+              onClick={() => onSelect(ab.id)}
+            >
+              {ab.description}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }: {
   graveyard: any[]; playerName: string; mode: string;
   onSelect: (card: any, idx: number) => void; onClose: () => void;
@@ -200,6 +230,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }>({ open: false, colors: [], cardName: '', callback: null });
   const [showMulligan, setShowMulligan] = useState(true);
   const [mulliganCount, setMulliganCount] = useState(0);
+  const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
   const aiRef = useRef(false);
   const prevPriorityWindow = useRef(false);
 
@@ -278,8 +309,34 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     return () => clearTimeout(t);
   }, [s.phase, s.active, s.turn, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Ability menu selection handler (Mishra's Factory etc.) -----------------
+  const handleAbilityMenuSelect = useCallback((abilityId: string) => {
+    const card = abilityMenu?.card;
+    setAbilityMenu(null);
+    if (!card) return;
+    if (abilityId === 'tap_mana') {
+      tapLand(card.iid, card.produces?.[0] ?? 'C');
+      return;
+    }
+    const ab = (card.activatedAbilities ?? []).find((a: any) => a.id === abilityId);
+    if (!ab) return;
+    if (ab.effect === 'animateLand') {
+      activateAbility(card.iid, null, null, abilityId);
+      return;
+    }
+    if (ab.effect === 'pumpAssemblyWorker') {
+      // Require player to click an Assembly-Worker target.
+      setPendingActivate({ ...card, _pendingAbilityId: abilityId });
+      selectCard(card.iid);
+      return;
+    }
+    activateAbility(card.iid, null, null, abilityId);
+  }, [abilityMenu, activateAbility, tapLand, selectCard]);
+
   // -- Activated ability handler (defined before handleCardClick) ------------
   const handleActivate = useCallback((card: any) => {
+    // Cards with activatedAbilities array use the AbilityMenu popover.
+    if (card.activatedAbilities) { setAbilityMenu({ card }); return; }
     if (!card.activated) return;
     const { effect } = card.activated;
     if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
@@ -301,6 +358,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
     if (zone === 'pBf') {
       if (isLand(card) && !card.tapped) {
+        // Lands with activatedAbilities (e.g. Mishra's Factory) use the ability menu.
+        if ((card as any).activatedAbilities) { setAbilityMenu({ card }); return; }
         if (card.produces && card.produces.length > 1) { setPendingDualLand({ card, colors: card.produces }); return; }
         tapLand(card.iid, card.produces?.[0] ?? 'C');
         return;
@@ -311,10 +370,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       }
       if (s.phase === 'COMBAT_ATTACKERS') { declareAttacker(card.iid); return; }
       if (pendingActivate) {
-        activateAbility(pendingActivate.iid, card.iid);
+        const pendingAbilityId = (pendingActivate as any)._pendingAbilityId ?? null;
+        activateAbility(pendingActivate.iid, card.iid, null, pendingAbilityId);
         setPendingActivate(null); selectCard(null); selectTarget(null);
         return;
       }
+      if ((card as any).activatedAbilities) { handleActivate(card); return; }
       if (card.activated) { handleActivate(card); return; }
       selectTarget(card.iid);
       return;
@@ -325,7 +386,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         declareBlocker(s.selTgt, card.iid); selectTarget(null); return;
       }
       if (pendingActivate) {
-        activateAbility(pendingActivate.iid, card.iid);
+        const pendingAbilityId = (pendingActivate as any)._pendingAbilityId ?? null;
+        activateAbility(pendingActivate.iid, card.iid, null, pendingAbilityId);
         setPendingActivate(null); selectCard(null);
         return;
       }
@@ -640,6 +702,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       </div>
 
       {/* -- MODALS ---------------------------------------------------------- */}
+
+      {abilityMenu && (
+        <AbilityMenuPopover
+          card={abilityMenu.card}
+          onSelect={handleAbilityMenuSelect}
+          onClose={() => setAbilityMenu(null)}
+        />
+      )}
 
       {showLotus && (
         <LotusColorPicker onChoose={handleLotusChoose} onCancel={handleLotusCancel} />

@@ -50,6 +50,18 @@
 | B17 | Chronicle log displaying raw symbol strings | Spell log entries used literal strings like `"{W}"` instead of ManaSymbol components | Updated log entry renderer to parse mana cost strings into `<ManaSymbol>` components inline |
 | B18 | AI casting spells with no valid target | `aiDecide` selected and cast targeted removal even when no legal creatures on board | Added target availability check in AI casting path; AI skips casting a spell if no legal target exists |
 
+### Phase 6 → Phase 7 fixes
+
+| # | Bug | Root Cause | Fix |
+|---|-----|-----------|-----|
+| B19 | Mishra's Factory had no activated abilities | Card DB entry missing `activatedAbilities[]`; no UI flow for multi-ability lands | Added two `activatedAbilities` entries; new `AbilityMenuPopover` in DuelScreen; `animateLand` and `pumpAssemblyWorker` ACTIVATE_ABILITY cases in DuelCore; EOT revert via `eotRevert` flag in CLEANUP |
+| B20 | Juggernaut did not attack mandatory | No enforcement of "must attack" at COMBAT_ATTACKERS transition | Added auto-declare in `advPhase → COMBAT_ATTACKERS`; introduced `MUST_ATTACK` keyword; data-driven check so future cards (Lord of the Pit) work the same way |
+| B21 | Tron lands tapped for 1 regardless of set completion | No Tron-awareness in `TAP_LAND` handler | Added `tronPiece` flag to the three Urza land DB entries; bonus colorless applied in `applyOvergrowthTap` when all three pieces are in play |
+| B22 | AI taps mana without spending it (recurring) | `buildTapActions` was called in `aiDecide` using original state even when multiple spells were planned; subsequent tap attempts targeted already-tapped lands, leaving orphan mana | Restructured `planMain`: spell action built first via target-finding logic; tap actions built only after spell target is confirmed; virtual state tracks committed taps across multi-spell turns; `_tapActions` passed through to `aiDecide` |
+| B23 | Blocking step not skipped when no attackers | Phase sequence always advanced to COMBAT_BLOCKERS regardless of attacker count | Added attacker-count check at the start of `advPhase`; when transitioning to COMBAT_BLOCKERS with empty `attackers[]`, phase jumps directly to MAIN_2 |
+| B24 | Combat damage badge showed `?X` | Placeholder `?` never replaced with intended icon | Replaced with styled red circular badge using 🩸 (U+1FA78 Blood Drop) in both `src/ui/Card/FieldCard.tsx` and legacy `src/ui/shared/Card.jsx` |
+| B25 | Creatures and non-creatures mixed in battlefield row | No row separation below the land zone in `Half.tsx` | Split non-land permanents into CREATURES and SPELLS/ARTIFACTS rows using `isCurrentCreature()` helper; `isAnimatedLand` flag moves animated Mishra's Factory to the creature row; labels match existing Cinzel font/color style |
+
 ---
 
 ## Validation Notes (v0.4 audit — corrected from v0.3)
