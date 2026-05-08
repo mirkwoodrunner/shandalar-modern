@@ -1,0 +1,629 @@
+Stub Status Report
+==================
+Generated: 2026-05-08T01:20:18.605Z
+
+Cards with effect:"stub" or noop: 20
+Cards with real effect handler:   458
+Cards with NO effect field:        138
+
+--- STUB EFFECTS (need real implementation) ---
+rock_hydra	// effect: stub
+consecrate_land	// effect: stub
+conversion	// effect: stub
+divine_transformation	// effect: stub
+reverse_damage	// effect: stub
+animate_artifact	// effect: stub
+copy_artifact	// effect: stub
+lifetap	// effect: stub
+sleight_of_mind	// effect: stub
+stasis	// effect: stub
+gloom	// effect: stub
+channel	// effect: stub
+fastbond	// effect: stub
+kudzu	// effect: stub
+regeneration	// effect: stub
+crystal_rod	// effect: stub
+jade_monolith	// effect: stub
+staff_of_zegon	// effect: stub
+tawnos_coffin	// effect: stub
+wooden_sphere	// effect: stub
+
+--- REAL EFFECT HANDLERS ---
+strip_mine	// effect: destroyTargetLand
+library_of_alexandria	// effect: draw1
+northern_paladin	// effect: destroyBlack
+samite_healer	// effect: gainLife1
+witch_hunter	// effect: ping
+prodigal_sorcerer	// effect: ping
+ghost_ship	// effect: regenerate
+merfolk_assassin	// effect: destroyTapped
+clone	// effect: clone
+drudge_skeletons	// effect: regenerate
+royal_assassin	// effect: destroyTapped
+frozen_shade	// effect: pumpSelf
+vampire_bats	// effect: pumpSelf
+walking_dead	// effect: regenerate
+rag_man	// effect: discardOne
+demonic_hordes	// effect: destroyTargetLand
+nettling_imp	// effect: forceAttack
+sorceress_queen	// effect: setPT02
+stromgald_cabal	// effect: counterWhite
+shivan_dragon	// effect: pumpPower
+goblin_balloon_brigade	// effect: gainFlying
+orcish_artillery	// effect: orcishArtillery
+dragon_whelp	// effect: pumpPower
+granite_gargoyle	// effect: pumpToughness
+fire_sprites	// effect: addMana
+stone_giant	// effect: grantFlying
+uthden_troll	// effect: regenerate
+llanowar_elves	// effect: addMana
+fyndhorn_elves	// effect: addMana
+birds_of_paradise	// effect: addManaAny
+ley_druid	// effect: untapLand
+triskelion	// effect: triskelionPing
+colossus_of_sardia	// effect: untapSelf
+clay_statue	// effect: regenerate
+brass_man	// effect: untapSelf
+dragon_engine	// effect: pumpPower
+wall_of_fire	// effect: pumpPower
+wall_of_brambles	// effect: regenerate
+wall_of_bone	// effect: regenerate
+living_wall	// effect: regenerate
+swords_to_plowshares	// effect: exileCreature
+wrath_of_god	// effect: wrathAll
+disenchant	// effect: destroyArtOrEnch
+armageddon	// effect: destroyAllLands
+healing_salve	// effect: gainLife3
+holy_armor	// effect: enchantCreature
+balance	// effect: balance
+holy_day	// effect: fog
+resurrection	// effect: reanimateOwn
+holy_strength	// effect: enchantCreature
+crusade	// effect: globalPump
+lance	// effect: enchantCreature
+death_ward	// effect: regenerateTarget
+righteousness	// effect: pumpCreature
+spirit_link	// effect: enchantCreature
+counterspell	// effect: counter
+ancestral_recall	// effect: draw3
+time_walk	// effect: extraTurn
+braingeyser	// effect: drawX
+unsummon	// effect: bounce
+psionic_blast	// effect: psionicBlast
+power_sink	// effect: powerSink
+boomerang	// effect: bounce
+control_magic	// effect: controlCreature
+timetwister	// effect: timetwister
+mana_short	// effect: manaShort
+remove_soul	// effect: counterCreature
+force_spike	// effect: counter
+blue_elemental_blast	// effect: destroyRedOrCounter
+drain_power	// effect: drainPower
+jump	// effect: grantFlying
+flight	// effect: enchantCreature
+hurkyls_recall	// effect: returnArtifacts
+spell_blast	// effect: counter
+steal_artifact	// effect: controlCreature
+twiddle	// effect: tapTarget
+dark_ritual	// effect: addMana
+terror	// effect: destroy
+demonic_tutor	// effect: tutor
+mind_twist	// effect: discardX
+animate_dead	// effect: reanimate
+dark_banishing	// effect: destroy
+drain_life	// effect: drainLife
+disintegrate	// effect: damageX
+sinkhole	// effect: destroyTargetLand
+bad_moon	// effect: globalPump
+unholy_strength	// effect: enchantCreature
+weakness	// effect: enchantCreature
+paralyze	// effect: paralyze
+pestilence	// effect: pestilence
+raise_dead	// effect: regrowthCreature
+consume_spirit	// effect: drainLife
+deathgrip	// effect: counterGreen
+fear	// effect: enchantCreature
+howl_from_beyond	// effect: pumpX
+lightning_bolt	// effect: damage3
+fireball	// effect: damageX
+chain_lightning	// effect: damage3
+wheel_of_fortune	// effect: wheelOfFortune
+shatter	// effect: destroyArtifact
+lava_axe	// effect: damage5
+stone_rain	// effect: destroyTargetLand
+earthquake	// effect: earthquake
+berserk	// effect: berserk
+fork	// effect: forkSpell
+pyrotechnics	// effect: damageX
+red_elemental_blast	// effect: destroyBlueOrCounter
+flashfires	// effect: destroyPlains
+fissure	// effect: destroy
+giant_growth	// effect: pumpCreature
+stream_of_life	// effect: gainLifeX
+regrowth	// effect: regrowth
+hurricane	// effect: hurricane
+tranquility	// effect: destroyAllEnchantments
+fog	// effect: fog
+wild_growth	// effect: enchantLand
+lure	// effect: enchantCreature
+instill_energy	// effect: enchantCreature
+tsunami	// effect: destroyIslands
+ice_storm	// effect: destroyTargetLand
+crumble	// effect: destroyArtifact
+giant_strength	// effect: enchantCreature
+lifeforce	// effect: counterBlack
+black_lotus	// effect: addMana3Any
+mox_pearl	// effect: addMana
+mox_sapphire	// effect: addMana
+mox_jet	// effect: addMana
+mox_ruby	// effect: addMana
+mox_emerald	// effect: addMana
+sol_ring	// effect: addMana
+jayemdae_tome	// effect: draw1
+nevinyrral_disk	// effect: armageddonDisk
+icy_manipulator	// effect: tapTarget
+mana_vault	// effect: addMana
+basalt_monolith	// effect: addMana
+disrupting_scepter	// effect: discardOne
+rod_of_ruin	// effect: damage1
+millstone	// effect: mill2
+ashnods_altar	// effect: sacrificeForMana
+mana_crypt	// effect: addMana
+relic_barrier	// effect: tapTarget
+rocket_launcher	// effect: damage1
+animate_wall	// effect: STUB
+black_ward	// effect: STUB
+blue_ward	// effect: STUB
+green_ward	// effect: STUB
+red_ward	// effect: STUB
+white_ward	// effect: STUB
+blaze_of_glory	// effect: STUB
+blessing	// effect: STUB
+brainwash	// effect: STUB
+castle	// effect: STUB
+chaoslace	// effect: STUB
+circle_of_protection_artifacts	// effect: STUB
+circle_of_protection_black	// effect: STUB
+circle_of_protection_blue	// effect: STUB
+circle_of_protection_green	// effect: STUB
+circle_of_protection_red	// effect: STUB
+circle_of_protection_white	// effect: STUB
+conservator	// effect: STUB
+contract_from_below	// effect: STUB
+creature_bond	// effect: STUB
+darkpact	// effect: STUB
+deathlace	// effect: STUB
+demonic_attorney	// effect: STUB
+farmstead	// effect: STUB
+feedback	// effect: STUB
+forcefield	// effect: STUB
+guardian_angel	// effect: STUB
+holy_light	// effect: STUB
+invisibility	// effect: STUB
+iron_star	// effect: STUB
+ivory_cup	// effect: STUB
+living_artifact	// effect: STUB
+living_lands	// effect: STUB
+magical_hack	// effect: STUB
+morale	// effect: STUB
+natural_selection	// effect: STUB
+power_leak	// effect: STUB
+purelace	// effect: STUB
+thoughtlace	// effect: STUB
+lifelace	// effect: STUB
+abu_jasfar	// effect: STUB
+aladdin	// effect: STUB
+aladdinss_lamp	// effect: STUB
+aladdinss_ring	// effect: STUB
+ali_baba	// effect: STUB
+army_of_allah	// effect: STUB
+bazaar_of_baghdad	// effect: STUB
+camel	// effect: STUB
+cuombajj_witches	// effect: STUB
+davenant_archer	// effect: STUB
+desert	// effect: STUB
+desert_nomads	// effect: STUB
+desert_twister	// effect: STUB
+drop_of_honey	// effect: STUB
+ebony_horse	// effect: STUB
+el_hajjaj	// effect: STUB
+eye_for_an_eye	// effect: STUB
+flying_carpet	// effect: STUB
+ghazban_ogre	// effect: STUB
+guardian_beast	// effect: STUB
+hasran_ogress	// effect: STUB
+hurr_jackal	// effect: STUB
+island_fish_jasconius	// effect: STUB
+island_of_wak_wak	// effect: STUB
+jandorss_ring	// effect: STUB
+jandorss_saddlebags	// effect: STUB
+jeweled_bird	// effect: STUB
+jihad	// effect: STUB
+jovial_evil	// effect: STUB
+khabal_ghoul	// effect: STUB
+merchant_ship	// effect: STUB
+nafs_asp	// effect: STUB
+oasis	// effect: STUB
+old_man_of_the_sea	// effect: STUB
+osai_vultures	// effect: STUB
+oubliette	// effect: STUB
+pyramids	// effect: STUB
+raging_river	// effect: STUB
+rebirth	// effect: STUB
+ring_of_maruf	// effect: STUB
+rukh_egg	// effect: STUB
+sandals_of_abdallah	// effect: STUB
+sandstorm	// effect: STUB
+seeker	// effect: STUB
+sindbad	// effect: STUB
+singing_tree	// effect: STUB
+sirenss_call	// effect: STUB
+war_barge	// effect: STUB
+amulet_of_kroog	// effect: STUB
+argivian_archaeologist	// effect: STUB
+argivian_blacksmith	// effect: STUB
+artifact_blast	// effect: STUB
+artifact_possession	// effect: STUB
+artifact_ward	// effect: STUB
+ashnodss_battle_gear	// effect: STUB
+ashnodss_transmogrant	// effect: STUB
+battering_ram	// effect: STUB
+bronze_tablet	// effect: STUB
+candelabra_of_tawnos	// effect: STUB
+citanul_druid	// effect: STUB
+coal_golem	// effect: STUB
+coral_helm	// effect: STUB
+drafnass_restoration	// effect: STUB
+energy_flux	// effect: STUB
+feldonss_cane	// effect: STUB
+goblin_artisans	// effect: STUB
+goblin_digging_team	// effect: STUB
+grapeshot_catapult	// effect: STUB
+jalum_tome	// effect: STUB
+mishrass_factory	// effect: STUB
+mishrass_war_machine	// effect: STUB
+mishrass_workshop	// effect: STUB
+onulet	// effect: STUB
+orcish_mechanics	// effect: STUB
+phyrexian_gremlins	// effect: STUB
+priest_of_yawgmoth	// effect: STUB
+reconstruction	// effect: STUB
+relic_bind	// effect: STUB
+reverse_polarity	// effect: STUB
+sage_of_lat_nam	// effect: STUB
+tablet_of_epityr	// effect: STUB
+tawnosss_wand	// effect: STUB
+tawnosss_weaponry	// effect: STUB
+transmute_artifact	// effect: STUB
+urzass_avenger	// effect: STUB
+urzass_chalice	// effect: STUB
+urzass_mine	// effect: STUB
+urzass_miter	// effect: STUB
+urzass_power_plant	// effect: STUB
+urzass_tower	// effect: STUB
+weakstone	// effect: STUB
+xenic_poltergeist	// effect: STUB
+angelic_voices	// effect: STUB
+angry_mob	// effect: STUB
+arena	// effect: STUB
+ashes_to_ashes	// effect: STUB
+backfire	// effect: STUB
+banshee	// effect: STUB
+barlss_cage	// effect: STUB
+beasts_of_bogardan	// effect: STUB
+blight	// effect: STUB
+blood_moon	// effect: STUB
+bone_flute	// effect: STUB
+book_of_rass	// effect: STUB
+brothers_of_fire	// effect: STUB
+carrion_ants	// effect: STUB
+cave_people	// effect: STUB
+cleanse	// effect: STUB
+cockatrice	// effect: STUB
+cosmic_horror	// effect: STUB
+crimson_manticore	// effect: STUB
+cyclopean_mummy	// effect: STUB
+cyclopean_tomb	// effect: STUB
+damping_field	// effect: STUB
+darkness	// effect: STUB
+detonate	// effect: STUB
+dingus_egg	// effect: STUB
+divine_offering	// effect: STUB
+earthbind	// effect: STUB
+elder_spawn	// effect: STUB
+emerald_dragonfly	// effect: STUB
+energy_tap	// effect: STUB
+erosion	// effect: STUB
+eternal_flame	// effect: STUB
+eternal_warrior	// effect: STUB
+evil_presence	// effect: STUB
+exorcist	// effect: STUB
+fallen_angel	// effect: STUB
+fellwar_stone	// effect: STUB
+fire_drake	// effect: STUB
+firebreathing	// effect: STUB
+fishliver_oil	// effect: STUB
+flood	// effect: STUB
+fortified_area	// effect: STUB
+fountain_of_youth	// effect: STUB
+gaeass_avenger	// effect: STUB
+gaseous_form	// effect: STUB
+gate_to_phyrexia	// effect: STUB
+gauntlet_of_might	// effect: STUB
+ghosts_of_the_damned	// effect: STUB
+giant_badger	// effect: STUB
+giant_turtle	// effect: STUB
+glasses_of_urza	// effect: STUB
+goblin_rock_sled	// effect: STUB
+goblins_of_the_flarg	// effect: STUB
+great_defender	// effect: STUB
+greater_realm_of_preservation	// effect: STUB
+greed	// effect: STUB
+haunting_wind	// effect: STUB
+hell_swarm	// effect: STUB
+helm_of_chatzuk	// effect: STUB
+hidden_path	// effect: STUB
+hyperion_blacksmith	// effect: STUB
+immolation	// effect: STUB
+infernal_medusa	// effect: STUB
+inferno	// effect: STUB
+inquisition	// effect: STUB
+island_sanctuary	// effect: STUB
+ivory_guardians	// effect: STUB
+jade_statue	// effect: STUB
+killer_bees	// effect: STUB
+kismet	// effect: STUB
+knights_of_thorn	// effect: STUB
+kobold_drill_sergeant	// effect: STUB
+kobold_overlord	// effect: STUB
+kobold_taskmaster	// effect: STUB
+kormus_bell	// effect: STUB
+leviathan	// effect: STUB
+library_of_leng	// effect: STUB
+lich	// effect: STUB
+life_chisel	// effect: STUB
+lifeblood	// effect: STUB
+magnetic_mountain	// effect: STUB
+mana_clash	// effect: STUB
+marsh_gas	// effect: STUB
+marsh_viper	// effect: STUB
+martyrss_cry	// effect: STUB
+martyrs_of_korlis	// effect: STUB
+mightstone	// effect: STUB
+mind_bomb	// effect: STUB
+miracle_worker	// effect: STUB
+moat	// effect: STUB
+mold_demon	// effect: STUB
+mountain_yeti	// effect: STUB
+murk_dwellers	// effect: STUB
+nalathni_dragon	// effect: STUB
+nether_shadow	// effect: STUB
+obelisk_of_undoing	// effect: STUB
+orcish_oriflamme	// effect: STUB
+people_of_the_woods	// effect: STUB
+personal_incarnation	// effect: STUB
+phantasmal_terrain	// effect: STUB
+pirate_ship	// effect: STUB
+pit_scorpion	// effect: STUB
+pixie_queen	// effect: STUB
+powerleech	// effect: STUB
+pradesh_gypsies	// effect: STUB
+primal_clay	// effect: STUB
+psionic_entity	// effect: STUB
+psychic_venom	// effect: STUB
+rabid_wombat	// effect: STUB
+radjan_spirit	// effect: STUB
+rakalite	// effect: STUB
+repentant_blacksmith	// effect: STUB
+reset	// effect: STUB
+riptide	// effect: STUB
+sacrifice	// effect: STUB
+savaen_elves	// effect: STUB
+scavenger_folk	// effect: STUB
+scavenging_ghoul	// effect: STUB
+serpent_generator	// effect: STUB
+sewers_of_estark	// effect: STUB
+shapeshifter	// effect: STUB
+shatterstorm	// effect: STUB
+shield_wall	// effect: STUB
+simulacrum	// effect: STUB
+sisters_of_the_flame	// effect: STUB
+soul_net	// effect: STUB
+spinal_villain	// effect: STUB
+spirit_shackle	// effect: STUB
+spiritual_sanctuary	// effect: STUB
+storm_seeker	// effect: STUB
+sunken_city	// effect: STUB
+syphon_soul	// effect: STUB
+tempest_efreet	// effect: STUB
+tetravus	// effect: STUB
+the_brute	// effect: STUB
+the_hive	// effect: STUB
+the_rack	// effect: STUB
+throne_of_bone	// effect: STUB
+thunder_spirit	// effect: STUB
+time_elemental	// effect: STUB
+time_vault	// effect: STUB
+titaniass_song	// effect: STUB
+tracker	// effect: STUB
+tunnel	// effect: STUB
+typhoon	// effect: STUB
+uncle_istvan	// effect: STUB
+unstable_mutation	// effect: STUB
+untamed_wilds	// effect: STUB
+venom	// effect: STUB
+vesuvan_doppelganger	// effect: STUB
+veteran_bodyguard	// effect: STUB
+visions	// effect: STUB
+volcanic_eruption	// effect: STUB
+wall_of_dust	// effect: STUB
+wall_of_light	// effect: STUB
+wall_of_opposition	// effect: STUB
+wall_of_tombstones	// effect: STUB
+wall_of_water	// effect: STUB
+wall_of_wonder	// effect: STUB
+wanderlust	// effect: STUB
+warp_artifact	// effect: STUB
+water_wurm	// effect: STUB
+web	// effect: STUB
+will_o_the_wisp	// effect: STUB
+winds_of_change	// effect: STUB
+winter_blast	// effect: STUB
+word_of_binding	// effect: STUB
+wormwood_treefolk	// effect: STUB
+wyluli_wolf	// effect: STUB
+yawgmoth_demon	// effect: STUB
+ydwen_efreet	// effect: STUB
+abomination	// effect: STUB
+acid_rain	// effect: STUB
+alabaster_potion	// effect: STUB
+alchorss_tomb	// effect: STUB
+amnesia	// effect: STUB
+amrou_kithkin	// effect: STUB
+aspect_of_wolf	// effect: STUB
+atog	// effect: STUB
+blood_lust	// effect: STUB
+bog_rats	// effect: STUB
+burrowing	// effect: STUB
+elves_of_deep_shadow	// effect: STUB
+piety	// effect: STUB
+
+--- NO EFFECT FIELD (lands, vanilla creatures, auras with keyword-only effects) ---
+plains
+island
+swamp
+mountain
+forest
+tundra
+underground_sea
+badlands
+taiga
+savannah
+scrubland
+volcanic_island
+bayou
+plateau
+tropical_island
+city_of_brass
+savannah_lions
+white_knight
+serra_angel
+mesa_pegasus
+benalish_hero
+elder_land_wurm
+tundra_wolves
+pearled_unicorn
+pikemen
+moorish_cavalry
+war_elephant
+wall_of_swords
+merfolk_of_the_pearl_trident
+lord_of_atlantis
+phantom_warrior
+air_elemental
+mahamoti_djinn
+azure_drake
+phantom_monster
+flying_men
+dandan
+sea_serpent
+phantasmal_forces
+wall_of_air
+giant_tortoise
+glacial_wall
+water_elemental
+zephyr_falcon
+hypnotic_specter
+sengir_vampire
+sengir_counter
+juzam_djinn
+black_knight
+plague_rats
+lord_of_the_pit
+nightmare
+bog_wraith
+scathe_zombies
+zombie_master
+bog_imp
+erg_raiders
+goblin_king
+earth_elemental
+monss_goblin_raiders
+ball_lightning
+kird_ape
+hill_giant
+ironclaw_orcs
+hurloon_minotaur
+fire_elemental
+goblin_hero
+sedge_troll
+roc_of_kher_ridges
+two_headed_giant_of_foriys
+gray_ogre
+grizzly_bears
+giant_spider
+craw_wurm
+force_of_nature
+erhnam_djinn
+war_mammoth
+whirling_dervish
+thicket_basilisk
+scryb_sprites
+verduran_enchantress
+timber_wolves
+gaea_liege
+keldon_warlord
+carnivorous_plant
+argothian_treefolk
+elven_riders
+elvish_archers
+fungusaur
+ornithopter
+juggernaut
+su_chi
+clockwork_beast
+wall_of_ice
+wall_of_stone
+karma
+manabarbs
+mana_flare
+power_surge
+smoke
+sylvan_library
+land_tax
+black_vise
+howling_mine
+ivory_tower
+meekstone
+sunglasses_of_urza
+winter_orb
+lost_soul
+bird_maiden
+dancing_scimitar
+yotian_soldier
+barbary_apes
+cat_warriors
+crimson_kobolds
+crookshank_kobolds
+devouring_deep
+diabolic_machine
+drowned
+durkwood_boars
+headless_horseman
+hornet_cobra
+keepers_of_the_faith
+kobolds_of_kher_keep
+land_leeches
+moss_monster
+obsianus_golem
+raging_bull
+righteous_avengers
+segovian_leviathan
+shanodin_dryads
+squire
+wall_of_earth
+wall_of_heat
+wall_of_spears
+wall_of_wood
+windseeker_centaur
+ironroot_treefolk
