@@ -14,15 +14,6 @@ interface HalfProps {
   onCardHover?: (iid: string | null) => void;
 }
 
-// Returns true for any card currently acting as a creature on the battlefield,
-// including Artifact Creatures and animated lands (Mishra's Factory).
-function isCurrentCreature(c: CardData): boolean {
-  return (
-    c.type?.includes('Creature') === true ||
-    (c as any).isAnimatedLand === true
-  );
-}
-
 const ROW_LABEL: React.CSSProperties = {
   fontSize: 8,
   fontFamily: 'var(--font-display)',
@@ -34,10 +25,19 @@ const ROW_LABEL: React.CSSProperties = {
 
 export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCardClick, onCardHover }: HalfProps) {
   const isOpp = side === 'opp';
-  const lands = cards.filter(c => c.type === 'Land' && !(c as any).isAnimatedLand);
-  const nonLands = cards.filter(c => c.type !== 'Land' || (c as any).isAnimatedLand);
-  const creatures        = nonLands.filter(isCurrentCreature);
-  const nonCreaturePerms = nonLands.filter(c => !isCurrentCreature(c));
+  // isLand: matches 'Land', 'Basic Land', 'Land — Forest', etc.
+  const isLandCard = (c: CardData): boolean =>
+    typeof c.type === 'string' && c.type.split('—')[0].trim().split(' ').includes('Land') && !(c as any).isAnimatedLand;
+
+  // isCreatureCard: matches 'Creature', 'Artifact Creature', 'Enchantment Creature', etc.
+  const isCreatureCard = (c: CardData): boolean =>
+    (typeof c.type === 'string' && c.type.includes('Creature')) ||
+    (c as any).isAnimatedLand === true;
+
+  const lands            = cards.filter(isLandCard);
+  const nonLands         = cards.filter(c => !isLandCard(c));
+  const creatures        = nonLands.filter(isCreatureCard);
+  const nonCreaturePerms = nonLands.filter(c => !isCreatureCard(c));
 
   const landLabelColor  = isOpp ? 'var(--ink-faint)' : '#6a8848';
   const perm1LabelColor = isOpp ? 'var(--ink-faint)' : '#8a7040';
