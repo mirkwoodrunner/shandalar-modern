@@ -128,7 +128,8 @@ else if (c.dynamicType === "forestBonus")  p = 1 + (state[c.controller]?.bf.some
 }
 const eotPow  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.power || 0), 0);
 const enchPow = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.power || 0), 0);
-return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow);
+const crusadePow = (state && c.color === "W" && [...state.p.bf, ...state.o.bf].some(x => x.id === "crusade")) ? 1 : 0;
+return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow + crusadePow);
 }
 
 export function getTou(c, state) {
@@ -142,7 +143,8 @@ else if (c.dynamicType === "forestBonus")  t = 1 + (state[c.controller]?.bf.some
 }
 const eotTou  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.toughness || 0), 0);
 const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughness || 0), 0);
-return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou);
+const crusadeTou = (state && c.color === "W" && [...state.p.bf, ...state.o.bf].some(x => x.id === "crusade")) ? 1 : 0;
+return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou + crusadeTou);
 }
 
 export function canBlockDuel(bl, at, defBf, state = null) {
@@ -241,6 +243,15 @@ while (changed) {
       )
     );
     for (const c of dead) {
+      // Regenerate: tap, clear damage, remove flag — creature survives.
+      if (c.regenerating) {
+        ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
+          x.iid === c.iid ? { ...x, damage: 0, tapped: true, regenerating: false } : x
+        )}};
+        ns = dlog(ns, `${c.name} regenerates.`, "effect");
+        changed = true;
+        continue;
+      }
       const dyingCard = c;
       // Disintegrate exile override: if exileNextDeath is set, exile instead of GY.
       ns = zMove(ns, c.iid, w, w, ns.exileNextDeath ? "exile" : "gy");
@@ -308,6 +319,11 @@ ns = dlog(ns, `Mana Flare: ${who} gets +1${m}.`, "mana");
 }
 if (allBF_tap.some(x => x.id === "manabarbs")) {
 ns = hurt(ns, who, 1, "Manabarbs");
+}
+// Wild Growth: enchanted land produces +1G when tapped
+if (c.enchantments?.some(e => e.mod?.wildGrowth)) {
+ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, G: (ns[who].mana.G || 0) + 1 }}};
+ns = dlog(ns, `Wild Growth: ${who} gets +1G.`, "mana");
 }
 if (ns[who].bf.some(x => x.id === "sunglasses_of_urza") && c.subtype?.includes("Plains")) {
 ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, R: (ns[who].mana.R || 0) + 1 } } };
@@ -621,10 +637,40 @@ if (card.mod.toughness)  mods.push(`+0/+${card.mod.toughness}`);
 if (card.mod.keywords)   mods.push(card.mod.keywords.join(", "));
 if (card.mod.protection) mods.push(`protection from ${card.mod.protection}`);
 ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(", ") || "modified"}).`, "effect");
-// Return early ? aura stays attached to the permanent, NOT sent to graveyard.
+// Paralyze: tap the enchanted creature on entry
+if (card.mod.paralyzed) {
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+c.iid === tgtC.iid ? { ...c, tapped: true } : c
+)}};
+}
+// Regeneration Aura: grant G: Regenerate activated ability to the host creature
+if (card.mod.regenerationAura) {
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+c.iid === tgtC.iid ? { ...c, activated: c.activated || { cost: "G", effect: "regenerate" } } : c
+)}};
+}
+// Return early — aura stays attached to the permanent, NOT sent to graveyard.
 // The caller's post-resolution GY logic uses isPerm() which returns true for
 // Enchantments, so the aura card will not be double-added. Verify this holds
 // for both the CAST_SPELL and RESOLVE_STACK handlers.
+return ns;
+}
+break;
+}
+case "enchantLand": {
+// Attach aura mod record to target land. Mirrors enchantCreature; read back via applyOvergrowthTap.
+if (tgtC && card.mod && isLand(tgtC)) {
+const auraRecord = {
+iid:        card.iid,
+name:       card.name,
+mod:        card.mod,
+controller: caster,
+cardData:   { ...card },
+};
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+c.iid === tgtC.iid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
+)}};
+ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
 return ns;
 }
 break;
@@ -944,6 +990,8 @@ return ns;
 
 ns = dlog(ns, "Combat damage resolving.", "combat");
 
+const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
+
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
 if (!att) continue;
@@ -952,14 +1000,18 @@ const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
 const hasLifelink = hasKw(att, "LIFELINK") || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
 const blockers = ns[defW].bf.filter(c => c.blocking === attId);
+const attGaseous = isGaseous(att);
 
 if (!blockers.length) {
-  ns = hurt(ns, defW, ap, att.name);
-  if (hasLifelink) ns = hurt(ns, actrl, -ap);
+  if (!attGaseous) {
+    ns = hurt(ns, defW, ap, att.name);
+    if (hasLifelink) ns = hurt(ns, actrl, -ap);
+  }
 } else {
   let rem = ap;
   const PROT_CMAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
   for (const bl of blockers) {
+    const blGaseous = isGaseous(bl);
     const bp = getPow(bl, ns);
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
@@ -970,7 +1022,8 @@ if (!blockers.length) {
     const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
     const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
 
-    if (!attackerProtectsFromBl) {
+    // Gaseous Form: attacker is gaseous → blocker deals 0 to it; blocker is gaseous → attacker deals 0 to it
+    if (!attackerProtectsFromBl && !attGaseous) {
       ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
       if (bp > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
@@ -980,7 +1033,7 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt) {
+    if (!blockerProtectsFromAtt && !blGaseous) {
       ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
       if (dbl > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
@@ -990,11 +1043,11 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt) ns = hurt(ns, actrl, -dbl);
-    if (hasKw(att, "DEATHTOUCH") && ns.ruleset.deathtouch && !blockerProtectsFromAtt) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous) ns = hurt(ns, actrl, -dbl);
+    if (hasKw(att, "DEATHTOUCH") && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, "TRAMPLE") && rem > 0) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+  if (hasKw(att, "TRAMPLE") && rem > 0 && !attGaseous) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
 
 }
@@ -1099,6 +1152,8 @@ return { ...base, tapped:false };
 if (isCre(c)) {
 if (meekstoneOut && getPow(c, ns) >= 3) return base;
 if (smokeOut && cresUntapped >= 1) return base;
+// Paralyze: creature never untaps while the aura is attached
+if (c.paralyzed || c.enchantments?.some(e => e.mod?.paralyzed)) return { ...base, tapped: true };
 cresUntapped++;
 return { ...base, tapped:false };
 }
@@ -1253,6 +1308,15 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c
 // Clear mustAttack flags at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, mustAttack: false } : c) } };
+}
+// Pestilence: destroy if its controller has no black creatures
+for (const w of ["p","o"]) {
+for (const pest of [...ns[w].bf].filter(x => x.id === "pestilence")) {
+  if (!ns[w].bf.some(c => isCre(c) && c.color === "B")) {
+    ns = zMove(ns, pest.iid, w, w, "gy");
+    ns = dlog(ns, "Pestilence: no black creatures — destroyed.", "effect");
+  }
+}
 }
 // Castle Inferno modifier
 if (ns.castleMod?.name === "Inferno") { ns = hurt(ns, "p", 1, "Inferno"); ns = hurt(ns, "o", 1, "Inferno"); }
@@ -1534,6 +1598,11 @@ case "CAST_SPELL": {
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (isPerm(c) && !isLand(c)) {
+    // Auras route through resolveEff so enchantCreature/enchantLand attaches the mod record.
+    if (c.effect === "enchantCreature" || c.effect === "enchantLand") {
+      s = resolveEff(s, item);
+      return dlog(s, `${w} casts ${c.name}.`, "play");
+    }
     const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, "HASTE"), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
     s = { ...s, [w]: { ...s[w], bf: [...s[w].bf, pArr] } };
     return dlog(s, `${w} casts ${c.name}.`, "play");
@@ -1559,7 +1628,7 @@ case "DECLARE_ATTACKER": {
   if (s.phase !== PHASE.COMBAT_ATTACKERS) return s;
   const side = s.active;
   const c = s[side].bf.find(x => x.iid === action.iid);
-  if (!c || !isCre(c) || c.tapped || c.summoningSick) return s;
+  if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, "HASTE", s))) return s;
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   return { ...s, attackers: atts, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
