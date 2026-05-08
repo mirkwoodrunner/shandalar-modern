@@ -322,6 +322,21 @@ function planBlock(state, profile) {
   const blockActions = [];
   const alreadyBlocking = new Set();
 
+  // Lure: all able blockers must block the lure attacker first.
+  const lureAttId = incomingAttackerIds.find(id => {
+    const att = getBF(state, id);
+    return att?.enchantments?.some(e => e.mod?.keywords?.includes("LURE"));
+  });
+  if (lureAttId) {
+    const lureAtt = getBF(state, lureAttId);
+    for (const bl of available) {
+      if (!alreadyBlocking.has(bl.iid) && canBlockDuel(bl, lureAtt)) {
+        alreadyBlocking.add(bl.iid);
+        blockActions.push({ type: 'BLOCK', blockerId: bl.iid, attackerId: lureAttId });
+      }
+    }
+  }
+
   for (const attId of incomingAttackerIds) {
     const att = getBF(state, attId);
     if (!att) continue;
