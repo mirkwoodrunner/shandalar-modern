@@ -18,8 +18,8 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
   const isOpp = side === 'opp';
   const lands = cards.filter(c => c.type === 'Land' && !(c as any).isAnimatedLand);
   const nonLands = cards.filter(c => c.type !== 'Land' || (c as any).isAnimatedLand);
-  const creatures        = nonLands.filter(c => c.type === 'Creature' || c.type?.startsWith('Creature'));
-  const nonCreaturePerms = nonLands.filter(c => !(c.type === 'Creature' || c.type?.startsWith('Creature')));
+  const creatures        = nonLands.filter(c => c.type?.includes('Creature'));
+  const nonCreaturePerms = nonLands.filter(c => !c.type?.includes('Creature'));
 
   const landBorderColor = isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)';
   const landLabel = isOpp ? `LANDS (${lands.length})` : `YOUR LANDS (${lands.length})`;
