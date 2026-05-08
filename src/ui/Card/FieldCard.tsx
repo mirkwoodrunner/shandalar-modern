@@ -20,7 +20,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
   const frame = frameOf(card);
   const w = sm ? 78 : 96;
   const h = sm ? 109 : 134;
-  const isCre = card.type === 'Creature' || card.type?.startsWith('Creature');
+  const isCre = card.type?.includes('Creature') === true || (card as any).isAnimatedLand === true;
   const fontSize = sm ? 7.5 : 8.5;
 
   const borderColor = casting ? 'var(--brass-hi)' : selected ? 'var(--brass)' : attacking ? 'var(--opp)' : frame.bd;
