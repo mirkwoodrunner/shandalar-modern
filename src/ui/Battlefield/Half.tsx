@@ -14,61 +14,17 @@ interface HalfProps {
   onCardHover?: (iid: string | null) => void;
 }
 
-// A card is currently acting as a creature (includes animated lands like Mishra's Factory).
-function isCurrentCreature(c: CardData): boolean {
-  return (
-    c.type === 'Creature' ||
-    c.type?.startsWith('Creature') ||
-    (c as any).isAnimatedLand === true ||
-    (c.type?.includes('Artifact') && c.power != null)
-  );
-}
-
-const ROW_LABEL: React.CSSProperties = {
-  fontSize: 8,
-  fontFamily: 'var(--font-display)',
-  letterSpacing: 1.5,
-  marginBottom: 3,
-  flexShrink: 0,
-  textTransform: 'uppercase' as const,
-};
-
 export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCardClick, onCardHover }: HalfProps) {
   const isOpp = side === 'opp';
   const lands = cards.filter(c => c.type === 'Land' && !(c as any).isAnimatedLand);
   const nonLands = cards.filter(c => c.type !== 'Land' || (c as any).isAnimatedLand);
-  const creatures        = nonLands.filter(c => isCurrentCreature(c));
-  const nonCreaturePerms = nonLands.filter(c => !isCurrentCreature(c));
+  const creatures        = nonLands.filter(c => c.type === 'Creature' || c.type?.startsWith('Creature'));
+  const nonCreaturePerms = nonLands.filter(c => !(c.type === 'Creature' || c.type?.startsWith('Creature')));
 
-  const landLabelColor   = isOpp ? 'var(--ink-faint)' : '#6a8848';
-  const perm1LabelColor  = isOpp ? 'var(--ink-faint)' : '#8a7040';
-  const perm2LabelColor  = isOpp ? 'var(--ink-faint)' : '#607070';
-  const landBorderColor  = isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)';
+  const landBorderColor = isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)';
   const landLabel = isOpp ? `LANDS (${lands.length})` : `YOUR LANDS (${lands.length})`;
 
   const isSelected = (iid: string) => selCard === iid || selTgt === iid;
-
-  const renderCardRow = (rowCards: CardData[]) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-      {rowCards.map(c => (
-        <div
-          key={c.iid}
-          onMouseEnter={() => onCardHover?.(c.iid)}
-          onMouseLeave={() => onCardHover?.(null)}
-        >
-          <FieldCard
-            card={c}
-            sm={isOpp}
-            selected={isSelected(c.iid)}
-            attacking={attackers.includes(c.iid)}
-            tapped={c.tapped}
-            casting={flashIids?.has(c.iid)}
-            onClick={() => onCardClick?.(c)}
-          />
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <div style={{
@@ -90,7 +46,15 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
         borderBottom: `1px dashed ${landBorderColor}`,
         background: 'rgba(0,0,0,.25)',
       }}>
-        <div style={{ ...ROW_LABEL, color: landLabelColor }}>{landLabel}</div>
+        <div style={{
+          fontSize: 8,
+          fontFamily: 'var(--font-display)',
+          letterSpacing: 1.5,
+          marginBottom: 3,
+          flexShrink: 0,
+          textTransform: 'uppercase' as const,
+          color: isOpp ? 'var(--ink-faint)' : '#6a8848',
+        }}>{landLabel}</div>
         <div style={{ display: 'flex', gap: 4, minHeight: 36 }}>
           {lands.map(c => (
             <LandPip
@@ -106,36 +70,72 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
         </div>
       </div>
 
-      {/* Non-land permanents: creatures row + spells/artifacts row */}
+      {/* Creature row — always present */}
       <div style={{
         flex: isOpp ? undefined : 1,
-        padding: '6px 14px 8px',
+        padding: '8px 14px 4px',
         minHeight: isOpp ? 130 : undefined,
         display: 'flex',
-        flexDirection: 'column',
         gap: 6,
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
         overflow: 'auto',
       }}>
-        {creatures.length > 0 && (
-          <div>
-            <div style={{ ...ROW_LABEL, color: perm1LabelColor }}>
-              {isOpp ? `CREATURES (${creatures.length})` : `YOUR CREATURES (${creatures.length})`}
-            </div>
-            {renderCardRow(creatures)}
+        {creatures.map(c => (
+          <div
+            key={c.iid}
+            onMouseEnter={() => onCardHover?.(c.iid)}
+            onMouseLeave={() => onCardHover?.(null)}
+          >
+            <FieldCard
+              card={c}
+              sm={isOpp}
+              selected={isSelected(c.iid)}
+              attacking={attackers.includes(c.iid)}
+              tapped={c.tapped}
+              casting={flashIids?.has(c.iid)}
+              onClick={() => onCardClick?.(c)}
+            />
           </div>
-        )}
-        {nonCreaturePerms.length > 0 && (
-          <div>
-            <div style={{ ...ROW_LABEL, color: perm2LabelColor }}>
-              {isOpp ? `SPELLS / ARTIFACTS (${nonCreaturePerms.length})` : `YOUR SPELLS / ARTIFACTS (${nonCreaturePerms.length})`}
-            </div>
-            {renderCardRow(nonCreaturePerms)}
-          </div>
-        )}
-        {creatures.length === 0 && nonCreaturePerms.length === 0 && (
-          <span style={{ fontSize: 9, color: 'var(--ink-faint)', fontStyle: 'italic' }}>—</span>
+        ))}
+        {creatures.length === 0 && (
+          <span style={{ fontSize: 9, color: 'var(--ink-faint)', fontStyle: 'italic', alignSelf: 'center' }}>
+            —
+          </span>
         )}
       </div>
+
+      {/* Non-creature permanents row — only when populated */}
+      {nonCreaturePerms.length > 0 && (
+        <div style={{
+          flexShrink: 0,
+          padding: '4px 14px 8px',
+          borderTop: `1px dashed ${isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)'}`,
+          display: 'flex',
+          gap: 6,
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          overflow: 'auto',
+        }}>
+          {nonCreaturePerms.map(c => (
+            <div
+              key={c.iid}
+              onMouseEnter={() => onCardHover?.(c.iid)}
+              onMouseLeave={() => onCardHover?.(null)}
+            >
+              <FieldCard
+                card={c}
+                sm={isOpp}
+                selected={isSelected(c.iid)}
+                attacking={false}
+                tapped={c.tapped}
+                casting={flashIids?.has(c.iid)}
+                onClick={() => onCardClick?.(c)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
