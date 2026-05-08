@@ -161,7 +161,24 @@ function planMain(state, profile, phase) {
       if (!BEFORE_COMBAT_DAMAGE_PHASES.has(phase)) continue;
     }
 
+    const isCounter = card.effect === 'counter' || card.effect === 'counterCreature';
+    if (isCounter && (state.stack.length === 0 || state.stack[state.stack.length - 1]?.controller !== 'p')) continue;
+
     if (card.cmc > totalMana) continue; // can't afford even with all lands tapped
+
+    // X spells: strip X from cost, derive xVal from available mana, skip if can't pump X >= 1
+    let effectiveCost = card.cost;
+    let cardXVal = null;
+    if (/X/i.test(card.cost)) {
+      const baseCost = card.cost.replace(/X/gi, '');
+      const baseReq = parseMana(baseCost);
+      const baseManaNeeded = Object.values(baseReq).reduce((s, v) => s + v, 0);
+      const vMana = computeAvailableMana(virtualState);
+      const vTotal = Object.values(vMana).reduce((s, v) => s + v, 0);
+      cardXVal = vTotal - baseManaNeeded;
+      if (cardXVal < 1) continue;
+      effectiveCost = String(cardXVal) + baseCost.replace(/[{}]/g, '');
+    }
 
     // --- Build the spell action FIRST; only tap if the spell is actually valid ---
 
@@ -228,7 +245,7 @@ function planMain(state, profile, phase) {
     }
 
     // spellTargets is now resolved. Only NOW check affordability and build tap actions.
-    const { tapActions, affordable } = buildTapActions(virtualState, card.cost);
+    const { tapActions, affordable } = buildTapActions(virtualState, effectiveCost);
     if (!affordable) continue;
 
     // Mark the virtually tapped lands so subsequent spells don't over-commit.
@@ -244,7 +261,7 @@ function planMain(state, profile, phase) {
       }
     }
 
-    actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions });
+    actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions, _xVal: cardXVal });
   }
 
   actions.push({ type: 'PASS_PRIORITY' });
@@ -483,9 +500,10 @@ export function aiDecide(state) {
             return r.tapActions;
           })();
           if (!tapActions) break;
+          if (action._xVal != null) dcActions.push({ type: 'SET_X', val: action._xVal });
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;
-          dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: 3 });
+          dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: action._xVal ?? 3 });
           // Auto-resolve the stack after casting — no player priority window on AI turns.
           dcActions.push({ type: 'RESOLVE_STACK' });
         }
