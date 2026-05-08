@@ -13,6 +13,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 function getTargetCategory(card) {
   if (!card) return 'none';
 
+  // enchantLand targets a land regardless of the Aura type check below
+  if (card.effect === 'enchantLand') return 'land';
+
   if (card.type === 'Enchantment' && card.subtype === 'Aura') return 'creature';
 
   switch (card.effect) {
@@ -38,6 +41,8 @@ function getTargetCategory(card) {
     case 'drainLife':
     case 'tapTarget':
     case 'controlCreature':
+    case 'stealCreature':
+    case 'clone':
     case 'grantFlying':
     case 'berserk':
     case 'enchantCreature':

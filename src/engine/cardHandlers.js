@@ -101,6 +101,52 @@ export const CARD_HANDLERS = {
       return addLog(ns, 'Timetwister ? all players shuffle and draw 7.', 'effect');
     },
   },
+
+  // Clone: copy a target creature on the battlefield.
+  // Fires after Clone enters bf (CAST_SPELL places it there, then calls onResolve).
+  'Clone': {
+    onResolve: (state, card, targets) => {
+      const isCre = c => !!c?.type?.includes('Creature');
+      const tgt = targets?.[0];
+      const allBF = [...state.p.bf, ...state.o.bf];
+      const copyTarget = allBF.find(c => c.iid === tgt && isCre(c));
+      if (copyTarget) {
+        const controller = card.controller || 'p';
+        const cloneCopy = {
+          ...copyTarget,
+          iid: card.iid,
+          controller,
+          tapped: false,
+          summoningSick: true,
+          damage: 0,
+          counters: {},
+          eotBuffs: [],
+          enchantments: [],
+          attacking: false,
+          blocking: null,
+        };
+        const ns = { ...state,
+          [controller]: { ...state[controller], bf: state[controller].bf.map(c =>
+            c.iid === card.iid ? cloneCopy : c
+          )}
+        };
+        return addLog(ns, `Clone copies ${copyTarget.name}.`, 'effect');
+      }
+      return addLog(state, 'Clone: no valid target — enters as 0/0.', 'effect');
+    },
+  },
+
+  // Rock Hydra: enters with X +1/+1 counters (xVal = the X from casting).
+  // Fires after Rock Hydra enters bf.
+  'Rock Hydra': {
+    onResolve: (state, card, _targets, xVal) => {
+      const controller = card.controller || 'p';
+      const ns = { ...state, [controller]: { ...state[controller], bf: state[controller].bf.map(c =>
+        c.iid === card.iid ? { ...c, counters: { ...c.counters, P1P1: xVal || 0 } } : c
+      )}};
+      return addLog(ns, `Rock Hydra enters with ${xVal || 0} +1/+1 counters.`, 'effect');
+    },
+  },
 };
 
 export default CARD_HANDLERS;
