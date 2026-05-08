@@ -1,0 +1,961 @@
+Shandalar Card Stub Audit
+=========================
+Generated: 2026-05-08T01:20:02.828Z
+
+SUMMARY
+-------
+Pool card count:           901
+cards.js entry count:      616
+Present in both:           573
+Missing from cards.js:     328
+In cards.js but not pool:  43
+
+--- MISSING FROM cards.js (need stub or full entry) ---
+abu_jafar	// Abu Ja'far
+active_volcano	// Active Volcano
+adun_oakenshield	// Adun Oakenshield
+adventurers_guildhouse	// Adventurers' Guildhouse
+aerathi_berserker	// Aerathi Berserker
+aisling_leprechaun	// Aisling Leprechaun
+akron_legionnaire	// Akron Legionnaire
+al_abaras_carpet	// Al-abara's Carpet
+aladdins_lamp	// Aladdin's Lamp
+aladdins_ring	// Aladdin's Ring
+alchors_tomb	// Alchor's Tomb
+ali_from_cairo	// Ali from Cairo
+all_hallows_eve	// All Hallow's Eve
+angus_mackenzie	// Angus Mackenzie
+ankh_of_mishra	// Ankh of Mishra
+anti_magic_aura	// Anti-Magic Aura
+apprentice_wizard	// Apprentice Wizard
+arboria	// Arboria
+arcades_sabboth	// Arcades Sabboth
+arena_of_the_ancients	// Arena of the Ancients
+argothian_pixies	// Argothian Pixies
+armageddon_clock	// Armageddon Clock
+ashnods_battle_gear	// Ashnod's Battle Gear
+ashnods_transmogrant	// Ashnod's Transmogrant
+aswan_jaguar	// Aswan Jaguar
+avoid_fate	// Avoid Fate
+axelrod_gunnarson	// Axelrod Gunnarson
+ayesha_tanaka	// Ayesha Tanaka
+backdraft	// Backdraft
+barktooth_warbeard	// Barktooth Warbeard
+barls_cage	// Barl's Cage
+bartel_runeaxe	// Bartel Runeaxe
+black_mana_battery	// Black Mana Battery
+blazing_effigy	// Blazing Effigy
+blood_of_the_martyr	// Blood of the Martyr
+blue_mana_battery	// Blue Mana Battery
+boris_devilboon	// Boris Devilboon
+bottle_of_suleiman	// Bottle of Suleiman
+brine_hag	// Brine Hag
+bronze_horse	// Bronze Horse
+call_from_the_grave	// Call from the Grave
+camouflage	// Camouflage
+cathedral_of_serra	// Cathedral of Serra
+caverns_of_despair	// Caverns of Despair
+celestial_prism	// Celestial Prism
+chains_of_mephistopheles	// Chains of Mephistopheles
+chaos_orb	// Chaos Orb
+chromium	// Chromium
+city_in_a_bottle	// City in a Bottle
+city_of_shadows	// City of Shadows
+cleansing	// Cleansing
+clergy_of_the_holy_nimbus	// Clergy of the Holy Nimbus
+clockwork_avian	// Clockwork Avian
+cocoon	// Cocoon
+concordant_crossroads	// Concordant Crossroads
+copper_tablet	// Copper Tablet
+craw_giant	// Craw Giant
+crevasse	// Crevasse
+curse_artifact	// Curse Artifact
+cursed_land	// Cursed Land
+cursed_rack	// Cursed Rack
+cyclone	// Cyclone
+dakkon_blackblade	// Dakkon Blackblade
+dance_of_many	// Dance of Many
+dand_n	// Dandân
+dark_heart_of_the_wood	// Dark Heart of the Wood
+dark_sphere	// Dark Sphere
+deadfall	// Deadfall
+deep_water	// Deep Water
+demonic_torment	// Demonic Torment
+diamond_valley	// Diamond Valley
+disharmony	// Disharmony
+divine_intervention	// Divine Intervention
+drafnas_restoration	// Drafna's Restoration
+dream_coat	// Dream Coat
+dust_to_dust	// Dust to Dust
+dwarven_demolition_team	// Dwarven Demolition Team
+dwarven_song	// Dwarven Song
+dwarven_warriors	// Dwarven Warriors
+dwarven_weaponsmith	// Dwarven Weaponsmith
+eater_of_the_dead	// Eater of the Dead
+el_hajj_j	// El-Hajjâj
+electric_eel	// Electric Eel
+elephant_graveyard	// Elephant Graveyard
+enchanted_being	// Enchanted Being
+enchantment_alteration	// Enchantment Alteration
+equinox	// Equinox
+eureka	// Eureka
+evil_eye_of_orms_by_gore	// Evil Eye of Orms-by-Gore
+faerie_dragon	// Faerie Dragon
+falling_star	// Falling Star
+false_orders	// False Orders
+fasting	// Fasting
+feint	// Feint
+feldons_cane	// Feldon's Cane
+festival	// Festival
+field_of_dreams	// Field of Dreams
+fire_and_brimstone	// Fire and Brimstone
+firestorm_phoenix	// Firestorm Phoenix
+flash_counter	// Flash Counter
+flash_flood	// Flash Flood
+floral_spuzzem	// Floral Spuzzem
+forethought_amulet	// Forethought Amulet
+frankensteins_monster	// Frankenstein's Monster
+frost_giant	// Frost Giant
+gabriel_angelfire	// Gabriel Angelfire
+gaeas_avenger	// Gaea's Avenger
+gaeas_liege	// Gaea's Liege
+gaeas_touch	// Gaea's Touch
+gauntlets_of_chaos	// Gauntlets of Chaos
+gem_bazaar	// Gem Bazaar
+ghazb_n_ogre	// Ghazbán Ogre
+giant_shark	// Giant Shark
+giant_slug	// Giant Slug
+glyph_of_delusion	// Glyph of Delusion
+glyph_of_destruction	// Glyph of Destruction
+glyph_of_doom	// Glyph of Doom
+glyph_of_life	// Glyph of Life
+glyph_of_reincarnation	// Glyph of Reincarnation
+goblin_caves	// Goblin Caves
+goblin_polka_band	// Goblin Polka Band
+goblin_shrine	// Goblin Shrine
+goblin_wizard	// Goblin Wizard
+golgothian_sylex	// Golgothian Sylex
+gosta_dirk	// Gosta Dirk
+grave_robbers	// Grave Robbers
+gravity_sphere	// Gravity Sphere
+great_wall	// Great Wall
+green_mana_battery	// Green Mana Battery
+gwendlyn_di_corci	// Gwendlyn Di Corci
+halfdane	// Halfdane
+hammerheim	// Hammerheim
+hazezon_tamar	// Hazezon Tamar
+heavens_gate	// Heaven's Gate
+hells_caretaker	// Hell's Caretaker
+hellfire	// Hellfire
+horn_of_deafening	// Horn of Deafening
+horror_of_horrors	// Horror of Horrors
+hunding_gjornersen	// Hunding Gjornersen
+ichneumon_druid	// Ichneumon Druid
+ifh_b_ff_efreet	// Ifh-Bíff Efreet
+illusionary_mask	// Illusionary Mask
+imprison	// Imprison
+in_the_eye_of_chaos	// In the Eye of Chaos
+indestructible_aura	// Indestructible Aura
+infinite_authority	// Infinite Authority
+invoke_prejudice	// Invoke Prejudice
+jacques_le_vert	// Jacques le Vert
+jandors_ring	// Jandor's Ring
+jandors_saddlebags	// Jandor's Saddlebags
+jasmine_boreal	// Jasmine Boreal
+jedit_ojanen	// Jedit Ojanen
+jerrard_of_the_closed_fist	// Jerrard of the Closed Fist
+johan	// Johan
+jun_n_efreet	// Junún Efreet
+juxtapose	// Juxtapose
+juz_m_djinn	// Juzám Djinn
+karakas	// Karakas
+kasimir_the_lone_wolf	// Kasimir the Lone Wolf
+kei_takahashi	// Kei Takahashi
+khab_l_ghoul	// Khabál Ghoul
+king_suleiman	// King Suleiman
+knowledge_vault	// Knowledge Vault
+kry_shield	// Kry Shield
+lady_caleria	// Lady Caleria
+lady_evangela	// Lady Evangela
+lady_orca	// Lady Orca
+land_equilibrium	// Land Equilibrium
+lands_edge	// Land's Edge
+lesser_werewolf	// Lesser Werewolf
+life_matrix	// Life Matrix
+living_armor	// Living Armor
+living_plane	// Living Plane
+livonya_silone	// Livonya Silone
+lord_magnus	// Lord Magnus
+lurker	// Lurker
+mana_drain	// Mana Drain
+mana_matrix	// Mana Matrix
+mana_vortex	// Mana Vortex
+marble_priest	// Marble Priest
+marhault_elsdragon	// Marhault Elsdragon
+marsh_goblins	// Marsh Goblins
+martyrs_cry	// Martyr's Cry
+master_of_the_hunt	// Master of the Hunt
+maze_of_ith	// Maze of Ith
+metamorphosis	// Metamorphosis
+mijae_djinn	// Mijae Djinn
+mirror_universe	// Mirror Universe
+mishras_factory	// Mishra's Factory
+mishras_war_machine	// Mishra's War Machine
+mishras_workshop	// Mishra's Workshop
+mountain_stronghold	// Mountain Stronghold
+nameless_race	// Nameless Race
+nebuchadnezzar	// Nebuchadnezzar
+necropolis	// Necropolis
+necropolis_of_azar	// Necropolis of Azar
+nether_void	// Nether Void
+nevinyrrals_disk	// Nevinyrral's Disk
+niall_silvain	// Niall Silvain
+nicol_bolas	// Nicol Bolas
+north_star	// North Star
+nova_pentacle	// Nova Pentacle
+orc_general	// Orc General
+orcish_catapult	// Orcish Catapult
+palladia_mors	// Palladia-Mors
+pandoras_box	// Pandora's Box
+part_water	// Part Water
+pavel_maliki	// Pavel Maliki
+pendelhaven	// Pendelhaven
+petra_sphinx	// Petra Sphinx
+planar_gate	// Planar Gate
+power_artifact	// Power Artifact
+power_struggle	// Power Struggle
+preacher	// Preacher
+presence_of_the_master	// Presence of the Master
+primordial_ooze	// Primordial Ooze
+princess_lucrezia	// Princess Lucrezia
+prismatic_dragon	// Prismatic Dragon
+psychic_allergy	// Psychic Allergy
+psychic_purge	// Psychic Purge
+puppet_master	// Puppet Master
+quagmire	// Quagmire
+quarum_trench_gnomes	// Quarum Trench Gnomes
+ragnar	// Ragnar
+rainbow_knights	// Rainbow Knights
+ramirez_depietro	// Ramirez DePietro
+ramses_overdark	// Ramses Overdark
+rapid_fire	// Rapid Fire
+rasputin_dreamweaver	// Rasputin Dreamweaver
+recall	// Recall
+red_mana_battery	// Red Mana Battery
+reflecting_mirror	// Reflecting Mirror
+reincarnation	// Reincarnation
+remove_enchantments	// Remove Enchantments
+revelation	// Revelation
+reverberation	// Reverberation
+ring_of_immortals	// Ring of Immortals
+ring_of_mar_f	// Ring of Ma'rûf
+riven_turnbull	// Riven Turnbull
+rohgahh_of_kher_keep	// Rohgahh of Kher Keep
+rubinia_soulsinger	// Rubinia Soulsinger
+runesword	// Runesword
+rust	// Rust
+safe_haven	// Safe Haven
+scarecrow	// Scarecrow
+scarwood_bandits	// Scarwood Bandits
+scarwood_goblins	// Scarwood Goblins
+scarwood_hag	// Scarwood Hag
+sea_kings_blessing	// Sea Kings' Blessing
+seafarers_quay	// Seafarer's Quay
+season_of_the_witch	// Season of the Witch
+sentinel	// Sentinel
+serendib_djinn	// Serendib Djinn
+serendib_efreet	// Serendib Efreet
+shahrazad	// Shahrazad
+shelkin_brownie	// Shelkin Brownie
+shimian_night_stalker	// Shimian Night Stalker
+silhouette	// Silhouette
+sir_shandlar_of_eberyn	// Sir Shandlar of Eberyn
+sirens_call	// Siren's Call
+sivitri_scarzam	// Sivitri Scarzam
+skull_of_orm	// Skull of Orm
+solkanar_the_swamp_king	// Sol'kanar the Swamp King
+sorrows_path	// Sorrow's Path
+spectral_cloak	// Spectral Cloak
+spitting_slug	// Spitting Slug
+standing_stones	// Standing Stones
+stangg	// Stangg
+stone_calendar	// Stone Calendar
+stone_throwing_devils	// Stone-Throwing Devils
+storm_world	// Storm World
+subdue	// Subdue
+sunastian_falconer	// Sunastian Falconer
+sword_of_the_ages	// Sword of the Ages
+sylvan_paradise	// Sylvan Paradise
+takklemaggot	// Takklemaggot
+tangle_kelp	// Tangle Kelp
+tawnoss_coffin	// Tawnos's Coffin
+tawnoss_wand	// Tawnos's Wand
+tawnoss_weaponry	// Tawnos's Weaponry
+telekinesis	// Telekinesis
+teleport	// Teleport
+tetsuo_umezawa	// Tetsuo Umezawa
+the_abyss	// The Abyss
+the_fallen	// The Fallen
+the_lady_of_the_mountain	// The Lady of the Mountain
+the_tabernacle_at_pendrell_vale	// The Tabernacle at Pendrell Vale
+the_wretched	// The Wretched
+titanias_song	// Titania's Song
+tivadars_crusade	// Tivadar's Crusade
+tobias_andrion	// Tobias Andrion
+tolaria	// Tolaria
+tor_wauki	// Tor Wauki
+tormods_crypt	// Tormod's Crypt
+torsten_von_ursus	// Torsten Von Ursus
+touch_of_darkness	// Touch of Darkness
+tower_of_coireall	// Tower of Coireall
+transmutation	// Transmutation
+triassic_egg	// Triassic Egg
+tuknir_deathlock	// Tuknir Deathlock
+undertow	// Undertow
+underworld_dreams	// Underworld Dreams
+unholy_citadel	// Unholy Citadel
+ur_drago	// Ur-Drago
+urborg	// Urborg
+urzas_avenger	// Urza's Avenger
+urzas_chalice	// Urza's Chalice
+urzas_mine	// Urza's Mine
+urzas_miter	// Urza's Miter
+urzas_power_plant	// Urza's Power Plant
+urzas_tower	// Urza's Tower
+vaevictis_asmadi	// Vaevictis Asmadi
+venarian_gold	// Venarian Gold
+voodoo_doll	// Voodoo Doll
+wall_of_caltrops	// Wall of Caltrops
+wall_of_putrid_flesh	// Wall of Putrid Flesh
+wall_of_shadows	// Wall of Shadows
+wall_of_vapor	// Wall of Vapor
+wand_of_ith	// Wand of Ith
+whimsy	// Whimsy
+whippoorwill	// Whippoorwill
+white_mana_battery	// White Mana Battery
+willow_satyr	// Willow Satyr
+wolverine_pack	// Wolverine Pack
+wood_elemental	// Wood Elemental
+word_of_command	// Word of Command
+worms_of_the_earth	// Worms of the Earth
+xira_arien	// Xira Arien
+
+--- IN cards.js BUT NOT IN POOL (check for slug mismatch or orphan) ---
+abu_jasfar
+aladdinss_lamp
+aladdinss_ring
+alchorss_tomb
+ashnodss_battle_gear
+ashnodss_transmogrant
+barlss_cage
+consume_spirit
+dandan
+dark_banishing
+drafnass_restoration
+el_hajjaj
+feldonss_cane
+fyndhorn_elves
+gaea_liege
+gaeass_avenger
+ghazban_ogre
+glacial_wall
+jandorss_ring
+jandorss_saddlebags
+juzam_djinn
+khabal_ghoul
+lava_axe
+martyrss_cry
+mishrass_factory
+mishrass_war_machine
+mishrass_workshop
+nevinyrral_disk
+phantom_warrior
+ring_of_maruf
+sengir_counter
+sirenss_call
+stromgald_cabal
+tawnos_coffin
+tawnosss_wand
+tawnosss_weaponry
+titaniass_song
+urzass_avenger
+urzass_chalice
+urzass_mine
+urzass_miter
+urzass_power_plant
+urzass_tower
+
+--- PRESENT IN BOTH (no action needed) ---
+abomination	// Abomination
+acid_rain	// Acid Rain
+air_elemental	// Air Elemental
+alabaster_potion	// Alabaster Potion
+aladdin	// Aladdin
+ali_baba	// Ali Baba
+amnesia	// Amnesia
+amrou_kithkin	// Amrou Kithkin
+amulet_of_kroog	// Amulet of Kroog
+ancestral_recall	// Ancestral Recall
+angelic_voices	// Angelic Voices
+angry_mob	// Angry Mob
+animate_artifact	// Animate Artifact
+animate_dead	// Animate Dead
+animate_wall	// Animate Wall
+arena	// Arena
+argivian_archaeologist	// Argivian Archaeologist
+argivian_blacksmith	// Argivian Blacksmith
+argothian_treefolk	// Argothian Treefolk
+armageddon	// Armageddon
+army_of_allah	// Army of Allah
+artifact_blast	// Artifact Blast
+artifact_possession	// Artifact Possession
+artifact_ward	// Artifact Ward
+ashes_to_ashes	// Ashes to Ashes
+ashnods_altar	// Ashnod's Altar
+aspect_of_wolf	// Aspect of Wolf
+atog	// Atog
+azure_drake	// Azure Drake
+backfire	// Backfire
+bad_moon	// Bad Moon
+badlands	// Badlands
+balance	// Balance
+ball_lightning	// Ball Lightning
+banshee	// Banshee
+barbary_apes	// Barbary Apes
+basalt_monolith	// Basalt Monolith
+battering_ram	// Battering Ram
+bayou	// Bayou
+bazaar_of_baghdad	// Bazaar of Baghdad
+beasts_of_bogardan	// Beasts of Bogardan
+benalish_hero	// Benalish Hero
+berserk	// Berserk
+bird_maiden	// Bird Maiden
+birds_of_paradise	// Birds of Paradise
+black_knight	// Black Knight
+black_lotus	// Black Lotus
+black_vise	// Black Vise
+black_ward	// Black Ward
+blaze_of_glory	// Blaze of Glory
+blessing	// Blessing
+blight	// Blight
+blood_lust	// Blood Lust
+blood_moon	// Blood Moon
+blue_elemental_blast	// Blue Elemental Blast
+blue_ward	// Blue Ward
+bog_imp	// Bog Imp
+bog_rats	// Bog Rats
+bog_wraith	// Bog Wraith
+bone_flute	// Bone Flute
+book_of_rass	// Book of Rass
+boomerang	// Boomerang
+braingeyser	// Braingeyser
+brainwash	// Brainwash
+brass_man	// Brass Man
+bronze_tablet	// Bronze Tablet
+brothers_of_fire	// Brothers of Fire
+burrowing	// Burrowing
+camel	// Camel
+candelabra_of_tawnos	// Candelabra of Tawnos
+carnivorous_plant	// Carnivorous Plant
+carrion_ants	// Carrion Ants
+castle	// Castle
+cat_warriors	// Cat Warriors
+cave_people	// Cave People
+chain_lightning	// Chain Lightning
+channel	// Channel
+chaoslace	// Chaoslace
+circle_of_protection_artifacts	// Circle of Protection: Artifacts
+circle_of_protection_black	// Circle of Protection: Black
+circle_of_protection_blue	// Circle of Protection: Blue
+circle_of_protection_green	// Circle of Protection: Green
+circle_of_protection_red	// Circle of Protection: Red
+circle_of_protection_white	// Circle of Protection: White
+citanul_druid	// Citanul Druid
+city_of_brass	// City of Brass
+clay_statue	// Clay Statue
+cleanse	// Cleanse
+clockwork_beast	// Clockwork Beast
+clone	// Clone
+coal_golem	// Coal Golem
+cockatrice	// Cockatrice
+colossus_of_sardia	// Colossus of Sardia
+consecrate_land	// Consecrate Land
+conservator	// Conservator
+contract_from_below	// Contract from Below
+control_magic	// Control Magic
+conversion	// Conversion
+copy_artifact	// Copy Artifact
+coral_helm	// Coral Helm
+cosmic_horror	// Cosmic Horror
+counterspell	// Counterspell
+craw_wurm	// Craw Wurm
+creature_bond	// Creature Bond
+crimson_kobolds	// Crimson Kobolds
+crimson_manticore	// Crimson Manticore
+crookshank_kobolds	// Crookshank Kobolds
+crumble	// Crumble
+crusade	// Crusade
+crystal_rod	// Crystal Rod
+cuombajj_witches	// Cuombajj Witches
+cyclopean_mummy	// Cyclopean Mummy
+cyclopean_tomb	// Cyclopean Tomb
+davenant_archer	// D'Avenant Archer
+damping_field	// Damping Field
+dancing_scimitar	// Dancing Scimitar
+dark_ritual	// Dark Ritual
+darkness	// Darkness
+darkpact	// Darkpact
+death_ward	// Death Ward
+deathgrip	// Deathgrip
+deathlace	// Deathlace
+demonic_attorney	// Demonic Attorney
+demonic_hordes	// Demonic Hordes
+demonic_tutor	// Demonic Tutor
+desert	// Desert
+desert_nomads	// Desert Nomads
+desert_twister	// Desert Twister
+detonate	// Detonate
+devouring_deep	// Devouring Deep
+diabolic_machine	// Diabolic Machine
+dingus_egg	// Dingus Egg
+disenchant	// Disenchant
+disintegrate	// Disintegrate
+disrupting_scepter	// Disrupting Scepter
+divine_offering	// Divine Offering
+divine_transformation	// Divine Transformation
+dragon_engine	// Dragon Engine
+dragon_whelp	// Dragon Whelp
+drain_life	// Drain Life
+drain_power	// Drain Power
+drop_of_honey	// Drop of Honey
+drowned	// Drowned
+drudge_skeletons	// Drudge Skeletons
+durkwood_boars	// Durkwood Boars
+earth_elemental	// Earth Elemental
+earthbind	// Earthbind
+earthquake	// Earthquake
+ebony_horse	// Ebony Horse
+elder_land_wurm	// Elder Land Wurm
+elder_spawn	// Elder Spawn
+elven_riders	// Elven Riders
+elves_of_deep_shadow	// Elves of Deep Shadow
+elvish_archers	// Elvish Archers
+emerald_dragonfly	// Emerald Dragonfly
+energy_flux	// Energy Flux
+energy_tap	// Energy Tap
+erg_raiders	// Erg Raiders
+erhnam_djinn	// Erhnam Djinn
+erosion	// Erosion
+eternal_flame	// Eternal Flame
+eternal_warrior	// Eternal Warrior
+evil_presence	// Evil Presence
+exorcist	// Exorcist
+eye_for_an_eye	// Eye for an Eye
+fallen_angel	// Fallen Angel
+farmstead	// Farmstead
+fastbond	// Fastbond
+fear	// Fear
+feedback	// Feedback
+fellwar_stone	// Fellwar Stone
+fire_drake	// Fire Drake
+fire_elemental	// Fire Elemental
+fire_sprites	// Fire Sprites
+fireball	// Fireball
+firebreathing	// Firebreathing
+fishliver_oil	// Fishliver Oil
+fissure	// Fissure
+flashfires	// Flashfires
+flight	// Flight
+flood	// Flood
+flying_carpet	// Flying Carpet
+flying_men	// Flying Men
+fog	// Fog
+force_spike	// Force Spike
+force_of_nature	// Force of Nature
+forcefield	// Forcefield
+forest	// Forest
+fork	// Fork
+fortified_area	// Fortified Area
+fountain_of_youth	// Fountain of Youth
+frozen_shade	// Frozen Shade
+fungusaur	// Fungusaur
+gaseous_form	// Gaseous Form
+gate_to_phyrexia	// Gate to Phyrexia
+gauntlet_of_might	// Gauntlet of Might
+ghost_ship	// Ghost Ship
+ghosts_of_the_damned	// Ghosts of the Damned
+giant_badger	// Giant Badger
+giant_growth	// Giant Growth
+giant_spider	// Giant Spider
+giant_strength	// Giant Strength
+giant_tortoise	// Giant Tortoise
+giant_turtle	// Giant Turtle
+glasses_of_urza	// Glasses of Urza
+gloom	// Gloom
+goblin_artisans	// Goblin Artisans
+goblin_balloon_brigade	// Goblin Balloon Brigade
+goblin_digging_team	// Goblin Digging Team
+goblin_hero	// Goblin Hero
+goblin_king	// Goblin King
+goblin_rock_sled	// Goblin Rock Sled
+goblins_of_the_flarg	// Goblins of the Flarg
+granite_gargoyle	// Granite Gargoyle
+grapeshot_catapult	// Grapeshot Catapult
+gray_ogre	// Gray Ogre
+great_defender	// Great Defender
+greater_realm_of_preservation	// Greater Realm of Preservation
+greed	// Greed
+green_ward	// Green Ward
+grizzly_bears	// Grizzly Bears
+guardian_angel	// Guardian Angel
+guardian_beast	// Guardian Beast
+hasran_ogress	// Hasran Ogress
+haunting_wind	// Haunting Wind
+headless_horseman	// Headless Horseman
+healing_salve	// Healing Salve
+hell_swarm	// Hell Swarm
+helm_of_chatzuk	// Helm of Chatzuk
+hidden_path	// Hidden Path
+hill_giant	// Hill Giant
+holy_armor	// Holy Armor
+holy_day	// Holy Day
+holy_light	// Holy Light
+holy_strength	// Holy Strength
+hornet_cobra	// Hornet Cobra
+howl_from_beyond	// Howl from Beyond
+howling_mine	// Howling Mine
+hurkyls_recall	// Hurkyl's Recall
+hurloon_minotaur	// Hurloon Minotaur
+hurr_jackal	// Hurr Jackal
+hurricane	// Hurricane
+hyperion_blacksmith	// Hyperion Blacksmith
+hypnotic_specter	// Hypnotic Specter
+ice_storm	// Ice Storm
+icy_manipulator	// Icy Manipulator
+immolation	// Immolation
+infernal_medusa	// Infernal Medusa
+inferno	// Inferno
+inquisition	// Inquisition
+instill_energy	// Instill Energy
+invisibility	// Invisibility
+iron_star	// Iron Star
+ironclaw_orcs	// Ironclaw Orcs
+ironroot_treefolk	// Ironroot Treefolk
+island	// Island
+island_fish_jasconius	// Island Fish Jasconius
+island_sanctuary	// Island Sanctuary
+island_of_wak_wak	// Island of Wak-Wak
+ivory_cup	// Ivory Cup
+ivory_guardians	// Ivory Guardians
+ivory_tower	// Ivory Tower
+jade_monolith	// Jade Monolith
+jade_statue	// Jade Statue
+jalum_tome	// Jalum Tome
+jayemdae_tome	// Jayemdae Tome
+jeweled_bird	// Jeweled Bird
+jihad	// Jihad
+jovial_evil	// Jovial Evil
+juggernaut	// Juggernaut
+jump	// Jump
+karma	// Karma
+keepers_of_the_faith	// Keepers of the Faith
+keldon_warlord	// Keldon Warlord
+killer_bees	// Killer Bees
+kird_ape	// Kird Ape
+kismet	// Kismet
+knights_of_thorn	// Knights of Thorn
+kobold_drill_sergeant	// Kobold Drill Sergeant
+kobold_overlord	// Kobold Overlord
+kobold_taskmaster	// Kobold Taskmaster
+kobolds_of_kher_keep	// Kobolds of Kher Keep
+kormus_bell	// Kormus Bell
+kudzu	// Kudzu
+lance	// Lance
+land_leeches	// Land Leeches
+land_tax	// Land Tax
+leviathan	// Leviathan
+ley_druid	// Ley Druid
+library_of_alexandria	// Library of Alexandria
+library_of_leng	// Library of Leng
+lich	// Lich
+life_chisel	// Life Chisel
+lifeblood	// Lifeblood
+lifeforce	// Lifeforce
+lifelace	// Lifelace
+lifetap	// Lifetap
+lightning_bolt	// Lightning Bolt
+living_artifact	// Living Artifact
+living_lands	// Living Lands
+living_wall	// Living Wall
+llanowar_elves	// Llanowar Elves
+lord_of_atlantis	// Lord of Atlantis
+lord_of_the_pit	// Lord of the Pit
+lost_soul	// Lost Soul
+lure	// Lure
+magical_hack	// Magical Hack
+magnetic_mountain	// Magnetic Mountain
+mahamoti_djinn	// Mahamoti Djinn
+mana_clash	// Mana Clash
+mana_crypt	// Mana Crypt
+mana_flare	// Mana Flare
+mana_short	// Mana Short
+mana_vault	// Mana Vault
+manabarbs	// Manabarbs
+marsh_gas	// Marsh Gas
+marsh_viper	// Marsh Viper
+martyrs_of_korlis	// Martyrs of Korlis
+meekstone	// Meekstone
+merchant_ship	// Merchant Ship
+merfolk_assassin	// Merfolk Assassin
+merfolk_of_the_pearl_trident	// Merfolk of the Pearl Trident
+mesa_pegasus	// Mesa Pegasus
+mightstone	// Mightstone
+millstone	// Millstone
+mind_bomb	// Mind Bomb
+mind_twist	// Mind Twist
+miracle_worker	// Miracle Worker
+moat	// Moat
+mold_demon	// Mold Demon
+monss_goblin_raiders	// Mons's Goblin Raiders
+moorish_cavalry	// Moorish Cavalry
+morale	// Morale
+moss_monster	// Moss Monster
+mountain	// Mountain
+mountain_yeti	// Mountain Yeti
+mox_emerald	// Mox Emerald
+mox_jet	// Mox Jet
+mox_pearl	// Mox Pearl
+mox_ruby	// Mox Ruby
+mox_sapphire	// Mox Sapphire
+murk_dwellers	// Murk Dwellers
+nafs_asp	// Nafs Asp
+nalathni_dragon	// Nalathni Dragon
+natural_selection	// Natural Selection
+nether_shadow	// Nether Shadow
+nettling_imp	// Nettling Imp
+nightmare	// Nightmare
+northern_paladin	// Northern Paladin
+oasis	// Oasis
+obelisk_of_undoing	// Obelisk of Undoing
+obsianus_golem	// Obsianus Golem
+old_man_of_the_sea	// Old Man of the Sea
+onulet	// Onulet
+orcish_artillery	// Orcish Artillery
+orcish_mechanics	// Orcish Mechanics
+orcish_oriflamme	// Orcish Oriflamme
+ornithopter	// Ornithopter
+osai_vultures	// Osai Vultures
+oubliette	// Oubliette
+paralyze	// Paralyze
+pearled_unicorn	// Pearled Unicorn
+people_of_the_woods	// People of the Woods
+personal_incarnation	// Personal Incarnation
+pestilence	// Pestilence
+phantasmal_forces	// Phantasmal Forces
+phantasmal_terrain	// Phantasmal Terrain
+phantom_monster	// Phantom Monster
+phyrexian_gremlins	// Phyrexian Gremlins
+piety	// Piety
+pikemen	// Pikemen
+pirate_ship	// Pirate Ship
+pit_scorpion	// Pit Scorpion
+pixie_queen	// Pixie Queen
+plague_rats	// Plague Rats
+plains	// Plains
+plateau	// Plateau
+power_leak	// Power Leak
+power_sink	// Power Sink
+power_surge	// Power Surge
+powerleech	// Powerleech
+pradesh_gypsies	// Pradesh Gypsies
+priest_of_yawgmoth	// Priest of Yawgmoth
+primal_clay	// Primal Clay
+prodigal_sorcerer	// Prodigal Sorcerer
+psionic_blast	// Psionic Blast
+psionic_entity	// Psionic Entity
+psychic_venom	// Psychic Venom
+purelace	// Purelace
+pyramids	// Pyramids
+pyrotechnics	// Pyrotechnics
+rabid_wombat	// Rabid Wombat
+radjan_spirit	// Radjan Spirit
+rag_man	// Rag Man
+raging_bull	// Raging Bull
+raging_river	// Raging River
+raise_dead	// Raise Dead
+rakalite	// Rakalite
+rebirth	// Rebirth
+reconstruction	// Reconstruction
+red_elemental_blast	// Red Elemental Blast
+red_ward	// Red Ward
+regeneration	// Regeneration
+regrowth	// Regrowth
+relic_barrier	// Relic Barrier
+relic_bind	// Relic Bind
+remove_soul	// Remove Soul
+repentant_blacksmith	// Repentant Blacksmith
+reset	// Reset
+resurrection	// Resurrection
+reverse_damage	// Reverse Damage
+reverse_polarity	// Reverse Polarity
+righteous_avengers	// Righteous Avengers
+righteousness	// Righteousness
+riptide	// Riptide
+roc_of_kher_ridges	// Roc of Kher Ridges
+rock_hydra	// Rock Hydra
+rocket_launcher	// Rocket Launcher
+rod_of_ruin	// Rod of Ruin
+royal_assassin	// Royal Assassin
+rukh_egg	// Rukh Egg
+sacrifice	// Sacrifice
+sage_of_lat_nam	// Sage of Lat-Nam
+samite_healer	// Samite Healer
+sandals_of_abdallah	// Sandals of Abdallah
+sandstorm	// Sandstorm
+savaen_elves	// Savaen Elves
+savannah	// Savannah
+savannah_lions	// Savannah Lions
+scathe_zombies	// Scathe Zombies
+scavenger_folk	// Scavenger Folk
+scavenging_ghoul	// Scavenging Ghoul
+scrubland	// Scrubland
+scryb_sprites	// Scryb Sprites
+sea_serpent	// Sea Serpent
+sedge_troll	// Sedge Troll
+seeker	// Seeker
+segovian_leviathan	// Segovian Leviathan
+sengir_vampire	// Sengir Vampire
+serpent_generator	// Serpent Generator
+serra_angel	// Serra Angel
+sewers_of_estark	// Sewers of Estark
+shanodin_dryads	// Shanodin Dryads
+shapeshifter	// Shapeshifter
+shatter	// Shatter
+shatterstorm	// Shatterstorm
+shield_wall	// Shield Wall
+shivan_dragon	// Shivan Dragon
+simulacrum	// Simulacrum
+sindbad	// Sindbad
+singing_tree	// Singing Tree
+sinkhole	// Sinkhole
+sisters_of_the_flame	// Sisters of the Flame
+sleight_of_mind	// Sleight of Mind
+smoke	// Smoke
+sol_ring	// Sol Ring
+sorceress_queen	// Sorceress Queen
+soul_net	// Soul Net
+spell_blast	// Spell Blast
+spinal_villain	// Spinal Villain
+spirit_link	// Spirit Link
+spirit_shackle	// Spirit Shackle
+spiritual_sanctuary	// Spiritual Sanctuary
+squire	// Squire
+staff_of_zegon	// Staff of Zegon
+stasis	// Stasis
+steal_artifact	// Steal Artifact
+stone_giant	// Stone Giant
+stone_rain	// Stone Rain
+storm_seeker	// Storm Seeker
+stream_of_life	// Stream of Life
+strip_mine	// Strip Mine
+su_chi	// Su-Chi
+sunglasses_of_urza	// Sunglasses of Urza
+sunken_city	// Sunken City
+swamp	// Swamp
+swords_to_plowshares	// Swords to Plowshares
+sylvan_library	// Sylvan Library
+syphon_soul	// Syphon Soul
+tablet_of_epityr	// Tablet of Epityr
+taiga	// Taiga
+tempest_efreet	// Tempest Efreet
+terror	// Terror
+tetravus	// Tetravus
+the_brute	// The Brute
+the_hive	// The Hive
+the_rack	// The Rack
+thicket_basilisk	// Thicket Basilisk
+thoughtlace	// Thoughtlace
+throne_of_bone	// Throne of Bone
+thunder_spirit	// Thunder Spirit
+timber_wolves	// Timber Wolves
+time_elemental	// Time Elemental
+time_vault	// Time Vault
+time_walk	// Time Walk
+timetwister	// Timetwister
+tracker	// Tracker
+tranquility	// Tranquility
+transmute_artifact	// Transmute Artifact
+triskelion	// Triskelion
+tropical_island	// Tropical Island
+tsunami	// Tsunami
+tundra	// Tundra
+tundra_wolves	// Tundra Wolves
+tunnel	// Tunnel
+twiddle	// Twiddle
+two_headed_giant_of_foriys	// Two-Headed Giant of Foriys
+typhoon	// Typhoon
+uncle_istvan	// Uncle Istvan
+underground_sea	// Underground Sea
+unholy_strength	// Unholy Strength
+unstable_mutation	// Unstable Mutation
+unsummon	// Unsummon
+untamed_wilds	// Untamed Wilds
+uthden_troll	// Uthden Troll
+vampire_bats	// Vampire Bats
+venom	// Venom
+verduran_enchantress	// Verduran Enchantress
+vesuvan_doppelganger	// Vesuvan Doppelganger
+veteran_bodyguard	// Veteran Bodyguard
+visions	// Visions
+volcanic_eruption	// Volcanic Eruption
+volcanic_island	// Volcanic Island
+walking_dead	// Walking Dead
+wall_of_air	// Wall of Air
+wall_of_bone	// Wall of Bone
+wall_of_brambles	// Wall of Brambles
+wall_of_dust	// Wall of Dust
+wall_of_earth	// Wall of Earth
+wall_of_fire	// Wall of Fire
+wall_of_heat	// Wall of Heat
+wall_of_ice	// Wall of Ice
+wall_of_light	// Wall of Light
+wall_of_opposition	// Wall of Opposition
+wall_of_spears	// Wall of Spears
+wall_of_stone	// Wall of Stone
+wall_of_swords	// Wall of Swords
+wall_of_tombstones	// Wall of Tombstones
+wall_of_water	// Wall of Water
+wall_of_wonder	// Wall of Wonder
+wall_of_wood	// Wall of Wood
+wanderlust	// Wanderlust
+war_barge	// War Barge
+war_elephant	// War Elephant
+war_mammoth	// War Mammoth
+warp_artifact	// Warp Artifact
+water_elemental	// Water Elemental
+water_wurm	// Water Wurm
+weakness	// Weakness
+weakstone	// Weakstone
+web	// Web
+wheel_of_fortune	// Wheel of Fortune
+whirling_dervish	// Whirling Dervish
+white_knight	// White Knight
+white_ward	// White Ward
+wild_growth	// Wild Growth
+will_o_the_wisp	// Will-o'-the-Wisp
+winds_of_change	// Winds of Change
+windseeker_centaur	// Windseeker Centaur
+winter_blast	// Winter Blast
+winter_orb	// Winter Orb
+witch_hunter	// Witch Hunter
+wooden_sphere	// Wooden Sphere
+word_of_binding	// Word of Binding
+wormwood_treefolk	// Wormwood Treefolk
+wrath_of_god	// Wrath of God
+wyluli_wolf	// Wyluli Wolf
+xenic_poltergeist	// Xenic Poltergeist
+yawgmoth_demon	// Yawgmoth Demon
+ydwen_efreet	// Ydwen Efreet
+yotian_soldier	// Yotian Soldier
+zephyr_falcon	// Zephyr Falcon
+zombie_master	// Zombie Master

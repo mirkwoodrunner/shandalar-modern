@@ -1040,3 +1040,38 @@ Nalathni Dragon (promo), all Kobold tokens (Crimson/Crookshank Kobolds — 0-man
 | Future | Tier 3 stubs + Phase 5 polish | Complete the pool |
 
 ---
+
+
+
+---
+
+## 12. Card Stub Audit (Auto-Generated)
+
+> Last generated: 2026-05-08T01:20:48.352Z
+> Source: `docs/audit/gap-report.txt`, `docs/audit/stub-status.txt`
+> Re-run: execute the four node scripts in `card-stub-audit.md` prompt file.
+
+### Audit Summary
+
+```
+Shandalar Card Stub Audit
+=========================
+Generated: 2026-05-08T01:20:02.828Z
+
+SUMMARY
+-------
+Pool card count:           901
+cards.js entry count:      616
+Present in both:           573
+Missing from cards.js:     328
+In cards.js but not pool:  43
+```
+
+### Action Items
+
+- Cards missing from `cards.js` entirely → need at minimum a stub entry (`effect:"stub"`)
+- Cards in `cards.js` with `effect:"stub"` → need tier assignment in §11 and eventual implementation
+- Orphan IDs in `cards.js` not matching pool → verify slug mismatch or intentional exclusion
+- See `docs/audit/gap-report.txt` for full missing/present/orphan lists
+- See `docs/audit/stub-status.txt` for per-card effect status
+
