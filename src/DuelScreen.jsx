@@ -483,7 +483,7 @@ if (card.castRestriction === 'beforeCombatDamage') {
 
 // Resolve target: damage spells default to opponent; draw/life to self
 const rawTgt = state.selTgt || resolveDefaultTarget(card, state);
-if (card.effect === 'enchantCreature' && !rawTgt) return; // must select a creature first
+if (['enchantCreature', 'enchantLand', 'clone', 'stealCreature'].includes(card.effect) && !rawTgt) return; // must select target first
 // Normalize life-total click sentinels to the engine keys 'p' and 'o'
 const tgt = rawTgt === 'player-p' ? 'p' : rawTgt === 'player-o' ? 'o' : rawTgt;
 castSpell(card.iid, tgt, state.xVal);
@@ -1204,6 +1204,18 @@ return (
             END TURN ▾
           </button>
         </>
+      )}
+      {/* Channel mana button: pay 1 life for {C} while channelActive */}
+      {isMyTurn && s.p.channelActive && (inMain || s.priorityWindow) && (
+        <button onClick={() => dispatch({ type: 'CHANNEL_MANA', who: 'p' })} style={{
+          border: '1px solid rgba(80,160,40,.7)',
+          background: 'rgba(20,60,10,.55)',
+          color: '#80c040',
+          padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
+          fontSize: 9, fontFamily: "'Cinzel',serif", letterSpacing: 1,
+        }}>
+          CHANNEL {'{C}'}
+        </button>
       )}
       {/* BLOCK button: shown to the DEFENDER (non-active player) during COMBAT_BLOCKERS */}
       {!isMyTurn && s.phase === 'COMBAT_BLOCKERS' && (

@@ -118,6 +118,9 @@ return state.p.bf.find(c => c.iid === iid) || state.o.bf.find(c => c.iid === iid
 }
 
 export function getPow(c, state) {
+if (state && c.staticEffect === "keldonWarlord" && c.controller) {
+  return (state[c.controller]?.bf.filter(x => isCre(x) && !x.tapped && x.iid !== c.iid).length || 0);
+}
 let p = c.power ?? 0;
 if (c.dynamic) {
 if (c.name === "Plague Rats")        p = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
@@ -133,6 +136,9 @@ return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPo
 }
 
 export function getTou(c, state) {
+if (state && c.staticEffect === "keldonWarlord" && c.controller) {
+  return (state[c.controller]?.bf.filter(x => isCre(x) && !x.tapped && x.iid !== c.iid).length || 0);
+}
 let t = c.toughness ?? 0;
 if (c.dynamic) {
 if (c.name === "Plague Rats")        t = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
@@ -658,20 +664,30 @@ return ns;
 break;
 }
 case "enchantLand": {
-// Attach aura mod record to target land. Mirrors enchantCreature; read back via applyOvergrowthTap.
-if (tgtC && card.mod && isLand(tgtC)) {
-const auraRecord = {
-iid:        card.iid,
-name:       card.name,
-mod:        card.mod,
-controller: caster,
-cardData:   { ...card },
-};
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-c.iid === tgtC.iid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
-)}};
-ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
-return ns;
+// Attach aura to target land.
+if (tgtC && isLand(tgtC)) {
+  if (card.mod) {
+    // Wild Growth / Overgrowth: embed aura mod record in land's enchantments array.
+    const auraRecord = {
+      iid:        card.iid,
+      name:       card.name,
+      mod:        card.mod,
+      controller: caster,
+      cardData:   { ...card },
+    };
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
+    )}};
+    ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
+    return ns;
+  } else {
+    // Kudzu-style: card goes on caster's bf and tracks its host via enchantedLandIid.
+    const pArr = { ...card, controller: caster, tapped: false, summoningSick: false,
+      attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [],
+      enchantedLandIid: tgtC.iid };
+    ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
+    ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
+  }
 }
 break;
 }
@@ -795,15 +811,19 @@ ns = dlog(ns, `${card.name} ? combat damage prevented this turn.`, "effect");
 break;
 }
 case "balance": {
-const minLands = Math.min(ns.p.bf.filter(isLand).length, ns.o.bf.filter(isLand).length);
-const minHand  = Math.min(ns.p.hand.length, ns.o.hand.length);
-for (const w of ["p","o"]) {
-const excess = ns[w].bf.filter(isLand).slice(minLands);
-for (const l of excess) ns = zMove(ns, l.iid, w, w, "gy");
-while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-1), gy: [...ns[w].gy, disc] } }; }
-}
-ns = dlog(ns, "Balance ? players equalize lands and hands.", "effect");
-break;
+  const minLands = Math.min(ns.p.bf.filter(isLand).length, ns.o.bf.filter(isLand).length);
+  const minCres  = Math.min(ns.p.bf.filter(isCre).length,  ns.o.bf.filter(isCre).length);
+  const minHand  = Math.min(ns.p.hand.length, ns.o.hand.length);
+  for (const w of ["p","o"]) {
+    const excessLands = ns[w].bf.filter(isLand).slice(minLands);
+    for (const l of excessLands) ns = zMove(ns, l.iid, w, w, "gy");
+    const excessCres = ns[w].bf.filter(isCre).slice(minCres);
+    for (const cr of excessCres) ns = zMove(ns, cr.iid, w, w, "gy");
+    while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-1), gy: [...ns[w].gy, disc] } }; }
+  }
+  ns = checkDeath(ns);
+  ns = dlog(ns, "Balance: permanents and hands equalized.", "effect");
+  break;
 }
 case "drainPower": {
 const oppLands = ns[opp].bf.filter(c => isLand(c) && !c.tapped);
@@ -867,8 +887,33 @@ break;
 }
 case "forkSpell": {
 const top = ns.stack[ns.stack.length - 2];
-if (top) { ns = resolveEff(ns, { ...top, id: makeId(), caster }); ns = dlog(ns, `Fork copies ${top.card.name}.`, "effect"); }
+if (top && top.card.effect !== "forkSpell") { ns = resolveEff(ns, { ...top, id: makeId(), caster }); ns = dlog(ns, `Fork copies ${top.card.name}.`, "effect"); }
 break;
+}
+case "channel": {
+  ns = { ...ns, [caster]: { ...ns[caster], channelActive: true }};
+  ns = dlog(ns, `${card.name}: ${caster} may pay life for colorless mana this turn.`, "effect");
+  break;
+}
+case "stealCreature": {
+  if (tgtC) {
+    const origCtrl = tgtC.controller;
+    ns = { ...ns, [origCtrl]: { ...ns[origCtrl], bf: ns[origCtrl].bf.filter(c => c.iid !== tgtC.iid) }};
+    const stolen = { ...tgtC, controller: caster, summoningSick: true, tapped: false, attacking: false, blocking: null };
+    ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, stolen] }};
+    ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, "effect");
+  }
+  break;
+}
+case "addCounterSelf": {
+  const selfCard = tgtC || ns[caster].bf.find(c => c.iid === card.iid);
+  if (selfCard) {
+    ns = { ...ns, [selfCard.controller]: { ...ns[selfCard.controller], bf: ns[selfCard.controller].bf.map(c =>
+      c.iid === selfCard.iid ? { ...c, counters: { ...c.counters, P1P1: (c.counters.P1P1 || 0) + 1 } } : c
+    )}};
+    ns = dlog(ns, `${card.name} adds a +1/+1 counter.`, "effect");
+  }
+  break;
 }
 case "drainLife": {
 if (tgtC) {
@@ -1278,6 +1323,31 @@ case "powerSurgeUpkeep": {
   }
   break;
 }
+case "kudzuUpkeep": {
+  if (w !== ns.active) break;
+  const enchLand = [...ns.p.bf, ...ns.o.bf].find(l => isLand(l) && l.iid === c.enchantedLandIid);
+  if (!enchLand) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, "Kudzu: not attached to a land — goes to graveyard.", "effect");
+    break;
+  }
+  const landCtrl = enchLand.controller;
+  ns = zMove(ns, enchLand.iid, landCtrl, landCtrl, "gy");
+  ns = dlog(ns, `Kudzu destroys ${enchLand.name}.`, "effect");
+  const remLands = ns[landCtrl].bf.filter(isLand);
+  if (remLands.length) {
+    const seed = (ns.turn * 37 + remLands.length * 13) % remLands.length;
+    const newHost = remLands[seed];
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
+      x.iid === c.iid ? { ...x, enchantedLandIid: newHost.iid } : x
+    )}};
+    ns = dlog(ns, `Kudzu re-attaches to ${newHost.name}.`, "effect");
+  } else {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, "Kudzu: no lands remain — goes to graveyard.", "effect");
+  }
+  break;
+}
 default: break;
 }
 }
@@ -1308,6 +1378,11 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c
 // Clear mustAttack flags at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, mustAttack: false } : c) } };
+}
+// Clear channelActive and damageShield at end of turn
+for (const w of ["p","o"]) {
+  if (ns[w].channelActive) ns = { ...ns, [w]: { ...ns[w], channelActive: false }};
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.damageShield ? { ...c, damageShield: 0 } : c) } };
 }
 // Pestilence: destroy if its controller has no black creatures
 for (const w of ["p","o"]) {
@@ -1512,8 +1587,8 @@ active: "p",
 turn: 1,
 landsPlayed: 0,
 spellsThisTurn: 0,
-p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0 },
-o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0 },
+p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
+o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
 stack: [],
 attackers: [],
 blockers: {},
@@ -1528,6 +1603,7 @@ anteP,
 anteO,
 anteEnabled,
 fogActive: false,
+exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
@@ -1567,9 +1643,15 @@ case "TAP_ART_MANA": {
 case "PLAY_LAND": {
   const w = action.who;
   const c = s[w].hand.find(x => x.iid === action.iid);
-  if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || s.landsPlayed >= 1) return s;
+  const fastbondActive = s[w].bf.some(x => x.id === "fastbond");
+  if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || (s.landsPlayed >= 1 && !fastbondActive)) return s;
+  const prevLandsPlayed = s.landsPlayed;
   const lArr = { ...c, controller: w, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
   s = { ...s, [w]: { ...s[w], hand: s[w].hand.filter(x => x.iid !== action.iid), bf: [...s[w].bf, lArr] }, landsPlayed: s.landsPlayed + 1 };
+  if (fastbondActive && prevLandsPlayed >= 1) {
+    s = hurt(s, w, 1, "Fastbond");
+    s = dlog(s, `Fastbond: ${w} takes 1 damage for playing an extra land.`, "damage");
+  }
   return dlog(s, `${w} plays ${c.name}.`, "play");
 }
 
@@ -1605,6 +1687,11 @@ case "CAST_SPELL": {
     }
     const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, "HASTE"), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
     s = { ...s, [w]: { ...s[w], bf: [...s[w].bf, pArr] } };
+    if (CARD_HANDLERS[c.name]?.onResolve) {
+      const pOnBf = s[w].bf.find(x => x.iid === c.iid) || pArr;
+      const result = CARD_HANDLERS[c.name].onResolve(s, pOnBf, item.targets || [], item.xVal);
+      if (result) s = result;
+    }
     return dlog(s, `${w} casts ${c.name}.`, "play");
   }
   if (s.ruleset.stackType === "batch" || isSort(c)) {
@@ -1766,6 +1853,15 @@ case "CHOOSE_BOP_COLOR": {
 }
 
 case "SET_PENDING_BOP": return { ...s, pendingBop: true };
+
+case "CHANNEL_MANA": {
+  const w = action.who;
+  if (!s[w]?.channelActive) return s;
+  if (s[w].life <= 1) return dlog(s, "Channel: not enough life.", "effect");
+  s = hurt(s, w, 1, "Channel");
+  s = { ...s, [w]: { ...s[w], mana: { ...s[w].mana, C: (s[w].mana.C || 0) + 1 }}};
+  return dlog(s, `Channel: ${w} pays 1 life for {C}.`, "mana");
+}
 
 case "RESOLVE_CHOICE": {
   if (!s.pendingChoice) return s;
