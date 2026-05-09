@@ -8,21 +8,35 @@ import { LandPip, FieldCard } from '../shared/Card.jsx';
 
 const sortByName = arr => [...arr].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
+const ROW_LABEL = {
+  fontSize: 8,
+  fontFamily: "'Cinzel',serif",
+  letterSpacing: 1,
+  marginBottom: 4,
+  flexShrink: 0,
+};
+
+const CARD_ROW = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 5,
+  alignContent: 'flex-start',
+};
+
 // --- OPPONENT BATTLEFIELD ----------------------------------------------------
 
 export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave }) {
   const lands            = state.o.bf.filter(isLand);
   const nonLands         = state.o.bf.filter(c => !isLand(c));
-  const creatures        = sortByName(nonLands.filter(c => isCre(c)));
+  const creatures        = sortByName(nonLands.filter(isCre));
   const nonCreaturePerms = sortByName(nonLands.filter(c => !isCre(c)));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+
       {/* Land row */}
-      <div style={{ padding: '5px 10px 4px', borderBottom: '1px solid rgba(120,80,20,.2)', background: 'rgba(0,0,0,.25)' }}>
-        <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginBottom: 4 }}>
-          LANDS ({lands.length})
-        </div>
+      <div style={{ padding: '5px 10px 4px', borderBottom: '1px solid rgba(120,80,20,.2)', background: 'rgba(0,0,0,.25)', flexShrink: 0 }}>
+        <div style={{ ...ROW_LABEL, color: '#706028' }}>LANDS ({lands.length})</div>
         <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, minHeight: 36 }}>
           {lands.map(c => (
             <LandPip
@@ -37,14 +51,12 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
         </div>
       </div>
 
-      {/* Creatures row */}
-      <div style={{ padding: '6px 10px 4px', minHeight: 90, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {creatures.length > 0 && (
+      {/* Creatures row — always rendered, min height so the zone is visible when empty */}
+      <div style={{ padding: '6px 10px 4px', minHeight: 90, flexShrink: 0, borderBottom: nonCreaturePerms.length > 0 ? '1px solid rgba(120,80,20,.12)' : undefined }}>
+        {creatures.length > 0 ? (
           <>
-            <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
-              CREATURES ({creatures.length})
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+            <div style={{ ...ROW_LABEL, color: '#706028' }}>CREATURES ({creatures.length})</div>
+            <div style={CARD_ROW}>
               {creatures.map(c => (
                 <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
                   <FieldCard
@@ -58,19 +70,16 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
               ))}
             </div>
           </>
-        )}
-        {!creatures.length && !nonCreaturePerms.length && (
-          <span style={{ fontSize: 10, color: '#2a1808', fontStyle: 'italic' }}>No creatures in play</span>
+        ) : (
+          <span style={{ fontSize: 9, color: '#2a1808', fontStyle: 'italic' }}>No creatures in play</span>
         )}
       </div>
 
-      {/* Non-creature permanents row (only when populated) */}
+      {/* Non-creature permanents row — only rendered when populated */}
       {nonCreaturePerms.length > 0 && (
-        <div style={{ padding: '4px 10px 8px', borderTop: '1px solid rgba(120,80,20,.15)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 8, color: '#706028', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
-            ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+        <div style={{ padding: '4px 10px 8px', flexShrink: 0 }}>
+          <div style={{ ...ROW_LABEL, color: '#706028' }}>ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})</div>
+          <div style={CARD_ROW}>
             {nonCreaturePerms.map(c => (
               <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
                 <FieldCard
@@ -94,39 +103,18 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
 export function PlayerBattlefield({ state, onCardClick, onActivate, onTipEnter, onTipLeave }) {
   const lands            = state.p.bf.filter(isLand);
   const nonLands         = state.p.bf.filter(c => !isLand(c));
-  const creatures        = sortByName(nonLands.filter(c => isCre(c)));
+  const creatures        = sortByName(nonLands.filter(isCre));
   const nonCreaturePerms = sortByName(nonLands.filter(c => !isCre(c)));
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {/* Land row — fixed height, horizontal scroll per GDD Bug B7 fix */}
-      <div style={{ flexShrink: 0, padding: '5px 10px 4px', borderBottom: '1px solid rgba(60,120,20,.2)', background: 'rgba(0,0,0,.2)' }}>
-        <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginBottom: 4 }}>
-          YOUR LANDS ({lands.length})
-        </div>
-        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, minHeight: 36 }}>
-          {lands.map(c => (
-            <LandPip
-              key={c.iid} card={c} tapped={c.tapped}
-              selected={state.selCard === c.iid || state.selTgt === c.iid}
-              isPlayer
-              onClick={() => onCardClick(c, 'pBf')}
-              onMouseMove={e => onTipEnter(c, e)}
-              onMouseLeave={onTipLeave}
-            />
-          ))}
-          {!lands.length && <span style={{ fontSize: 9, color: '#182808', fontStyle: 'italic', lineHeight: '28px' }}>—</span>}
-        </div>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* Creatures row — flex fills remaining space */}
-      <div style={{ flex: 1, padding: '6px 10px 4px', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {creatures.length > 0 && (
+      {/* Creatures row — closest to the middle of the battlefield (toward opponent) */}
+      <div style={{ flex: 1, padding: '6px 10px 4px', overflow: 'auto', minHeight: 90, borderBottom: nonCreaturePerms.length > 0 ? '1px solid rgba(60,120,20,.15)' : undefined }}>
+        {creatures.length > 0 ? (
           <>
-            <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1, flexShrink: 0 }}>
-              YOUR CREATURES ({creatures.length})
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+            <div style={{ ...ROW_LABEL, color: '#407028' }}>YOUR CREATURES ({creatures.length})</div>
+            <div style={CARD_ROW}>
               {creatures.map(c => (
                 <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
                   <FieldCard
@@ -140,19 +128,16 @@ export function PlayerBattlefield({ state, onCardClick, onActivate, onTipEnter, 
               ))}
             </div>
           </>
-        )}
-        {!creatures.length && !nonCreaturePerms.length && (
+        ) : (
           <span style={{ fontSize: 10, color: '#182808', fontStyle: 'italic' }}>No permanents in play</span>
         )}
       </div>
 
-      {/* Non-creature permanents row (only when populated) */}
+      {/* Non-creature permanents row — between creatures and lands */}
       {nonCreaturePerms.length > 0 && (
-        <div style={{ flexShrink: 0, padding: '4px 10px 8px', borderTop: '1px solid rgba(60,120,20,.15)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: 8, color: '#407028', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
-            YOUR ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
+        <div style={{ flexShrink: 0, padding: '4px 10px 6px', borderBottom: '1px solid rgba(60,120,20,.15)' }}>
+          <div style={{ ...ROW_LABEL, color: '#407028' }}>YOUR ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})</div>
+          <div style={CARD_ROW}>
             {nonCreaturePerms.map(c => (
               <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
                 <FieldCard
@@ -167,6 +152,24 @@ export function PlayerBattlefield({ state, onCardClick, onActivate, onTipEnter, 
           </div>
         </div>
       )}
+
+      {/* Land row — fixed at bottom */}
+      <div style={{ flexShrink: 0, padding: '5px 10px 4px', borderTop: '1px solid rgba(60,120,20,.2)', background: 'rgba(0,0,0,.2)' }}>
+        <div style={{ ...ROW_LABEL, color: '#407028' }}>YOUR LANDS ({lands.length})</div>
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, minHeight: 36 }}>
+          {lands.map(c => (
+            <LandPip
+              key={c.iid} card={c} tapped={c.tapped}
+              selected={state.selCard === c.iid || state.selTgt === c.iid}
+              isPlayer
+              onClick={() => onCardClick(c, 'pBf')}
+              onMouseMove={e => onTipEnter(c, e)}
+              onMouseLeave={onTipLeave}
+            />
+          ))}
+          {!lands.length && <span style={{ fontSize: 9, color: '#182808', fontStyle: 'italic', lineHeight: '28px' }}>—</span>}
+        </div>
+      </div>
     </div>
   );
 }
