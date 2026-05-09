@@ -817,25 +817,68 @@ return (
         </div>
       </div>
 
-      {/* Opponent creatures zone */}
-      <div style={{
-        flex: 1, minHeight: 80,
-        background: 'linear-gradient(180deg,#1a0c08,#120808)',
-        padding: '6px 10px', display: 'flex', flexWrap: 'wrap', gap: 5,
-        alignContent: 'flex-start', overflow: 'auto',
-      }}>
-        {s.o.bf.filter(c => !isLand(c)).map(c => (
-          <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-            <FieldCard
-              card={c} state={s}
-              selected={s.selTgt === c.iid}
-              attacking={s.attackers.includes(c.iid)}
-              onClick={() => handleCardClick(c, 'oBf')}
-              sm
-            />
+      {/* Opponent battlefield: three always-visible zones */}
+      {(() => {
+        const oppNonLands = s.o.bf.filter(c => !isLand(c));
+        const oppCreatures = oppNonLands.filter(c => isCre(c));
+        const oppNonCre = oppNonLands.filter(c => !isCre(c));
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            {/* Zone 1: Creatures — always visible */}
+            <div style={{
+              minHeight: 80,
+              background: 'linear-gradient(180deg,#1a0c08,#120808)',
+              padding: '6px 10px',
+              borderBottom: '1px solid rgba(120,80,20,.2)',
+            }}>
+              <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#706028', letterSpacing: 1, marginBottom: 4 }}>
+                CREATURES ({oppCreatures.length})
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start', minHeight: 40 }}>
+                {oppCreatures.length > 0 ? oppCreatures.map(c => (
+                  <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                    <FieldCard
+                      card={c} state={s}
+                      selected={s.selTgt === c.iid}
+                      attacking={s.attackers.includes(c.iid)}
+                      onClick={() => handleCardClick(c, 'oBf')}
+                      sm
+                    />
+                  </div>
+                )) : (
+                  <span style={{ fontSize: 9, color: '#3a2010', fontStyle: 'italic', lineHeight: '40px' }}>—</span>
+                )}
+              </div>
+            </div>
+            {/* Zone 2: Non-creature permanents — always visible */}
+            <div style={{
+              minHeight: 60,
+              background: 'linear-gradient(180deg,#120808,#100606)',
+              padding: '6px 10px',
+              borderBottom: '1px solid rgba(120,80,20,.2)',
+            }}>
+              <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#706028', letterSpacing: 1, marginBottom: 4 }}>
+                ENCHANTMENTS / ARTIFACTS ({oppNonCre.length})
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start', minHeight: 24 }}>
+                {oppNonCre.length > 0 ? oppNonCre.map(c => (
+                  <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                    <FieldCard
+                      card={c} state={s}
+                      selected={s.selTgt === c.iid}
+                      attacking={false}
+                      onClick={() => handleCardClick(c, 'oBf')}
+                      sm
+                    />
+                  </div>
+                )) : (
+                  <span style={{ fontSize: 9, color: '#3a2010', fontStyle: 'italic', lineHeight: '24px' }}>—</span>
+                )}
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* Phase banner */}
       <div style={{ flexShrink: 0, height: 28, display: 'flex', alignItems: 'center', padding: '0 16px' }}>
@@ -853,25 +896,68 @@ return (
         <div style={{ flex: 1, height: 1, background: 'rgba(120,100,40,.2)' }} />
       </div>
 
-      {/* Player creatures zone */}
-      <div style={{
-        flex: 1, minHeight: 80,
-        background: 'linear-gradient(180deg,#0c1408,#0a100a)',
-        padding: '6px 10px', display: 'flex', flexWrap: 'wrap', gap: 5,
-        alignContent: 'flex-start', overflow: 'auto',
-      }}>
-        {s.p.bf.filter(c => !isLand(c)).map(c => (
-          <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
-            <FieldCard
-              card={c} state={s}
-              selected={s.selCard === c.iid || s.selTgt === c.iid}
-              attacking={s.attackers.includes(c.iid)}
-              onClick={() => handleCardClick(c, 'pBf')}
-              onActivate={handleActivateAbility}
-            />
+      {/* Player battlefield: three always-visible zones */}
+      {(() => {
+        const pNonLands = s.p.bf.filter(c => !isLand(c));
+        const pCreatures = pNonLands.filter(c => isCre(c));
+        const pNonCre = pNonLands.filter(c => !isCre(c));
+        return (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Zone 1: Creatures — always visible, closest to phase banner */}
+            <div style={{
+              flex: 1, overflow: 'auto', minHeight: 80,
+              background: 'linear-gradient(180deg,#0c1408,#0a100a)',
+              padding: '6px 10px',
+              borderBottom: '1px solid rgba(60,120,20,.2)',
+            }}>
+              <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#407028', letterSpacing: 1, marginBottom: 4 }}>
+                YOUR CREATURES ({pCreatures.length})
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start', minHeight: 40 }}>
+                {pCreatures.length > 0 ? pCreatures.map(c => (
+                  <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                    <FieldCard
+                      card={c} state={s}
+                      selected={s.selCard === c.iid || s.selTgt === c.iid}
+                      attacking={s.attackers.includes(c.iid)}
+                      onClick={() => handleCardClick(c, 'pBf')}
+                      onActivate={handleActivateAbility}
+                    />
+                  </div>
+                )) : (
+                  <span style={{ fontSize: 10, color: '#1a2810', fontStyle: 'italic', lineHeight: '40px' }}>—</span>
+                )}
+              </div>
+            </div>
+            {/* Zone 2: Non-creature permanents — always visible */}
+            <div style={{
+              flexShrink: 0, minHeight: 60,
+              background: 'linear-gradient(180deg,#0a100a,#080e08)',
+              padding: '6px 10px',
+              borderBottom: '1px solid rgba(60,120,20,.2)',
+            }}>
+              <div style={{ fontSize: 7, fontFamily: "'Cinzel',serif", color: '#407028', letterSpacing: 1, marginBottom: 4 }}>
+                YOUR ENCHANTMENTS / ARTIFACTS ({pNonCre.length})
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start', minHeight: 24 }}>
+                {pNonCre.length > 0 ? pNonCre.map(c => (
+                  <div key={c.iid} onMouseMove={e => handleTipEnter(c, e)} onMouseLeave={handleTipLeave}>
+                    <FieldCard
+                      card={c} state={s}
+                      selected={s.selCard === c.iid || s.selTgt === c.iid}
+                      attacking={false}
+                      onClick={() => handleCardClick(c, 'pBf')}
+                      onActivate={handleActivateAbility}
+                    />
+                  </div>
+                )) : (
+                  <span style={{ fontSize: 10, color: '#1a2810', fontStyle: 'italic', lineHeight: '24px' }}>—</span>
+                )}
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* Player lands row */}
       <div style={{ flexShrink: 0, minHeight: 44, background: 'rgba(0,0,0,.2)', padding: '4px 10px' }}>
