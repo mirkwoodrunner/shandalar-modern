@@ -30,6 +30,62 @@ const TERRAIN_BG = {
   WATER:    '#111e30',
 };
 
+// --- STRUCTURE ICONS (inline SVG, immune to emoji rendering quirks) -----------
+
+function IconTown() {
+  return (
+    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Left house */}
+      <polygon points="2,10 6,5 10,10" fill="#c4a040" opacity="0.9"/>
+      <rect x="3" y="10" width="6" height="5" fill="#8a6828" opacity="0.9"/>
+      <rect x="5" y="12" width="2" height="3" fill="#1a1008"/>
+      {/* Right house (taller) */}
+      <polygon points="9,9 13,3 17,9" fill="#d4b050" opacity="0.9"/>
+      <rect x="10" y="9" width="6" height="6" fill="#9a7838" opacity="0.9"/>
+      <rect x="12.5" y="11" width="2" height="4" fill="#1a1008"/>
+    </svg>
+  );
+}
+
+function IconDungeon() {
+  return (
+    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Sword 1: top-left to bottom-right */}
+      <line x1="3" y1="3" x2="17" y2="17" stroke="#c84040" strokeWidth="2" strokeLinecap="round"/>
+      {/* Guard 1 */}
+      <line x1="5" y1="9" x2="9" y2="5" stroke="#c84040" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Sword 2: top-right to bottom-left */}
+      <line x1="17" y1="3" x2="3" y2="17" stroke="#c84040" strokeWidth="2" strokeLinecap="round"/>
+      {/* Guard 2 */}
+      <line x1="15" y1="9" x2="11" y2="5" stroke="#c84040" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Center gem */}
+      <circle cx="10" cy="10" r="1.5" fill="#ff8080"/>
+    </svg>
+  );
+}
+
+function IconCastle({ defeated }) {
+  const color = defeated ? '#706050' : '#c4a040';
+  const wallColor = defeated ? '#3a3028' : '#6a4818';
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Battlements */}
+      <rect x="2"  y="4" width="3" height="3" fill={color}/>
+      <rect x="6"  y="3" width="3" height="4" fill={color}/>
+      <rect x="11" y="3" width="3" height="4" fill={color}/>
+      <rect x="15" y="4" width="3" height="3" fill={color}/>
+      {/* Main wall */}
+      <rect x="2" y="7" width="16" height="8" fill={wallColor}/>
+      {/* Gate arch */}
+      <rect x="7.5" y="11" width="5" height="4" fill="#0a0806"/>
+      <ellipse cx="10" cy="11" rx="2.5" ry="1.5" fill="#0a0806"/>
+      {/* Tower lines */}
+      <line x1="7" y1="7" x2="7" y2="15" stroke={color} strokeWidth="0.75" opacity="0.5"/>
+      <line x1="13" y1="7" x2="13" y2="15" stroke={color} strokeWidth="0.75" opacity="0.5"/>
+    </svg>
+  );
+}
+
 // --- SINGLE TILE -------------------------------------------------------------
 
 export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
@@ -90,9 +146,9 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
             ].join(' ').trim()}
             style={plaqueStyle}
           >
-            {s === 'TOWN'    && '🏘'}
-            {s === 'DUNGEON' && '⚔'}
-            {s === 'CASTLE'  && (castleDefeated ? '🏚' : '🏰')}
+            {s === 'TOWN'    && <IconTown />}
+            {s === 'DUNGEON' && <IconDungeon />}
+            {s === 'CASTLE'  && <IconCastle defeated={castleDefeated} />}
           </div>
 
           {s === 'TOWN' && tile.townData?.name && (
