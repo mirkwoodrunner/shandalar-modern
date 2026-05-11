@@ -39,6 +39,15 @@ export const KEYWORDS = {
     subtypes: ["PLAINS","ISLAND","SWAMP","MOUNTAIN","FOREST"],
     desc:"Unblockable if the defending player controls a land of the specified type.",
   },
+  PLAINSWALK:    { id:"PLAINSWALK",    name:"Plainswalk",    classic:true,  modern:false, desc:"Unblockable if the defending player controls a Plains." },
+  ISLANDWALK:    { id:"ISLANDWALK",    name:"Islandwalk",    classic:true,  modern:false, desc:"Unblockable if the defending player controls an Island." },
+  SWAMPWALK:     { id:"SWAMPWALK",     name:"Swampwalk",     classic:true,  modern:false, desc:"Unblockable if the defending player controls a Swamp." },
+  MOUNTAINWALK:  { id:"MOUNTAINWALK",  name:"Mountainwalk",  classic:true,  modern:false, desc:"Unblockable if the defending player controls a Mountain." },
+  FORESTWALK:    { id:"FORESTWALK",    name:"Forestwalk",    classic:true,  modern:false, desc:"Unblockable if the defending player controls a Forest." },
+  DEFENDER:      { id:"DEFENDER",      name:"Defender",      classic:false, modern:true,  desc:"This creature can't attack." },
+  FEAR:          { id:"FEAR",          name:"Fear",          classic:true,  modern:false, desc:"Can't be blocked except by artifact creatures and/or black creatures." },
+  LURE:          { id:"LURE",          name:"Lure",          classic:true,  modern:false, desc:"All creatures able to block this creature do so.", rulesetGated:"lure" },
+  MUST_ATTACK:   { id:"MUST_ATTACK",   name:"Must Attack",   classic:true,  modern:false, desc:"This creature attacks each combat if able." },
 };
 
 export default KEYWORDS;

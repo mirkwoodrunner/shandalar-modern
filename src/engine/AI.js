@@ -11,6 +11,7 @@
 //   ? CANNOT make async calls or access the network
 
 import { ARCHETYPES } from '../data/cards.js';
+import KEYWORDS from '../data/keywords.js';
 import {
   isLand, isCre, isInst, isSort,
   getBF, getPow, getTou, canBlockDuel,
@@ -284,10 +285,10 @@ function planAttack(state, profile) {
     for (const att of candidates) {
       const ap = getPow(att, state);
       const at = getTou(att, state);
-      const attHasFlying = (att.keywords || []).includes('FLYING');
+      const attHasFlying = (att.keywords || []).includes(KEYWORDS.FLYING.id);
 
       // Check if attacker is effectively unblockable (flying with no opposing flyers).
-      const defFlyers = defBf.filter(b => (b.keywords || []).includes('FLYING'));
+      const defFlyers = defBf.filter(b => (b.keywords || []).includes(KEYWORDS.FLYING.id));
       const isUnblockable = attHasFlying && defFlyers.length === 0;
 
       if (isUnblockable) {
