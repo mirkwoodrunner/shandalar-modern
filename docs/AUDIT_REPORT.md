@@ -263,3 +263,37 @@ Prioritized by impact. **No source files were modified.**
 16. **[Low] Delete or populate the four empty prompt files**: `prompts/claude.txt`, `prompts/chatgpt.txt`, `prompts/gemini.txt`, `prompts/copilot.txt` — all are 1-line empty placeholders with no content.
 
 17. **[Low] After the DuelScreen.jsx → DuelScreen.tsx cutover**: delete `src/DuelScreen.jsx` and the entire `src/ui/duel/` directory (all six `.jsx` files there will become orphaned once `DuelScreen.tsx` is the active screen).
+
+---
+
+## Remediation Notes — 2026-05-11
+
+### Stream 1 Observations
+
+- `keywords.js` was missing entries for `DEFENDER`, `SWAMPWALK`, `FORESTWALK`, `ISLANDWALK`, `MOUNTAINWALK`, `PLAINSWALK`, `FEAR`, `LURE`, and `MUST_ATTACK`. All were added.
+- `export { KEYWORDS }` was redundant alongside `export const KEYWORDS` — adding it caused a duplicate-export parse error. The `export const KEYWORDS = {...}` declaration already creates the named export. Only `export default KEYWORDS` was retained as an additional export statement.
+- `phases.js` has no keyword string literals; the KEYWORDS import was added for consistency (future authors can use it without importing separately).
+- `cardHandlers.js` similarly has no keyword string literals but has the import added.
+
+### Stream 1 Ambiguous Substitutions
+
+None. All keyword string literals appeared in unambiguous contexts (`hasKw(...)` calls, `keywords.includes(...)` calls, or keyword array literals in card data).
+
+### Stream 3 Gap Analysis
+
+| Feature | In .jsx? | In .tsx? | Notes |
+|---|---|---|---|
+| ForceOfNatureUpkeepModal | Yes | **No → Added** | Renders when `pendingUpkeepChoice && active === 'p'`; added to tsx before cutover |
+| ChoiceModal | Yes | **No → Added** | Renders when `pendingChoice?.controller === 'p'`; added to tsx before cutover |
+| AI priority handler (useEffect) | Partial | Yes | jsx has no priority window; tsx has explicit AI-passes-priority at lines 264-274 |
+| requestPhaseAdvance / OPEN_PRIORITY_WINDOW | No | Yes | tsx implements smart suppression; jsx calls `advancePhase()` directly |
+| AI auto-resolve pendingChoice (opponent) | Yes | **No → Added** | jsx AI loop guards on `pendingChoice.controller === 'o'` and calls `resolveChoice`; added to tsx AI loop |
+| AI loop guard on pendingUpkeepChoice | Yes | **No → Added** | jsx AI loop returns early when `pendingUpkeepChoice` is set; added to tsx |
+| Mulligan flow | Yes (inline) | Yes (MulliganModal component) | Both present; tsx uses design-system modal |
+| Game over handling | Yes (inline div) | Yes (GameOverModal component) | Both present; tsx uses design-system modal |
+
+### Stream 3 Runtime Notes
+
+- `src/ui/duel/TargetingOverlay.jsx` was listed in the deletion plan but was **not deleted** — it is still imported by `DuelScreen.tsx` (for `LotusColorPicker`, `BopColorPicker`, `DualLandColorPicker`). Deleting it would break the build. This file remains in `src/ui/duel/` as an active legacy component used by the tsx tree.
+- `src/ui/duel/AIDebugPanel.jsx` and `src/ui/duel/ManaPanel.jsx` were not in the original deletion list but were confirmed zero-import after `DuelScreen.jsx` was deleted; both were removed.
+- Manual browser verification was not performed (headless environment). Build (`npm run build`) and type check (`npx tsc --noEmit`) both pass clean. All 56 unit tests pass.

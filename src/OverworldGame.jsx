@@ -20,7 +20,7 @@ import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './u
 import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
 import PreDuelPopup from './ui/overworld/PreDuelPopup.jsx';
 import { DuelLog as OWLog } from './ui/layout/TechnicalLog.jsx';
-import DuelScreen from './DuelScreen.jsx';
+import DuelScreen from './DuelScreen.tsx';
 import { generateDungeon, checkLOS } from './engine/DungeonGenerator.js';
 import DungeonHUD from './ui/dungeon/DungeonHUD.jsx';
 import DungeonMap from './ui/dungeon/DungeonMap.jsx';
