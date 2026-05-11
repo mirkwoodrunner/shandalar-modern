@@ -32,7 +32,7 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
   const nonCreaturePerms = sortByName(nonLands.filter(c => !isCre(c)));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
 
       {/* Land row */}
       <div style={{ padding: '5px 10px 4px', borderBottom: '1px solid rgba(120,80,20,.2)', background: 'rgba(0,0,0,.25)', flexShrink: 0 }}>
@@ -51,8 +51,28 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
         </div>
       </div>
 
-      {/* Creatures row — always rendered, min height so the zone is visible when empty */}
-      <div style={{ padding: '6px 10px 4px', minHeight: 90, flexShrink: 0, borderBottom: nonCreaturePerms.length > 0 ? '1px solid rgba(120,80,20,.12)' : undefined }}>
+      {/* Non-creature permanents row — between lands and creatures */}
+      {nonCreaturePerms.length > 0 && (
+        <div style={{ padding: '4px 10px 8px', flexShrink: 0, borderBottom: '1px solid rgba(120,80,20,.12)' }}>
+          <div style={{ ...ROW_LABEL, color: '#706028' }}>ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})</div>
+          <div style={CARD_ROW}>
+            {nonCreaturePerms.map(c => (
+              <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
+                <FieldCard
+                  card={c} state={state}
+                  selected={state.selTgt === c.iid}
+                  attacking={false}
+                  onClick={() => onCardClick(c, 'oBf')}
+                  sm
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Creatures row — adjacent to center divider, always rendered */}
+      <div style={{ flex: 1, padding: '6px 10px 4px', overflow: 'auto', minHeight: 90, flexShrink: 0 }}>
         {creatures.length > 0 ? (
           <>
             <div style={{ ...ROW_LABEL, color: '#706028' }}>CREATURES ({creatures.length})</div>
@@ -74,26 +94,6 @@ export function OpponentBattlefield({ state, onCardClick, onTipEnter, onTipLeave
           <span style={{ fontSize: 9, color: '#2a1808', fontStyle: 'italic' }}>No creatures in play</span>
         )}
       </div>
-
-      {/* Non-creature permanents row — only rendered when populated */}
-      {nonCreaturePerms.length > 0 && (
-        <div style={{ padding: '4px 10px 8px', flexShrink: 0 }}>
-          <div style={{ ...ROW_LABEL, color: '#706028' }}>ENCHANTMENTS / ARTIFACTS ({nonCreaturePerms.length})</div>
-          <div style={CARD_ROW}>
-            {nonCreaturePerms.map(c => (
-              <div key={c.iid} onMouseMove={e => onTipEnter(c, e)} onMouseLeave={onTipLeave}>
-                <FieldCard
-                  card={c} state={state}
-                  selected={state.selTgt === c.iid}
-                  attacking={false}
-                  onClick={() => onCardClick(c, 'oBf')}
-                  sm
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -107,7 +107,7 @@ export function PlayerBattlefield({ state, onCardClick, onActivate, onTipEnter, 
   const nonCreaturePerms = sortByName(nonLands.filter(c => !isCre(c)));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
 
       {/* Creatures row — closest to the middle of the battlefield (toward opponent) */}
       <div style={{ flex: 1, padding: '6px 10px 4px', overflow: 'auto', minHeight: 90, borderBottom: nonCreaturePerms.length > 0 ? '1px solid rgba(60,120,20,.15)' : undefined }}>
