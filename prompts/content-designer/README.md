@@ -366,7 +366,7 @@ As Content Designer:
 
 ## Related Documentation
 
-- [keywords.js](../../src/keywords.js) - Available mechanics
+- [keywords.js](../../src/data/keywords.js) - Available mechanics
 - [SYSTEMS.md](../../docs/SYSTEMS.md) - Game rules
 - [docs/MECHANICS_INDEX.md](../../docs/MECHANICS_INDEX.md) - Mechanic definitions
 - [docs/AI.md](../../docs/AI.md) - Your role definition

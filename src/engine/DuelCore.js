@@ -10,6 +10,7 @@
 import { CARD_DB, ARCHETYPES } from '../data/cards.js';
 import { PHASE, PHASE_SEQUENCE } from './phases.js';
 import { CARD_HANDLERS } from './cardHandlers.js';
+import KEYWORDS from '../data/keywords.js';
 
 // --- UTILITIES ----------------------------------------------------------------
 
@@ -154,7 +155,7 @@ return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTo
 }
 
 export function canBlockDuel(bl, at, defBf, state = null) {
-if (hasKw(at, "FLYING") && !hasKw(bl, "FLYING") && !hasKw(bl, "REACH")) return false;
+if (hasKw(at, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.REACH.id)) return false;
 // Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
 if (at.protection) {
@@ -165,10 +166,10 @@ if (bl.protection) {
   const prot = Array.isArray(bl.protection) ? bl.protection : [bl.protection];
   if (prot.some(q => (PROT_MAP[q] || q) === at.color)) return false;
 }
-if (hasKw(at, "FEAR") && bl.color !== "B" && !isArt(bl)) return false;
+if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional ? skipped if not provided).
-if (hasKw(at, "LANDWALK", state) && at.landwalkType && defBf) {
+if (hasKw(at, KEYWORDS.LANDWALK.id, state) && at.landwalkType && defBf) {
   const landSubtype = at.landwalkType.charAt(0).toUpperCase() + at.landwalkType.slice(1).toLowerCase();
   if (defBf.some(c => isLand(c) && c.subtype?.includes(landSubtype))) return false;
 }
@@ -227,7 +228,7 @@ ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...au
 
 let a = { ...card, controller: tw };
 if (tz === "bf") {
-a = { ...a, tapped: false, summoningSick: !hasKw(card, "HASTE"), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
+a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
 }
 if (tz === "gy" || tz === "hand") {
 a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
@@ -608,7 +609,7 @@ break;
 case "hurricane": {
 for (const w of ["p","o"]) {
 ns = hurt(ns, w, xVal, "Hurricane");
-const fl = ns[w].bf.filter(c => isCre(c) && hasKw(c, "FLYING"));
+const fl = ns[w].bf.filter(c => isCre(c) && hasKw(c, KEYWORDS.FLYING.id));
 for (const c of fl) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
 ns = checkDeath(ns);
@@ -617,7 +618,7 @@ break;
 case "earthquake": {
 for (const w of ["p","o"]) {
 ns = hurt(ns, w, xVal, "Earthquake");
-const ground = ns[w].bf.filter(c => isCre(c) && !hasKw(c, "FLYING"));
+const ground = ns[w].bf.filter(c => isCre(c) && !hasKw(c, KEYWORDS.FLYING.id));
 for (const c of ground) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
 ns = checkDeath(ns);
@@ -722,7 +723,7 @@ break;
 case "gainFlying": {
 if (tgtC) {
 const kws = [...(tgtC.keywords||[])];
-if (!kws.includes("FLYING")) kws.push("FLYING");
+if (!kws.includes(KEYWORDS.FLYING.id)) kws.push(KEYWORDS.FLYING.id);
 ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, keywords: kws } : c) } };
 ns = dlog(ns, `${tgtC.name} gains flying.`, "effect");
 }
@@ -750,12 +751,12 @@ case "gainFlyingEOT": {
 // Goblin Balloon Brigade R: gains flying until end of turn.
 // Stored in eotBuffs[], purged at CLEANUP. hasKw() reads eotBuffs. SYSTEMS.md S9
 const self = ns[caster].bf.find(c => c.iid === item.card.iid);
-if (self && !hasKw(self, "FLYING")) {
+if (self && !hasKw(self, KEYWORDS.FLYING.id)) {
 ns = { ...ns,
 [caster]: { ...ns[caster],
 bf: ns[caster].bf.map(c =>
 c.iid === self.iid
-? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: ["FLYING"] }] }
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.FLYING.id] }] }
 : c
 ),
 },
@@ -767,7 +768,7 @@ break;
 case "grantFlying": {
 if (tgtC) {
 const kws2 = [...(tgtC.keywords||[])];
-if (!kws2.includes("FLYING")) kws2.push("FLYING");
+if (!kws2.includes(KEYWORDS.FLYING.id)) kws2.push(KEYWORDS.FLYING.id);
 ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, keywords: kws2 } : c) } };
 ns = dlog(ns, `${tgtC.name} gains flying.`, "effect");
 }
@@ -893,7 +894,7 @@ ns = dlog(ns, `Berserk fizzled — no valid target.`, "effect");
 break;
 }
 const pow = getPow(tgtC, ns);
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+pow, keywords: [...(c.keywords||[]),"TRAMPLE"], berserked: true } : c) } };
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+pow, keywords: [...(c.keywords||[]),KEYWORDS.TRAMPLE.id], berserked: true } : c) } };
 ns = dlog(ns, `Berserk doubles ${tgtC.name}'s power.`, "effect");
 break;
 }
@@ -983,7 +984,7 @@ ns = dlog(ns, `${tgtC.name} becomes 0/2 until end of turn.`, "effect");
 break;
 }
 case "forceAttack": {
-if (tgtC && !hasKw(tgtC, "DEFENDER")) {
+if (tgtC && !hasKw(tgtC, KEYWORDS.DEFENDER.id)) {
 const faCtrl = tgtC.controller;
 ns = { ...ns, [faCtrl]: { ...ns[faCtrl], bf: ns[faCtrl].bf.map(c => c.iid === tgtC.iid ? { ...c, mustAttack: true } : c) } };
 ns = dlog(ns, `${tgtC.name} must attack this turn.`, "effect");
@@ -1055,7 +1056,7 @@ if (!att) continue;
 const ap = getPow(att, ns);
 const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
-const hasLifelink = hasKw(att, "LIFELINK") || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
+const hasLifelink = hasKw(att, KEYWORDS.LIFELINK.id) || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
 const blockers = ns[defW].bf.filter(c => c.blocking === attId);
 const attGaseous = isGaseous(att);
 
@@ -1102,9 +1103,9 @@ if (!blockers.length) {
     }
     if (!blockerProtectsFromAtt && !blGaseous) rem = Math.max(0, rem - dbl);
     if (hasLifelink && !blockerProtectsFromAtt && !blGaseous) ns = hurt(ns, actrl, -dbl);
-    if (hasKw(att, "DEATHTOUCH") && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, "TRAMPLE") && rem > 0 && !attGaseous) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
 
 }
@@ -1161,11 +1162,11 @@ if (next === PHASE.COMBAT_ATTACKERS) {
   const activeWho = ns.active;
   // Snapshot eligibility before auto-declaring so we can distinguish "couldn't attack" from "chose not to" post-combat.
   const eligibleIids = ns[activeWho].bf
-    .filter(c => c.keywords?.includes("MUST_ATTACK") && !c.tapped && !c.summoningSick)
+    .filter(c => c.keywords?.includes(KEYWORDS.MUST_ATTACK.id) && !c.tapped && !c.summoningSick)
     .map(c => c.iid);
   ns = { ...ns, turnState: { ...ns.turnState, mustAttackEligible: eligibleIids } };
   ns[activeWho].bf.forEach(c => {
-    const mustAttack = c.keywords?.includes("MUST_ATTACK");
+    const mustAttack = c.keywords?.includes(KEYWORDS.MUST_ATTACK.id);
     if (mustAttack && !c.tapped && !c.summoningSick && !ns.attackers.includes(c.iid)) {
       ns = {
         ...ns,
@@ -1174,7 +1175,7 @@ if (next === PHASE.COMBAT_ATTACKERS) {
         [activeWho]: {
           ...ns[activeWho],
           bf: ns[activeWho].bf.map(x => x.iid === c.iid
-            ? { ...x, tapped: !hasKw(x, "VIGILANCE"), attacking: true, mustAttack: true }
+            ? { ...x, tapped: !hasKw(x, KEYWORDS.VIGILANCE.id), attacking: true, mustAttack: true }
             : x
           ),
         },
@@ -1331,7 +1332,7 @@ case "erhnamsUpkeep": {
   if (erTargets.length) {
     const chosen = erTargets[Math.floor(Math.random() * erTargets.length)];
     const kws = [...(chosen.keywords || [])];
-    if (!kws.includes("FORESTWALK")) kws.push("FORESTWALK");
+    if (!kws.includes(KEYWORDS.FORESTWALK.id)) kws.push(KEYWORDS.FORESTWALK.id);
     ns = { ...ns, [erOpp]: { ...ns[erOpp], bf: ns[erOpp].bf.map(x =>
       x.iid === chosen.iid ? { ...x, keywords: kws } : x
     ) } };
@@ -1732,7 +1733,7 @@ case "CAST_SPELL": {
       s = resolveEff(s, item);
       return dlog(s, `${w} casts ${c.name}.`, "play");
     }
-    const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, "HASTE"), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
+    const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
     s = { ...s, [w]: { ...s[w], bf: [...s[w].bf, pArr] } };
     if (CARD_HANDLERS[c.name]?.onResolve) {
       const pOnBf = s[w].bf.find(x => x.iid === c.iid) || pArr;
@@ -1762,13 +1763,13 @@ case "DECLARE_ATTACKER": {
   if (s.phase !== PHASE.COMBAT_ATTACKERS) return s;
   const side = s.active;
   const c = s[side].bf.find(x => x.iid === action.iid);
-  if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, "HASTE", s))) return s;
+  if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, KEYWORDS.HASTE.id, s))) return s;
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
     ? (s.turnState.attackedThisCombat || []).filter(id => id !== action.iid)
     : [...(s.turnState.attackedThisCombat || []), action.iid];
-  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, "VIGILANCE") } : x) } };
+  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id) } : x) } };
 }
 
 case "DECLARE_BLOCKER": {

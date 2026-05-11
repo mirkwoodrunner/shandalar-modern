@@ -17,6 +17,7 @@
 | 0.7 | Phase 5 (Scryfall art) | Scryfall API card art integration complete; oldest classic-set printing (Alpha→4th Ed) fetched per card; session cache; emoji fallback on network failure |
 | 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard; Priority window / instant-speed interaction system |
 | 0.9 | Phase 6 (Engine Depth — partial) | Power Surge upkeep damage implemented (snapshot at UNTAP, damage at UPKEEP); Holy Ground Option B (landwalk suppression via hasKw state param + canBlockDuel threading); CardPreviewPanel added to DeckManager (Scryfall art crop on click-to-preview, inline flex sibling positioning) |
+| 1.0 | Phase 6 complete | Regeneration, Channel, Fastbond, Kudzu confirmed implemented in DuelCore.js; DuelScreen.tsx cutover complete (App.jsx and OverworldGame.jsx now import .tsx); dead files removed; keywords.js wired as authoritative keyword registry (KEYWORDS import added to all engine files, string literals replaced with KEYWORDS.X.id constants) |
 
 ---
 
@@ -814,7 +815,7 @@ These items were identified during playtesting and are being addressed before Ph
 - Arzakon challenge mode (Five-Color Chaos as a selectable starter)
 - Sound hook stubs for future audio
 
-### Phase 6 — Engine Depth 🔄 In Progress
+### Phase 6 — Engine Depth ✅ Complete
 
 **Goal:** Activate the triggered ability pipeline for cards that require it, enforce Holy Ground combat protection fully, and resolve the remaining effect stubs that have been deferred since Phase 4. Concludes with the priority window / instant-speed interaction system.
 
@@ -854,17 +855,17 @@ These items were identified during playtesting and are being addressed before Ph
 3. If Holy Ground is present, the function returns `false` regardless of the attacker's keyword list, suppressing the landwalk advantage.
 4. `canBlockDuel(attacker, blocker, state)` threads `state` into the LANDWALK check so blocking legality also respects Holy Ground suppression.
 
-**Deliverable 3 — Remaining Effect Stubs** *(Partial)*
+**Deliverable 3 — Remaining Effect Stubs** ✅ Complete
 
 | Card | Effect ID | Status | Implementation Notes |
 |------|-----------|--------|---------------------|
 | Power Surge (upkeep) | `powerSurgeUpkeep` | ✅ Complete | `turnState.powerSurgeUntappedCount` snapshot taken before UNTAP loop when Power Surge is on either battlefield; UPKEEP handler reads snapshot and calls `hurt()`; 0 tapped lands logs and skips damage |
-| Regeneration (aura) | `regeneration` | Planned | Aura grants `regenerate` activated ability (`G: regenerate`) to enchanted creature; routes through existing `ACTIVATE_ABILITY` handler |
-| Channel | `channel` | Planned | Sets `channelActive: true` flag on player state; during active player's turn, any mana spend may instead pay 1 life per 1 colorless; cleared at end of turn |
-| Fastbond | `fastbond` | Planned | Sets `fastbondActive: true` on player state; `PLAY_LAND` no longer checks `landsPlayedThisTurn > 0`; each land played beyond the first deals 1 damage to controller |
-| Kudzu (upkeep) | `kudzu` | Planned | Each upkeep: destroy enchanted land; if controller controls another land, Kudzu re-attaches to a random one (seeded RNG); if no lands remain, Kudzu goes to graveyard |
+| Regeneration (aura) | `regeneration` | ✅ Complete | `enchantCreature` + `mod.regenerationAura: true` path attaches `{ cost: "G", effect: "regenerate" }` as an activated ability to the enchanted creature; `regenerate` effect sets `regenerating: true`; death prevention fires when `regenerating` is set |
+| Channel | `channel` | ✅ Complete | `case "channel"` sets `[caster].channelActive = true`; `CHANNEL_MANA` reducer checks `channelActive`, pays 1 life, adds 1 `{C}`; cleared via `channelActive: false` at end of turn |
+| Fastbond | `fastbond` | ✅ Complete | `PLAY_LAND` handler checks `fastbondActive = bf.some(x => x.id === "fastbond")`; skips `landsPlayed >= 1` guard; applies 1 damage for each land beyond the first |
+| Kudzu (upkeep) | `kudzu` | ✅ Complete | `kudzuUpkeep` case: destroys enchanted land via `zMove`; re-attaches to random remaining land using seeded RNG `(turn * 37 + lands.length * 13) % lands.length`; moves to graveyard if no lands remain |
 
-**Deliverable 4 — Priority Window / Instant-Speed Interaction** ✅ Complete
+**Deliverable 2 — Priority Window / Instant-Speed Interaction** ✅ Complete
 
 See `docs/SYSTEMS.md` §18 for full specification. Summary:
 
@@ -954,7 +955,7 @@ See `docs/SYSTEMS.md` §18 for full specification. Summary:
 ---
 
 *Document status: Living design bible. Validated against source code.*
-*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 🔄 In Progress*
+*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 ✅*
 
 ---
 

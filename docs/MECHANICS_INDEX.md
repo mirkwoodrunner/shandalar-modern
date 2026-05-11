@@ -103,7 +103,7 @@ The central simulation engine responsible for all game state mutation, turn reso
 
 ### Dependencies
 - rulesets.js (mode modifiers)
-- keywords.js (ability interpretation)
+- keywords.js (ability interpretation — imported as of 2026-05-11 remediation)
 - cards.js (data instantiation)
 
 ---
@@ -817,6 +817,31 @@ Cross-run persistence of artifact ownership flags via `localStorage`. Allows unl
 
 ### Status
 ACTIVE (Phase 5 Completion Sprint)
+
+---
+
+---
+
+## §17 — Priority Window System
+
+**Reducer actions:** `OPEN_PRIORITY_WINDOW`, `PASS_PRIORITY`  
+**State fields:** `priorityWindow` (boolean), `priorityPasser` (null | 'p' | 'o')  
+**UI component:** `src/ui/ActionBar/InstantPriorityBar.tsx`  
+**SYSTEMS.md reference:** §18  
+
+### How it works
+When a phase advance is requested, `requestPhaseAdvance()` checks whether either player has an instant in hand or a non-mana activated ability on the battlefield. If neither player has options, `ADVANCE_PHASE` fires immediately. If either side has options, `OPEN_PRIORITY_WINDOW` is dispatched. The window blocks `ADVANCE_PHASE` until both players have passed via `PASS_PRIORITY`. Suppressed entirely when `castleMod.name === 'SILENCE'` or `dungeonMod === 'SILENCE'`.
+
+### AI behavior
+The AI evaluates its hand for affordable instants, casts the first one it finds targeting the player, then immediately dispatches `PASS_PRIORITY({ who: 'o' })`.
+
+### Traceability
+- Implemented: Phase 6 Deliverable 2
+- Source: `src/engine/DuelCore.js` (`OPEN_PRIORITY_WINDOW`, `PASS_PRIORITY` cases)
+- Hook exposure: `src/hooks/useDuel.js` (`openPriorityWindow`, `passPriority`)
+
+### Status
+ACTIVE (Phase 6)
 
 ---
 

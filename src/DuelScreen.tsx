@@ -118,6 +118,71 @@ function AbilityMenuPopover({ card, onSelect, onClose }: {
   );
 }
 
+function ForceOfNatureUpkeepModal({ greenMana, onResolve }: {
+  greenMana: number; onResolve: (choice: string) => void;
+}) {
+  const canAfford = (greenMana ?? 0) >= 4;
+  return (
+    <div className="popover-overlay">
+      <div className="popover-content" onClick={e => e.stopPropagation()} style={{
+        border: '2px solid #c4a040', background: 'rgba(10,20,10,0.97)',
+        fontFamily: 'var(--font-display)',
+      }}>
+        <h3 style={{ color: '#c4a040', fontFamily: 'var(--font-display)', marginBottom: 8 }}>
+          Force of Nature
+        </h3>
+        <p style={{ color: '#ccc', marginBottom: 12 }}>
+          Force of Nature demands tribute. Pay GGGG or take 8 damage.
+        </p>
+        <p style={{ color: '#6a9a5a', fontSize: 12, marginBottom: 16 }}>
+          Green mana available: {greenMana ?? 0}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={() => onResolve('PAY_GGGG')}
+            disabled={!canAfford}
+            style={{
+              border: canAfford ? '1px solid #6a9a5a' : '1px solid #444',
+              background: canAfford ? 'rgba(40,80,20,0.6)' : 'rgba(40,40,40,0.4)',
+              color: canAfford ? '#80c040' : '#555',
+              padding: '8px 16px', borderRadius: 4,
+              cursor: canAfford ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--font-display)', fontSize: 13,
+            }}
+          >Pay GGGG</button>
+          <button
+            onClick={() => onResolve('TAKE_DAMAGE')}
+            style={{
+              border: '1px solid #a04040', background: 'rgba(80,20,20,0.5)',
+              color: '#e06060', padding: '8px 16px', borderRadius: 4,
+              cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 13,
+            }}
+          >Take 8 Damage</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceModal({ pendingChoice, allBf, onResolve }: {
+  pendingChoice: any; allBf: any[]; onResolve: (id: string) => void;
+}) {
+  const sourceCard = allBf.find((c: any) => c.iid === pendingChoice.sourceCardId);
+  return (
+    <div className="popover-overlay">
+      <div className="popover-content" onClick={e => e.stopPropagation()}>
+        <h3>{sourceCard ? sourceCard.name : 'Triggered Ability'}</h3>
+        <p>Choose:</p>
+        {(pendingChoice.options ?? []).map((opt: any) => (
+          <button key={opt.id} className="mana-choice-btn" onClick={() => onResolve(opt.id)}>
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }: {
   graveyard: any[]; playerName: string; mode: string;
   onSelect: (card: any, idx: number) => void; onClose: () => void;
@@ -200,6 +265,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     applyAiActions,
     openPriorityWindow,
     passPriority,
+    resolveChoice,
+    resolveUpkeepChoice,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -299,7 +366,27 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- AI loop ---------------------------------------------------------------
   useEffect(() => {
-    if (s.over || s.active !== 'o' || aiRef.current) return;
+    if (s.over) return;
+    if (s.pendingUpkeepChoice) return;
+
+    // AI auto-resolves pendingChoice when it is the controller
+    if (s.pendingChoice && s.pendingChoice.controller === 'o') {
+      const choice = s.pendingChoice;
+      const payOption = choice.options.find((o: any) => o.id === 'pay_gggg');
+      const damageOption = choice.options.find((o: any) => o.effect?.type === 'dealDamageToController');
+      let aiCanPay = false;
+      if (payOption?.effect?.type === 'payMana') {
+        const cost = payOption.effect.cost;
+        aiCanPay = Object.entries(cost).every(([color, amount]) =>
+          (s.o.mana[color as string] || 0) >= (amount as number)
+        );
+      }
+      resolveChoice(aiCanPay && payOption ? payOption.id : (damageOption?.id || choice.options[0].id));
+      return;
+    }
+
+    if (s.active !== 'o' || aiRef.current) return;
+    if (s.phase === 'COMBAT_BLOCKERS') return;
     aiRef.current = true;
     const t = setTimeout(() => {
       const acts = aiDecide(s);
@@ -307,7 +394,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
     }, 500 + Math.random() * 350);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Ability menu selection handler (Mishra's Factory etc.) -----------------
   const handleAbilityMenuSelect = useCallback((abilityId: string) => {
@@ -748,6 +835,21 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           cardName={manaChoicePopover.cardName}
           onSelect={handleManaChoice}
           onClose={closeManaChoicePopover}
+        />
+      )}
+
+      {s.pendingUpkeepChoice && s.active === 'p' && (
+        <ForceOfNatureUpkeepModal
+          greenMana={s.p.mana?.G ?? 0}
+          onResolve={resolveUpkeepChoice}
+        />
+      )}
+
+      {s.pendingChoice && s.pendingChoice.controller === 'p' && (
+        <ChoiceModal
+          pendingChoice={s.pendingChoice}
+          allBf={[...s.p.bf, ...s.o.bf]}
+          onResolve={resolveChoice}
         />
       )}
     </div>

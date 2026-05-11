@@ -124,5 +124,6 @@
 - **Unlockables**: Persisted via `shandalar_unlockables` key in `localStorage`. `OverworldGame.jsx` lazy-initializes `artifacts` state from storage; `useEffect([artifacts])` writes on every change. Fail-silent on any `localStorage` error.
 - **Power Surge**: `turnState.powerSurgeUntappedCount` snapshot taken at the top of UNTAP (before the untap loop), only when Power Surge is on either battlefield. Read and consumed in the `powerSurgeUpkeep` UPKEEP case via `hurt()`. Reset to 0 each UNTAP.
 
-### Up Next (Phase 6)
-- Remaining stubs: `regeneration` (aura-granted activated ability), `channel`, `fastbond`, `kudzu`
+### Up Next
+- Phase 6 complete. All planned deliverables implemented.
+- Next sprint TBD.

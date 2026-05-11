@@ -490,10 +490,6 @@ DungeonMap.jsx is presentation only.
 
 ---
 
-# End of SYSTEMS v1.0
-
----
-
 # 17. Triggered Ability Pipeline
 
 The Triggered Ability Pipeline is the deterministic system responsible for detecting, ordering, and resolving all triggered abilities in the game. It operates entirely within the reducer-driven game state (DuelCore.js) and must not rely on timing, async behavior, or external I/O.
@@ -939,3 +935,7 @@ All read/write operations are wrapped in `try/catch`. Failure is silent — `con
 | File | Role |
 |------|------|
 | `src/OverworldGame.jsx` | Read on mount (lazy initializer); write on every artifact state change |
+
+---
+
+# End of SYSTEMS v1.0

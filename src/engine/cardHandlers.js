@@ -11,6 +11,8 @@
 // and the resolved targets array. They return new GameState (pure).
 // No imports from DuelCore to avoid circular dependencies ? state ops inline.
 
+import KEYWORDS from '../data/keywords.js';
+
 // --- HELPERS (local ? no DuelCore import) ------------------------------------
 
 function drawN(state, who, n) {
