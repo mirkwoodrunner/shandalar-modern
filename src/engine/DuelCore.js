@@ -1952,13 +1952,13 @@ case "CHOOSE_BOP_COLOR": {
 
 case "SET_PENDING_BOP": return { ...s, pendingBop: true };
 
-case "CHANNEL_MANA": {
+case "USE_CHANNEL": {
   const w = action.who;
   if (!s[w]?.channelActive) return s;
   if (s[w].life <= 1) return dlog(s, "Channel: not enough life.", "effect");
   s = hurt(s, w, 1, "Channel");
-  s = { ...s, [w]: { ...s[w], mana: { ...s[w].mana, C: (s[w].mana.C || 0) + 1 }}};
-  return dlog(s, `Channel: ${w} pays 1 life for {C}.`, "mana");
+  s = { ...s, [w]: { ...s[w], mana: { ...s[w].mana, C: (s[w].mana.C || 0) + 1 } } };
+  return dlog(s, `${w} pays 1 life to add {C} (Channel).`, "mana");
 }
 
 case "RESOLVE_CHOICE": {

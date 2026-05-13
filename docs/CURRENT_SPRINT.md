@@ -72,6 +72,16 @@
 | `src/hooks/useDuel.js` | Exposed `resolveUpkeepChoice` dispatcher |
 | `src/DuelScreen.jsx` | Added `ForceOfNatureUpkeepModal` component (Cinzel font, gold borders, dark background, disabled Pay button when < 4G); AI loop guarded with `if (state.pendingUpkeepChoice) return;`; modal rendered when `state.pendingUpkeepChoice && state.active === 'p'`; phase-advance buttons hidden while modal open |
 
+### Deliverable P4: Channel Repeatable Mana Ability -- Complete
+
+| File | Change |
+|------|--------|
+| `src/engine/DuelCore.js` | Renamed `CHANNEL_MANA` reducer case to `USE_CHANNEL`; `case "channel"` already sets `channelActive: true` on resolve |
+| `src/hooks/useDuel.js` | Exposed `useChannel` dispatcher (`USE_CHANNEL` for `who: "p"`) |
+| `src/DuelScreen.tsx` | Added Channel button rendered when `channelActive && active === 'p' && MAIN phase && life > 1`; placed adjacent to player Banner (mana pool area) |
+| `src/engine/AI.js` | Added channel logic to `planMain`: if `channelActive && life > 2`, greedily emits `USE_CHANNEL` actions until best spell is affordable or life floor (2) reached; updates virtual state for subsequent spell planning |
+| `src/engine/__tests__/DuelCore.reducer.test.js` | Added 4 regression tests: channel sorcery sets `channelActive`, `USE_CHANNEL` decrements life and adds C, blocked at life ≤ 1, cleared at CLEANUP |
+
 ### Deliverable P5: Unlockables Persistence (localStorage) -- Complete
 
 | File | Change |

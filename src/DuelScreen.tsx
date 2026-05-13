@@ -267,6 +267,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     passPriority,
     resolveChoice,
     resolveUpkeepChoice,
+    useChannel,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -706,6 +707,29 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             }}
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
           />
+
+          {/* Channel mana button */}
+          {s.p.channelActive && s.active === 'p' && (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') && s.p.life > 1 && (
+            <div style={{ padding: '2px 8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={useChannel}
+                title="Pay 1 life: add {C}"
+                style={{
+                  background: 'linear-gradient(135deg,#1a2e10,rgba(0,0,0,.5))',
+                  border: '2px solid #66cc33',
+                  color: '#88ee44',
+                  padding: '4px 10px',
+                  borderRadius: 5,
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: "'Cinzel',serif",
+                  fontWeight: 700,
+                }}
+              >
+                ⬡ Channel (1 life → {'{C}'})
+              </button>
+            </div>
+          )}
 
           {/* Priority window bar */}
           {s.priorityWindow && s.priorityPasser !== 'p' && (

@@ -133,14 +133,41 @@ const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
 
 function planMain(state, profile, phase) {
   const actions = [];
-  const availMana = computeAvailableMana(state);
-  const totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
+  let availMana = computeAvailableMana(state);
+  let totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
 
   const sorted = [...state.o.hand].sort((a, b) => b.cmc - a.cmc);
 
   // Virtual state tracks which lands have already been designated for spells this
   // turn, so we don't over-commit mana across multiple PLAY_CARDs in one plan.
   let virtualState = state;
+
+  // Channel: if active, greedily add USE_CHANNEL actions to top up mana for best spell
+  if (state.o.channelActive && state.o.life > 2) {
+    const bestSpell = sorted.filter(c => !isLand(c))[0];
+    if (bestSpell) {
+      const { affordable } = buildTapActions(state, bestSpell.cost);
+      if (!affordable) {
+        const shortfall = Math.max(0, bestSpell.cmc - totalMana);
+        const channelCount = Math.min(shortfall, state.o.life - 2);
+        for (let i = 0; i < channelCount; i++) {
+          actions.push({ type: 'USE_CHANNEL', who: 'o' });
+        }
+        if (channelCount > 0) {
+          virtualState = {
+            ...state,
+            o: {
+              ...state.o,
+              mana: { ...state.o.mana, C: (state.o.mana.C || 0) + channelCount },
+              life: state.o.life - channelCount,
+            },
+          };
+          availMana = computeAvailableMana(virtualState);
+          totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
+        }
+      }
+    }
+  }
 
   for (const card of sorted) {
     // Land: always play one if available, no mana cost required.

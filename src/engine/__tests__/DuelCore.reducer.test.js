@@ -238,3 +238,54 @@ describe('state.over guard', () => {
     }
   });
 });
+
+// --- Channel -----------------------------------------------------------------
+
+describe('Channel', () => {
+  it('sets channelActive when channel sorcery is cast', () => {
+    const channelCard = {
+      iid: 'chan-1', id: 'channel', name: 'Channel', type: 'Sorcery',
+      color: 'G', cmc: 2, cost: 'GG', effect: 'channel',
+      keywords: [], tapped: false, summoningSick: false,
+      attacking: false, blocking: null, damage: 0,
+      counters: {}, eotBuffs: [], enchantments: [], controller: 'p',
+    };
+    const base = makeState({ pHand: [channelCard], phase: PHASE.MAIN_1, active: 'p' });
+    const withMana = { ...base, p: { ...base.p, mana: { ...base.p.mana, G: 2 } } };
+
+    // Sorceries resolve immediately (not via stack) in the default ruleset
+    const result = duelReducer(withMana, { type: 'CAST_SPELL', who: 'p', iid: 'chan-1' });
+
+    expect(result.p.channelActive).toBe(true);
+  });
+
+  it('USE_CHANNEL decrements life by 1 and adds 1 C mana', () => {
+    const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
+    const withChannel = { ...base, p: { ...base.p, channelActive: true, life: 10 } };
+
+    const result = duelReducer(withChannel, { type: 'USE_CHANNEL', who: 'p' });
+
+    expect(result.p.life).toBe(9);
+    expect(result.p.mana.C).toBe(1);
+  });
+
+  it('USE_CHANNEL does not fire when life is 1', () => {
+    const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
+    const withChannel = { ...base, p: { ...base.p, channelActive: true, life: 1 } };
+
+    const result = duelReducer(withChannel, { type: 'USE_CHANNEL', who: 'p' });
+
+    expect(result.p.life).toBe(1);
+    expect(result.p.mana.C).toBe(0);
+  });
+
+  it('channelActive is cleared when phase advances to CLEANUP', () => {
+    const base = makeState({ phase: PHASE.END, active: 'p' });
+    const withChannel = { ...base, p: { ...base.p, channelActive: true } };
+
+    const result = duelReducer(withChannel, { type: 'ADVANCE_PHASE' });
+
+    expect(result.phase).toBe(PHASE.CLEANUP);
+    expect(result.p.channelActive).toBe(false);
+  });
+});

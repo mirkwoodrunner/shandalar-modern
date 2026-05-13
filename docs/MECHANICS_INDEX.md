@@ -845,4 +845,33 @@ ACTIVE (Phase 6)
 
 ---
 
+## §18 — Channel Repeatable Mana
+
+### Description
+Channel sorcery grants the casting player a repeatable mana ability: pay 1 life, add 1 {C}. Usable any number of times during the caster's main phase as long as life > 1.
+
+### GDD Reference
+§3.2.5 Stub effects resolved — Channel row.
+
+### SYSTEMS.md Reference
+Section 22 — Channel Repeatable Mana Action.
+
+### Traceability
+
+| Feature | Action Type | Engine Location | Card Data |
+|---------|-------------|-----------------|-----------|
+| Channel repeatable mana | `USE_CHANNEL` action | `DuelCore.js` `USE_CHANNEL` case | `cards.js` channel entry (`effect: "channel"`) |
+
+### Implementation
+- `case "channel"` in `resolveEff` sets `channelActive: true` on the casting player.
+- `USE_CHANNEL` reducer: guards `channelActive` and `life > 1`; applies `hurt()` for 1 damage; adds 1 `{C}` to mana pool.
+- CLEANUP: `channelActive` set to `false` for both players.
+- UI button: conditional render in `DuelScreen.tsx` adjacent to player Banner.
+- AI: greedy `USE_CHANNEL` emissions in `planMain` before spell selection.
+
+### Status
+ACTIVE (Phase 6)
+
+---
+
 # End of MECHANICS INDEX v1.0
