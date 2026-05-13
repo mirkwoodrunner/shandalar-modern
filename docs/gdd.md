@@ -861,7 +861,7 @@ These items were identified during playtesting and are being addressed before Ph
 |------|-----------|--------|---------------------|
 | Power Surge (upkeep) | `powerSurgeUpkeep` | ✅ Complete | `turnState.powerSurgeUntappedCount` snapshot taken before UNTAP loop when Power Surge is on either battlefield; UPKEEP handler reads snapshot and calls `hurt()`; 0 tapped lands logs and skips damage |
 | Regeneration (aura) | `regeneration` | ✅ Complete | `enchantCreature` + `mod.regenerationAura: true` path attaches `{ cost: "G", effect: "regenerate" }` as an activated ability to the enchanted creature; `regenerate` effect sets `regenerating: true`; death prevention fires when `regenerating` is set |
-| Channel | `channel` | ✅ Complete | `case "channel"` sets `[caster].channelActive = true`; `CHANNEL_MANA` reducer checks `channelActive`, pays 1 life, adds 1 `{C}`; cleared via `channelActive: false` at end of turn |
+| Channel | `channel` | ✅ Complete | `case "channel"` sets `[caster].channelActive = true`; `USE_CHANNEL` reducer action checks `channelActive`, pays 1 life, adds 1 `{C}`; UI button rendered during player main phase; AI emits `USE_CHANNEL` greedily up to `life - 2`; cleared via `channelActive: false` at CLEANUP |
 | Fastbond | `fastbond` | ✅ Complete | `PLAY_LAND` handler checks `fastbondActive = bf.some(x => x.id === "fastbond")`; skips `landsPlayed >= 1` guard; applies 1 damage for each land beyond the first |
 | Kudzu (upkeep) | `kudzu` | ✅ Complete | `kudzuUpkeep` case: destroys enchanted land via `zMove`; re-attaches to random remaining land using seeded RNG `(turn * 37 + lands.length * 13) % lands.length`; moves to graveyard if no lands remain |
 
@@ -911,6 +911,7 @@ See `docs/SYSTEMS.md` §18 for full specification. Summary:
 | Holy Ground: full protection or landwalk suppression? | Landwalk suppression only (Option B) | Full protection deferred; suppression covers the primary use case |
 | Power Surge snapshot timing | UNTAP phase (Option A) | Consistent with printed card text; avoids mid-upkeep state reads |
 | Unlockables storage | localStorage, silent fail | No backend; private browsing gracefully degrades |
+| Channel activation model | Repeatable mana ability (`USE_CHANNEL` action) | One-time life-to-mana conversion is wrong per card text; repeatable button matches original intent |
 
 ---
 

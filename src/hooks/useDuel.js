@@ -96,6 +96,9 @@ dispatch({ type: "OPEN_PRIORITY_WINDOW" }), []);
 const passPriority = useCallback((who) =>
 dispatch({ type: "PASS_PRIORITY", who }), []);
 
+const useChannel = useCallback(() =>
+dispatch({ type: "USE_CHANNEL", who: "p" }), []);
+
 return {
 state,
 dispatch,
@@ -120,6 +123,7 @@ resolveChoice,
 resolveUpkeepChoice,
 openPriorityWindow,
 passPriority,
+useChannel,
 };
 }
 

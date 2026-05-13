@@ -938,4 +938,54 @@ All read/write operations are wrapped in `try/catch`. Failure is silent — `con
 
 ---
 
+# Section 22 — Channel Repeatable Mana Action
+
+## 22.1 Overview
+
+Channel is a sorcery that grants the casting player a repeatable mana ability for the rest of the turn: pay 1 life, add 1 {C}. The ability is encoded as a discrete `USE_CHANNEL` action dispatched by the UI or AI, rather than a triggered ability or a passive mana rule.
+
+## 22.2 USE_CHANNEL Action Contract
+
+**Action shape:** `{ type: "USE_CHANNEL", who: "p" | "o" }`
+
+**Preconditions (both must hold; otherwise state is returned unchanged):**
+- `state[who].channelActive === true`
+- `state[who].life > 1`
+
+**Effect:**
+- `life -= 1` (applied via `hurt()` so `lifeAnim: "damage"` fires on the life counter)
+- `mana.C += 1`
+- Log entry appended: `"${who} pays 1 life to add {C} (Channel)."` (type `"mana"`)
+
+**Cleared at:** `CLEANUP` phase — `channelActive` is set to `false` for both players when `ADVANCE_PHASE` transitions to `CLEANUP`.
+
+## 22.3 UI Contract
+
+The Channel button is rendered in `DuelScreen.tsx` adjacent to the player's Banner (mana pool area) when ALL of the following are true:
+- `state.p.channelActive === true`
+- `state.active === "p"`
+- `state.phase === "MAIN_1" || state.phase === "MAIN_2"`
+- `state.p.life > 1`
+
+Clicking dispatches `useChannel()` from `useDuel.js`, which emits `USE_CHANNEL` for `who: "p"`.
+
+## 22.4 AI Behavior
+
+In `planMain` (`AI.js`), after computing available mana and before the spell-selection loop:
+1. If `state.o.channelActive && state.o.life > 2`, find the highest-CMC non-land card in hand.
+2. Call `buildTapActions` for that spell. If unaffordable, compute `shortfall = max(0, bestSpell.cmc - totalMana)`.
+3. Push `min(shortfall, state.o.life - 2)` `USE_CHANNEL` actions to the front of the actions array.
+4. Update `virtualState`, `availMana`, and `totalMana` to reflect the extra C mana for subsequent spell planning.
+
+## 22.5 System Files
+
+| File | Role |
+|------|------|
+| `src/engine/DuelCore.js` | `USE_CHANNEL` reducer case; `case "channel"` sets `channelActive`; CLEANUP clearing |
+| `src/hooks/useDuel.js` | `useChannel` dispatcher |
+| `src/DuelScreen.tsx` | Channel button (conditional render) |
+| `src/engine/AI.js` | Channel greedy top-up in `planMain` |
+
+---
+
 # End of SYSTEMS v1.0
