@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Cost } from './Cost';
 import { FilCorner } from './FilCorner';
-import { ArtPlaceholder } from './ArtPlaceholder';
+import { CardArtImage } from './CardArtImage';
 import { frameOf } from './frame';
 import type { CardData } from './types';
 import styles from './HandCard.module.css';
@@ -63,7 +63,7 @@ function HandCardInner({ card, selected, playable, fanAngle = 0, fanY = 0, onCli
         className={styles.artWindow}
         style={{ border: `1px solid ${frame.bd}aa` }}
       >
-        <ArtPlaceholder frame={frame} label={`${card.type} art`} />
+        <CardArtImage cardName={card.name} frameColor={frame.glow} />
       </div>
 
       <div

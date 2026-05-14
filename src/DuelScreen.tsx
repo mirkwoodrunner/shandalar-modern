@@ -301,6 +301,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
   const aiRef = useRef(false);
   const prevPriorityWindow = useRef(false);
+  const priorityWindowInitiator = useRef(false);
 
   // -- Smart suppression helper: skip the priority window if neither player
   // -- has an instant in hand or a non-mana activated battlefield ability.
@@ -323,7 +324,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Auto-advance phase when priority window closes (both players passed) --
   useEffect(() => {
-    if (prevPriorityWindow.current === true && s.priorityWindow === false) {
+    if (s.priorityWindow === true) {
+      priorityWindowInitiator.current = true;
+    }
+    if (
+      prevPriorityWindow.current === true &&
+      s.priorityWindow === false &&
+      priorityWindowInitiator.current === true
+    ) {
+      priorityWindowInitiator.current = false;
       advancePhase();
     }
     prevPriorityWindow.current = s.priorityWindow;
@@ -332,9 +341,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- AI priority window handler: evaluate instants, then pass immediately --
   useEffect(() => {
     if (!s.priorityWindow) return;
-    // Defer to next tick so the reducer has committed priorityWindow: true
-    // before we dispatch PASS_PRIORITY. Without this, the dispatch hits the
-    // reducer's `if (!s.priorityWindow) return s` guard and is dropped.
     const timer = setTimeout(() => {
       const aiInstant = s.o.hand.find(
         (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
@@ -737,7 +743,17 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             </div>
           )}
 
-          {/* Priority window bar */}
+          {/* Action bar */}
+          <ActionBar
+            phase={s.phase}
+            hasSelection={!!s.selCard}
+            onCast={handleCast}
+            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()}
+            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
+            onEndTurn={requestPhaseAdvance}
+          />
+
+          {/* Priority window bar — directly above hand */}
           {s.priorityWindow && s.priorityPasser !== 'p' && (
             <InstantPriorityBar
               hand={s.p.hand as any[]}
@@ -748,16 +764,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               onPass={() => passPriority('p')}
             />
           )}
-
-          {/* Action bar */}
-          <ActionBar
-            phase={s.phase}
-            hasSelection={!!s.selCard}
-            onCast={handleCast}
-            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()}
-            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={requestPhaseAdvance}
-          />
 
           {/* Player hand */}
           <Hand
