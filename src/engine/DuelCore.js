@@ -1796,13 +1796,18 @@ case "DECLARE_BLOCKER": {
   return { ...s, blockers: nb, [blSide]: { ...s[blSide], bf: s[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
 }
 
-case "OPEN_PRIORITY_WINDOW": {
+case "OPEN_PRIORITY_WINDOW":
+  console.log('[PW-REDUCER] OPEN_PRIORITY_WINDOW received — silence?', s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE');
   if (s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE') return s;
   return { ...s, priorityWindow: true, priorityPasser: null };
-}
 
 case "PASS_PRIORITY": {
-  if (!s.priorityWindow) return s;
+  const who = action.who;
+  console.log('[PW-REDUCER] PASS_PRIORITY received — who:', who, 'priorityWindow:', s.priorityWindow, 'priorityPasser:', s.priorityPasser);
+  if (!s.priorityWindow) {
+    console.log('[PW-REDUCER] PASS_PRIORITY ignored — window is closed');
+    return s;
+  }
   const passer = action.who;
   if (s.priorityPasser !== null && s.priorityPasser !== passer) {
     return { ...s, priorityWindow: false, priorityPasser: null };
@@ -1811,7 +1816,9 @@ case "PASS_PRIORITY": {
 }
 
 case "ADVANCE_PHASE": {
+  console.log('[PW-REDUCER] ADVANCE_PHASE received — priorityWindow:', s.priorityWindow);
   if (s.priorityWindow) {
+    console.log('[PW-REDUCER] ADVANCE_PHASE BLOCKED — window still open');
     console.warn('[DuelCore] ADVANCE_PHASE blocked: priority window is open');
     return s;
   }

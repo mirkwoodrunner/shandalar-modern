@@ -306,6 +306,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- Smart suppression helper: skip the priority window if neither player
   // -- has an instant in hand or a non-mana activated battlefield ability.
   const requestPhaseAdvance = useCallback(() => {
+    console.log('[PW] requestPhaseAdvance called — priorityWindow:', s.priorityWindow, 'priorityPasser:', s.priorityPasser);
     const handHasInstant = (hand: any[]) =>
       hand.some((c: any) => c.type === 'Instant' || c.type === 'Interrupt');
     const bfHasActivated = (bf: any[]) =>
@@ -315,15 +316,19 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       handHasInstant(s.o.hand) ||
       bfHasActivated(s.p.bf) ||
       bfHasActivated(s.o.bf);
+    console.log('[PW] anyOptions:', anyOptions, '| p.hand instants:', s.p.hand.filter((c:any) => c.type==='Instant'||c.type==='Interrupt').map((c:any)=>c.name), '| o.hand instants:', s.o.hand.filter((c:any) => c.type==='Instant'||c.type==='Interrupt').map((c:any)=>c.name));
     if (anyOptions) {
+      console.log('[PW] → dispatching OPEN_PRIORITY_WINDOW');
       openPriorityWindow();
     } else {
+      console.log('[PW] → dispatching ADVANCE_PHASE directly');
       advancePhase();
     }
   }, [s.p.hand, s.o.hand, s.p.bf, s.o.bf, openPriorityWindow, advancePhase]);
 
   // -- Auto-advance phase when priority window closes (both players passed) --
   useEffect(() => {
+    console.log('[PW] priorityWindow useEffect — prev:', prevPriorityWindow.current, 'current:', s.priorityWindow);
     if (s.priorityWindow === true) {
       priorityWindowInitiator.current = true;
     }
@@ -332,6 +337,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       s.priorityWindow === false &&
       priorityWindowInitiator.current === true
     ) {
+      console.log('[PW] → window closed, dispatching ADVANCE_PHASE');
       priorityWindowInitiator.current = false;
       advancePhase();
     }
@@ -340,14 +346,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- AI priority window handler: evaluate instants, then pass immediately --
   useEffect(() => {
-    if (!s.priorityWindow) return;
+    console.log('[PW] AI priorityWindow effect fired — priorityWindow:', s.priorityWindow);
+    if (!s.priorityWindow) {
+      console.log('[PW] AI effect: window is false, returning early');
+      return;
+    }
     const timer = setTimeout(() => {
       const aiInstant = s.o.hand.find(
         (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
       );
       if (aiInstant) {
+        console.log('[PW] AI casting instant:', (aiInstant as any).name);
         dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
+      } else {
+        console.log('[PW] AI has no affordable instant, passing priority');
       }
+      console.log('[PW] AI dispatching PASS_PRIORITY o');
       dispatch({ type: 'PASS_PRIORITY', who: 'o' });
     }, 0);
     return () => clearTimeout(timer);
@@ -752,9 +766,24 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             phase={s.phase}
             hasSelection={!!s.selCard}
             onCast={handleCast}
-            onPassPriority={() => s.priorityWindow ? passPriority('p') : requestPhaseAdvance()}
+            onPassPriority={() => {
+              console.log('[PW] ActionBar onPassPriority clicked — priorityWindow:', s.priorityWindow, 'priorityPasser:', s.priorityPasser, 'stack length:', s.stack?.length);
+              if (s.stack?.length > 0) {
+                console.log('[PW] → resolveStack');
+                resolveStack();
+              } else if (s.priorityWindow) {
+                console.log('[PW] → passPriority p');
+                passPriority('p');
+              } else {
+                console.log('[PW] → requestPhaseAdvance');
+                requestPhaseAdvance();
+              }
+            }}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={() => s.priorityWindow ? passPriority('p') : requestPhaseAdvance()}
+            onEndTurn={() => {
+              console.log('[PW] ActionBar onEndTurn clicked — priorityWindow:', s.priorityWindow);
+              requestPhaseAdvance();
+            }}
           />
 
           {/* Priority window bar — directly above hand */}
