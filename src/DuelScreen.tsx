@@ -16,7 +16,6 @@ import { Banner } from './ui/Battlefield/Banner';
 import { Battlefield } from './ui/Battlefield/Battlefield';
 import { Hand } from './ui/Hand/Hand';
 import { ActionBar } from './ui/ActionBar/ActionBar';
-import { InstantPriorityBar } from './ui/ActionBar/InstantPriorityBar';
 import { DuelLog } from './ui/Log/DuelLog';
 import type { LogEntry, LogKind } from './ui/Log/DuelLog';
 import { TargetArrow } from './ui/TargetArrow/TargetArrow';
@@ -764,35 +763,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           <ActionBar
             phase={s.phase}
             hasSelection={!!s.selCard}
-            castLabel={(() => {
-              const selDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
-              if (!selDef) return undefined;
-              return `${isLand(selDef) ? '⧁ Play' : '✦ Cast'} ${selDef.name}`;
-            })()}
+            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
             onCast={handleCast}
-            onPassPriority={() => {
-              if (s.stack?.length > 0) {
-                resolveStack();
-              } else if (!s.priorityWindow) {
-                requestPhaseAdvance();
-              }
-              // If priorityWindow is open, player uses InstantPriorityBar instead
-            }}
+            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={() => { requestPhaseAdvance(); }}
+            onEndTurn={requestPhaseAdvance}
           />
-
-          {/* Priority window bar — directly above hand */}
-          {s.priorityWindow && s.priorityPasser !== 'p' && (
-            <InstantPriorityBar
-              hand={s.p.hand as any[]}
-              battlefield={s.p.bf as any[]}
-              mana={s.p.mana as any}
-              onSelectCard={(iid: string) => { selectCard(iid); }}
-              onActivate={(card: any) => { handleActivate(card); }}
-              onPass={() => passPriority('p')}
-            />
-          )}
 
           {/* Player hand */}
           <Hand
