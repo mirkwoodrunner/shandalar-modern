@@ -122,7 +122,7 @@ export function Cost({ cost, size = 12 }) {
 
 export function PoolDisplay({ pool, size = 14 }) {
 const tot = Object.values(pool).reduce((a, b) => a + b, 0);
-if (!tot) return <span style={{ fontSize: 10, color: "#4a4030", fontFamily: "'Cinzel',serif" }}>?</span>;
+if (!tot) return <span style={{ fontSize: 10, color: "#4a4030", fontFamily: "'Cinzel',serif" }}>{'—'}</span>;
 return (
 <span style={{ display: "inline-flex", gap: 2, flexWrap: "wrap" }}>
 {["W","U","B","R","G","C"].map(c => pool[c] > 0 && Array.from({ length: pool[c] }).map((_, i) => <Pip key={`${c}${i}`} sym={c} size={size} />))}

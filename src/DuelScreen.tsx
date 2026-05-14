@@ -764,6 +764,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           <ActionBar
             phase={s.phase}
             hasSelection={!!s.selCard}
+            castLabel={(() => {
+              const selDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+              if (!selDef) return undefined;
+              return `${isLand(selDef) ? '⧁ Play' : '✦ Cast'} ${selDef.name}`;
+            })()}
             onCast={handleCast}
             onPassPriority={() => {
               if (s.stack?.length > 0) {

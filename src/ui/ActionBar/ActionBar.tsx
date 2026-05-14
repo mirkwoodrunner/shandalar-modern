@@ -5,6 +5,7 @@ const MAIN_PHASES = new Set(['MAIN_1', 'MAIN_2']);
 interface ActionBarProps {
   phase: string;
   hasSelection: boolean;
+  castLabel?: string;
   onCast?: () => void;
   onPassPriority?: () => void;
   onCancel?: () => void;
@@ -14,6 +15,7 @@ interface ActionBarProps {
 export function ActionBar({
   phase,
   hasSelection,
+  castLabel,
   onCast,
   onPassPriority,
   onCancel,
@@ -40,7 +42,7 @@ export function ActionBar({
 
       {hasSelection && inMain && (
         <ActionButton variant="primary" onClick={onCast}>
-          ? Cast Spell
+          {castLabel ?? '✦ Cast Spell'}
         </ActionButton>
       )}
       {hasSelection && (
@@ -48,11 +50,8 @@ export function ActionBar({
           Cancel
         </ActionButton>
       )}
-      <ActionButton variant="default" onClick={onPassPriority}>
-        Pass Priority
-      </ActionButton>
       <ActionButton variant="end" onClick={onEndTurn}>
-        End Turn ?
+        End Turn {'→'}
       </ActionButton>
     </div>
   );

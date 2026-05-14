@@ -38,7 +38,7 @@ function EntityToken({ entity }) {
         <span style={{
           fontSize: 14, lineHeight: 1,
           filter: 'drop-shadow(0 0 4px #cc2020)',
-        }}>?</span>
+        }}>{'\u{1F480}'}</span>
         <span style={{
           fontSize: 6, color: '#e06060',
           fontFamily: "'Cinzel', serif",
@@ -56,7 +56,7 @@ function EntityToken({ entity }) {
         fontSize: 14, lineHeight: 1,
         filter: 'drop-shadow(0 0 4px #c0a020)',
         zIndex: 2,
-      }}>?</span>
+      }}>{'\u{1F4B0}'}</span>
     );
   }
   if (entity.type === 'EXIT') {
@@ -206,7 +206,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
                   zIndex: 10,
                   filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))',
                 }}>
-                  ?
+                  {'\u{1F9D9}'}
                 </div>
               )}
             </div>
