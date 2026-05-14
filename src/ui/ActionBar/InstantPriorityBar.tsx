@@ -24,7 +24,6 @@ interface InstantPriorityBarProps {
   mana: ManaPool;
   onSelectCard: (iid: string) => void;
   onActivate: (card: CardData) => void;
-  onPass: () => void;
 }
 
 function totalMana(pool: ManaPool): number {
@@ -73,7 +72,6 @@ export function InstantPriorityBar({
   mana,
   onSelectCard,
   onActivate,
-  onPass,
 }: InstantPriorityBarProps) {
   const instants = hand.filter(
     c => c.type === 'Instant' || c.type === 'Interrupt'
@@ -178,24 +176,6 @@ export function InstantPriorityBar({
         );
       })}
 
-      <button
-        onClick={onPass}
-        style={{
-          marginLeft: 'auto',
-          padding: '3px 12px',
-          background: 'rgba(60,20,20,.8)',
-          border: '1px solid rgba(200,80,60,.4)',
-          borderRadius: 3,
-          color: '#e09080',
-          fontSize: 10,
-          fontFamily: 'var(--font-display)',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          letterSpacing: .5,
-        }}
-      >
-        Pass Priority
-      </button>
     </div>
   );
 }
