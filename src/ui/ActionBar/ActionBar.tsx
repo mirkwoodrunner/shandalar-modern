@@ -51,7 +51,7 @@ export function ActionBar({
         </ActionButton>
       )}
       <ActionButton variant="end" onClick={onEndTurn}>
-        End Turn ?
+        End Turn {'→'}
       </ActionButton>
     </div>
   );

@@ -1,5 +1,5 @@
 const PHASE_DISPLAY: Record<string, string> = {
-  MAIN_1: 'Main ? 1', MAIN_2: 'Main ? 2',
+  MAIN_1: 'Main · 1', MAIN_2: 'Main · 2',
   UNTAP: 'Untap', UPKEEP: 'Upkeep', DRAW: 'Draw',
   COMBAT_BEGIN: 'Begin Combat', COMBAT_ATTACKERS: 'Declare Attackers',
   COMBAT_BLOCKERS: 'Declare Blockers', COMBAT_DAMAGE: 'Combat Damage',
@@ -48,7 +48,7 @@ export function PhaseRibbon({ phase }: PhaseRibbonProps) {
           fontSize: 9, color: 'var(--ink-faint)',
           fontFamily: 'var(--font-display)', letterSpacing: 2,
         }}>PHASE</span>
-        <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>?</span>
+        <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>{'›'}</span>
         <span style={{
           fontSize: 13,
           fontFamily: 'var(--font-display)',

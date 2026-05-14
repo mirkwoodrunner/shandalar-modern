@@ -249,7 +249,7 @@ export function TweaksPanel({ values, setTweak }: TweaksPanelProps) {
       <div className={styles.header} onMouseDown={onDragStart}>
         <b>Tweaks</b>
         <button className={styles.closeBtn} aria-label="Close tweaks"
-          onMouseDown={e => e.stopPropagation()} onClick={dismiss}>?</button>
+          onMouseDown={e => e.stopPropagation()} onClick={dismiss}>{'✕'}</button>
       </div>
       <div className={styles.body}>
         <TweakSection label="Arrow" />
