@@ -332,13 +332,19 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- AI priority window handler: evaluate instants, then pass immediately --
   useEffect(() => {
     if (!s.priorityWindow) return;
-    const aiInstant = s.o.hand.find(
-      (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
-    );
-    if (aiInstant) {
-      dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
-    }
-    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    // Defer to next tick so the reducer has committed priorityWindow: true
+    // before we dispatch PASS_PRIORITY. Without this, the dispatch hits the
+    // reducer's `if (!s.priorityWindow) return s` guard and is dropped.
+    const timer = setTimeout(() => {
+      const aiInstant = s.o.hand.find(
+        (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
+      );
+      if (aiInstant) {
+        dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
+      }
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Keyboard shortcuts ----------------------------------------------------

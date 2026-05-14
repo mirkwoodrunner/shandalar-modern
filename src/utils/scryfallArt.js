@@ -1,60 +1,50 @@
-const cache = new Map();
+const artCache = new Map();
 
 export async function fetchOldestArt(cardName) {
-  const cached = cache.get(cardName);
-  if (cached?.status === 'resolved') return cached.url;
-  if (cached?.status === 'error') return null;
-
-  const encodedName = encodeURIComponent(cardName);
-
+  if (artCache.has(cardName)) {
+    const cached = artCache.get(cardName);
+    return cached.status === 'resolved' ? cached.url : null;
+  }
+  // Mark as pending immediately to prevent duplicate in-flight requests
+  artCache.set(cardName, { status: 'pending' });
   try {
-    const classicUrl = `https://api.scryfall.com/cards/search?order=released&dir=asc&unique=prints&q=!"${encodedName}" (set:lea OR set:leb OR set:2ed OR set:3ed OR set:4ed)`;
-    const classicResp = await fetch(classicUrl);
-
-    let artUrl = null;
-
-    if (classicResp.ok) {
-      const classicData = await classicResp.json();
-      if (classicData?.data?.length > 0) {
-        artUrl = extractArtCrop(classicData.data[0], cardName);
+    const setParams = 'order=released&dir=asc&q=';
+    const sets = ['set:lea', 'set:leb', 'set:2ed', 'set:3ed', 'set:4ed'];
+    const query = encodeURIComponent(`!"${cardName}" (${sets.join(' OR ')})`);
+    let url = null;
+    const classicRes = await fetch(
+      `https://api.scryfall.com/cards/search?${setParams}${query}&unique=prints`
+    );
+    if (classicRes.ok) {
+      const classicData = await classicRes.json();
+      const card = classicData.data?.[0];
+      url = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop ?? null;
+    }
+    if (!url) {
+      const namedRes = await fetch(
+        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}`
+      );
+      if (namedRes.ok) {
+        const namedData = await namedRes.json();
+        url = namedData?.image_uris?.art_crop ?? namedData?.card_faces?.[0]?.image_uris?.art_crop ?? null;
       }
     }
-
-    if (!artUrl) {
-      const namedResp = await fetch(`https://api.scryfall.com/cards/named?exact=${encodedName}`);
-      if (!namedResp.ok) {
-        cache.set(cardName, { url: null, status: 'error' });
-        return null;
-      }
-      const namedData = await namedResp.json();
-      artUrl = extractArtCrop(namedData, cardName);
-    }
-
-    if (!artUrl) {
-      cache.set(cardName, { url: null, status: 'error' });
+    if (url) {
+      artCache.set(cardName, { status: 'resolved', url });
+      return url;
+    } else {
+      console.error(`[scryfallArt] No art_crop found for "${cardName}"`);
+      artCache.set(cardName, { status: 'error' });
       return null;
     }
-
-    cache.set(cardName, { url: artUrl, status: 'resolved' });
-    return artUrl;
   } catch (err) {
-    cache.set(cardName, { url: null, status: 'error' });
+    console.error(`[scryfallArt] Fetch failed for "${cardName}":`, err.message);
+    artCache.set(cardName, { status: 'error' });
     return null;
   }
 }
 
-function extractArtCrop(cardData, cardName) {
-  if (cardData?.image_uris?.art_crop) {
-    return cardData.image_uris.art_crop;
-  }
-  if (cardData?.card_faces?.[0]?.image_uris?.art_crop) {
-    return cardData.card_faces[0].image_uris.art_crop;
-  }
-  console.error('scryfallArt: missing image_uris for', cardName, cardData);
-  return null;
-}
-
 export function getCachedArt(cardName) {
-  const cached = cache.get(cardName);
+  const cached = artCache.get(cardName);
   return cached?.status === 'resolved' ? cached.url : null;
 }
