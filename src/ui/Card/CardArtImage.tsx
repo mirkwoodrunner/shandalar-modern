@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useCardArt from '../../utils/useCardArt.js';
+import { subscribeCachedArt } from '../../utils/scryfallArt.js';
 
 interface CardArtImageProps {
   cardName: string;
@@ -7,7 +8,27 @@ interface CardArtImageProps {
 }
 
 export function CardArtImage({ cardName, frameColor }: CardArtImageProps) {
-  const { url, loading } = useCardArt(cardName);
+  const { url: hookUrl, loading } = useCardArt(cardName);
+  const [polledUrl, setPolledUrl] = useState<string | null>(null);
+
+  // Fallback: poll the shared art cache in case useCardArt raced with another
+  // component's in-flight fetch and got null back from fetchOldestArt early.
+  useEffect(() => {
+    if (hookUrl || polledUrl) return;
+    let cancelled = false;
+    let attempts = 0;
+    const id = setInterval(() => {
+      if (cancelled) { clearInterval(id); return; }
+      const cached = subscribeCachedArt(cardName);
+      if (cached || ++attempts >= 12) {
+        clearInterval(id);
+        if (cached && !cancelled) setPolledUrl(cached);
+      }
+    }, 500);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [cardName, hookUrl, polledUrl]);
+
+  const url = hookUrl || polledUrl;
 
   if (url) {
     return (
