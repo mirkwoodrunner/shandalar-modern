@@ -356,7 +356,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- Keyboard shortcuts ----------------------------------------------------
   const isIdle = s.active === 'p' && !pendingActivate;
   useKeyboardShortcuts({
-    onPassPriority: () => (s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()),
+    onPassPriority: () => {
+      if (s.stack?.length > 0) { resolveStack(); return; }
+      if (s.priorityWindow) { passPriority('p'); return; }
+      requestPhaseAdvance();
+    },
     onEndTurn: requestPhaseAdvance,
     onCancel: () => { setPendingActivate(null); selectCard(null); selectTarget(null); },
     onQuickCast: (idx: number) => { const c = s.p.hand[idx]; if (c) selectCard(c.iid); },
@@ -748,7 +752,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             phase={s.phase}
             hasSelection={!!s.selCard}
             onCast={handleCast}
-            onPassPriority={() => s.stack?.length > 0 ? resolveStack() : requestPhaseAdvance()}
+            onPassPriority={() => s.priorityWindow ? passPriority('p') : requestPhaseAdvance()}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
             onEndTurn={requestPhaseAdvance}
           />
