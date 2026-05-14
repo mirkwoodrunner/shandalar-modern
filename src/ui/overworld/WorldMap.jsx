@@ -90,9 +90,9 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
             ].join(' ').trim()}
             style={plaqueStyle}
           >
-            {s === 'TOWN'    && '🏘'}
+            {s === 'TOWN'    && '\u{1F3D8}'}
             {s === 'DUNGEON' && '⚔'}
-            {s === 'CASTLE'  && (castleDefeated ? '🏚' : '🏰')}
+            {s === 'CASTLE'  && (castleDefeated ? '\u{1F3DA}' : '\u{1F3F0}')}
           </div>
 
           {s === 'TOWN' && tile.townData?.name && (
@@ -482,7 +482,7 @@ border:"1px solid rgba(200,160,60,.2)", fontSize:10, color:"#8a7050",
 fontFamily:"'Cinzel',serif",
 }}>
 <div style={{ marginBottom:4, fontSize:9, color:"#6a5030", letterSpacing:1 }}>LEGEND</div>
-{[["🧙","You"],["🏘","Town"],["⚔","Dungeon"],["🏰","Castle"]].map(([ic, lb]) => (
+{[['\u{1F9D9}','You'],['\u{1F3D8}','Town'],['⚔','Dungeon'],['\u{1F3F0}','Castle']].map(([ic, lb]) => (
 <div key={lb} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
 <span style={{ fontSize:12 }}>{ic}</span>{lb}
 </div>
