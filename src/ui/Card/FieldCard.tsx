@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Cost } from './Cost';
 import { FilCorner } from './FilCorner';
-import { ArtPlaceholder } from './ArtPlaceholder';
+import { CardArtImage } from './CardArtImage';
 import { frameOf } from './frame';
 import type { CardData } from './types';
 import styles from './FieldCard.module.css';
@@ -70,7 +70,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
         className={styles.artWindow}
         style={{ border: `1px solid ${frame.bd}aa`, boxShadow: 'inset 0 0 8px rgba(0,0,0,.7)' }}
       >
-        <ArtPlaceholder frame={frame} label={`${card.type} art`} sm={sm} />
+        <CardArtImage cardName={card.name} frameColor={frame.glow} />
       </div>
 
       <div
