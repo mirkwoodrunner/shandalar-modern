@@ -1,3 +1,4 @@
+import { isLand } from '../../engine/DuelCore.js';
 import { ActionButton } from './ActionButton';
 
 const MAIN_PHASES = new Set(['MAIN_1', 'MAIN_2']);
@@ -5,7 +6,7 @@ const MAIN_PHASES = new Set(['MAIN_1', 'MAIN_2']);
 interface ActionBarProps {
   phase: string;
   hasSelection: boolean;
-  castLabel?: string;
+  selectedCard?: { type?: string; subtype?: string; name?: string } | null;
   onCast?: () => void;
   onPassPriority?: () => void;
   onCancel?: () => void;
@@ -15,7 +16,7 @@ interface ActionBarProps {
 export function ActionBar({
   phase,
   hasSelection,
-  castLabel,
+  selectedCard,
   onCast,
   onPassPriority,
   onCancel,
@@ -42,7 +43,7 @@ export function ActionBar({
 
       {hasSelection && inMain && (
         <ActionButton variant="primary" onClick={onCast}>
-          {castLabel ?? '✦ Cast Spell'}
+          {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
       )}
       {hasSelection && (
@@ -50,6 +51,9 @@ export function ActionBar({
           Cancel
         </ActionButton>
       )}
+      <ActionButton variant="default" onClick={onPassPriority}>
+        Pass Priority
+      </ActionButton>
       <ActionButton variant="end" onClick={onEndTurn}>
         End Turn {'→'}
       </ActionButton>
