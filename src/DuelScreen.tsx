@@ -754,7 +754,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onCast={handleCast}
             onPassPriority={() => s.priorityWindow ? passPriority('p') : requestPhaseAdvance()}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={requestPhaseAdvance}
+            onEndTurn={() => s.priorityWindow ? passPriority('p') : requestPhaseAdvance()}
           />
 
           {/* Priority window bar — directly above hand */}

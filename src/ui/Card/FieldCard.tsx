@@ -128,7 +128,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
         </div>
       )}
 
-      {card.summoningSick && (
+      {card.summoningSick && isCre && (
         <div className={styles.summoningOverlay}>
           <span className={styles.summoningLabel}>SUMMONING</span>
         </div>
