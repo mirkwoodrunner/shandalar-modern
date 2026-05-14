@@ -761,7 +761,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               mana={s.p.mana as any}
               onSelectCard={(iid: string) => { selectCard(iid); }}
               onActivate={(card: any) => { handleActivate(card); }}
-              onPass={() => passPriority('p')}
             />
           )}
 

@@ -44,7 +44,9 @@ export async function fetchOldestArt(cardName) {
   }
 }
 
-export function getCachedArt(cardName) {
-  const cached = artCache.get(cardName);
-  return cached?.status === 'resolved' ? cached.url : null;
+export function subscribeCachedArt(cardName) {
+  const entry = artCache.get(cardName);
+  if (!entry) return null;
+  if (entry.status === 'resolved') return entry.url;
+  return null; // pending or error — caller must wait for fetchOldestArt to resolve
 }

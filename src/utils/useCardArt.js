@@ -1,29 +1,26 @@
 import { useState, useEffect } from 'react';
-import { fetchOldestArt, getCachedArt } from './scryfallArt.js';
+import { fetchOldestArt, subscribeCachedArt } from './scryfallArt.js';
 
 export default function useCardArt(cardName) {
-  const cached = getCachedArt(cardName);
-
-  const [state, setState] = useState(() =>
-    cached ? { url: cached, loading: false, error: false } : { url: null, loading: true, error: false }
-  );
+  const [state, setState] = useState(() => {
+    const resolved = subscribeCachedArt(cardName);
+    if (resolved) return { url: resolved, loading: false };
+    return { url: null, loading: true };
+  });
 
   useEffect(() => {
-    if (cached) return;
+    // If already resolved on mount, nothing to do.
+    if (state.url) return;
 
     let cancelled = false;
 
     fetchOldestArt(cardName).then(url => {
       if (cancelled) return;
-      if (url) {
-        setState({ url, loading: false, error: false });
-      } else {
-        setState({ url: null, loading: false, error: true });
-      }
+      setState({ url: url || null, loading: false });
     });
 
     return () => { cancelled = true; };
-  }, [cardName]);
+  }, [cardName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return state;
 }
