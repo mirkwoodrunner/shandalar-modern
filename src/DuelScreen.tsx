@@ -625,7 +625,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       {s.over && (
         <GameOverModal
           outcome={s.over.winner === 'p' ? 'victory' : 'defeat'}
-          stats={{ turns: s.turn, maxDamage: 0, cardsCast: 0 }}
+          stats={{ turns: s.turn, maxDamage: s.peakDamage ?? 0, cardsCast: s.totalCardsCast ?? 0 }}
           onNewDuel={() => onDuelEnd(s.over.winner === 'p' ? 'win' : 'lose', s)}
         />
       )}
