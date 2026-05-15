@@ -15,6 +15,10 @@ import { isLand } from './engine/DuelCore.js';
 import { ARCHETYPES, CARD_DB } from './data/cards.js';
 import RULESETS from './data/rulesets.js';
 
+// -- Animation / AI -----------------------------------------------------------
+import { tickEnemyAI } from './engine/EnemyAI.js';
+import { drawCharacters } from './ui/overworld/OverworldCanvas.js';
+
 // -- UI ------------------------------------------------------------------------
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
 import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
@@ -67,6 +71,29 @@ B: ['Skeletal Minion', "Mortis's Shade"],
 R: ['Goblin Horde', "Karag's Raider"],
 G: ['Vine Elemental', "Sylvara's Chosen"],
 };
+
+// -----------------------------------------------------------------------------
+// HELPER: pick 10 random non-water, non-structure tiles for initial enemy spawn
+// -----------------------------------------------------------------------------
+function spawnInitialEnemies(tiles, TERRAIN) {
+  const candidates = [];
+  tiles.forEach(row => row.forEach(tile => {
+    if (tile.terrain !== TERRAIN.WATER && !tile.structure) candidates.push(tile);
+  }));
+  // Fisher-Yates shuffle
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  return candidates.slice(0, 10).map(tile => ({
+    id: mkId(),
+    x: tile.x,
+    y: tile.y,
+    tier: Math.random() > 0.5 ? 2 : 1,
+    animFrame: 0,
+    dir: 'down',
+  }));
+}
 
 // -----------------------------------------------------------------------------
 // HELPER: build starting deck instances from id list
@@ -176,6 +203,13 @@ const [log, setLog]             = useState(() => {
 // -- Viewport -------------------------------------------------------------
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const [zoom, setZoom]         = useState(1);
+
+// -- Canvas / animation ---------------------------------------------------
+const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN));
+const enemyTickRef  = useRef(0);
+const animFrameRef  = useRef(null);
+const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
+const canvasRef     = useRef(null);
 
 // -- Derived --------------------------------------------------------------
 const hasBoots  = artifacts.some(a => a.id === 'boots'  && a.owned);
@@ -869,6 +903,117 @@ return () => clearTimeout(t);
 }, [gameLost]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
+// GAME LOOP — rAF-based, pauses when any modal/duel/dungeon is open
+// -------------------------------------------------------------------------
+useEffect(() => {
+  if (modal || duelCfg || dungeonScreen || encounterPopup) {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    return;
+  }
+
+  let frameCount = 0;
+  const TICK_INTERVAL = 18; // enemy AI ticks every 18 frames (~0.3 s at 60 fps)
+
+  function loop() {
+    frameCount++;
+
+    // Advance enemy AI every TICK_INTERVAL frames
+    if (frameCount % TICK_INTERVAL === 0) {
+      setEnemies(prev => tickEnemyAI(prev, pos, tiles, TERRAIN));
+    }
+
+    // Advance player walk animation every 8 frames while moving
+    if (playerAnimRef.current.moving && frameCount % 8 === 0) {
+      playerAnimRef.current = {
+        ...playerAnimRef.current,
+        frame: (playerAnimRef.current.frame + 1) % 4,
+      };
+    }
+
+    // Redraw canvas
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const viewport = {
+        x: Math.max(0, Math.min(MAP_W - VIEW_W, viewOfs.x - Math.floor(VIEW_W / 2))),
+        y: Math.max(0, Math.min(MAP_H - VIEW_H, viewOfs.y - Math.floor(VIEW_H / 2))),
+      };
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCharacters(ctx, {
+        playerPos: pos,
+        playerAnim: playerAnimRef.current,
+        enemies,
+        viewport,
+        tileSize: 34,
+      });
+    }
+
+    // Enemy–player collision
+    const caught = enemies.find(e => e.x === pos.x && e.y === pos.y);
+    if (caught) {
+      const mList = MONSTER_TABLE[tiles[caught.y]?.[caught.x]?.terrain?.id] || MONSTER_TABLE.PLAINS;
+      const monster = { ...mList[Math.min(caught.tier - 1, mList.length - 1)], tier: caught.tier };
+      setEnemies(prev => prev.filter(e => e.id !== caught.id));
+      openEncounterPopup(
+        monster.archKey, player.hp, 'monster', null, {},
+        { monsterName: monster.name, tier: monster.tier },
+      );
+      return; // Stop loop; restarts when encounterPopup clears
+    }
+
+    animFrameRef.current = requestAnimationFrame(loop);
+  }
+
+  animFrameRef.current = requestAnimationFrame(loop);
+  return () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+  };
+}, [modal, duelCfg, dungeonScreen, encounterPopup, pos, tiles, enemies, viewOfs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// -------------------------------------------------------------------------
+// WASD / ARROW KEY MOVEMENT
+// -------------------------------------------------------------------------
+useEffect(() => {
+  if (modal || duelCfg || dungeonScreen || encounterPopup) return;
+
+  const DIRS = {
+    ArrowUp:    { dx:  0, dy: -1, dir: 'up'    },
+    ArrowDown:  { dx:  0, dy:  1, dir: 'down'  },
+    ArrowLeft:  { dx: -1, dy:  0, dir: 'left'  },
+    ArrowRight: { dx:  1, dy:  0, dir: 'right' },
+    w: { dx:  0, dy: -1, dir: 'up'    },
+    s: { dx:  0, dy:  1, dir: 'down'  },
+    a: { dx: -1, dy:  0, dir: 'left'  },
+    d: { dx:  1, dy:  0, dir: 'right' },
+  };
+
+  const handleKeyDown = (e) => {
+    const d = DIRS[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const nx = pos.x + d.dx;
+    const ny = pos.y + d.dy;
+    const target = tiles[ny]?.[nx];
+    if (!target || target.terrain === TERRAIN.WATER) return;
+    playerAnimRef.current = { ...playerAnimRef.current, dir: d.dir, moving: true };
+    doMove(nx, ny);
+  };
+
+  const handleKeyUp = (e) => {
+    if (DIRS[e.key]) {
+      playerAnimRef.current = { ...playerAnimRef.current, moving: false };
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keyup', handleKeyUp);
+  };
+}, [modal, duelCfg, dungeonScreen, encounterPopup, pos, tiles, doMove]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// -------------------------------------------------------------------------
 // RENDER ? DUEL BRIDGE
 // -------------------------------------------------------------------------
 if (duelCfg) {
@@ -1025,7 +1170,20 @@ fontFamily: "'Crimson Text', serif",
 
     {/* Viewport controls */}
     {['up','left','down','right'].map(d => (
-      <button key={d} onClick={() => handleScroll(d)}
+      <button key={d}
+        onClick={() => {
+          const dx = d === 'left' ? -1 : d === 'right' ? 1 : 0;
+          const dy = d === 'up'   ? -1 : d === 'down'  ? 1 : 0;
+          const nx = pos.x + dx;
+          const ny = pos.y + dy;
+          const target = tiles[ny]?.[nx];
+          if (!target || target.terrain === TERRAIN.WATER) return;
+          playerAnimRef.current = { ...playerAnimRef.current, dir: d, moving: true };
+          doMove(nx, ny);
+          setTimeout(() => {
+            playerAnimRef.current = { ...playerAnimRef.current, moving: false };
+          }, 200);
+        }}
         style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', width: 22, height: 22, borderRadius: 3, cursor: 'pointer', fontSize: 11 }}>
         {d === 'up' ? '▲' : d === 'down' ? '▼' : d === 'left' ? '◀' : '▶'}
       </button>
@@ -1093,6 +1251,7 @@ fontFamily: "'Crimson Text', serif",
         viewW={VIEW_W}
         viewH={VIEW_H}
         onTileClick={handleTileClick}
+        canvasRef={canvasRef}
       />
       </div>
       <MapLegend />
