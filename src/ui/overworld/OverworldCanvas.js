@@ -46,9 +46,10 @@ function drawSilhouette(ctx, cx, cy, bodyW, bodyH, headR, legW, frame, dir, colo
  *   opts.enemies     Array<{id, x, y, tier, animFrame, dir}>
  *   opts.viewport    {x, y}          — top-left tile of current view
  *   opts.tileSize    number          — pixels per tile (34)
+ *   opts.tiles       Array<Array<{revealed}>> — full tile grid for visibility check
  */
 export function drawCharacters(ctx, opts) {
-  const { playerPos, playerAnim, enemies, viewport, tileSize } = opts;
+  const { playerPos, playerAnim, enemies, viewport, tileSize, tiles } = opts;
 
   // Tile world-coords → pixel center on canvas (accounting for 8px grid padding)
   const toCx = tx => (tx - viewport.x) * tileSize + 8 + tileSize / 2;
@@ -56,6 +57,10 @@ export function drawCharacters(ctx, opts) {
 
   // --- Enemies ---
   for (const enemy of enemies) {
+    // Only draw if the enemy's tile has been revealed
+    const tile = tiles?.[enemy.y]?.[enemy.x];
+    if (!tile || !tile.revealed) continue;
+
     const cx = toCx(enemy.x);
     const cy = toCy(enemy.y);
 
