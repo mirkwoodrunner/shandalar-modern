@@ -119,18 +119,14 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
         </div>
       )}
 
-      {/* Player token */}
+      {/* Player tile highlight — canvas layer draws the actual sprite */}
       {isPlayer && (
         <div style={{
           position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: 'inset 0 0 8px rgba(245,217,122,0.3)',
+          pointerEvents: 'none',
           zIndex: 10,
-        }}>
-          <div className="ow-player-disc">
-            🧙
-            <div className="ow-player-ring" />
-          </div>
-        </div>
+        }} />
       )}
     </div>
   );
@@ -299,32 +295,6 @@ const OW_STYLES = `
   pointer-events: none;
 }
 
-.ow-player-disc {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #f5d97a, #c4a040 45%, #6a4f1c);
-  box-shadow:
-    0 0 0 1px #2a1a08,
-    0 0 0 2px rgba(245,217,122,.85),
-    0 0 14px 4px rgba(255,220,120,.65),
-    inset 0 0 4px rgba(0,0,0,.40);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  position: relative;
-  animation: wizPulse 2.4s ease-in-out infinite;
-}
-
-.ow-player-ring {
-  position: absolute;
-  inset: -5px;
-  border: 1px dashed rgba(255,220,120,.50);
-  border-radius: 50%;
-  animation: wizSpin 9s linear infinite;
-}
-
 @keyframes manaPulse {
   0%, 100% { opacity: .30; }
   50%       { opacity: .65; }
@@ -345,60 +315,76 @@ const OW_STYLES = `
   50%        { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0 16px var(--ring-glow); }
 }
 
-@keyframes wizSpin {
-  from { transform: rotate(0deg);   }
-  to   { transform: rotate(360deg); }
-}
 `;
 
-export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick }) {
+export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick, canvasRef }) {
   const tileAt = (x, y) => tiles[y]?.[x] ?? null;
   const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  const gridWidth  = viewW * 34 + 16; // 34px tiles + 8px padding each side
+  const gridHeight = viewH * 34 + 16;
 
   return (
     <>
       <style>{OW_STYLES}</style>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${viewW}, 34px)`,
-        gridTemplateRows:    `repeat(${viewH}, 34px)`,
-        gap: 0,
-        padding: 8,
-        background: 'radial-gradient(ellipse at center, #0c0906 0%, #050302 100%)',
-        boxShadow: 'inset 0 0 60px rgba(0,0,0,.80)',
-        borderRadius: 2,
-      }}>
-        {Array.from({ length: viewH }, (_, vy) =>
-          Array.from({ length: viewW }, (_, vx) => {
-            const x = viewport.x + vx;
-            const y = viewport.y + vy;
-            const tile = tileAt(x, y);
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        {/* Terrain grid — unchanged */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${viewW}, 34px)`,
+          gridTemplateRows:    `repeat(${viewH}, 34px)`,
+          gap: 0,
+          padding: 8,
+          background: 'radial-gradient(ellipse at center, #0c0906 0%, #050302 100%)',
+          boxShadow: 'inset 0 0 60px rgba(0,0,0,.80)',
+          borderRadius: 2,
+        }}>
+          {Array.from({ length: viewH }, (_, vy) =>
+            Array.from({ length: viewW }, (_, vx) => {
+              const x = viewport.x + vx;
+              const y = viewport.y + vy;
+              const tile = tileAt(x, y);
 
-            if (!tile) {
+              if (!tile) {
+                return (
+                  <div
+                    key={`${vx}-${vy}`}
+                    style={{ width: 34, height: 34, background: '#030202' }}
+                  />
+                );
+              }
+
+              const isFogEdge = tile.revealed && DIRS.some(([dx, dy]) => {
+                const n = tileAt(x + dx, y + dy);
+                return n && !n.revealed;
+              });
+
               return (
-                <div
-                  key={`${vx}-${vy}`}
-                  style={{ width: 34, height: 34, background: '#030202' }}
+                <MapTile
+                  key={`${x}-${y}`}
+                  tile={tile}
+                  isPlayer={x === playerPos.x && y === playerPos.y}
+                  isFogEdge={isFogEdge}
+                  onClick={onTileClick}
                 />
               );
-            }
+            })
+          )}
+        </div>
 
-            const isFogEdge = tile.revealed && DIRS.some(([dx, dy]) => {
-              const n = tileAt(x + dx, y + dy);
-              return n && !n.revealed;
-            });
-
-            return (
-              <MapTile
-                key={`${x}-${y}`}
-                tile={tile}
-                isPlayer={x === playerPos.x && y === playerPos.y}
-                isFogEdge={isFogEdge}
-                onClick={onTileClick}
-              />
-            );
-          })
-        )}
+        {/* Canvas overlay — characters only, pointer-events:none so clicks pass through */}
+        <canvas
+          ref={canvasRef}
+          width={gridWidth}
+          height={gridHeight}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            pointerEvents: 'none',
+            zIndex: 20,
+          }}
+        />
       </div>
     </>
   );
