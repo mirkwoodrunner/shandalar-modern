@@ -73,26 +73,43 @@ G: ['Vine Elemental', "Sylvara's Chosen"],
 };
 
 // -----------------------------------------------------------------------------
-// HELPER: pick 10 random non-water, non-structure tiles for initial enemy spawn
+// HELPER: seed ~40 enemies across the map at generation time
 // -----------------------------------------------------------------------------
-function spawnInitialEnemies(tiles, TERRAIN) {
+function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId) {
   const candidates = [];
-  tiles.forEach(row => row.forEach(tile => {
-    if (tile.terrain !== TERRAIN.WATER && !tile.structure) candidates.push(tile);
+  tiles.forEach(row => row.forEach(t => {
+    if (t.terrain === TERRAIN.WATER) return;
+    if (t.structure) return;
+    candidates.push(t);
   }));
+
   // Fisher-Yates shuffle
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
-  return candidates.slice(0, 10).map(tile => ({
-    id: mkId(),
-    x: tile.x,
-    y: tile.y,
-    tier: Math.random() > 0.5 ? 2 : 1,
-    animFrame: 0,
-    dir: 'down',
-  }));
+
+  const count = Math.min(40, Math.floor(candidates.length * 0.06));
+  const spawns = candidates.slice(0, count);
+
+  return spawns.map(t => {
+    const mList = MONSTER_TABLE[t.terrain.id] || MONSTER_TABLE.PLAINS;
+    const cx = 16, cy = 11; // MAP_W/2, MAP_H/2
+    const dist = Math.abs(t.x - cx) + Math.abs(t.y - cy);
+    const tier = dist < 10 ? 1 : dist < 20 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(3, 2 + (Math.random() > 0.7 ? 1 : 0));
+    const monster = mList[Math.min(tier - 1, mList.length - 1)];
+    return {
+      id: mkId(),
+      x: t.x,
+      y: t.y,
+      tier,
+      archKey: monster.archKey,
+      name: monster.name,
+      hp: monster.hp,
+      animFrame: 0,
+      dir: 'down',
+    };
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -205,7 +222,7 @@ const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const [zoom, setZoom]         = useState(1);
 
 // -- Canvas / animation ---------------------------------------------------
-const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN));
+const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId));
 const enemyTickRef  = useRef(0);
 const animFrameRef  = useRef(null);
 const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
@@ -424,14 +441,23 @@ if (t.structure) {
   }
 }
 
-// Random encounter
-if (t.terrain !== TERRAIN.WATER && Math.random() < t.encChance) {
-  const mList = MONSTER_TABLE[t.terrain.id] || MONSTER_TABLE.PLAINS;
-  const tier = newMoves < 20 ? 1 : newMoves < 60 ? (Math.random() > 0.5 ? 2 : 1) : 2;
-  const monster = { ...mList[Math.min(tier - 1, mList.length - 1)], tier };
-  addLog(`⚔ A ${monster.name} blocks your path!`, 'danger');
-  openEncounterPopup(monster.archKey, player.hp, 'monster', null, {}, { monsterName: monster.name, tier: monster.tier });
-}
+// Entity encounter — player stepped onto an enemy tile
+setEnemies(prev => {
+  const caught = prev.find(e => e.x === nx && e.y === ny);
+  if (caught) {
+    const mList = MONSTER_TABLE[tiles[ny]?.[nx]?.terrain?.id] || MONSTER_TABLE.PLAINS;
+    const monster = { ...mList[Math.min(caught.tier - 1, mList.length - 1)], tier: caught.tier };
+    setTimeout(() => {
+      openEncounterPopup(
+        caught.archKey || monster.archKey,
+        player.hp, 'monster', null, {},
+        { monsterName: caught.name || monster.name, tier: caught.tier }
+      );
+    }, 0);
+    return prev.filter(e => e.id !== caught.id);
+  }
+  return prev;
+});
 
 }, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -512,6 +538,29 @@ if (ctx === 'monster') {
     } else {
       addLog(`Victory! +${gold}g.`, 'success');
     }
+    // Respawn one enemy at a random unrevealed, non-water, non-structure tile
+    setEnemies(prev => {
+      const candidates = [];
+      tiles.forEach(row => row.forEach(t => {
+        if (!t.revealed && !t.structure && t.terrain !== TERRAIN.WATER) candidates.push(t);
+      }));
+      if (!candidates.length) return prev;
+      const spawn = candidates[Math.floor(Math.random() * candidates.length)];
+      const mList = MONSTER_TABLE[spawn.terrain.id] || MONSTER_TABLE.PLAINS;
+      const tier = Math.ceil(Math.random() * 2);
+      const monster = mList[Math.min(tier - 1, mList.length - 1)];
+      return [...prev, {
+        id: mkId(),
+        x: spawn.x,
+        y: spawn.y,
+        tier,
+        archKey: monster.archKey,
+        name: monster.name,
+        hp: monster.hp,
+        animFrame: 0,
+        dir: 'down',
+      }];
+    });
   } else {
     addLog(`Defeated. HP dropped to ${Math.max(1, finalHP)}.`, 'danger');
   }
@@ -945,18 +994,19 @@ useEffect(() => {
         enemies,
         viewport,
         tileSize: 34,
+        tiles,
       });
     }
 
-    // Enemy–player collision
+    // Enemy–player collision (enemy walked into player)
     const caught = enemies.find(e => e.x === pos.x && e.y === pos.y);
     if (caught) {
       const mList = MONSTER_TABLE[tiles[caught.y]?.[caught.x]?.terrain?.id] || MONSTER_TABLE.PLAINS;
       const monster = { ...mList[Math.min(caught.tier - 1, mList.length - 1)], tier: caught.tier };
       setEnemies(prev => prev.filter(e => e.id !== caught.id));
       openEncounterPopup(
-        monster.archKey, player.hp, 'monster', null, {},
-        { monsterName: monster.name, tier: monster.tier },
+        caught.archKey || monster.archKey, player.hp, 'monster', null, {},
+        { monsterName: caught.name || monster.name, tier: caught.tier },
       );
       return; // Stop loop; restarts when encounterPopup clears
     }
