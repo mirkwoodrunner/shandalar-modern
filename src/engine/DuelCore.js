@@ -187,6 +187,7 @@ const nl = s[who].life - amt;
 let ns = { ...s, [who]: { ...s[who], life: nl, lifeAnim: amt > 0 ? "damage" : "heal" } };
 if (amt > 0) ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
+if (who === "p" && amt > 0) ns = { ...ns, peakDamage: Math.max(ns.peakDamage || 0, amt) };
 if (nl <= 0 && !ns.over) ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} reached 0 life` } };
 return ns;
 }
@@ -1635,6 +1636,8 @@ active: "p",
 turn: 1,
 landsPlayed: 0,
 spellsThisTurn: 0,
+totalCardsCast: 0,
+peakDamage: 0,
 p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
 o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
 stack: [],
@@ -1727,6 +1730,7 @@ case "CAST_SPELL": {
   s = { ...s, [w]: { ...s[w], mana: manaAfterPay, hand: s[w].hand.filter(x => x.iid !== action.iid) } };
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
+  if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
   if (isPerm(c) && !isLand(c)) {
     // Auras route through resolveEff so enchantCreature/enchantLand attaches the mod record.
     if (c.effect === "enchantCreature" || c.effect === "enchantLand") {
