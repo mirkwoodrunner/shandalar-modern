@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { isCre, isLand } from '../../engine/DuelCore.js';
 import { thmOf, CCOLOR, Cost } from '../shared/Card.jsx';
 import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS } from '../../engine/MapGenerator.js';
-import { POWERED_NINE_IDS } from '../../data/cards.js';
+import { CARD_DB, POWERED_NINE_IDS } from '../../data/cards.js';
 import useCardArt from '../../utils/useCardArt.js';
 
 // --- CARD PRICE HELPER -------------------------------------------------------
@@ -42,7 +42,9 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 
 // --- TOWN MODAL ---------------------------------------------------------------
 
-export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy }) {
+export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy,
+  townQuestDef, activeQuest, questProgress, questComplete,
+  onQuestAccept, onQuestAbandon, onQuestClaim }) {
 const [tab, setTab] = useState("shop");
 const restCost = Math.max(0, (player.maxHP - player.hp) * 3);
 
@@ -50,7 +52,7 @@ const tabs = [
 { id:"shop",  l:"⚔ Shop" },
 { id:"sell",  l:`◇ Sell (${binder.length})` },
 { id:"inn",   l:"♥ Inn" }, ...(town.hasSage ? [{ id:"sage", l:"✦ Sage" }] : []), ...(town.hasBlackMarket ? [{ id:"bm", l:"◆ Market" }] : []),
-{ id:"gems",  l:`⬡ Gems (${player.gems})` }, ...(town.quest && !town.questDone ? [{ id:"guild", l:"⚔ Guild" }] : []),
+{ id:"gems",  l:`⬡ Gems (${player.gems})` }, ...(town.hasGuildHall ? [{ id:"guild", l:"⚔ Guild" }] : []),
 ];
 
 return (
@@ -201,16 +203,78 @@ return (
         </div>
       )}
 
-      {tab==="guild" && town.quest && (
+      {tab==="guild" && town.hasGuildHall && (
         <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
-          <div style={{ fontSize:14, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>⚔ {town.quest.title}</div>
-          <div style={{ fontSize:12, color:"#c0a070", marginBottom:10 }}>{town.quest.desc}</div>
-          <div style={{ fontSize:11, color:"#80c080", marginBottom:10 }}>
-            Reward: {town.quest.rewardType==="card"
-              ? <strong>{town.quest.rewardId} (card)</strong>
-              : <strong>{town.quest.rewardGold} gold</strong>}
-          </div>
-          <div style={{ fontSize:10, color:"#6a5020", fontStyle:"italic" }}>Quest rewards granted automatically when conditions are met.</div>
+          {/* No active quest — offer town's assigned quest */}
+          {!activeQuest && townQuestDef && (
+            <>
+              <div style={{ fontSize:14, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>⚔ {townQuestDef.title}</div>
+              <div style={{ fontSize:12, color:"#c0a070", marginBottom:10 }}>{townQuestDef.desc}</div>
+              <div style={{ fontSize:11, color:"#80c080", marginBottom:12 }}>
+                Reward: {townQuestDef.reward.type === 'gold'
+                  ? <strong>{townQuestDef.reward.amount} gold</strong>
+                  : <strong>{(() => { const c = CARD_DB.find(x => x.id === townQuestDef.reward.cardId); return c ? c.name : townQuestDef.reward.cardId; })()} (card)</strong>}
+              </div>
+              <button onClick={() => onQuestAccept(townQuestDef)} style={{
+                background:"linear-gradient(135deg,#2a1a04,#4a3010)",
+                border:"1px solid rgba(200,160,60,.5)", color:"#f0c060",
+                padding:"8px 18px", borderRadius:5, cursor:"pointer",
+                fontFamily:"'Cinzel',serif", fontSize:12,
+              }}>Accept Quest</button>
+            </>
+          )}
+          {/* Active quest, not complete */}
+          {activeQuest && !questComplete && (
+            <>
+              <div style={{ fontSize:14, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>⚔ {activeQuest.title}</div>
+              <div style={{ fontSize:12, color:"#c0a070", marginBottom:10 }}>{activeQuest.desc}</div>
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10, color:"#8a7050", marginBottom:4 }}>
+                  Progress: {questProgress} / {activeQuest.condition.target}
+                </div>
+                <div style={{ height:8, background:"#1a1008", borderRadius:4, overflow:"hidden", border:"1px solid rgba(200,160,60,.2)" }}>
+                  <div style={{
+                    width:`${Math.min(100, (questProgress / activeQuest.condition.target) * 100)}%`,
+                    height:"100%",
+                    background:"linear-gradient(90deg,#8a6010,#d0a030)",
+                    borderRadius:4,
+                    transition:"width .3s",
+                  }} />
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button disabled style={{
+                  background:"rgba(0,0,0,.3)", border:"1px solid rgba(120,100,60,.3)",
+                  color:"#5a4820", padding:"8px 16px", borderRadius:5,
+                  cursor:"not-allowed", fontFamily:"'Cinzel',serif", fontSize:11,
+                }}>Turn In (incomplete)</button>
+                <button onClick={onQuestAbandon} style={{
+                  background:"rgba(80,20,10,.4)", border:"1px solid rgba(180,60,40,.4)",
+                  color:"#c06040", padding:"8px 16px", borderRadius:5,
+                  cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11,
+                }}>Abandon Quest</button>
+              </div>
+            </>
+          )}
+          {/* Quest complete — claim reward */}
+          {activeQuest && questComplete && (
+            <>
+              <div style={{ fontSize:15, color:"#80e080", fontFamily:"'Cinzel',serif", marginBottom:8 }}>⚔ Quest Complete!</div>
+              <div style={{ fontSize:13, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>{activeQuest.title}</div>
+              <div style={{ fontSize:11, color:"#80c080", marginBottom:14 }}>
+                Reward: {activeQuest.reward.type === 'gold'
+                  ? <strong>{activeQuest.reward.amount} gold</strong>
+                  : <strong>{(() => { const c = CARD_DB.find(x => x.id === activeQuest.reward.cardId); return c ? c.name : activeQuest.reward.cardId; })()} (card)</strong>}
+              </div>
+              <button onClick={onQuestClaim} style={{
+                background:"linear-gradient(135deg,#0a3010,#1a5020)",
+                border:"1px solid rgba(80,200,80,.5)", color:"#80e080",
+                padding:"8px 20px", borderRadius:5, cursor:"pointer",
+                fontFamily:"'Cinzel',serif", fontSize:13,
+                boxShadow:"0 0 12px rgba(60,180,60,.3)",
+              }}>Claim Reward</button>
+            </>
+          )}
         </div>
       )}
     </div>
