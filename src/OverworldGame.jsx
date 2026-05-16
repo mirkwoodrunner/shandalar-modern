@@ -36,6 +36,44 @@ import TreasureModal from './ui/dungeon/TreasureModal.jsx';
 
 const mkId = () => Math.random().toString(36).slice(2, 9);
 
+const QUESTS = [
+  {
+    id: 'q_duel3',
+    title: 'Trial by Combat',
+    desc: 'Win 3 duels anywhere in Shandalar.',
+    reward: { type: 'gold', amount: 50 },
+    condition: { type: 'duel_wins', target: 3 },
+  },
+  {
+    id: 'q_dungeon1',
+    title: 'Into the Dark',
+    desc: 'Clear a dungeon (defeat all enemies and reach the exit).',
+    reward: { type: 'gold', amount: 75 },
+    condition: { type: 'dungeons_cleared', target: 1 },
+  },
+  {
+    id: 'q_explore5',
+    title: 'Chart the Wilds',
+    desc: 'Reveal 5 new tiles by exploring.',
+    reward: { type: 'gold', amount: 40 },
+    condition: { type: 'tiles_revealed', target: 5 },
+  },
+  {
+    id: 'q_monster5',
+    title: 'Purge the Risen',
+    desc: 'Defeat 5 monsters in the wilds.',
+    reward: { type: 'card', cardId: 'swords_to_plowshares' },
+    condition: { type: 'monster_wins', target: 5 },
+  },
+  {
+    id: 'q_mage1',
+    title: 'Prove Your Power',
+    desc: 'Defeat a mage in their castle.',
+    reward: { type: 'card', cardId: 'wrath_of_god' },
+    condition: { type: 'mages_defeated', target: 1 },
+  },
+];
+
 const VIEW_W = 22;
 const VIEW_H = 14;
 
@@ -144,10 +182,21 @@ return { ...found, iid: mkId() };
 
 // -- Map ------------------------------------------------------------------
 const shopPool = useMemo(() => CARD_DB.filter(c => !isLand(c)), []);
-const { tiles: initTiles, startX, startY } = useMemo(
-() => generateMap(seed, shopPool),
-[seed, shopPool]
-);
+const { tiles: initTiles, startX, startY } = useMemo(() => {
+  const result = generateMap(seed, shopPool);
+  const questIds = QUESTS.map(q => q.id);
+  result.tiles.forEach(row => row.forEach(t => {
+    if (t.structure === 'TOWN' && t.townData) {
+      t.townData.hasGuildHall = t.townData.quest !== null;
+      t.townData.questId = t.townData.hasGuildHall
+        ? questIds[Math.floor(Math.random() * questIds.length)]
+        : null;
+      delete t.townData.quest;
+      delete t.townData.questDone;
+    }
+  }));
+  return result;
+}, [seed, shopPool]);
 const [tiles, setTiles] = useState(initTiles);
 const [pos, setPos]     = useState({ x: startX, y: startY });
 const [moves, setMoves] = useState(0);
@@ -192,6 +241,11 @@ const [dungeonsCleared, setDungeonsCleared]   = useState(0);
 const [townsSaved, setTownsSaved]             = useState(0);
 const [manaLinksTotal, setManaLinksTotal]     = useState(0);
 const [arzakonDefeated, setArzakonDefeated]   = useState(false);
+
+// -- Quest system ---------------------------------------------------------
+const [activeQuest, setActiveQuest]     = useState(null);
+const [questProgress, setQuestProgress] = useState(0);
+const [questComplete, setQuestComplete] = useState(false);
 
 // -- Duel bridge ----------------------------------------------------------
 const [duelCfg, setDuelCfg]         = useState(null);
@@ -246,6 +300,20 @@ const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDef
 const addLog = useCallback((text, type = 'info') => {
 setLog(prev => [...prev.slice(-80), { text, type }]);
 }, []);
+
+const checkQuestProgress = useCallback((eventType) => {
+  if (!activeQuest || questComplete) return;
+  const { condition } = activeQuest;
+  if (condition.type !== eventType) return;
+  setQuestProgress(prev => {
+    const next = prev + 1;
+    if (next >= condition.target) {
+      setQuestComplete(true);
+      addLog(`✦ Quest complete: ${activeQuest.title}! Visit a Guild Hall to claim your reward.`, 'success');
+    }
+    return next;
+  });
+}, [activeQuest, questComplete, addLog]);
 
 // Load sandbox starting deck from public/sandbox-decklist.txt
 useEffect(() => {
@@ -349,11 +417,25 @@ const doMove = useCallback((nx, ny) => {
 // Reveal fog
 const newTiles = revealAround(tiles, nx, ny);
 
+// Count newly revealed tiles for quest tracking
+let newlyRevealedCount = 0;
+for (let ry = 0; ry < newTiles.length; ry++) {
+  for (let rx = 0; rx < newTiles[ry].length; rx++) {
+    if (newTiles[ry][rx].revealed && !tiles[ry][rx].revealed) {
+      newlyRevealedCount++;
+    }
+  }
+}
+
 // Move counters
 const newMoves = moves + 1;
 setMoves(newMoves);
 setPos({ x: nx, y: ny });
 setTiles(newTiles);
+
+for (let i = 0; i < newlyRevealedCount; i++) {
+  checkQuestProgress('tiles_revealed');
+}
 
 // Center viewport loosely on player
 setViewOfs({ x: nx, y: ny });
@@ -459,7 +541,7 @@ setEnemies(prev => {
   return prev;
 });
 
-}, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -521,6 +603,13 @@ if (anteEnabled && duelState?.anteP && duelState?.anteO) {
     setDeck(d => { const i = d.findIndex(x => x.id === lost); return d.filter((_, idx) => idx !== i); });
     addLog(`Ante lost: ${duelState.anteP.name}.`, 'danger');
   }
+}
+
+// -- Quest progress tracking --------------------------------------------
+if (won) {
+  checkQuestProgress('duel_wins');
+  if (ctx === 'monster') checkQuestProgress('monster_wins');
+  if (ctx === 'castle')  checkQuestProgress('mages_defeated');
 }
 
 // -- Monster encounter --------------------------------------------------
@@ -641,6 +730,7 @@ if (ctx === 'dungeon') {
     } else {
       // Final room cleared ? grant loot
       setDungeonsCleared(dc => dc + 1);
+      checkQuestProgress('dungeons_cleared');
       const gold = 20 + Math.floor(Math.random() * 40);
       setPlayer(p => ({ ...p, gold: p.gold + gold }));
       const pool = CARD_DB.filter(c => c.rarity === 'R' && !isLand(c));
@@ -689,7 +779,7 @@ if (ctx === 'arzakon') {
 // Clear duel state
 setDuelCfg(null);
 
-}, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // ARZAKON LAUNCH
@@ -818,10 +908,11 @@ setModal(null);
 const handleDungeonExit = useCallback(() => {
 addLog(`You emerge from ${dungeonScreen?.name || 'the dungeon'}.`, 'info');
 setDungeonsCleared(dc => dc + 1);
+checkQuestProgress('dungeons_cleared');
 setDungeonScreen(null);
 setDungeonPlayerPos(null);
 setDungeonProg(null);
-}, [dungeonScreen, addLog]);
+}, [dungeonScreen, addLog, checkQuestProgress]);
 
 const handleDungeonInteract = useCallback((entity) => {
 // Treasure auto-collected on entry; this triggers the reveal UI.
@@ -1407,6 +1498,42 @@ fontFamily: "'Crimson Text', serif",
       onSage={handleSage}
       onTrade={handleTrade}
       onGemBuy={handleGemBuy}
+      townQuestDef={activeTile.townData.questId ? QUESTS.find(q => q.id === activeTile.townData.questId) : null}
+      activeQuest={activeQuest}
+      questProgress={questProgress}
+      questComplete={questComplete}
+      onQuestAccept={(quest) => {
+        setActiveQuest(quest);
+        setQuestProgress(0);
+        setQuestComplete(false);
+        addLog(`Quest accepted: ${quest.title}`, 'info');
+      }}
+      onQuestAbandon={() => {
+        setActiveQuest(null);
+        setQuestProgress(0);
+        setQuestComplete(false);
+        addLog('Quest abandoned.', 'warn');
+      }}
+      onQuestClaim={() => {
+        const reward = activeQuest?.reward;
+        if (!reward) return;
+        if (reward.type === 'gold') {
+          setPlayer(p => ({ ...p, gold: p.gold + reward.amount }));
+          addLog(`Received ${reward.amount}g.`, 'success');
+        } else if (reward.type === 'card') {
+          const card = CARD_DB.find(c => c.id === reward.cardId);
+          if (card) {
+            setBinder(b => [...b, { ...card, iid: mkId() }]);
+            addLog(`Received ${card.name}!`, 'success');
+          } else {
+            console.error(`[Quest] Card not found in CARD_DB: "${reward.cardId}"`);
+          }
+        }
+        setActiveQuest(null);
+        setQuestComplete(false);
+        setQuestProgress(0);
+        addLog('Quest reward claimed!', 'success');
+      }}
     />
   )}
 
