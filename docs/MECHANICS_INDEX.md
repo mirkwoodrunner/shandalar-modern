@@ -103,7 +103,6 @@ The central simulation engine responsible for all game state mutation, turn reso
 
 ### Dependencies
 - rulesets.js (mode modifiers)
-- keywords.js (ability interpretation — imported as of 2026-05-11 remediation)
 - cards.js (data instantiation)
 
 ---
@@ -874,4 +873,164 @@ ACTIVE (Phase 6)
 
 ---
 
-# End of MECHANICS INDEX v1.0
+---
+
+## 1.3 cardHandlers.js — Effect Execution
+
+### Description
+Card effect implementations extracted from DuelCore.js for maintainability.
+Imported exclusively by DuelCore.js.
+
+### SYSTEMS.md Reference
+Section 29 (cardHandlers.js Effect Execution Module)
+
+### Implementation
+```
+/src/engine/cardHandlers.js
+```
+### Status
+ACTIVE
+
+---
+
+## 2.3 MCTS Module
+
+### Description
+Monte Carlo rollout engine used by AI.js for move scoring. Simulates random play-outs
+from candidate game states to estimate win probability.
+
+### SYSTEMS.md Reference
+Section 28 (MCTS Monte Carlo AI Module)
+
+### Implementation
+```
+/src/engine/MCTS.js
+```
+### Status
+ACTIVE
+
+---
+
+## 3.2 World Magic Spell System
+
+### Description
+Eight overworld power-up spells: 5 passive (always-on effects) and 3 active (player-triggered).
+Found on the map or purchased from sages.
+
+### SYSTEMS.md Reference
+Section 23 (World Magic Spell System)
+
+### Implementation
+```
+/src/engine/MapGenerator.js  — WORLD_MAGICS export (definitions)
+/src/OverworldGame.jsx        — worldMagics[], wmCooldowns state; acquisition; activation handlers
+/src/ui/overworld/WorldMagicPanel.jsx — inventory display + activate buttons
+```
+### Status
+ACTIVE (Phase 7)
+
+---
+
+## 3.3 Dungeon Clue System
+
+### Description
+Dungeons are hidden (clued: false) at map generation. Two paths to reveal: sage purchase (25g)
+or post-duel card-vs-clue choice. Unclued dungeons are invisible and non-interactive.
+
+### SYSTEMS.md Reference
+Section 24 (Dungeon Visibility)
+
+### Implementation
+```
+/src/engine/MapGenerator.js   — dungeonData.clued initialization
+/src/OverworldGame.jsx         — handleSage, postDuelChoice state, completeDelivery
+/src/ui/overworld/PostDuelChoiceModal.jsx — choice UI
+```
+### Status
+ACTIVE (Phase 7)
+
+---
+
+## 3.4 City Conquest & Liberation
+
+### Description
+Towns can be conquered when mana link events expire. Conquered towns disable services and
+offer a Liberate fight option. Loss condition: ≥60% of towns conquered.
+
+### SYSTEMS.md Reference
+Section 25 (City Conquest & Liberation)
+
+### Implementation
+```
+/src/engine/MapGenerator.js  — townData.conquered initialization
+/src/OverworldGame.jsx        — conquest logic in expiredEvents loop; useEffect loss check;
+liberate context in handleDuelResult
+/src/ui/overworld/TownModal.jsx — conquered town UI, Liberate tab
+```
+### Status
+ACTIVE (Phase 7)
+
+---
+
+## 3.5 Delivery Quest System
+
+### Description
+~40% of towns have delivery quests at map generation. Player carries an item to a destination
+town for a reward (mana link, gold, or card). One active delivery at a time.
+
+### SYSTEMS.md Reference
+Section 26 (Delivery Quest System)
+
+### Implementation
+```
+/src/engine/MapGenerator.js  — delivery quest generation in generateMap post-processing
+/src/OverworldGame.jsx        — activeDelivery state; completeDelivery useCallback;
+HUD delivery banner
+```
+### Status
+ACTIVE (Phase 7)
+
+---
+
+## 3.6 Enemy Tier System
+
+### Description
+Three tiers of random encounter enemies (HP 10/14/18), plus henchman tier (HP 24–27,
+unbribeable) that spawns after move 80. HP values match original MicroProse game.
+
+### SYSTEMS.md Reference
+Section 27 (Enemy Tier System)
+
+### Implementation
+```
+/src/engine/MapGenerator.js  — MONSTER_TABLE (corrected HP), HENCHMAN_TABLE (new export)
+/src/OverworldGame.jsx        — henchman spawn logic in doMove; canFlee override in
+openEncounterPopup
+```
+### Status
+ACTIVE (Phase 7)
+
+---
+
+## 7.6 Dual Land & Special Land UI
+
+### Description
+Color picker UI for dual lands and City of Brass. DualLandColorPicker renders when
+a multi-producing land is tapped; player selects which color to add.
+City of Brass additionally dispatches CITY_OF_BRASS_DAMAGE after the choice.
+GraveyardPopover renders when player clicks their graveyard zone.
+
+### SYSTEMS.md Reference
+No dedicated section — presentation layer only.
+
+### Implementation
+```
+/src/ui/duel/TargetingOverlay.jsx  — DualLandColorPicker, LotusColorPicker, BopColorPicker components
+/src/DuelScreen.tsx                — pendingDualLand state; GraveyardPopover inline component; graveyardPopover state
+```
+### Status
+ACTIVE (implemented during Phase 6 cutover)
+
+---
+
+# End of MECHANICS INDEX v1.1

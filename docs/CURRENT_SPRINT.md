@@ -1,139 +1,42 @@
 # Current Sprint
 
-## Phase 5 — Scryfall Art Integration ✅ Complete
+## Phase 7 — Original Feature Parity ✅ Complete
 
 ### Deliverables
 
-| File | Change |
-|------|--------|
-| `src/utils/scryfallArt.js` | Created — fetch utility + module-level session cache |
-| `src/utils/useCardArt.js` | Created — React hook wrapping the fetch utility |
-| `src/ui/shared/Card.jsx` | Modified — added `CardArtDisplay` component; replaced emoji spans in `FieldCard` and `HandCard` |
-
-### How it works
-
-1. On first render of any card, `useCardArt(card.name)` fires `fetchOldestArt`.
-2. `fetchOldestArt` queries Scryfall for the oldest Alpha/Beta/Unlimited/Revised/4th-Ed printing (`order=released&dir=asc`). If no classic printing exists, falls back to `cards/named?exact=`.
-3. `image_uris.art_crop` is extracted. Double-faced cards fall back to `card_faces[0].image_uris.art_crop`.
-4. The URL is cached in a module-level `Map`. Subsequent renders of the same card name return instantly from cache with no async work (eliminates flicker).
-5. On any network error, non-OK status, or missing field: the error is cached so the card is never retried this session; the UI falls back to the emoji icon at 65% opacity.
-6. During loading, the emoji is shown at 30% opacity. When art loads, it fades in over 0.3s.
-
-### Constraints respected
-
-- Zero changes to `DuelCore.js`, `cards.js`, reducers, or any game-state shape.
-- The `<img>` is not `position: absolute` — existing overlays (damage badge, sick overlay, ACT button) remain on top.
-- `sm` prop treated as falsy when undefined.
-- No loading spinners or skeleton frames.
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| Food/hunger toggle | `OverworldGame.jsx`, settings UI | ✅ Done |
+| World Magic spell system | `MapGenerator.js`, `OverworldGame.jsx`, `WorldMagicPanel.jsx` | ✅ Done |
+| Post-duel card-vs-clue choice | `OverworldGame.jsx`, `PostDuelChoiceModal.jsx` | ✅ Done |
+| Dungeons hidden until clued | `MapGenerator.js`, `OverworldGame.jsx`, tile render | ✅ Done |
+| Enemy tier HP corrected | `MapGenerator.js` | ✅ Done |
+| Henchman tier (unbribeable, HP 24–27) | `MapGenerator.js`, `OverworldGame.jsx` | ✅ Done |
+| City conquest & liberation | `MapGenerator.js`, `OverworldGame.jsx`, `TownModal.jsx` | ✅ Done |
+| Delivery quest type | `MapGenerator.js`, `OverworldGame.jsx`, `TownModal.jsx` | ✅ Done |
 
 ### Documentation updated
+- `docs/gdd.md` — v1.1 changelog; Phase 7 section; §3.8–3.10 new subsections; §3.1 updated
+- `docs/SYSTEMS.md` — Sections §23–§29 added; stale end-of-document marker replaced
+- `docs/MECHANICS_INDEX.md` — §3.2–§3.6 added; §1.1 dependency list corrected
+- `docs/CURRENT_SPRINT.md` — This file
+- `README.md` — Phase 7 row added to status table
 
-- `docs/gdd.md` — v0.7 changelog entry; Phase 5 Completed list; Aesthetic Direction table; Design Decisions table; §3.3 note updated.
-- `docs/SYSTEMS.md` — Section 16 (Scryfall Art Integration System) added.
-- `docs/MECHANICS_INDEX.md` — §7.5 (Scryfall Art Display) added; §7.3 updated to reference §7.5.
-
----
-
-## Phase 6 — Engine Depth (In Progress)
-
-### Deliverable 1: Triggered Abilities — Sengir Vampire + Force of Nature ✅ Complete
-
-| File | Change |
-|------|--------|
-| `src/data/cards.js` | Added `triggeredAbilities` to `sengir_vampire` and `force_of_nature` |
-| `src/engine/DuelCore.js` | Added `ON_UPKEEP_START` emission; added `payMana` effect type; added `RESOLVE_CHOICE` reducer case; SILENCE modifier guard on upkeep triggers; `sengirDamagedIids` tracking in combat; `sengirCounter` trigger in `emitEvent` + `processTriggerQueue` (P1 complete) |
-| `src/hooks/useDuel.js` | Exposed `resolveChoice` dispatcher |
-| `src/ui/DuelScreen.jsx` | Added `ChoiceModal` component; AI auto-resolution of `pendingChoice` |
-
-### Deliverable 2: Priority Window / Instant-Speed Interaction -- Complete
-
-| File | Change |
-|------|--------|
-| `src/engine/DuelCore.js` | Added `priorityWindow` and `priorityPasser` to initial state; added `OPEN_PRIORITY_WINDOW` and `PASS_PRIORITY` reducer cases; added `ADVANCE_PHASE` blockade guard |
-| `src/hooks/useDuel.js` | Exposed `openPriorityWindow` and `passPriority` dispatchers |
-| `src/ui/ActionBar/InstantPriorityBar.tsx` | New component; shows player's castable instants and non-mana activated battlefield abilities; "Pass Priority" button |
-| `src/DuelScreen.tsx` | Added `requestPhaseAdvance` smart-suppression helper; `useEffect` auto-advances phase when window closes; AI priority handler evaluates and passes immediately; all phase-advance call sites updated |
-
-#### How it works
-
-1. Whenever the player or AI requests a phase advance, `requestPhaseAdvance()` runs a smart-suppression check: if neither player has an instant in hand or a non-mana activated ability on the battlefield, `ADVANCE_PHASE` fires immediately (no window).
-2. If either side has options, `OPEN_PRIORITY_WINDOW` is dispatched. The reducer sets `priorityWindow: true, priorityPasser: null`. The action is a no-op when `castleMod.name === 'SILENCE'` or `dungeonMod === 'SILENCE'`.
-3. The AI priority handler fires via `useEffect([s.priorityWindow])`. It finds the first affordable instant in its hand, casts it (targeting the player), then immediately dispatches `PASS_PRIORITY({ who: 'o' })`.
-4. The player sees `InstantPriorityBar` above the ActionBar (hidden once the player passes). Each instant in hand and each non-mana activated battlefield ability appears as a button. Clicking selects the card for the existing cast/activate flow. "Pass Priority" dispatches `PASS_PRIORITY({ who: 'p' })`.
-5. When both sides have passed, the reducer sets `priorityWindow: false`. A `useRef`-guarded `useEffect` detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
-6. `ADVANCE_PHASE` is blocked (returns state unchanged with a console warning) while `priorityWindow === true`.
-
-### Deliverable 3: Force of Nature Upkeep Choice Modal (P3) -- Complete
-
-| File | Change |
-|------|--------|
-| `src/data/cards.js` | Renamed `upkeep` key from `forestChoice` to `forceOfNatureUpkeep`; removed conflicting `triggeredAbilities` (double-handling bug) |
-| `src/engine/DuelCore.js` | Added `pendingUpkeepChoice: null` to initial state; renamed `case "forestChoice":` to `case "forceOfNatureUpkeep":` with human-player modal path; AI auto-resolves inline; added `UPKEEP_CHOICE_RESOLVE` reducer case; `ADVANCE_PHASE` blocked when `pendingUpkeepChoice !== null` |
-| `src/hooks/useDuel.js` | Exposed `resolveUpkeepChoice` dispatcher |
-| `src/DuelScreen.jsx` | Added `ForceOfNatureUpkeepModal` component (Cinzel font, gold borders, dark background, disabled Pay button when < 4G); AI loop guarded with `if (state.pendingUpkeepChoice) return;`; modal rendered when `state.pendingUpkeepChoice && state.active === 'p'`; phase-advance buttons hidden while modal open |
-
-### Deliverable P4: Channel Repeatable Mana Ability -- Complete
-
-| File | Change |
-|------|--------|
-| `src/engine/DuelCore.js` | Renamed `CHANNEL_MANA` reducer case to `USE_CHANNEL`; `case "channel"` already sets `channelActive: true` on resolve |
-| `src/hooks/useDuel.js` | Exposed `useChannel` dispatcher (`USE_CHANNEL` for `who: "p"`) |
-| `src/DuelScreen.tsx` | Added Channel button rendered when `channelActive && active === 'p' && MAIN phase && life > 1`; placed adjacent to player Banner (mana pool area) |
-| `src/engine/AI.js` | Added channel logic to `planMain`: if `channelActive && life > 2`, greedily emits `USE_CHANNEL` actions until best spell is affordable or life floor (2) reached; updates virtual state for subsequent spell planning |
-| `src/engine/__tests__/DuelCore.reducer.test.js` | Added 4 regression tests: channel sorcery sets `channelActive`, `USE_CHANNEL` decrements life and adds C, blocked at life ≤ 1, cleared at CLEANUP |
-
-### Deliverable P5: Unlockables Persistence (localStorage) -- Complete
-
-| File | Change |
-|------|--------|
-| `src/OverworldGame.jsx` | `artifacts` state uses lazy initializer reading `shandalar_unlockables` from localStorage; `useEffect([artifacts])` writes owned flags on every change |
-
-#### How it works
-
-1. On mount, `useState` lazy initializer calls `localStorage.getItem("shandalar_unlockables")`.
-2. If present and valid JSON, merges stored `owned` booleans onto canonical `OW_ARTS` definitions (id/name/icon/desc always from `OW_ARTS`).
-3. On any `setArtifacts` call, `useEffect` serializes `{ id: owned }` pairs and writes to localStorage.
-4. Both read and write wrapped in try/catch; errors logged via `console.error`; no user-visible alert; falls back to `OW_ARTS` defaults on any failure.
-5. Sandbox mode: persistence active (sandbox players may test artifact effects).
-
-### Deliverable P3b: Power Surge Upkeep Damage -- Complete
-
-| File | Change |
-|------|--------|
-| `src/engine/DuelCore.js` | `turnState.powerSurgeUntappedCount` initialized to 0 in `buildDuelState` and reset each UNTAP; snapshot of active player's tapped land count taken before the untap loop (only when Power Surge is on either battlefield); UPKEEP handler reads snapshot and calls `hurt()` for matching count; 0 untapped lands generates a log entry with no damage; console.warn STUB removed |
-
-### Deliverable P3c: Holy Ground Option B (Landwalk Suppression) -- Complete
-
-| File | Change |
-|------|--------|
-| `src/engine/DuelCore.js` | `hasKw(card, keyword, state?)` — optional 3rd param; if `keyword` ends in `"WALK"` and defending player's battlefield contains `holy_ground`, returns `false`; `canBlockDuel(attacker, blocker, ..., state?)` — optional 4th param threads `state` into LANDWALK check; all existing call sites without new args remain backward-compatible |
-
-### Deliverable P3d: CardPreviewPanel in DeckManager -- Complete
-
-| File | Change |
-|------|--------|
-| `src/ui/overworld/EncounterModal.jsx` | `CardPreviewPanel` component renders as inline flex sibling of DeckManager modal (left for deck-side selection, right for binder-side); fetches Scryfall art crop via `useCardArt`; 150px art window between color band and type row; click same card again to dismiss |
+### Pre-existing drift fixed in this pass
+- gdd.md Phase 6 row corrected to ✅ Complete
+- MECHANICS_INDEX.md §1.1 removed incorrect keywords.js dependency on DuelCore
+- SYSTEMS.md `# End of SYSTEMS v1.0` marker replaced with `# End of SYSTEMS v1.1`
 
 ---
 
-## Phase 5 Completion Sprint — 2026-05-06
+## Up Next — Phase 8 Candidates
 
-| Task | File(s) Changed | Status |
-|------|----------------|--------|
-| Sengir Vampire triggered counter | `DuelCore.js`, `cards.js` | Done |
-| Force of Nature choice UI | `DuelCore.js`, `DuelScreen.jsx`, `ForceOfNatureUpkeepModal` (inline) | Done |
-| Holy Ground landwalk suppression | `DuelCore.js` | Done |
-| Unlockables localStorage persistence | `src/OverworldGame.jsx` | Done |
-| Power Surge upkeep damage | `DuelCore.js` | Done |
-
-### Implementation notes
-
-- **Sengir Vampire**: Uses a card-specific implementation (`triggered === 'sengirCounter'`) rather than a general trigger registry. `sengirDamagedIids` tracks IIDs of creatures damaged this turn; on `ON_CREATURE_DIES` the IID is checked against this list. Counter stored as `P1P1` in `card.counters`.
-- **Force of Nature**: Human player gets `pendingUpkeepChoice` modal (`ForceOfNatureUpkeepModal`); AI resolves inline in the `forceOfNatureUpkeep` UPKEEP case. Phase advance blocked while `pendingUpkeepChoice !== null`. Uses `UPKEEP_CHOICE_RESOLVE` action (not the triggered-ability `RESOLVE_CHOICE` path).
-- **Holy Ground**: Option B confirmed. `hasKw(card, kw, state?)` returns `false` for any `*WALK` keyword when the defending player's battlefield contains `holy_ground`. `canBlockDuel` threads `state` through. Backward-compatible: all call sites without `state` arg unchanged.
-- **Unlockables**: Persisted via `shandalar_unlockables` key in `localStorage`. `OverworldGame.jsx` lazy-initializes `artifacts` state from storage; `useEffect([artifacts])` writes on every change. Fail-silent on any `localStorage` error.
-- **Power Surge**: `turnState.powerSurgeUntappedCount` snapshot taken at the top of UNTAP (before the untap loop), only when Power Surge is on either battlefield. Read and consumed in the `powerSurgeUpkeep` UPKEEP case via `hurt()`. Reset to 0 each UNTAP.
-
-### Up Next
-- Phase 6 complete. All planned deliverables implemented.
-- Next sprint TBD.
+| Item | Priority | Notes |
+|------|----------|-------|
+| CSS animations (card play, tap, damage flash on board) | Medium | Defined but not applied to components |
+| Save state (localStorage full run persistence) | High | No backend; localStorage approach established by unlockables |
+| First Strike combat step | Medium | Keyword defined; combat step not implemented |
+| Card pool expansion to ~250+ cards (Scryfall pipeline) | High | Pipeline built; gap closure pass needed |
+| Random map events (Nomad's Bazaar, Diamond Mine, Gemcutter's Guild) | Medium | Referenced by World Magic system (Sword of Resistance); standalone event tiles add loop variety |
+| Tome of Enlightenment: enforce 4-copy deck limit to make the spell meaningful | Low | No limit currently enforced; adds value to the spell |
+| Staff of Thunder: wire to OverworldCanvas enemy removal | Low | TODO stub left in WorldMagicPanel; requires OverworldCanvas enemy removal API |

@@ -1,6 +1,6 @@
 # Shandalar: Modern Edition — Game Design Document
-### Version 0.9 | Design Bible
-### Last updated: Phase 6 partial — Power Surge upkeep, Holy Ground (landwalk suppression), CardPreviewPanel in DeckManager
+### Version 1.1 | Design Bible
+### Last updated: Phase 7 — Original Shandalar feature parity sprint
 
 ---
 
@@ -18,6 +18,7 @@
 | 0.8 | Phase 6 (Engine Depth — partial) | Triggered ability pipeline activated: Sengir Vampire +1/+1 counter on creature-it-damaged death; Force of Nature upkeep choice modal (pay GGGG or take 8); ON_UPKEEP_START event emission; RESOLVE_CHOICE reducer; AI auto-resolution of triggered choices; SILENCE modifier guard; Priority window / instant-speed interaction system |
 | 0.9 | Phase 6 (Engine Depth — partial) | Power Surge upkeep damage implemented (snapshot at UNTAP, damage at UPKEEP); Holy Ground Option B (landwalk suppression via hasKw state param + canBlockDuel threading); CardPreviewPanel added to DeckManager (Scryfall art crop on click-to-preview, inline flex sibling positioning) |
 | 1.0 | Phase 6 complete | Regeneration, Channel, Fastbond, Kudzu confirmed implemented in DuelCore.js; DuelScreen.tsx cutover complete (App.jsx and OverworldGame.jsx now import .tsx); dead files removed; keywords.js wired as authoritative keyword registry (KEYWORDS import added to all engine files, string literals replaced with KEYWORDS.X.id constants) |
+| 1.1 | Phase 7 (Original Feature Parity) | Food/hunger toggle; World Magic spell system (8 spells, passive + active); post-duel card-vs-clue choice; dungeons hidden until clued; enemy tier HP corrected to original values; henchman tier (HP 24–27, unbribeable); city conquest + defense + liberate; delivery quest type |
 
 ---
 
@@ -160,11 +161,17 @@ LOSE CONDITIONS:
 - Terrain move costs: Plains 1, Forest 2, Mountain 2, Island 2, Swamp 3
 - Magical Boots artifact: –1 cost per tile (minimum 1)
 - Hunger: 8g food cost every 15 moves
+- Food toggle: hunger system (8g/15 moves) can be disabled via settings toggle (default: on)
+- Dwarven Pick world magic: Mountain move cost 1 instead of 2
+- Amulet of Swampwalk world magic: Swamp move cost 1 instead of 3
 
 **Fog of War:**
 - Reveal box: 5×5 tiles centered on player (2 tiles in each cardinal direction + diagonals) *(corrected from "5-tile radius")*
 - Dungeon tiles hidden until revealed by sage (25g)
 - Fogged tiles are unclickable and blocked from BFS
+- Dungeons start hidden (dungeonData.clued = false); invisible on map until clued
+- Two clue paths: sage tab (25g) or post-duel choice (free, one per win)
+- Unclued dungeon tiles are traversable but do not open the dungeon modal
 
 **Starting Decks:**
 
@@ -549,6 +556,48 @@ Six archetypes with curated ~40-card lists:
 
 ---
 
+### 3.8 World Magic Spells *(Phase 7 — Complete)*
+
+Overworld power-ups separate from the 5 mage artifacts. Found via random map events (3% per
+step) or purchased from the sage (150g). Only one of each can be owned.
+
+| ID | Name | Type | Effect |
+|----|------|------|--------|
+| `haggler_coin` | Haggler's Coin | Passive | Town shops show 2 extra cards |
+| `tome_of_enlightenment` | Tome of Enlightenment | Passive | Removes 4-copy deck limit |
+| `dwarven_pick` | Dwarven Pick | Passive | Mountain move cost → 1 |
+| `amulet_of_swampwalk` | Amulet of Swampwalk | Passive | Swamp move cost → 1 |
+| `orb_of_knowing` | Orb of Knowing | Passive | Enemy tier visible in PreDuelPopup |
+| `staff_of_thunder` | Staff of Thunder | Active | Destroy nearest enemy (costs 1 red amulet) |
+| `sword_of_resistance` | Sword of Resistance | Active | Teleport to attacked town (free) |
+| `nomads_map` | Nomad's Map | Active | Reveal 7×7 fog area (free, 20-move cooldown) |
+
+---
+
+### 3.9 City Conquest & Defense *(Phase 7 — Complete)*
+
+- When a mana link countdown expires, the target town is conquered (`townData.conquered = true`)
+- Conquered towns: shop/inn/guild hall disabled; Liberate tab shown instead
+- Liberate fight: tier-3 enemy of the conquering mage's color; unbribeable; no ante
+- Liberation win: removes conquest, decrements mana link count, restores town services
+- **Loss condition:** ≥60% of towns conquered → Arzakon wins; defeat screen triggers
+
+---
+
+### 3.10 Delivery Quests *(Phase 7 — Complete)*
+
+~40% of towns receive a delivery quest at map generation. Quest assigns a random item and a
+destination town. Only one delivery quest can be active at a time.
+
+Acceptance: Guild Hall "Accept Quest" button (same flow as existing quests).
+Completion: automatic on entering the destination town while carrying the item.
+Failure: none — delivery quests have no expiry and do not block other quests.
+
+Rewards (random at generation): mana link (most common), 80g, or a random card.
+HUD shows active delivery banner: `📦 Delivering: [item] → [town]`.
+
+---
+
 ## 4. The Five Mages
 
 | Mage | Color | Archetype | Castle Name | Castle Modifier | Minions | Reward |
@@ -889,6 +938,51 @@ See `docs/SYSTEMS.md` §18 for full specification. Summary:
 3. `useCardArt(card.name)` is called inside the panel; Scryfall art crop fills a 150px art window between the color band and the type row.
 4. Clicking the same card clears the preview (toggle dismiss).
 
+**Late-Documented Phase 6 Deliverables:**
+
+| Feature | Files Changed | Notes |
+|---------|--------------|-------|
+| Mishra's Factory activated abilities | `cards.js`, `DuelCore.js`, `DuelScreen.tsx` | `activatedAbilities[]` array on card; AbilityMenuPopover lets player choose ability; `animateLand` case: pays {1}, creature becomes 2/2 Assembly-Worker with `eotRevert: true`; `pumpAssemblyWorker` case: taps Factory, applies EOT +1/+1 buff to target Assembly-Worker |
+| Juggernaut mandatory attack | `DuelCore.js`, `keywords.js` | `MUST_ATTACK` keyword added to keywords.js; `advPhase → COMBAT_ATTACKERS` auto-declares all MUST_ATTACK creatures; data-driven so future cards (Lord of the Pit) work the same way |
+| Tron land bonus mana | `cards.js`, `DuelCore.js` | `tronPiece` flag on the three Urza lands; `applyOvergrowthTap` extended to check all three pieces; bonus {C} applied when set is complete |
+| Dual land color picker | `TargetingOverlay.jsx`, `DuelScreen.tsx` | `DualLandColorPicker` component in `TargetingOverlay.jsx`; `pendingDualLand` state in DuelScreen; tapping a dual land shows picker instead of auto-tapping; City of Brass dispatches `CITY_OF_BRASS_DAMAGE` after color choice |
+| Graveyard popover | `DuelScreen.tsx` | `GraveyardPopover` inline component; clicking graveyard zone opens popover showing all cards; in targeting mode, cards are selectable |
+
+---
+
+### Phase 7 — Original Feature Parity ✅ Complete
+
+**Goal:** Close the gap between Shandalar Modern and the original MicroProse game's overworld
+feature set, identified via source code and gameplay documentation audit.
+
+**Deliverables:**
+
+| Feature | Files Changed | Notes |
+|---------|--------------|-------|
+| Food/hunger toggle | `OverworldGame.jsx`, settings UI | `foodEnabled` state; gates existing 8g/15-move hunger block; defaults `true` |
+| World Magic spell system | `MapGenerator.js` (WORLD_MAGICS export), `OverworldGame.jsx`, `WorldMagicPanel.jsx` | 8 spells: 5 passive (Haggler's Coin, Tome of Enlightenment, Dwarven Pick, Amulet of Swampwalk, Orb of Knowing), 3 active (Staff of Thunder, Sword of Resistance, Nomad's Map); found via random map events (3%) or purchased from sage (150g) |
+| Post-duel card-vs-clue choice | `OverworldGame.jsx`, `PostDuelChoiceModal.jsx` | After overworld monster wins: choose extra card OR dungeon location clue; gold reward is immediate regardless |
+| Dungeons hidden until clued | `MapGenerator.js` (`dungeonData.clued: false`), `OverworldGame.jsx`, dungeon tile render | Dungeons invisible until sage reveals (25g) or post-duel clue taken; walking onto unclued tile treats it as terrain |
+| Enemy tier HP corrected | `MapGenerator.js` (MONSTER_TABLE) | Tiers 1/2/3 corrected to 10/14/18 HP matching original game |
+| Henchman tier | `MapGenerator.js` (HENCHMAN_TABLE export), `OverworldGame.jsx` | 5 henchmen (HP 24–27, `canFlee: false`); spawn at moves > 80, ~4% chance per step |
+| City conquest & defense | `MapGenerator.js` (`townData.conquered`), `OverworldGame.jsx`, town modal | Mana link expiry → town conquest; 60% conquest threshold → defeat screen; Liberate option in conquered town (tier-3 fight, unbribeable); liberation restores town services and decrements mana link count |
+| Delivery quest type | `MapGenerator.js` (delivery quest generation), `OverworldGame.jsx` (`activeDelivery` state, `completeDelivery`), town modal Guild Hall | ~40% of towns get delivery quests; carry item to destination town; rewards: mana link (most common), gold, or random card; HUD shows active delivery banner |
+
+**New state fields added to OverworldGame.jsx:**
+- `foodEnabled: boolean` — gates hunger system
+- `worldMagics: string[]` — array of owned World Magic IDs
+- `wmCooldowns: object` — `{ id: movesRemaining }` for active spells with cooldowns
+- `postDuelChoice: object | null` — pending card-vs-clue choice after monster win
+- `activeDelivery: object | null` — `{ questId, item, destTownName, sourceTownName }`
+
+**New exports added to MapGenerator.js:**
+- `WORLD_MAGICS` — array of 8 World Magic definitions
+- `HENCHMAN_TABLE` — array of 5 henchman enemy definitions
+
+**New components:**
+- `src/ui/overworld/PostDuelChoiceModal.jsx` — card vs clue choice UI
+- `src/ui/overworld/WorldMagicPanel.jsx` — collapsible World Magic inventory + activate buttons
+
 ---
 
 ## 9. Design Decisions — Resolved
@@ -956,7 +1050,7 @@ See `docs/SYSTEMS.md` §18 for full specification. Summary:
 ---
 
 *Document status: Living design bible. Validated against source code.*
-*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 ✅*
+*Phase 1 ✅ · Phase 2 ✅ · Phase 3 ✅ · Phase 4 ✅ · Phase 5 ✅ · Phase 6 ✅ · Phase 7 ✅*
 
 ---
 
