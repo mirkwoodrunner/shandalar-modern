@@ -541,6 +541,17 @@ flex:1, background:"transparent", border:"1px solid #5a3020", color:"#806040",
 padding:"5px", borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:10,
 }}>Ignore</button>
 </div>
+{events.length > 1 && (
+  <div style={{
+    marginTop: 4,
+    fontSize: 10,
+    color: '#e08040',
+    fontFamily: "'Cinzel',serif",
+    textAlign: 'center',
+  }}>
+    +{events.length - 1} more threat{events.length > 2 ? 's' : ''} incoming
+  </div>
+)}
 </div>
 );
 }
