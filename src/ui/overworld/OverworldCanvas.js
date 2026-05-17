@@ -55,49 +55,7 @@ export function drawCharacters(ctx, opts) {
   const toCx = tx => (tx - viewport.x) * tileSize + 8 + tileSize / 2;
   const toCy = ty => (ty - viewport.y) * tileSize + 8 + tileSize / 2;
 
-  // --- Enemies ---
-  for (const enemy of enemies) {
-    // Only draw if the enemy's tile has been revealed
-    const tile = tiles?.[enemy.y]?.[enemy.x];
-    if (!tile || !tile.revealed) continue;
-
-    const cx = toCx(enemy.x);
-    const cy = toCy(enemy.y);
-
-    const s     = TIER_SIZE[enemy.tier] ?? 0.30;
-    const scale = s / 0.40; // normalised to player proportions
-
-    const bodyW = tileSize * 0.40 * scale;
-    const bodyH = tileSize * 0.45 * scale;
-    const headR = tileSize * 0.18 * scale;
-    const legW  = tileSize * 0.12 * scale;
-    const color = TIER_COLOR[enemy.tier] ?? '#a04030';
-
-    drawSilhouette(ctx, cx, cy, bodyW, bodyH, headR, legW,
-      enemy.animFrame, enemy.dir, color, darken(color, 30));
-
-    // Tier indicator dot above head
-    ctx.fillStyle = TIER_DOT[enemy.tier] ?? '#808080';
-    ctx.beginPath();
-    ctx.arc(cx, cy - bodyH / 2 - headR * 2 - 4, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // --- Player ---
-  const cx = toCx(playerPos.x);
-  const cy = toCy(playerPos.y);
-
-  const bodyW = tileSize * 0.40;
-  const bodyH = tileSize * 0.45;
-  const headR = tileSize * 0.18;
-  const legW  = tileSize * 0.12;
-
-  ctx.save();
-  ctx.shadowBlur  = 10;
-  ctx.shadowColor = 'rgba(245,217,122,0.8)';
-
-  drawSilhouette(ctx, cx, cy, bodyW, bodyH, headR, legW,
-    playerAnim.frame, playerAnim.dir, '#f5d97a', '#c4a040');
-
-  ctx.restore();
+  // Enemy and player sprites are now rendered as DOM elements via Sprite.jsx.
+  // Canvas drawing suppressed to avoid double-rendering.
+  void enemies; void playerPos; void playerAnim;
 }

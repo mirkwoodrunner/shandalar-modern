@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { TERRAIN, MANA_HEX, MANA_SYM, MAGE_NAMES, COLORS } from '../../engine/MapGenerator.js';
+import { Sprite, SpriteStyles, spriteForMonster, spriteForHenchman } from './Sprite.jsx';
 
 const TILE_SIZE = 34;
 
@@ -32,7 +33,7 @@ const TERRAIN_BG = {
 
 // --- SINGLE TILE -------------------------------------------------------------
 
-export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
+export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, onClick }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -129,14 +130,27 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
         </div>
       )}
 
-      {/* Player tile highlight — canvas layer draws the actual sprite */}
+      {/* Player sprite */}
       {isPlayer && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          boxShadow: 'inset 0 0 8px rgba(245,217,122,0.3)',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }} />
+        <>
+          <div style={{
+            position: 'absolute', inset: 0,
+            boxShadow: 'inset 0 0 8px rgba(245,217,122,0.3)',
+            pointerEvents: 'none',
+            zIndex: 10,
+          }} />
+          <Sprite kind="mage" color="gold" isPlayer={true} name="You" />
+        </>
+      )}
+
+      {/* Enemy sprite */}
+      {enemy && tile.revealed && (
+        <Sprite
+          kind={enemy.spriteKind}
+          color={enemy.spriteColor}
+          isPlayer={false}
+          name={enemy.name}
+        />
       )}
     </div>
   );
@@ -327,9 +341,14 @@ const OW_STYLES = `
 
 `;
 
-export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick, canvasRef }) {
+export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick, canvasRef, enemies = [] }) {
   const tileAt = (x, y) => tiles[y]?.[x] ?? null;
   const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  const enemyByTile = {};
+  for (const e of enemies) {
+    if (!e.defeated) enemyByTile[`${e.x},${e.y}`] = e;
+  }
 
   const gridWidth  = viewW * 34 + 16; // 34px tiles + 8px padding each side
   const gridHeight = viewH * 34 + 16;
@@ -337,6 +356,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
   return (
     <>
       <style>{OW_STYLES}</style>
+      <SpriteStyles />
       <div style={{ position: 'relative', display: 'inline-block' }}>
         {/* Terrain grid — unchanged */}
         <div style={{
@@ -374,6 +394,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
                   key={`${x}-${y}`}
                   tile={tile}
                   isPlayer={x === playerPos.x && y === playerPos.y}
+                  enemy={enemyByTile[`${x},${y}`] ?? null}
                   isFogEdge={isFogEdge}
                   onClick={onTileClick}
                 />

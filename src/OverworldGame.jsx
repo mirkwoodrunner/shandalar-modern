@@ -19,6 +19,7 @@ import RULESETS from './data/rulesets.js';
 // -- Animation / AI -----------------------------------------------------------
 import { tickEnemyAI } from './engine/EnemyAI.js';
 import { drawCharacters } from './ui/overworld/OverworldCanvas.js';
+import { spriteForMonster } from './ui/overworld/Sprite.jsx';
 
 // -- UI ------------------------------------------------------------------------
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
@@ -148,6 +149,7 @@ function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId) {
     const dist = Math.abs(t.x - cx) + Math.abs(t.y - cy);
     const tier = dist < 10 ? 1 : dist < 20 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(3, 2 + (Math.random() > 0.7 ? 1 : 0));
     const monster = mList[Math.min(tier - 1, mList.length - 1)];
+    const { kind: spriteKind, color: spriteColor } = spriteForMonster(monster.archKey, t.terrain.id);
     return {
       id: mkId(),
       x: t.x,
@@ -156,6 +158,9 @@ function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId) {
       archKey: monster.archKey,
       name: monster.name,
       hp: monster.hp,
+      terrain: t.terrain.id,
+      spriteKind,
+      spriteColor,
       animFrame: 0,
       dir: 'down',
     };
@@ -818,6 +823,7 @@ if (ctx === 'monster') {
       const mList = MONSTER_TABLE[spawn.terrain.id] || MONSTER_TABLE.PLAINS;
       const tier = Math.ceil(Math.random() * 2);
       const monster = mList[Math.min(tier - 1, mList.length - 1)];
+      const { kind: spriteKind, color: spriteColor } = spriteForMonster(monster.archKey, spawn.terrain.id);
       return [...prev, {
         id: mkId(),
         x: spawn.x,
@@ -826,6 +832,9 @@ if (ctx === 'monster') {
         archKey: monster.archKey,
         name: monster.name,
         hp: monster.hp,
+        terrain: spawn.terrain.id,
+        spriteKind,
+        spriteColor,
         animFrame: 0,
         dir: 'down',
       }];
@@ -1781,6 +1790,7 @@ fontFamily: "'Crimson Text', serif",
         viewH={VIEW_H}
         onTileClick={handleTileClick}
         canvasRef={canvasRef}
+        enemies={enemies}
       />
       </div>
       <MapLegend />
