@@ -350,7 +350,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       priorityWindowInitiator.current === true
     ) {
       priorityWindowInitiator.current = false;
-      advancePhase();
+      // If something landed on the stack during the priority window (e.g. AI
+      // cast an instant), resolve it before trying to advance the phase.
+      // Calling advancePhase() with a non-empty stack silently no-ops in
+      // DuelCore, leaving the game stuck with no trigger to retry.
+      if (s.stack && s.stack.length > 0) {
+        resolveStack();
+      } else {
+        advancePhase();
+      }
     }
     prevPriorityWindow.current = s.priorityWindow;
   }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
