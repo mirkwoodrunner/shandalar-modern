@@ -35,6 +35,77 @@ export const MAGE_ARCHS   = { W:"WHITE_WEENIE", U:"BLUE_CONTROL", B:"BLACK_REANI
 export const CASTLE_NAMES = { W:"White Keep", U:"Azure Tower", B:"Shadow Spire", R:"Fire Citadel", G:"Root Throne" };
 export const COLORS = ["W","U","B","R","G"];
 
+export const WORLD_MAGICS = [
+  {
+    id: 'haggler_coin',
+    name: "Haggler's Coin",
+    icon: '🪙',
+    type: 'passive',
+    desc: 'Town card shops stock 2 extra cards.',
+    rarity: 'U',
+  },
+  {
+    id: 'tome_of_enlightenment',
+    name: 'Tome of Enlightenment',
+    icon: '📖',
+    type: 'passive',
+    desc: 'Removes the 4-copy limit on cards in your deck.',
+    rarity: 'R',
+  },
+  {
+    id: 'staff_of_thunder',
+    name: 'Staff of Thunder',
+    icon: '⚡',
+    type: 'active',
+    desc: 'Destroy the nearest enemy on the map. Costs 1 red amulet per use.',
+    rarity: 'R',
+    activeCost: { amuletColor: 'R', amount: 1 },
+  },
+  {
+    id: 'sword_of_resistance',
+    name: 'Sword of Resistance',
+    icon: '🗡️',
+    type: 'active',
+    desc: 'Teleport to any town currently under attack. Free to use.',
+    rarity: 'U',
+    activeCost: null,
+  },
+  {
+    id: 'dwarven_pick',
+    name: 'Dwarven Pick',
+    icon: '⛏️',
+    type: 'passive',
+    desc: 'Movement through Mountain terrain costs 1 instead of 2.',
+    rarity: 'C',
+  },
+  {
+    id: 'amulet_of_swampwalk',
+    name: 'Amulet of Swampwalk',
+    icon: '🐊',
+    type: 'passive',
+    desc: 'Movement through Swamp terrain costs 1 instead of 3.',
+    rarity: 'C',
+  },
+  {
+    id: 'orb_of_knowing',
+    name: 'Orb of Knowing',
+    icon: '🔮',
+    type: 'passive',
+    desc: 'Enemy tier is always visible before committing to fight.',
+    rarity: 'U',
+  },
+  {
+    id: 'nomads_map',
+    name: "Nomad's Map",
+    icon: '🗺️',
+    type: 'active',
+    desc: 'Reveals a 7×7 area of fog of war centered on your position. Free to use, once per 20 moves.',
+    rarity: 'C',
+    activeCost: null,
+    cooldownMoves: 20,
+  },
+];
+
 export const CASTLE_MODIFIERS = {
 W:   { name:"Holy Ground",     desc:"All creatures have protection from non-white spells." },
 U:   { name:"Tidal Lock",      desc:"Player may only cast one spell per turn." },

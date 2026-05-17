@@ -56,11 +56,11 @@ function AnteCardBox({ label, card, emptyText, accentColor }) {
   );
 }
 
-export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFlee, onClose }) {
+export default function PreDuelPopup({ popup, player, anteEnabled, worldMagics = [], onFight, onFlee, onClose }) {
   const {
     monsterName, monsterFlavor, monsterColor,
     playerAnteCard, opponentAnteCard,
-    fleeCost, canFlee, context,
+    fleeCost, canFlee, context, tier,
   } = popup;
 
   const accentColor = CCOLOR[monsterColor] || CCOLOR[''];
@@ -104,6 +104,11 @@ export default function PreDuelPopup({ popup, player, anteEnabled, onFight, onFl
           <div style={{ fontSize: 13, color: '#c0a070', fontStyle: 'italic' }}>
             {monsterFlavor}
           </div>
+          {worldMagics.includes('orb_of_knowing') && tier != null && (
+            <div style={{ fontSize: 11, color: '#88b8d0', marginTop: 6, fontFamily: "'Cinzel',serif" }}>
+              🔮 Enemy Tier: {tier}
+            </div>
+          )}
         </div>
 
         {/* Ante section ? absent from DOM when not applicable */}
