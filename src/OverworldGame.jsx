@@ -270,6 +270,7 @@ const pendingDungeonEntity = useRef(null);
 // -- Ruleset / ante -------------------------------------------------------
 const [ruleset, setRuleset]       = useState(RULESETS.CLASSIC);
 const [anteEnabled, setAnteEnabled] = useState(false);
+const [foodEnabled, setFoodEnabled] = useState(true);
 
 // -- UI -------------------------------------------------------------------
 const [modal, setModal]         = useState(null);
@@ -450,7 +451,7 @@ for (let i = 0; i < newlyRevealedCount; i++) {
 setViewOfs({ x: nx, y: ny });
 
 // Hunger: 8g every 15 moves
-if (newMoves > 0 && newMoves % 15 === 0) {
+if (foodEnabled && newMoves > 0 && newMoves % 15 === 0) {
   setPlayer(p => {
     const cost = Math.min(p.gold, 8);
     if (cost < 8) addLog('🍖 Starving! No gold for food.', 'danger');
@@ -578,7 +579,7 @@ setEnemies(prev => {
   return prev;
 });
 
-}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -1398,6 +1399,17 @@ fontFamily: "'Crimson Text', serif",
         style={{ accentColor: '#c0a040' }}
       />
       <span style={{ fontSize: 10, color: '#c0a040', fontFamily: "'Cinzel',serif" }}>Ante</span>
+    </label>
+
+    {/* Food & Hunger toggle */}
+    <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={foodEnabled}
+        onChange={e => setFoodEnabled(e.target.checked)}
+        style={{ accentColor: '#c0a040' }}
+      />
+      <span style={{ fontSize: 10, color: '#c0a040', fontFamily: "'Cinzel',serif" }}>🍖 Food</span>
     </label>
 
     {/* Viewport controls */}
