@@ -44,9 +44,10 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 
 export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy,
   townQuestDef, activeQuest, questProgress, questComplete,
-  onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack,
+  onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack, onLiberate,
   worldMagics = [], totalWorldMagics = WORLD_MAGICS.length, onLearnWorldMagic }) {
-const [tab, setTab] = useState("shop");
+const conquered = town.conquered === true;
+const [tab, setTab] = useState(conquered ? "liberate" : "shop");
 const baseRestCost = Math.max(0, (player.maxHP - player.hp) * 3);
 const restCost = manaLinkColor ? Math.ceil(baseRestCost * 1.5) : baseRestCost;
 // haggler_coin: stable extra 2 cards keyed to town name so they don't shuffle on re-render
@@ -58,12 +59,14 @@ const hagglerExtraStock = useMemo(() => {
   return [pick(0), pick(1)];
 }, [worldMagics, town.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-const tabs = [
-{ id:"shop",  l:"⚔ Shop" },
-{ id:"sell",  l:`◇ Sell (${binder.length})` },
-{ id:"inn",   l:"♥ Inn" }, ...(town.hasSage ? [{ id:"sage", l:"✦ Sage" }] : []), ...(town.hasBlackMarket ? [{ id:"bm", l:"◆ Market" }] : []),
-{ id:"gems",  l:`⬡ Gems (${player.gems})` }, ...(town.hasGuildHall ? [{ id:"guild", l:"⚔ Guild" }] : []),
-];
+const tabs = conquered
+  ? [{ id:"liberate", l:"⚔ Liberate" }]
+  : [
+    { id:"shop",  l:"⚔ Shop" },
+    { id:"sell",  l:`◇ Sell (${binder.length})` },
+    { id:"inn",   l:"♥ Inn" }, ...(town.hasSage ? [{ id:"sage", l:"✦ Sage" }] : []), ...(town.hasBlackMarket ? [{ id:"bm", l:"◆ Market" }] : []),
+    { id:"gems",  l:`⬡ Gems (${player.gems})` }, ...(town.hasGuildHall ? [{ id:"guild", l:"⚔ Guild" }] : []),
+  ];
 
 return (
 <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.78)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200 }}>
@@ -93,7 +96,22 @@ return (
       </div>
     </div>
 
-    {manaLinkColor && (
+    {conquered && (
+      <div style={{
+        margin: '8px 16px',
+        padding: '10px 14px',
+        background: 'rgba(180,30,30,.15)',
+        border: '1px solid #c03030',
+        borderRadius: 5,
+        fontSize: 12,
+        color: '#f08080',
+        fontFamily: "'Crimson Text',serif",
+      }}>
+        ⚔ This town is under enemy occupation. All services are suspended until liberated.
+      </div>
+    )}
+
+    {!conquered && manaLinkColor && (
       <div style={{
         margin: '8px 16px',
         padding: '8px 12px',
@@ -128,6 +146,36 @@ return (
 
     {/* Content */}
     <div style={{ flex:1, overflowY:"auto", padding:16, scrollbarWidth:"thin" }}>
+
+      {tab==="liberate" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          <div style={{ fontSize:12, color:"#a08070", fontStyle:"italic", fontFamily:"'Crimson Text',serif" }}>
+            {MAGE_NAMES[manaLinkColor]}'s garrison holds {town.name} by force.
+            Drive them out to restore the town.
+          </div>
+          <div style={{ background:"rgba(180,30,30,.1)", border:"1px solid #803030", borderRadius:6, padding:12 }}>
+            <div style={{ fontSize:11, color:"#e08080", fontFamily:"'Cinzel',serif", marginBottom:8 }}>GARRISON DETAILS</div>
+            <div style={{ fontSize:11, color:"#c07060" }}>Enemy: {MAGE_NAMES[manaLinkColor]}'s Garrison (Tier 3)</div>
+            <div style={{ fontSize:10, color:"#805040", marginTop:4, fontStyle:"italic" }}>No retreat. No ante. Victory or nothing.</div>
+          </div>
+          <button
+            onClick={onLiberate}
+            style={{
+              background:"linear-gradient(135deg,#4a1010,#7a2020)",
+              border:"1px solid #c03030",
+              color:"#f08080",
+              padding:"10px 20px",
+              borderRadius:5,
+              cursor:"pointer",
+              fontFamily:"'Cinzel',serif",
+              fontSize:13,
+              alignSelf:"flex-start",
+            }}
+          >
+            ⚔ Liberate {town.name}
+          </button>
+        </div>
+      )}
 
       {tab==="shop" && (
         <div>
