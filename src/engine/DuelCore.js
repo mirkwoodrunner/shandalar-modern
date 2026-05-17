@@ -8,7 +8,7 @@
 //   - Deterministic given identical GameState + rngSeed + action sequence
 
 import { CARD_DB, ARCHETYPES } from '../data/cards.js';
-import { PHASE, PHASE_SEQUENCE } from './phases.js';
+import { PHASE, PHASE_SEQUENCE, SORCERY_SPEED_PHASES } from './phases.js';
 import { CARD_HANDLERS } from './cardHandlers.js';
 import KEYWORDS from '../data/keywords.js';
 
@@ -1710,8 +1710,21 @@ case "CAST_SPELL": {
   const w = action.who;
   const c = s[w].hand.find(x => x.iid === action.iid);
   if (!c) return s;
-  if (s.active !== w && !isInst(c)) return s;
-  if ((s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) && !isInst(c)) return s;
+  const isSorcerySpeed = !isInst(c);
+  if (isSorcerySpeed) {
+    if (s.active !== w) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} is sorcery speed and ${w} is not active player`);
+      return s;
+    }
+    if (!SORCERY_SPEED_PHASES.includes(s.phase)) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} requires sorcery speed (phase=${s.phase})`);
+      return s;
+    }
+    if (s.stack && s.stack.length > 0) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} requires sorcery speed (stack=${s.stack.length})`);
+      return s;
+    }
+  }
   const xSpend = c.cost?.toUpperCase().includes('X') ? (action.xVal || s.xVal || 1) : 0;
   if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
@@ -1815,7 +1828,14 @@ case "PASS_PRIORITY": {
 }
 
 case "ADVANCE_PHASE": {
-  if (s.priorityWindow) return s;
+  if (s.priorityWindow) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: priority window open');
+    return s;
+  }
+  if (s.stack && s.stack.length > 0) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: stack is not empty');
+    return s;
+  }
   if (s.pendingUpkeepChoice) return s;
   return advPhase(s);
 }

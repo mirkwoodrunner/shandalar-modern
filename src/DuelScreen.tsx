@@ -309,6 +309,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- Smart suppression helper: skip the priority window if neither player
   // -- has an instant in hand or a non-mana activated battlefield ability.
   const requestPhaseAdvance = useCallback(() => {
+    // Do not attempt phase advance while stack has unresolved items
+    if (s.stack && s.stack.length > 0) {
+      console.warn('[DuelScreen] requestPhaseAdvance: stack not empty, advance suppressed');
+      return;
+    }
     // Never open a new window while one is already in progress
     if (s.priorityWindow) return;
 

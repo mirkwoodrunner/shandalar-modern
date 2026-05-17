@@ -1411,7 +1411,7 @@ useEffect(() => {
   }
 
   let frameCount = 0;
-  const TICK_INTERVAL = 18; // enemy AI ticks every 18 frames (~0.3 s at 60 fps)
+  const TICK_INTERVAL = 36; // enemy AI ticks every 36 frames (~0.6 s at 60 fps)
 
   function loop() {
     frameCount++;
