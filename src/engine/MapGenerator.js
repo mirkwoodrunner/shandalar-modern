@@ -131,31 +131,39 @@ export const DUNGEON_ARCHETYPES = [
 
 export const MONSTER_TABLE = {
 PLAINS:   [
-{ name:"Pegasus Cavalry",    hp:18, archKey:"WHITE_WEENIE",    tier:1 },
-{ name:"Knight of the Keep", hp:22, archKey:"WHITE_WEENIE",    tier:2 },
-{ name:"Holy Crusader",      hp:26, archKey:"WHITE_WEENIE",    tier:3 },
+{ name:"Pegasus Cavalry",    hp:10, archKey:"WHITE_WEENIE",    tier:1 },
+{ name:"Knight of the Keep", hp:14, archKey:"WHITE_WEENIE",    tier:2 },
+{ name:"Holy Crusader",      hp:18, archKey:"WHITE_WEENIE",    tier:3 },
 ],
 FOREST:   [
-{ name:"Forest Spider",      hp:18, archKey:"GREEN_STOMPY",    tier:1 },
-{ name:"Elder Druid",        hp:22, archKey:"GREEN_STOMPY",    tier:2 },
-{ name:"Ancient Wurm",       hp:28, archKey:"GREEN_STOMPY",    tier:3 },
+{ name:"Forest Spider",      hp:10, archKey:"GREEN_STOMPY",    tier:1 },
+{ name:"Elder Druid",        hp:14, archKey:"GREEN_STOMPY",    tier:2 },
+{ name:"Ancient Wurm",       hp:18, archKey:"GREEN_STOMPY",    tier:3 },
 ],
 SWAMP:    [
-{ name:"Risen Zombie",       hp:18, archKey:"BLACK_CONTROL",   tier:1 },
-{ name:"Shadow Specter",     hp:22, archKey:"BLACK_REANIMATOR",tier:2 },
-{ name:"Mortis's Shade",     hp:26, archKey:"BLACK_REANIMATOR",tier:3 },
+{ name:"Risen Zombie",       hp:10, archKey:"BLACK_CONTROL",   tier:1 },
+{ name:"Shadow Specter",     hp:14, archKey:"BLACK_REANIMATOR",tier:2 },
+{ name:"Mortis's Shade",     hp:18, archKey:"BLACK_REANIMATOR",tier:3 },
 ],
 MOUNTAIN: [
-{ name:"Goblin Raider",      hp:16, archKey:"RED_AGGRO",       tier:1 },
-{ name:"Mountain Ogre",      hp:22, archKey:"RED_BURN",        tier:2 },
-{ name:"Fire Giant",         hp:28, archKey:"RED_BURN",        tier:3 },
+{ name:"Goblin Raider",      hp:10, archKey:"RED_AGGRO",       tier:1 },
+{ name:"Mountain Ogre",      hp:14, archKey:"RED_BURN",        tier:2 },
+{ name:"Fire Giant",         hp:18, archKey:"RED_BURN",        tier:3 },
 ],
 ISLAND:   [
-{ name:"Reef Dancer",        hp:18, archKey:"BLUE_TEMPO",      tier:1 },
-{ name:"Tidal Sorcerer",     hp:22, archKey:"BLUE_CONTROL",    tier:2 },
-{ name:"Xylos's Agent",      hp:26, archKey:"BLUE_CONTROL",    tier:3 },
+{ name:"Reef Dancer",        hp:10, archKey:"BLUE_TEMPO",      tier:1 },
+{ name:"Tidal Sorcerer",     hp:14, archKey:"BLUE_CONTROL",    tier:2 },
+{ name:"Xylos's Agent",      hp:18, archKey:"BLUE_CONTROL",    tier:3 },
 ],
 };
+
+export const HENCHMAN_TABLE = [
+{ name:'High Priest',     hp:24, archKey:'WHITE_WEENIE',    tier:4, color:'W' },
+{ name:'Thought Invoker', hp:24, archKey:'BLUE_CONTROL',    tier:4, color:'U' },
+{ name:'Necromancer',     hp:26, archKey:'BLACK_REANIMATOR',tier:4, color:'B' },
+{ name:'War Mage',        hp:26, archKey:'RED_BURN',        tier:4, color:'R' },
+{ name:'Summoner',        hp:27, archKey:'GREEN_STOMPY',    tier:4, color:'G' },
+];
 
 // Town and dungeon name pools
 const TOWN_POOL = [

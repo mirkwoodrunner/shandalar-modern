@@ -9,7 +9,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
 generateMap, findPath, revealAround,
 TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
-MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE, MAP_W, MAP_H,
+MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE, HENCHMAN_TABLE, MAP_W, MAP_H,
 WORLD_MAGICS,
 } from './engine/MapGenerator.js';
 import { isLand } from './engine/DuelCore.js';
@@ -395,7 +395,7 @@ fleeCost = 0;
 monsterName = monsterMeta.monsterName || arch?.name || oppArchKey;
 monsterFlavor = STRATEGY_FLAVORS[arch?.strategy] || 'A dangerous adversary.';
 monsterColor = (arch?.color || '').slice(0, 1);
-canFlee = true;
+canFlee = monsterMeta.canFlee !== undefined ? monsterMeta.canFlee : true;
 const tier = monsterMeta.tier || 1;
 fleeCost = Math.max(5, tier * 15 + Math.floor(Math.random() * 10));
 }
@@ -609,6 +609,20 @@ setEnemies(prev => {
   }
   return prev;
 });
+
+// Henchman patrol (moves > 80, ~4% chance, unbribeable)
+if (newMoves > 80 && t.terrain !== TERRAIN.WATER && Math.random() < 0.04) {
+  const aliveHenchmen = HENCHMAN_TABLE.filter(h => !magesDefeated.includes(h.color));
+  if (aliveHenchmen.length) {
+    const h = aliveHenchmen[Math.floor(Math.random() * aliveHenchmen.length)];
+    addLog(`⚠ ${h.name} bars your way!`, 'danger');
+    openEncounterPopup(h.archKey, player.hp, 'monster', null, {}, {
+      monsterName: h.name,
+      tier: h.tier,
+      canFlee: false,
+    });
+  }
+}
 
 }, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress, worldMagics]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1183,6 +1197,7 @@ if (!col || activeTile.castleData.defeated) return;
 const mod = CASTLE_MODIFIERS[col];
 addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
 setModal(null);
+// Castle boss starting life is set in DuelCore via archetype; TODO verify
 openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
 }, [activeTile, player.hp, openEncounterPopup, addLog]);
 
