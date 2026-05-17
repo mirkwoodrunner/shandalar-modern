@@ -163,6 +163,16 @@ GameAction {
 - Resolution is deterministic and seed-based
 - No action resolves outside DuelCore
 
+### Sorcery-Speed Enforcement
+
+`CAST_SPELL` enforces casting restrictions before deducting mana. A card is considered sorcery-speed if `type !== 'Instant'` and `type !== 'Interrupt'`. For sorcery-speed cards the reducer enforces three conditions, returning the unchanged state (no-op) if any fails:
+
+1. The caster (`action.who`) must be the active player (`s.active`).
+2. The current phase must be in `SORCERY_SPEED_PHASES` (`MAIN_1` or `MAIN_2`).
+3. The stack must be empty (`s.stack.length === 0`).
+
+Instants and Interrupts bypass all three checks and may be cast at any time priority is held, including when the stack is non-empty (responses/counter-spells).
+
 ---
 
 # 5. Combat System
@@ -783,10 +793,11 @@ Two fields added to GameState (initialized in `buildDuelState`):
 ## 18.2 Open/Close/Pass Flow
 
 1. A phase-advance request goes through `requestPhaseAdvance()` (DuelScreen) rather than dispatching `ADVANCE_PHASE` directly.
-2. `requestPhaseAdvance()` performs a smart-suppression check (see 18.4). If suppressed, it dispatches `ADVANCE_PHASE` directly.
-3. If not suppressed, it dispatches `OPEN_PRIORITY_WINDOW`. The reducer sets `priorityWindow: true, priorityPasser: null`.
-4. Each side passes via `PASS_PRIORITY({ who })`. The reducer records the first passer in `priorityPasser`. When the second distinct side passes, it sets `priorityWindow: false, priorityPasser: null`.
-5. A `useRef`-guarded `useEffect([s.priorityWindow])` in DuelScreen detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
+2. `requestPhaseAdvance()` short-circuits immediately (no-op) if `s.stack.length > 0` — unresolved spells must be resolved before the phase can advance.
+3. `requestPhaseAdvance()` performs a smart-suppression check (see 18.4). If suppressed, it dispatches `ADVANCE_PHASE` directly.
+4. If not suppressed, it dispatches `OPEN_PRIORITY_WINDOW`. The reducer sets `priorityWindow: true, priorityPasser: null`.
+5. Each side passes via `PASS_PRIORITY({ who })`. The reducer records the first passer in `priorityPasser`. When the second distinct side passes, it sets `priorityWindow: false, priorityPasser: null`.
+6. A `useRef`-guarded `useEffect([s.priorityWindow])` in DuelScreen detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
 
 ## 18.3 SILENCE Suppression
 
@@ -809,7 +820,12 @@ If neither condition holds for either player, the window is skipped entirely and
 
 ## 18.5 ADVANCE_PHASE Blockade
 
-The `ADVANCE_PHASE` reducer case returns state unchanged (with a console warning) while `s.priorityWindow === true`. This prevents the phase from advancing while a priority decision is still pending.
+The `ADVANCE_PHASE` reducer case returns state unchanged (with a console warning) under two conditions, checked in order:
+
+1. `s.priorityWindow === true` — a priority decision is still pending.
+2. `s.stack.length > 0` — one or more spells are waiting to resolve.
+
+Both conditions must be false before the phase can advance. The `advPhase()` helper function enforces the same stack-length check independently as its first guard, ensuring phase advance is blocked even if called directly rather than through the reducer case.
 
 ## 18.6 AI Behavior
 
@@ -1128,6 +1144,16 @@ Alive henchmen filtered by magesDefeated before spawn selection.
 
 ## 27.4 openEncounterPopup canFlee override
 monsterMeta.canFlee takes priority over the default (true) when explicitly set.
+
+## 27.5 Enemy Movement Tick Rate
+
+Enemy AI movement is driven by the RAF loop in `OverworldGame.jsx`. `tickEnemyAI()` is called every `TICK_INTERVAL` frames (not every frame), controlling movement speed without affecting movement distance per step.
+
+| Constant | Value | Effective speed (60 fps) |
+|----------|-------|--------------------------|
+| `TICK_INTERVAL` | `36` | ~0.6 s per step |
+
+Only `TICK_INTERVAL` controls speed. Movement distance per step, pathfinding logic, and collision detection are independent and must not be changed to adjust speed.
 
 ---
 
