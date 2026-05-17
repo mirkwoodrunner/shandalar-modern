@@ -326,6 +326,7 @@ mod,
 rooms,
 domColor: COLORS[Math.floor(rng() * 5)],
 loot: [], // populated by caller with rare cards
+clued: false, // hidden until a sage or post-duel clue reveals it
 };
 }
 
