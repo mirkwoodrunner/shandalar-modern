@@ -73,8 +73,8 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
         />
       )}
 
-      {/* Structure — plaque + label */}
-      {s && (
+      {/* Structure — plaque + label; dungeons hidden until clued */}
+      {(s && (s !== 'DUNGEON' || tile.dungeonData?.clued)) && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column',

@@ -24,6 +24,7 @@ import { drawCharacters } from './ui/overworld/OverworldCanvas.js';
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
 import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
 import PreDuelPopup from './ui/overworld/PreDuelPopup.jsx';
+import PostDuelChoiceModal from './ui/overworld/PostDuelChoiceModal.jsx';
 import WorldMagicPanel from './ui/overworld/WorldMagicPanel.jsx';
 import { DuelLog as OWLog } from './ui/layout/TechnicalLog.jsx';
 import DuelScreen from './DuelScreen.tsx';
@@ -264,9 +265,10 @@ const [questProgress, setQuestProgress] = useState(0);
 const [questComplete, setQuestComplete] = useState(false);
 
 // -- Duel bridge ----------------------------------------------------------
-const [duelCfg, setDuelCfg]         = useState(null);
-const [dungeonProg, setDungeonProg] = useState(null);
+const [duelCfg, setDuelCfg]             = useState(null);
+const [dungeonProg, setDungeonProg]     = useState(null);
 const [encounterPopup, setEncounterPopup] = useState(null);
+const [postDuelChoice, setPostDuelChoice] = useState(null);
 
 // -- Dungeon map screen ---------------------------------------------------
 const [dungeonScreen, setDungeonScreen]       = useState(null);
@@ -578,6 +580,7 @@ if (t.structure) {
     return;
   }
   if (t.structure === 'DUNGEON') {
+    if (!t.dungeonData?.clued) return;
     addLog(`The entrance to ${t.dungeonData.name} looms before you.`, 'event');
     setModal('dungeon');
     return;
@@ -687,14 +690,17 @@ if (ctx === 'monster') {
       setPlayer(p => ({ ...p, redAmulets: (p.redAmulets || 0) + 1 }));
       addLog('🔴 Red amulet obtained.', 'success');
     }
+    addLog(`Victory! +${gold}g.`, 'success');
     const pool = CARD_DB.filter(c => c.color === arch?.color && !isLand(c));
-    if (pool.length) {
-      const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
-      setBinder(b => [...b, reward]);
-      addLog(`Victory! +${gold}g and ${reward.name}.`, 'success');
-    } else {
-      addLog(`Victory! +${gold}g.`, 'success');
-    }
+    const cardReward = pool.length ? { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() } : null;
+    const uncluedDungeons = tiles.flat().filter(t => t.dungeonData && !t.dungeonData.clued);
+    const dungeonTile = uncluedDungeons.length
+      ? uncluedDungeons[Math.floor(Math.random() * uncluedDungeons.length)]
+      : null;
+    const dungeonClue = dungeonTile
+      ? { name: dungeonTile.dungeonData.name, terrain: dungeonTile.terrain, mod: dungeonTile.dungeonData.mod }
+      : null;
+    setPostDuelChoice({ cardReward, dungeonClue });
     // Respawn one enemy at a random unrevealed, non-water, non-structure tile
     setEnemies(prev => {
       const candidates = [];
@@ -938,18 +944,19 @@ if (player.gold < 25) { addLog('Need 25g for the sage.', 'warn'); return; }
 const cost = hasStone ? 0 : 25;
 if (cost > 0) setPlayer(p => ({ ...p, gold: p.gold - cost }));
 const dgs = [];
-tiles.forEach(row => row.forEach(t => { if (t.structure === 'DUNGEON' && !t.revealed) dgs.push(t); }));
+tiles.forEach(row => row.forEach(t => { if (t.structure === 'DUNGEON' && !t.dungeonData?.clued) dgs.push(t); }));
 if (dgs.length) {
 const d = dgs[Math.floor(Math.random() * dgs.length)];
 setTiles(prev => {
 const n = prev.map(r => [...r]);
-n[d.y][d.x] = { ...n[d.y][d.x], revealed: true };
+n[d.y][d.x] = { ...n[d.y][d.x], revealed: true, dungeonData: { ...n[d.y][d.x].dungeonData, clued: true } };
 return n;
 });
-const costStr = cost === 0 ? '(free ? Scrying Stone)' : `?${cost}g`;
-addLog(`The sage reveals ${d.dungeonData.name}. ${costStr}`, 'success');
+const costStr = cost === 0 ? '(free — Scrying Stone)' : `−${cost}g`;
+addLog(`The sage reveals the location of ${d.dungeonData.name}. ${costStr}`, 'success');
 } else {
-addLog('No unknown dungeons remain to reveal.', 'info');
+if (cost > 0) setPlayer(p => ({ ...p, gold: p.gold + cost }));
+addLog('No hidden dungeons remain.', 'info');
 }
 }, [player.gold, tiles, hasStone, addLog]);
 
@@ -1256,7 +1263,7 @@ return () => clearTimeout(t);
 // GAME LOOP — rAF-based, pauses when any modal/duel/dungeon is open
 // -------------------------------------------------------------------------
 useEffect(() => {
-  if (modal || duelCfg || dungeonScreen || encounterPopup) {
+  if (modal || duelCfg || dungeonScreen || encounterPopup || postDuelChoice) {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     return;
   }
@@ -1319,13 +1326,13 @@ useEffect(() => {
   return () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
   };
-}, [modal, duelCfg, dungeonScreen, encounterPopup, pos, tiles, enemies, viewOfs]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, enemies, viewOfs]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // WASD / ARROW KEY MOVEMENT
 // -------------------------------------------------------------------------
 useEffect(() => {
-  if (modal || duelCfg || dungeonScreen || encounterPopup) return;
+  if (modal || duelCfg || dungeonScreen || encounterPopup || postDuelChoice) return;
 
   const DIRS = {
     ArrowUp:    { dx:  0, dy: -1, dir: 'up'    },
@@ -1362,7 +1369,7 @@ useEffect(() => {
     window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('keyup', handleKeyUp);
   };
-}, [modal, duelCfg, dungeonScreen, encounterPopup, pos, tiles, doMove]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, doMove]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // RENDER ? DUEL BRIDGE
@@ -1829,6 +1836,33 @@ fontFamily: "'Crimson Text', serif",
       onClose={() => {
         addLog('You withdraw from the encounter.', 'warn');
         setEncounterPopup(null);
+      }}
+    />
+  )}
+
+  {postDuelChoice && !duelCfg && (
+    <PostDuelChoiceModal
+      cardReward={postDuelChoice.cardReward}
+      dungeonClue={postDuelChoice.dungeonClue}
+      onTakeCard={() => {
+        setBinder(b => [...b, postDuelChoice.cardReward]);
+        addLog(`Added ${postDuelChoice.cardReward.name} to binder.`, 'success');
+        setPostDuelChoice(null);
+      }}
+      onTakeClue={() => {
+        if (postDuelChoice.dungeonClue) {
+          setTiles(prev => {
+            const n = prev.map(r => [...r]);
+            n.forEach(row => row.forEach((t, xi) => {
+              if (t.dungeonData?.name === postDuelChoice.dungeonClue.name) {
+                n[t.y][xi] = { ...t, revealed: true, dungeonData: { ...t.dungeonData, clued: true } };
+              }
+            }));
+            return n;
+          });
+          addLog(`Dungeon revealed: ${postDuelChoice.dungeonClue.name}.`, 'event');
+        }
+        setPostDuelChoice(null);
       }}
     />
   )}
