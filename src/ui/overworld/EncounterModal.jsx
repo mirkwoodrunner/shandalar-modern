@@ -44,9 +44,10 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 
 export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy,
   townQuestDef, activeQuest, questProgress, questComplete,
-  onQuestAccept, onQuestAbandon, onQuestClaim }) {
+  onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack }) {
 const [tab, setTab] = useState("shop");
-const restCost = Math.max(0, (player.maxHP - player.hp) * 3);
+const baseRestCost = Math.max(0, (player.maxHP - player.hp) * 3);
+const restCost = manaLinkColor ? Math.ceil(baseRestCost * 1.5) : baseRestCost;
 
 const tabs = [
 { id:"shop",  l:"⚔ Shop" },
@@ -83,17 +84,59 @@ return (
       </div>
     </div>
 
+    {manaLinkColor && (
+      <div style={{
+        margin: '8px 16px',
+        padding: '8px 12px',
+        background: `${MANA_HEX[manaLinkColor]}20`,
+        border: `1px solid ${MANA_HEX[manaLinkColor]}`,
+        borderRadius: 5,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <div style={{ fontSize: 11, color: '#e0c090', fontFamily: "'Crimson Text',serif" }}>
+          {MANA_SYM[manaLinkColor]} <strong>{MAGE_NAMES[manaLinkColor]}</strong> controls this town.
+          Services are degraded.
+        </div>
+        <button
+          onClick={onCounterAttack}
+          style={{
+            background: `${MANA_HEX[manaLinkColor]}30`,
+            border: `1px solid ${MANA_HEX[manaLinkColor]}`,
+            color: '#f0c060',
+            padding: '5px 12px',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontFamily: "'Cinzel',serif",
+            fontSize: 10,
+          }}
+        >
+          ⚔ Challenge Minion
+        </button>
+      </div>
+    )}
+
     {/* Content */}
     <div style={{ flex:1, overflowY:"auto", padding:16, scrollbarWidth:"thin" }}>
 
       {tab==="shop" && (
         <div>
           <div style={{ fontSize:11, color:"#8a7050", marginBottom:10, fontStyle:"italic" }}>"{town.name}'s merchant deals in arcane arts."</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
-            {town.stock.map((c,i) => (
-              <CardTile key={i} c={c} onClick={() => onBuy(c, cardPrice(c))} priceLabel={`${cardPrice(c)}g`} />
-            ))}
-          </div>
+          {(() => {
+            const filteredStock = manaLinkColor ? town.stock.filter(c => c.color !== manaLinkColor) : town.stock;
+            return filteredStock.length > 0 ? (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
+                {filteredStock.map((c,i) => (
+                  <CardTile key={i} c={c} onClick={() => onBuy(c, cardPrice(c))} priceLabel={`${cardPrice(c)}g`} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ color:"#8a5030", fontSize:12, fontStyle:"italic", marginBottom:14 }}>
+                The merchant's wares have been spoiled by {MAGE_NAMES[manaLinkColor]}'s corruption.
+              </div>
+            );
+          })()}
           {(binder.filter(c=>c.rarity==="C").length>=3 || binder.filter(c=>c.rarity==="U").length>=5) && (
             <div style={{ padding:10, background:"rgba(255,255,255,.03)", borderRadius:6, border:"1px solid rgba(200,160,60,.12)" }}>
               <div style={{ fontSize:10, color:"#a08040", fontFamily:"'Cinzel',serif", marginBottom:6 }}>CARD TRADES</div>
@@ -126,6 +169,11 @@ return (
 
       {tab==="inn" && (
         <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
+          {manaLinkColor && (
+            <div style={{ fontSize:10, color:"#e08040", fontStyle:"italic", marginBottom:8, fontFamily:"'Crimson Text',serif" }}>
+              The innkeeper's prices have risen under {MAGE_NAMES[manaLinkColor]}'s shadow.
+            </div>
+          )}
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
             <div style={{ width:110, height:10, background:"#1a0a00", borderRadius:5, overflow:"hidden", border:"1px solid #5a3010" }}>
               <div style={{ width:`${(player.hp/player.maxHP)*100}%`, height:"100%", background:"linear-gradient(90deg,#c04020,#e06040)", borderRadius:5 }} />
@@ -150,16 +198,24 @@ return (
       )}
 
       {tab==="sage" && (
-        <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
-          <div style={{ fontSize:12, color:"#a09070", marginBottom:10 }}>Dungeon clue for <strong style={{ color:"#f0c040" }}>25 gold</strong>: reveals a hidden dungeon.</div>
-          <button onClick={() => player.gold>=25 && onSage()} style={{
-            background: player.gold>=25?"linear-gradient(135deg,#1a2830,#2a4050)":"rgba(0,0,0,.3)",
-            border:`1px solid ${player.gold>=25?"#4080a0":"#2a3810"}`,
-            color: player.gold>=25?"#80c0e0":"#5a4030",
-            padding:"8px 18px", borderRadius:5, cursor:player.gold>=25?"pointer":"not-allowed",
-            fontFamily:"'Cinzel',serif", fontSize:12,
-          }}>✦ Seek Dungeon Knowledge (25g)</button>
-        </div>
+        manaLinkColor ? (
+          <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)", opacity:0.6 }}>
+            <div style={{ fontSize:12, color:"#8a7050", fontStyle:"italic" }}>
+              The sage has fled {MAGE_NAMES[manaLinkColor]}'s corruption.
+            </div>
+          </div>
+        ) : (
+          <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
+            <div style={{ fontSize:12, color:"#a09070", marginBottom:10 }}>Dungeon clue for <strong style={{ color:"#f0c040" }}>25 gold</strong>: reveals a hidden dungeon.</div>
+            <button onClick={() => player.gold>=25 && onSage()} style={{
+              background: player.gold>=25?"linear-gradient(135deg,#1a2830,#2a4050)":"rgba(0,0,0,.3)",
+              border:`1px solid ${player.gold>=25?"#4080a0":"#2a3810"}`,
+              color: player.gold>=25?"#80c0e0":"#5a4030",
+              padding:"8px 18px", borderRadius:5, cursor:player.gold>=25?"pointer":"not-allowed",
+              fontFamily:"'Cinzel',serif", fontSize:12,
+            }}>✦ Seek Dungeon Knowledge (25g)</button>
+          </div>
+        )
       )}
 
       {tab==="bm" && (

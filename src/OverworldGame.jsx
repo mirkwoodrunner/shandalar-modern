@@ -110,6 +110,15 @@ R: ['Goblin Horde', "Karag's Raider"],
 G: ['Vine Elemental', "Sylvara's Chosen"],
 };
 
+// Maps mage color to the archetype key used for mana link defense duels
+const MAGE_ARCHKEY = {
+  W: 'WHITE_WEENIE',
+  U: 'BLUE_CONTROL',
+  B: 'BLACK_REANIMATOR',
+  R: 'RED_BURN',
+  G: 'GREEN_STOMPY',
+};
+
 // -----------------------------------------------------------------------------
 // HELPER: seed ~40 enemies across the map at generation time
 // -----------------------------------------------------------------------------
@@ -476,27 +485,40 @@ if (expiredEvents.length) {
   });
 }
 
-// Spawn new mana link event every 12 moves
-if (newMoves > 5 && newMoves % 12 === 0 && Math.random() > 0.45) {
-  const aliveColors = COLORS.filter(c => !magesDefeated.includes(c));
-  if (aliveColors.length) {
-    const evColor = aliveColors[Math.floor(Math.random() * aliveColors.length)];
+// Mana link progression: spawn interval shrinks with link count
+// Base interval: 12. Each established link reduces it by 2, floor 6.
+// Check each alive mage independently against their own interval.
+const aliveColors = COLORS.filter(c => !magesDefeated.includes(c));
+for (const evColor of aliveColors) {
+  const linkCount = manaLinks[evColor] || 0;
+  const interval = Math.max(6, 12 - linkCount * 2);
+  if (newMoves > 5 && newMoves % interval === 0 && Math.random() > 0.45) {
+    const spawnCount = linkCount >= mlThreshold - 1 ? 2 : 1;
     const townTargets = [];
     newTiles.forEach(row => row.forEach(t => {
       if (t.structure === 'TOWN' && t.townData && !t.manaLink) townTargets.push(t);
     }));
-    if (townTargets.length) {
-      const target = townTargets[Math.floor(Math.random() * townTargets.length)];
-      const names = MINION_NAMES[evColor];
-      const minionName = names[Math.floor(Math.random() * names.length)];
+    if (!townTargets.length) continue;
+
+    for (let s = 0; s < spawnCount; s++) {
+      if (!townTargets.length) break;
+      const idx = Math.floor(Math.random() * townTargets.length);
+      const target = townTargets.splice(idx, 1)[0];
+      const minionName = MINION_NAMES[evColor][Math.floor(Math.random() * MINION_NAMES[evColor].length)];
       const newEv = {
-        id: Date.now(), color: evColor, minionName,
+        id: Date.now() + s,
+        color: evColor,
+        minionName,
         townName: target.townData.name,
-        tx: target.x, ty: target.y,
+        tx: target.x,
+        ty: target.y,
         movesLeft: 10,
       };
       setMlEvents(prev => [...prev, newEv]);
       addLog(`⚠ ${MAGE_NAMES[evColor]} sends ${minionName} to seize ${target.townData.name}!`, 'danger');
+    }
+    if (spawnCount === 2) {
+      addLog(`💀 ${MAGE_NAMES[evColor]} is moments from victory — two minions advance!`, 'danger');
     }
   }
 }
@@ -507,6 +529,21 @@ if (!t) return;
 if (t.structure) {
   setActiveTile(t);
   if (t.structure === 'TOWN') {
+    const respondingEv = mlEvents.find(e => e.responding && e.tx === nx && e.ty === ny);
+    if (respondingEv) {
+      setMlEvents(prev => prev.filter(e => e.id !== respondingEv.id));
+      addLog(`You intercept ${MAGE_NAMES[respondingEv.color]}'s minion at ${respondingEv.townName}! Defend the town!`, 'danger');
+      setModal(null);
+      openEncounterPopup(
+        MAGE_ARCHKEY[respondingEv.color],
+        player.hp,
+        'mana_link_defense',
+        null,
+        { manaLinkColor: respondingEv.color, townName: respondingEv.townName, tx: respondingEv.tx, ty: respondingEv.ty },
+        {}
+      );
+      return;
+    }
     addLog(`You arrive at ${t.townData.name}.`, 'info');
     setModal('town');
     return;
@@ -541,7 +578,7 @@ setEnemies(prev => {
   return prev;
 });
 
-}, [tiles, moves, magesDefeated, player.hp, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -556,14 +593,11 @@ doMove(path[0].x, path[0].y);
 // -------------------------------------------------------------------------
 
 const handleRespondAlert = useCallback((ev) => {
-// Rush toward the threatened town (path to it)
-const path = findPath(tiles, pos.x, pos.y, ev.tx, ev.ty);
-if (path?.length) doMove(path[0].x, path[0].y);
-// Dismiss the event ? player is now en route
-setMlEvents(prev => prev.filter(e => e.id !== ev.id));
-addLog(`Rushing to ${ev.townName}!`, 'info');
-// Defending a town before the minion arrives counts as a town saved
-setTownsSaved(t => t + 1);
+  // Mark as responding but do NOT dismiss — the event stays alive until the player arrives or it expires
+  setMlEvents(prev => prev.map(e => e.id === ev.id ? { ...e, responding: true } : e));
+  const path = findPath(tiles, pos.x, pos.y, ev.tx, ev.ty);
+  if (path?.length) doMove(path[0].x, path[0].y);
+  addLog(`Rushing to ${ev.townName}!`, 'info');
 }, [tiles, pos, doMove, addLog]);
 
 const handleDismissAlert = useCallback((ev) => {
@@ -749,6 +783,43 @@ if (ctx === 'dungeon') {
     // Lost in dungeon ? clear progress, HP already depleted
     addLog(`Fled the dungeon. Progress lost.`, 'danger');
     setDungeonProg(null);
+  }
+}
+
+// -- Mana link defense --------------------------------------------------
+if (ctx === 'mana_link_defense') {
+  setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
+  const { manaLinkColor, townName } = duelCfg;
+  if (won) {
+    setTownsSaved(t => t + 1);
+    addLog(`Victory! ${townName} is defended. No mana link established.`, 'success');
+  } else {
+    setManaLinks(ml => ({ ...ml, [manaLinkColor]: (ml[manaLinkColor] || 0) + 1 }));
+    setTiles(prev => {
+      const n = prev.map(r => [...r]);
+      const { tx, ty } = duelCfg;
+      if (n[ty]?.[tx]) n[ty][tx] = { ...n[ty][tx], manaLink: manaLinkColor };
+      return n;
+    });
+    addLog(`Defeated. ${MAGE_NAMES[manaLinkColor]} establishes a mana link at ${townName}.`, 'danger');
+  }
+}
+
+// -- Mana link reclaim --------------------------------------------------
+if (ctx === 'mana_link_reclaim') {
+  setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
+  const { manaLinkColor, townName, tx, ty } = duelCfg;
+  if (won) {
+    setManaLinks(ml => ({ ...ml, [manaLinkColor]: Math.max(0, (ml[manaLinkColor] || 0) - 1) }));
+    setTiles(prev => {
+      const n = prev.map(r => [...r]);
+      if (n[ty]?.[tx]) n[ty][tx] = { ...n[ty][tx], manaLink: null };
+      return n;
+    });
+    setTownsSaved(t => t + 1);
+    addLog(`Victory! ${townName} is liberated from ${MAGE_NAMES[manaLinkColor]}'s grasp. Mana link removed.`, 'success');
+  } else {
+    addLog(`Defeated. ${townName} remains under ${MAGE_NAMES[manaLinkColor]}'s control.`, 'danger');
   }
 }
 
@@ -987,6 +1058,26 @@ const mod = CASTLE_MODIFIERS[col];
 addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
 setModal(null);
 openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
+}, [activeTile, player.hp, openEncounterPopup, addLog]);
+
+// -------------------------------------------------------------------------
+// COUNTER-ATTACK (RECLAIM CORRUPTED TOWN)
+// -------------------------------------------------------------------------
+
+const handleCounterAttack = useCallback(() => {
+  const tile = activeTile;
+  if (!tile?.manaLink) return;
+  const color = tile.manaLink;
+  addLog(`You challenge ${MAGE_NAMES[color]}'s minion for control of ${tile.townData.name}!`, 'danger');
+  setModal(null);
+  openEncounterPopup(
+    MAGE_ARCHKEY[color],
+    player.hp,
+    'mana_link_reclaim',
+    null,
+    { manaLinkColor: color, townName: tile.townData.name, tx: tile.x, ty: tile.y },
+    {}
+  );
 }, [activeTile, player.hp, openEncounterPopup, addLog]);
 
 // -------------------------------------------------------------------------
@@ -1498,6 +1589,8 @@ fontFamily: "'Crimson Text', serif",
       onSage={handleSage}
       onTrade={handleTrade}
       onGemBuy={handleGemBuy}
+      manaLinkColor={activeTile.manaLink || null}
+      onCounterAttack={handleCounterAttack}
       townQuestDef={activeTile.townData.questId ? QUESTS.find(q => q.id === activeTile.townData.questId) : null}
       activeQuest={activeQuest}
       questProgress={questProgress}
