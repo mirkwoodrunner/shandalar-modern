@@ -10,6 +10,7 @@ import {
 generateMap, findPath, revealAround,
 TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
 MANA_HEX, MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE, MAP_W, MAP_H,
+WORLD_MAGICS,
 } from './engine/MapGenerator.js';
 import { isLand } from './engine/DuelCore.js';
 import { ARCHETYPES, CARD_DB } from './data/cards.js';
@@ -23,6 +24,7 @@ import { drawCharacters } from './ui/overworld/OverworldCanvas.js';
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
 import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
 import PreDuelPopup from './ui/overworld/PreDuelPopup.jsx';
+import WorldMagicPanel from './ui/overworld/WorldMagicPanel.jsx';
 import { DuelLog as OWLog } from './ui/layout/TechnicalLog.jsx';
 import DuelScreen from './DuelScreen.tsx';
 import { generateDungeon, checkLOS } from './engine/DungeonGenerator.js';
@@ -216,6 +218,7 @@ name, color,
 hp: startDef.hp, maxHP: startDef.maxHP,
 gold: isSandbox ? 9999 : startDef.gold,
 gems: isSandbox ? 99 : 0,
+redAmulets: 0,
 });
 const [deck, setDeck]         = useState(() => isSandbox ? [] : buildDeck(startDef.deckIds));
 const [binder, setBinder]     = useState(() => {
@@ -239,6 +242,10 @@ const [artifacts, setArtifacts] = useState(() => {
   }
   return [...OW_ARTS];
 });
+
+// -- World Magics ---------------------------------------------------------
+const [worldMagics, setWorldMagics] = useState([]); // array of WORLD_MAGIC ids owned
+const [wmCooldowns, setWmCooldowns] = useState({}); // id -> movesUntilReady
 
 // -- World pressure -------------------------------------------------------
 const [manaLinks, setManaLinks]       = useState({ W:0, U:0, B:0, R:0, G:0 });
@@ -297,6 +304,8 @@ const hasBoots  = artifacts.some(a => a.id === 'boots'  && a.owned);
 const hasWard   = artifacts.some(a => a.id === 'ward'   && a.owned);
 const hasFocus  = artifacts.some(a => a.id === 'focus'  && a.owned);
 const hasStone  = artifacts.some(a => a.id === 'stone'  && a.owned);
+const hasDwarvenPick  = worldMagics.includes('dwarven_pick');
+const hasSwampwalk    = worldMagics.includes('amulet_of_swampwalk');
 const mlThreshold = hasWard ? 5 : 3;
 const allMagesDown   = magesDefeated.length === 5;
 const gameWon        = allMagesDown && arzakonDefeated;
@@ -416,6 +425,7 @@ playerAnteCard,
 opponentAnteCard,
 fleeCost,
 canFlee,
+tier: monsterMeta.tier || null,
 });
 }, [deck, anteEnabled]);
 
@@ -424,6 +434,13 @@ canFlee,
 // -------------------------------------------------------------------------
 
 const doMove = useCallback((nx, ny) => {
+// Decrement World Magic cooldowns
+setWmCooldowns(prev => {
+  const updated = { ...prev };
+  for (const k in updated) { if (updated[k] > 0) updated[k]--; }
+  return updated;
+});
+
 // Reveal fog
 const newTiles = revealAround(tiles, nx, ny);
 
@@ -524,6 +541,17 @@ for (const evColor of aliveColors) {
   }
 }
 
+// World Magic discovery (~3% chance, only if player doesn't have it yet)
+const tCheck = newTiles[ny]?.[nx];
+if (tCheck && tCheck.terrain !== TERRAIN.WATER && Math.random() < 0.03) {
+  const pool = WORLD_MAGICS.filter(wm => !worldMagics.includes(wm.id));
+  if (pool.length) {
+    const wm = pool[Math.floor(Math.random() * pool.length)];
+    setWorldMagics(prev => [...prev, wm.id]);
+    addLog(`✨ Discovered World Magic: ${wm.icon} ${wm.name} — ${wm.desc}`, 'success');
+  }
+}
+
 // Structure interaction
 const t = newTiles[ny]?.[nx];
 if (!t) return;
@@ -579,7 +607,7 @@ setEnemies(prev => {
   return prev;
 });
 
-}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress, worldMagics]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -654,6 +682,11 @@ if (ctx === 'monster') {
     const gold = 5 + Math.floor(Math.random() * 15);
     setPlayer(p => ({ ...p, gold: p.gold + gold }));
     const arch = ARCHETYPES[duelCfg.oppArchKey];
+    // Grant a red amulet for defeating a red-aligned monster
+    if (arch?.color === 'R') {
+      setPlayer(p => ({ ...p, redAmulets: (p.redAmulets || 0) + 1 }));
+      addLog('🔴 Red amulet obtained.', 'success');
+    }
     const pool = CARD_DB.filter(c => c.color === arch?.color && !isLand(c));
     if (pool.length) {
       const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
@@ -711,6 +744,11 @@ if (ctx === 'castle') {
     setArtifacts(prev => prev.map(a => a.id === artId ? { ...a, owned: true } : a));
     const artName = OW_ARTS.find(a => a.id === artId)?.name;
     addLog(`🏆 ${MAGE_NAMES[col]} is defeated! Artifact gained: ${artName}.`, 'success');
+    // Red mage grants red amulets
+    if (col === 'R') {
+      setPlayer(p => ({ ...p, redAmulets: (p.redAmulets || 0) + 3 }));
+      addLog('🔴🔴🔴 Red amulets obtained.', 'success');
+    }
     // Amulet of Life: max HP +5
     if (artId === 'amulet') setPlayer(p => ({ ...p, maxHP: p.maxHP + 5, hp: Math.min(p.hp + 5, p.maxHP + 5) }));
   } else if (!won) {
@@ -956,6 +994,86 @@ setPlayer(p => ({ ...p, hp: p.maxHP, gems: p.gems - 2 }));
 addLog('Fully healed. 💎-2', 'success');
 }
 }, [player.gems, addLog]);
+
+// -------------------------------------------------------------------------
+// WORLD MAGIC ACTIVATION
+// -------------------------------------------------------------------------
+
+const handleActivateWorldMagic = useCallback((id) => {
+  const wm = WORLD_MAGICS.find(w => w.id === id);
+  if (!wm || wm.type !== 'active') return;
+
+  if (id === 'staff_of_thunder') {
+    if ((player.redAmulets || 0) < 1) {
+      addLog('Staff of Thunder: Need 1 red amulet.', 'warn');
+      return;
+    }
+    const nearest = enemies.reduce((best, e) => {
+      const d = Math.abs(e.x - pos.x) + Math.abs(e.y - pos.y);
+      const bd = best ? Math.abs(best.x - pos.x) + Math.abs(best.y - pos.y) : Infinity;
+      return d < bd ? e : best;
+    }, null);
+    if (nearest) {
+      // TODO: wire to OverworldCanvas enemy removal
+      setEnemies(prev => prev.filter(e => e.id !== nearest.id));
+      setPlayer(p => ({ ...p, redAmulets: (p.redAmulets || 0) - 1 }));
+      addLog(`⚡ Staff of Thunder! ${nearest.name} is dispersed.`, 'success');
+    } else {
+      addLog('Staff of Thunder: No enemies on the map to target.', 'info');
+    }
+    return;
+  }
+
+  if (id === 'sword_of_resistance') {
+    let target = null;
+    for (const row of tiles) {
+      for (const t of row) {
+        if (t.structure === 'TOWN' && t.manaLink !== null) { target = t; break; }
+      }
+      if (target) break;
+    }
+    if (target) {
+      setPos({ x: target.x, y: target.y });
+      setViewOfs({ x: target.x, y: target.y });
+      setMlEvents(prev => prev.filter(e => !(e.tx === target.x && e.ty === target.y)));
+      setActiveTile(target);
+      setModal('town');
+      addLog(`🗡️ Sword of Resistance! Teleported to ${target.townData.name}.`, 'success');
+    } else {
+      addLog('Sword of Resistance: No towns are under threat.', 'info');
+    }
+    return;
+  }
+
+  if (id === 'nomads_map') {
+    if ((wmCooldowns['nomads_map'] || 0) > 0) {
+      addLog(`Nomad's Map: Not ready yet (${wmCooldowns['nomads_map']} moves remaining).`, 'warn');
+      return;
+    }
+    const newTiles = tiles.map(r => r.map(cell => ({ ...cell })));
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const tx = pos.x + dx;
+        const ty = pos.y + dy;
+        if (newTiles[ty]?.[tx]) newTiles[ty][tx] = { ...newTiles[ty][tx], revealed: true };
+      }
+    }
+    setTiles(newTiles);
+    setWmCooldowns(prev => ({ ...prev, nomads_map: 20 }));
+    addLog("🗺️ Nomad's Map: Revealed a 7×7 area of the map!", 'success');
+    return;
+  }
+}, [player.redAmulets, enemies, pos, tiles, wmCooldowns, addLog]); // eslint-disable-line react-hooks/exhaustive-deps
+
+const handleLearnWorldMagic = useCallback(() => {
+  if (player.gold < 150) { addLog('Need 150g to learn a World Magic.', 'warn'); return; }
+  const pool = WORLD_MAGICS.filter(wm => !worldMagics.includes(wm.id));
+  if (!pool.length) { addLog('You have mastered all World Magics!', 'info'); return; }
+  const wm = pool[Math.floor(Math.random() * pool.length)];
+  setWorldMagics(prev => [...prev, wm.id]);
+  setPlayer(p => ({ ...p, gold: p.gold - 150 }));
+  addLog(`✨ The sage teaches you: ${wm.icon} ${wm.name} — ${wm.desc}`, 'success');
+}, [player.gold, worldMagics, addLog]);
 
 // -------------------------------------------------------------------------
 // DUNGEON ENTER
@@ -1536,7 +1654,13 @@ fontFamily: "'Crimson Text', serif",
                  t.terrain.label}
               </div>
               <div style={{ fontSize: 10, color: '#6a5020', marginTop: 3 }}>
-                Move cost: {Math.max(1, hasBoots ? t.terrain.moveC - 1 : t.terrain.moveC)}
+                {(() => {
+                  let c = t.terrain.moveC;
+                  if (t.terrain.id === 'MOUNTAIN' && hasDwarvenPick) c = 1;
+                  if (t.terrain.id === 'SWAMP' && hasSwampwalk) c = 1;
+                  if (hasBoots) c = Math.max(1, c - 1);
+                  return `Move cost: ${c}`;
+                })()}
               </div>
             </div>
           );
@@ -1566,6 +1690,14 @@ fontFamily: "'Crimson Text', serif",
           {binder.length > 8 && <div style={{ fontSize: 8, color: '#6a5020' }}>+{binder.length - 8}</div>}
         </div>
       </div>
+
+      {/* World Magic Panel */}
+      <WorldMagicPanel
+        worldMagics={worldMagics}
+        wmCooldowns={wmCooldowns}
+        player={player}
+        onActivate={handleActivateWorldMagic}
+      />
 
       {/* Chronicle log */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '6px 0' }}>
@@ -1603,6 +1735,9 @@ fontFamily: "'Crimson Text', serif",
       onGemBuy={handleGemBuy}
       manaLinkColor={activeTile.manaLink || null}
       onCounterAttack={handleCounterAttack}
+      worldMagics={worldMagics}
+      totalWorldMagics={WORLD_MAGICS.length}
+      onLearnWorldMagic={handleLearnWorldMagic}
       townQuestDef={activeTile.townData.questId ? QUESTS.find(q => q.id === activeTile.townData.questId) : null}
       activeQuest={activeQuest}
       questProgress={questProgress}
@@ -1666,6 +1801,7 @@ fontFamily: "'Crimson Text', serif",
       onSwap={handleSwap}
       onMoveToDeck={handleMoveToDeck}
       onMoveToBinder={handleMoveToBinder}
+      worldMagics={worldMagics}
     />
   )}
 
@@ -1674,6 +1810,7 @@ fontFamily: "'Crimson Text', serif",
       popup={encounterPopup}
       player={player}
       anteEnabled={anteEnabled}
+      worldMagics={worldMagics}
       onFight={() => {
         launchDuel(
           encounterPopup.oppArchKey,

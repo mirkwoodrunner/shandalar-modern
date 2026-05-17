@@ -2,10 +2,10 @@
 // All overworld modal dialogs: Town, Dungeon, Castle, DeckManager, ScoreScreen.
 // Presentation only. Per MECHANICS_INDEX.md S7.2
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { isCre, isLand } from '../../engine/DuelCore.js';
 import { thmOf, CCOLOR, Cost } from '../shared/Card.jsx';
-import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS } from '../../engine/MapGenerator.js';
+import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIFIERS, COLORS, WORLD_MAGICS } from '../../engine/MapGenerator.js';
 import { CARD_DB, POWERED_NINE_IDS } from '../../data/cards.js';
 import useCardArt from '../../utils/useCardArt.js';
 
@@ -44,10 +44,19 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 
 export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy,
   townQuestDef, activeQuest, questProgress, questComplete,
-  onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack }) {
+  onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack,
+  worldMagics = [], totalWorldMagics = WORLD_MAGICS.length, onLearnWorldMagic }) {
 const [tab, setTab] = useState("shop");
 const baseRestCost = Math.max(0, (player.maxHP - player.hp) * 3);
 const restCost = manaLinkColor ? Math.ceil(baseRestCost * 1.5) : baseRestCost;
+// haggler_coin: stable extra 2 cards keyed to town name so they don't shuffle on re-render
+const hagglerExtraStock = useMemo(() => {
+  if (!worldMagics.includes('haggler_coin')) return [];
+  const nonLands = CARD_DB.filter(c => c.rarity !== 'L');
+  const seed = town.name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const pick = (offset) => nonLands[(seed * 31 + offset * 17) % nonLands.length];
+  return [pick(0), pick(1)];
+}, [worldMagics, town.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const tabs = [
 { id:"shop",  l:"⚔ Shop" },
@@ -124,7 +133,8 @@ return (
         <div>
           <div style={{ fontSize:11, color:"#8a7050", marginBottom:10, fontStyle:"italic" }}>"{town.name}'s merchant deals in arcane arts."</div>
           {(() => {
-            const filteredStock = manaLinkColor ? town.stock.filter(c => c.color !== manaLinkColor) : town.stock;
+            const baseStock = manaLinkColor ? town.stock.filter(c => c.color !== manaLinkColor) : town.stock;
+            const filteredStock = [...baseStock, ...hagglerExtraStock];
             return filteredStock.length > 0 ? (
               <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
                 {filteredStock.map((c,i) => (
@@ -205,15 +215,33 @@ return (
             </div>
           </div>
         ) : (
-          <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
-            <div style={{ fontSize:12, color:"#a09070", marginBottom:10 }}>Dungeon clue for <strong style={{ color:"#f0c040" }}>25 gold</strong>: reveals a hidden dungeon.</div>
-            <button onClick={() => player.gold>=25 && onSage()} style={{
-              background: player.gold>=25?"linear-gradient(135deg,#1a2830,#2a4050)":"rgba(0,0,0,.3)",
-              border:`1px solid ${player.gold>=25?"#4080a0":"#2a3810"}`,
-              color: player.gold>=25?"#80c0e0":"#5a4030",
-              padding:"8px 18px", borderRadius:5, cursor:player.gold>=25?"pointer":"not-allowed",
-              fontFamily:"'Cinzel',serif", fontSize:12,
-            }}>✦ Seek Dungeon Knowledge (25g)</button>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
+              <div style={{ fontSize:12, color:"#a09070", marginBottom:10 }}>Dungeon clue for <strong style={{ color:"#f0c040" }}>25 gold</strong>: reveals a hidden dungeon.</div>
+              <button onClick={() => player.gold>=25 && onSage()} style={{
+                background: player.gold>=25?"linear-gradient(135deg,#1a2830,#2a4050)":"rgba(0,0,0,.3)",
+                border:`1px solid ${player.gold>=25?"#4080a0":"#2a3810"}`,
+                color: player.gold>=25?"#80c0e0":"#5a4030",
+                padding:"8px 18px", borderRadius:5, cursor:player.gold>=25?"pointer":"not-allowed",
+                fontFamily:"'Cinzel',serif", fontSize:12,
+              }}>✦ Seek Dungeon Knowledge (25g)</button>
+            </div>
+            {worldMagics.length < totalWorldMagics && (
+              <div style={{ background:"rgba(40,30,60,.3)", borderRadius:8, padding:14, border:"1px solid rgba(150,80,200,.25)" }}>
+                <div style={{ fontSize:12, color:"#b090d0", marginBottom:6, fontFamily:"'Cinzel',serif" }}>✨ World Magic Lore</div>
+                <div style={{ fontSize:11, color:"#8a7090", marginBottom:10 }}>
+                  The sage can teach you a random World Magic for <strong style={{ color:"#f0c040" }}>150 gold</strong>.
+                  ({worldMagics.length}/{totalWorldMagics} known)
+                </div>
+                <button onClick={() => player.gold>=150 && onLearnWorldMagic && onLearnWorldMagic()} style={{
+                  background: player.gold>=150?"linear-gradient(135deg,#2a1060,#4a2090)":"rgba(0,0,0,.3)",
+                  border:`1px solid ${player.gold>=150?"#9060cc":"#3a2850"}`,
+                  color: player.gold>=150?"#cc88ff":"#5a4060",
+                  padding:"8px 18px", borderRadius:5, cursor:player.gold>=150?"pointer":"not-allowed",
+                  fontFamily:"'Cinzel',serif", fontSize:12,
+                }}>✨ Learn World Magic (150g)</button>
+              </div>
+            )}
           </div>
         )
       )}
@@ -528,7 +556,8 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 );
 }
 
-export function DeckManager({ deck, binder, onClose, onSwap, onMoveToDeck, onMoveToBinder }) {
+export function DeckManager({ deck, binder, onClose, onSwap, onMoveToDeck, onMoveToBinder, worldMagics = [] }) {
+// TODO: hook point — if worldMagics.includes('tome_of_enlightenment'), skip the 4-copy duplicate check here
 const [selD, setSelD] = useState(null);
 const [selB, setSelB] = useState(null);
 const [previewCard, setPreviewCard] = useState(null);
