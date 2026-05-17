@@ -313,6 +313,12 @@ const allMagesDown   = magesDefeated.length === 5;
 const gameWon        = allMagesDown && arzakonDefeated;
 const arzakonReady   = allMagesDown && !arzakonDefeated && !duelCfg;
 const gameLost       = COLORS.some(c => manaLinks[c] >= mlThreshold && !magesDefeated.includes(c));
+const conquestLost   = (() => {
+  const flat = tiles.flat();
+  const total = flat.filter(t => t.structure === 'TOWN').length;
+  const conquered = flat.filter(t => t.townData?.conquered).length;
+  return total > 0 && conquered >= Math.floor(total * 0.6);
+})();
 
 // -------------------------------------------------------------------------
 // UTILITIES
@@ -490,7 +496,7 @@ setMlEvents(prev => {
     });
   return updated;
 });
-// Apply expired events as mana links
+// Apply expired events as mana links and conquest
 if (expiredEvents.length) {
   expiredEvents.forEach(ev => {
     if (magesDefeated.includes(ev.color)) return;
@@ -498,10 +504,17 @@ if (expiredEvents.length) {
     setManaLinksTotal(t => t + 1);
     setTiles(prev => {
       const n = prev.map(r => [...r]);
-      if (n[ev.ty]?.[ev.tx]) n[ev.ty][ev.tx] = { ...n[ev.ty][ev.tx], manaLink: ev.color };
+      if (n[ev.ty]?.[ev.tx]) {
+        const t = n[ev.ty][ev.tx];
+        n[ev.ty][ev.tx] = {
+          ...t,
+          manaLink: ev.color,
+          townData: t.townData ? { ...t.townData, conquered: true } : t.townData,
+        };
+      }
       return n;
     });
-    addLog(`⚠ ${MAGE_NAMES[ev.color]}'s minion seizes ${ev.townName}! Mana link established.`, 'danger');
+    addLog(`⚠ ${MAGE_NAMES[ev.color]} seizes ${ev.townName}! The town is conquered.`, 'danger');
   });
 }
 
@@ -690,6 +703,32 @@ if (won) {
   checkQuestProgress('duel_wins');
   if (ctx === 'monster') checkQuestProgress('monster_wins');
   if (ctx === 'castle')  checkQuestProgress('mages_defeated');
+}
+
+// -- Liberate conquered town --------------------------------------------
+if (ctx === 'liberate') {
+  setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
+  const { townName, townColor } = duelCfg;
+  if (won) {
+    setTiles(prev => {
+      const n = prev.map(r => [...r]);
+      n.forEach(row => row.forEach((t, xi) => {
+        if (t.townData?.name === townName) {
+          n[t.y][xi] = {
+            ...t,
+            manaLink: null,
+            townData: { ...t.townData, conquered: false },
+          };
+        }
+      }));
+      return n;
+    });
+    setManaLinks(prev => ({ ...prev, [townColor]: Math.max(0, prev[townColor] - 1) }));
+    setManaLinksTotal(t => Math.max(0, t - 1));
+    addLog(`${townName} liberated! The people cheer.`, 'success');
+  } else {
+    addLog(`Driven back. ${townName} remains occupied.`, 'danger');
+  }
 }
 
 // -- Monster encounter --------------------------------------------------
@@ -1222,6 +1261,26 @@ const handleCounterAttack = useCallback(() => {
 }, [activeTile, player.hp, openEncounterPopup, addLog]);
 
 // -------------------------------------------------------------------------
+// LIBERATE CONQUERED TOWN
+// -------------------------------------------------------------------------
+
+const handleLiberate = useCallback(() => {
+  const tile = activeTile;
+  if (!tile?.townData?.conquered) return;
+  const conquColor = tile.manaLink;
+  addLog(`You march to liberate ${tile.townData.name} from ${MAGE_NAMES[conquColor]}'s garrison!`, 'danger');
+  setModal(null);
+  openEncounterPopup(
+    MAGE_ARCHKEY[conquColor],
+    player.hp,
+    'liberate',
+    null,
+    { townName: tile.townData.name, townColor: conquColor },
+    { monsterName: `${MAGE_NAMES[conquColor]}'s Garrison`, tier: 3, canFlee: false }
+  );
+}, [activeTile, player.hp, openEncounterPopup, addLog]);
+
+// -------------------------------------------------------------------------
 // DECK MANAGEMENT
 // -------------------------------------------------------------------------
 
@@ -1273,6 +1332,21 @@ arzakonDefeated: false, won: false,
 return () => clearTimeout(t);
 }
 }, [gameLost]); // eslint-disable-line react-hooks/exhaustive-deps
+
+useEffect(() => {
+if (conquestLost && !gameLost && !duelCfg) {
+addLog("Arzakon's forces have overrun Shandalar. The plane is lost.", 'danger');
+const t = setTimeout(() => {
+onScore({
+name, color, magesDefeated, dungeonsCleared,
+townsSaved, manaLinksTotal,
+deckSize: deck.length, binderSize: binder.length,
+arzakonDefeated: false, won: false,
+});
+}, 2000);
+return () => clearTimeout(t);
+}
+}, [conquestLost]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // GAME LOOP — rAF-based, pauses when any modal/duel/dungeon is open
@@ -1450,7 +1524,7 @@ fontFamily: "'Crimson Text', serif",
 }}>
 
   {/* -- GAME-LOSS OVERLAY ----------------------------------------------- */}
-  {gameLost && (
+  {(gameLost || conquestLost) && (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600,
@@ -1459,7 +1533,9 @@ fontFamily: "'Crimson Text', serif",
       <div style={{ fontSize: 40 }}>💀</div>
       <div style={{ fontSize: 24, fontFamily: "'Cinzel',serif", color: '#e04040' }}>The Plane Falls</div>
       <div style={{ fontSize: 12, color: '#a06040', fontStyle: 'italic' }}>
-        Arzakon's mana links have consumed Shandalar--
+        {conquestLost && !gameLost
+          ? "Arzakon's armies have overrun Shandalar's towns--"
+          : "Arzakon's mana links have consumed Shandalar--"}
       </div>
     </div>
   )}
@@ -1757,6 +1833,7 @@ fontFamily: "'Crimson Text', serif",
       onGemBuy={handleGemBuy}
       manaLinkColor={activeTile.manaLink || null}
       onCounterAttack={handleCounterAttack}
+      onLiberate={handleLiberate}
       worldMagics={worldMagics}
       totalWorldMagics={WORLD_MAGICS.length}
       onLearnWorldMagic={handleLearnWorldMagic}

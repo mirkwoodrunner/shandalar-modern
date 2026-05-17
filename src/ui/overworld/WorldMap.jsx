@@ -100,6 +100,16 @@ export function MapTile({ tile, isPlayer, isFogEdge = false, onClick }) {
               {tile.townData.name.slice(0, 7)}
             </div>
           )}
+          {s === 'TOWN' && tile.townData?.conquered && (
+            <div style={{
+              position: 'absolute', top: 1, right: 2,
+              fontSize: 8, lineHeight: 1,
+              color: '#ff4444',
+              textShadow: '0 0 3px #000',
+              pointerEvents: 'none',
+              zIndex: 3,
+            }}>⚔</div>
+          )}
           {s === 'CASTLE' && tile.castleData?.mage && (
             <div className="ow-label" style={{ color: castleColor }}>
               {tile.castleData.mage.slice(0, 6)}

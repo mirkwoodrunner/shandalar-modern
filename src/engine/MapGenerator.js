@@ -315,6 +315,7 @@ quest: rng() > 0.4 ? GUILD_QUESTS[Math.floor(rng() * GUILD_QUESTS.length)] : nul
 hasSage: rng() > 0.5,
 hasBlackMarket: rng() > 0.75,
 questDone: false,
+conquered: false,
 };
 }
 
