@@ -988,4 +988,190 @@ In `planMain` (`AI.js`), after computing available mana and before the spell-sel
 
 ---
 
-# End of SYSTEMS v1.0
+# 23. World Magic Spell System
+
+## 23.1 Authority
+MapGenerator.js owns WORLD_MAGICS definitions.
+OverworldGame.jsx owns worldMagics[] state and activation logic.
+WorldMagicPanel.jsx is presentation only.
+
+## 23.2 Data Shape
+Each World Magic in WORLD_MAGICS has:
+- id: string (snake_case)
+- name: string
+- icon: string (emoji)
+- type: 'passive' | 'active'
+- desc: string
+- rarity: 'C' | 'U' | 'R'
+- activeCost?: { amuletColor: string, amount: number } | null
+- cooldownMoves?: number
+
+## 23.3 Passive Effect Wiring
+Passive effects are checked inline at their relevant call site via worldMagics.includes(id).
+No event emission — passives are synchronous reads.
+
+## 23.4 Active Effect Wiring
+Active effects are triggered via WorldMagicPanel onActivate(id) callback.
+Cooldowns are stored in wmCooldowns state (id → movesRemaining) and decremented in doMove.
+
+## 23.5 Acquisition
+- Random map event: 3% per step on non-water tiles; only if player does not already own it
+- Sage purchase: 150g; only if undiscovered World Magics remain
+- No World Magic can be owned in duplicate
+
+---
+
+# 24. Dungeon Visibility (Clue System)
+
+## 24.1 Authority
+MapGenerator.js initializes dungeonData.clued = false on all dungeons.
+OverworldGame.jsx owns the clue-granting logic.
+Tile render is presentation only — reads clued flag.
+
+## 24.2 Visibility Rules
+- Unclued dungeon: renders as terrain; walking onto tile has no special effect
+- Clued dungeon: shows dungeon icon; walking onto tile opens DungeonModal as normal
+
+## 24.3 Clue Sources
+1. Sage tab (25g) — handleSage sets clued = true on a random unclued dungeon
+2. Post-duel choice — player selects clue instead of card reward after overworld monster win
+
+## 24.4 Post-Duel Choice Flow
+Monster win → compute cardReward + pick random unclued dungeon as dungeonClue →
+setPostDuelChoice({cardReward, dungeonClue}) → PostDuelChoiceModal shown →
+player chooses → setBinder (card) or setTiles clued=true (clue) → setPostDuelChoice(null)
+Gold reward is granted immediately regardless of choice.
+
+---
+
+# 25. City Conquest & Liberation
+
+## 25.1 Authority
+OverworldGame.jsx owns conquest state and loss condition check.
+MapGenerator.js initializes townData.conquered = false.
+TownModal is presentation only.
+
+## 25.2 Conquest Trigger
+Mana link event countdown expires → expiredEvents loop marks townData.conquered = true
+and sets tile.manaLink = ev.color. Both the manaLink color and conquered flag are
+required; manaLink is the color identity, conquered is the service-gate flag.
+
+## 25.3 Loss Condition
+useEffect watching tiles: if (conqueredCount / totalTowns >= 0.6) → trigger defeat screen.
+
+## 25.4 Liberation
+Entering a conquered town shows Liberate tab instead of normal services.
+Liberate fight: tier-3 archetype of conquering color; canFlee = false; no ante.
+Win: clears conquered flag, clears manaLink, decrements mana link count.
+Loss: no penalty beyond HP loss; town remains conquered.
+
+## 25.5 Context
+context = 'liberate' in handleDuelResult is handled before the 'monster' fallback.
+
+---
+
+# 26. Delivery Quest System
+
+## 26.1 Authority
+MapGenerator.js generates delivery quest data at map creation time.
+OverworldGame.jsx owns activeDelivery state and completeDelivery logic.
+TownModal Guild Hall tab is presentation only.
+
+## 26.2 Quest Shape
+Delivery quests on townData have conditionType: 'delivery' and additional fields:
+- destTownName: string
+- item: string
+- accepted: boolean
+- completed: boolean
+- rewardType: 'manalink' | 'gold' | 'card'
+- rewardGold: number
+
+## 26.3 Acceptance
+Guild Hall onAcceptQuest sets activeDelivery state and marks quest.accepted = true on
+source town tile. Only one delivery quest can be active at a time.
+
+## 26.4 Completion
+On opening any town modal: if activeDelivery && tile.townData.name === activeDelivery.destTownName
+→ completeDelivery() called automatically. No player action required.
+
+## 26.5 Reward Resolution
+manalink → increment random alive color mana link count
+gold → add rewardGold to player.gold
+card → add random non-land card from CARD_DB to binder
+
+## 26.6 HUD Indicator
+Active delivery renders a persistent banner in the HUD:
+📦 Delivering: [item] → [destTownName]
+Cleared when activeDelivery = null.
+
+---
+
+# 27. Enemy Tier System
+
+## 27.1 Tier HP Values
+| Tier | Role | HP | Bribeable |
+|------|------|-----|-----------|
+| 1 | Weak | 10 | Yes |
+| 2 | Typical | 14 | Yes |
+| 3 | Strong | 18 | Yes |
+| 4 (Henchman) | Elite | 24–27 | No |
+| Castle Boss | Boss | 38–42 | No |
+
+## 27.2 MONSTER_TABLE
+Defined in MapGenerator.js. Tiers 1–3 indexed by terrain type.
+Tier selected in doMove based on move count: <20 → tier 1; <60 → tier 1–2; else → tier 2–3.
+
+## 27.3 HENCHMAN_TABLE
+Defined in MapGenerator.js. One per color. Spawns at moves > 80, ~4% per step.
+canFlee: false — henchmen cannot be bribed.
+Alive henchmen filtered by magesDefeated before spawn selection.
+
+## 27.4 openEncounterPopup canFlee override
+monsterMeta.canFlee takes priority over the default (true) when explicitly set.
+
+---
+
+# 28. MCTS (Monte Carlo Tree Search) AI Module
+
+## 28.1 Authority
+src/engine/MCTS.js is read-only with respect to game state.
+All state transitions use duelReducer directly.
+AI.js calls MCTS.js for high-stakes decisions when budget allows.
+
+## 28.2 Purpose
+Provides rollout-based move scoring as a complement to the heuristic AI in AI.js.
+Used for candidate move evaluation when the AI has multiple plausible actions.
+
+## 28.3 API
+- `rollout(state, depthLimit=20)` — simulates a random game from the given state up to depthLimit turns; returns 'p' or 'o' (winner).
+- `scoreMoves(state, candidateMoves, budgetMs=800)` — runs rollouts for each candidate move within the time budget; returns moves sorted by win rate.
+- `getBestMove(state, candidateMoves, budgetMs=800)` — returns the single highest-scoring candidate.
+
+## 28.4 Constraints
+- Read-only: no mutation of the passed state. All rollouts operate on deep-copied state.
+- Random play policy: uses `randomMainAction`, `randomAttack`, `randomBlock` — not the full AI heuristic.
+- Heuristic fallback: if game is not `over` after depthLimit turns, `heuristicWinner` estimates the winner by comparing life + board power.
+- Budget enforcement: per-candidate time budget = totalBudgetMs / candidateCount.
+
+---
+
+# 29. cardHandlers.js — Effect Execution Module
+
+## 29.1 Authority
+src/engine/cardHandlers.js is imported exclusively by DuelCore.js.
+It owns the implementation of individual card effect functions.
+DuelCore.js calls handlers; handlers mutate state via pure functions and return new state.
+
+## 29.2 Purpose
+Splits card effect logic out of the main DuelCore reducer to keep file size manageable.
+Each exported function corresponds to one or more card effect identifiers.
+
+## 29.3 Constraints
+- Cannot import from UI files.
+- Cannot dispatch actions — returns state directly.
+- Must remain deterministic given the same input state.
+- All random decisions must use the seeded RNG from state (not Math.random directly).
+
+---
+
+# End of SYSTEMS v1.1

@@ -10,6 +10,9 @@ A faithful but modernized recreation of the classic Shandalar game loop:
 - Town services: card trades, inn healing, gem merchant
 - Mage castle boss fights and Arzakon final encounter
 - Card art sourced from Scryfall (oldest classic printing preferred)
+- World Magic spells: passive upgrades and active abilities found through exploration
+- City conquest and defense: protect towns from enemy mage invasions
+- Delivery quests: cross-map courier missions for mana link rewards
 
 ## Tech Stack
 
@@ -26,6 +29,8 @@ A faithful but modernized recreation of the classic Shandalar game loop:
 | 3 | Overworld↔duel integration, ante, progression | ✅ Complete |
 | 4 | Boss encounters, Arzakon endgame, stub resolution | ✅ Complete |
 | 5 | Scryfall card art integration | ✅ Complete |
+| 6 | Engine depth: triggered abilities, priority window, Power Surge, Holy Ground | ✅ Complete |
+| 7 | Original feature parity: World Magic, city conquest, delivery quests, enemy tiers | ✅ Complete |
 
 See [`docs/gdd.md`](docs/gdd.md) for the full design document and [`docs/CURRENT_SPRINT.md`](docs/CURRENT_SPRINT.md) for active work items.
 
