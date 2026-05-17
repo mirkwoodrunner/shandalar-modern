@@ -319,6 +319,40 @@ conquered: false,
 };
 }
 
+// Post-process: assign delivery quests to ~40% of towns
+const townTiles = [];
+tiles.forEach(row => row.forEach(t => { if (t.structure === 'TOWN') townTiles.push(t); }));
+
+for (let i = 0; i < townTiles.length; i++) {
+  if (rng() < 0.4 && townTiles.length > 1) {
+    const others = townTiles.filter((_, j) => j !== i);
+    const dest = others[Math.floor(rng() * others.length)];
+    const DELIVERY_ITEMS = [
+      'a sealed letter', 'a merchant ledger', 'a vial of reagents',
+      'an enchanted scroll', 'a crown jewel', 'a bag of seeds',
+    ];
+    const item = DELIVERY_ITEMS[Math.floor(rng() * DELIVERY_ITEMS.length)];
+    const DELIVERY_REWARDS = [
+      { rewardType: 'manalink', rewardGold: 0, rewardId: null },
+      { rewardType: 'gold',     rewardGold: 80, rewardId: null },
+      { rewardType: 'card',     rewardGold: 0,  rewardId: null },
+    ];
+    const reward = DELIVERY_REWARDS[Math.floor(rng() * DELIVERY_REWARDS.length)];
+
+    tiles[townTiles[i].y][townTiles[i].x].townData.quest = {
+      id: `delivery_${i}`,
+      title: `Deliver ${item}`,
+      desc: `Carry ${item} to ${dest.townData.name}.`,
+      conditionType: 'delivery',
+      destTownName: dest.townData.name,
+      item,
+      accepted: false,
+      completed: false,
+      ...reward,
+    };
+  }
+}
+
 // -- Dungeons (6?8) -------------------------------------------------------
 const dungeonNames = [...DUNGEON_POOL].sort(() => rng() - 0.5);
 const dungeonCount = 6 + Math.floor(rng() * 3);

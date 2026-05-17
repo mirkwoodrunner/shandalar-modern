@@ -199,10 +199,17 @@ const { tiles: initTiles, startX, startY } = useMemo(() => {
   const questIds = QUESTS.map(q => q.id);
   result.tiles.forEach(row => row.forEach(t => {
     if (t.structure === 'TOWN' && t.townData) {
-      t.townData.hasGuildHall = t.townData.quest !== null;
-      t.townData.questId = t.townData.hasGuildHall
-        ? questIds[Math.floor(Math.random() * questIds.length)]
-        : null;
+      const q = t.townData.quest;
+      if (q && q.conditionType === 'delivery') {
+        t.townData.hasGuildHall = true;
+        t.townData.deliveryQuest = q;
+        t.townData.questId = null;
+      } else {
+        t.townData.hasGuildHall = q !== null;
+        t.townData.questId = t.townData.hasGuildHall
+          ? questIds[Math.floor(Math.random() * questIds.length)]
+          : null;
+      }
       delete t.townData.quest;
       delete t.townData.questDone;
     }
@@ -263,6 +270,8 @@ const [arzakonDefeated, setArzakonDefeated]   = useState(false);
 const [activeQuest, setActiveQuest]     = useState(null);
 const [questProgress, setQuestProgress] = useState(0);
 const [questComplete, setQuestComplete] = useState(false);
+const [activeDelivery, setActiveDelivery] = useState(null);
+// Shape: { questId, item, destTownName, sourceTownName, rewardType, rewardGold } | null
 
 // -- Duel bridge ----------------------------------------------------------
 const [duelCfg, setDuelCfg]             = useState(null);
@@ -438,6 +447,47 @@ tier: monsterMeta.tier || null,
 }, [deck, anteEnabled]);
 
 // -------------------------------------------------------------------------
+// DELIVERY COMPLETION
+// -------------------------------------------------------------------------
+
+const completeDelivery = useCallback(() => {
+  const q = activeDelivery;
+  if (!q) return;
+
+  if (q.rewardType === 'manalink') {
+    const aliveColors = COLORS.filter(c => !magesDefeated.includes(c));
+    if (aliveColors.length) {
+      const col = aliveColors[Math.floor(Math.random() * aliveColors.length)];
+      setManaLinks(prev => ({ ...prev, [col]: prev[col] + 1 }));
+      setManaLinksTotal(t => t + 1);
+      addLog(`Delivered ${q.item}! Mana link earned (${MAGE_NAMES[col]}).`, 'success');
+    }
+  } else if (q.rewardType === 'gold') {
+    setPlayer(p => ({ ...p, gold: p.gold + q.rewardGold }));
+    addLog(`Delivered ${q.item}! +${q.rewardGold}g.`, 'success');
+  } else if (q.rewardType === 'card') {
+    const pool = CARD_DB.filter(c => !isLand(c));
+    if (pool.length) {
+      const reward = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId() };
+      setBinder(b => [...b, reward]);
+      addLog(`Delivered ${q.item}! Received ${reward.name}.`, 'success');
+    }
+  }
+
+  setTiles(prev => {
+    const n = prev.map(r => [...r]);
+    n.forEach(row => row.forEach((t, xi) => {
+      if (t.townData?.name === q.sourceTownName) {
+        n[t.y][xi] = { ...t, townData: { ...t.townData, deliveryQuest: { ...t.townData.deliveryQuest, completed: true } } };
+      }
+    }));
+    return n;
+  });
+
+  setActiveDelivery(null);
+}, [activeDelivery, magesDefeated, addLog]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// -------------------------------------------------------------------------
 // MOVEMENT & ENCOUNTER LOGIC
 // -------------------------------------------------------------------------
 
@@ -590,6 +640,9 @@ if (t.structure) {
     }
     addLog(`You arrive at ${t.townData.name}.`, 'info');
     setModal('town');
+    if (activeDelivery && t.townData?.name === activeDelivery.destTownName) {
+      completeDelivery();
+    }
     return;
   }
   if (t.structure === 'DUNGEON') {
@@ -637,7 +690,7 @@ if (newMoves > 80 && t.terrain !== TERRAIN.WATER && Math.random() < 0.04) {
   }
 }
 
-}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress, worldMagics]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress, worldMagics, activeDelivery, completeDelivery]); // eslint-disable-line react-hooks/exhaustive-deps
 
 const handleTileClick = useCallback((tile) => {
 if (!tile.revealed || tile.terrain === TERRAIN.WATER) return;
@@ -1695,6 +1748,22 @@ fontFamily: "'Crimson Text', serif",
     moves={moves}
   />
 
+  {/* -- DELIVERY BANNER ------------------------------------------------- */}
+  {activeDelivery && (
+    <div style={{
+      padding: '4px 12px',
+      background: 'rgba(50,20,90,.5)',
+      borderBottom: '1px solid rgba(150,80,200,.35)',
+      fontSize: 11,
+      color: '#c0a0f0',
+      fontFamily: "'Cinzel',serif",
+      letterSpacing: 0.5,
+      flexShrink: 0,
+    }}>
+      📦 Delivering: {activeDelivery.item} → {activeDelivery.destTownName}
+    </div>
+  )}
+
   {/* -- MAIN CONTENT ---------------------------------------------------- */}
   <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
@@ -1837,15 +1906,41 @@ fontFamily: "'Crimson Text', serif",
       worldMagics={worldMagics}
       totalWorldMagics={WORLD_MAGICS.length}
       onLearnWorldMagic={handleLearnWorldMagic}
-      townQuestDef={activeTile.townData.questId ? QUESTS.find(q => q.id === activeTile.townData.questId) : null}
+      townQuestDef={
+        (activeTile.townData.deliveryQuest && !activeTile.townData.deliveryQuest.completed)
+          ? activeTile.townData.deliveryQuest
+          : (activeTile.townData.questId ? QUESTS.find(q => q.id === activeTile.townData.questId) : null)
+      }
       activeQuest={activeQuest}
       questProgress={questProgress}
       questComplete={questComplete}
+      activeDelivery={activeDelivery}
       onQuestAccept={(quest) => {
-        setActiveQuest(quest);
-        setQuestProgress(0);
-        setQuestComplete(false);
-        addLog(`Quest accepted: ${quest.title}`, 'info');
+        if (quest.conditionType === 'delivery') {
+          setActiveDelivery({
+            questId: quest.id,
+            item: quest.item,
+            destTownName: quest.destTownName,
+            sourceTownName: activeTile.townData.name,
+            rewardType: quest.rewardType,
+            rewardGold: quest.rewardGold,
+          });
+          addLog(`Accepted: Deliver ${quest.item} to ${quest.destTownName}.`, 'info');
+          setTiles(prev => {
+            const n = prev.map(r => [...r]);
+            n.forEach(row => row.forEach((t, xi) => {
+              if (t.townData?.name === activeTile.townData.name) {
+                n[t.y][xi] = { ...t, townData: { ...t.townData, deliveryQuest: { ...t.townData.deliveryQuest, accepted: true } } };
+              }
+            }));
+            return n;
+          });
+        } else {
+          setActiveQuest(quest);
+          setQuestProgress(0);
+          setQuestComplete(false);
+          addLog(`Quest accepted: ${quest.title}`, 'info');
+        }
       }}
       onQuestAbandon={() => {
         setActiveQuest(null);

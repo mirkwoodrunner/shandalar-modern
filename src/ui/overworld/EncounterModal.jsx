@@ -43,7 +43,7 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 // --- TOWN MODAL ---------------------------------------------------------------
 
 export function TownModal({ town, player, binder, onClose, onBuy, onSell, onRest, onSage, onTrade, onGemBuy,
-  townQuestDef, activeQuest, questProgress, questComplete,
+  townQuestDef, activeQuest, questProgress, questComplete, activeDelivery = null,
   onQuestAccept, onQuestAbandon, onQuestClaim, manaLinkColor, onCounterAttack, onLiberate,
   worldMagics = [], totalWorldMagics = WORLD_MAGICS.length, onLearnWorldMagic }) {
 const conquered = town.conquered === true;
@@ -337,15 +337,32 @@ return (
 
       {tab==="guild" && town.hasGuildHall && (
         <div style={{ background:"rgba(255,255,255,.04)", borderRadius:8, padding:14, border:"1px solid rgba(200,160,60,.12)" }}>
-          {/* No active quest — offer town's assigned quest */}
-          {!activeQuest && townQuestDef && (
+          {/* Delivery in progress */}
+          {activeDelivery && (
+            <div style={{ background:"rgba(50,20,90,.3)", borderRadius:6, padding:"10px 12px", border:"1px solid rgba(150,80,200,.3)" }}>
+              <div style={{ fontSize:13, color:"#c0a0f0", fontFamily:"'Cinzel',serif", marginBottom:6 }}>📦 Delivery in Progress</div>
+              <div style={{ fontSize:12, color:"#a090b0", marginBottom:6 }}>{activeDelivery.item}</div>
+              <div style={{ fontSize:11, color:"#9090c0" }}>
+                Destination: <strong style={{ color:"#c0c0f0" }}>{activeDelivery.destTownName}</strong>
+              </div>
+            </div>
+          )}
+          {/* No active delivery, no active quest — offer town's assigned quest */}
+          {!activeDelivery && !activeQuest && townQuestDef && (
             <>
               <div style={{ fontSize:14, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>⚔ {townQuestDef.title}</div>
               <div style={{ fontSize:12, color:"#c0a070", marginBottom:10 }}>{townQuestDef.desc}</div>
               <div style={{ fontSize:11, color:"#80c080", marginBottom:12 }}>
-                Reward: {townQuestDef.reward.type === 'gold'
-                  ? <strong>{townQuestDef.reward.amount} gold</strong>
-                  : <strong>{(() => { const c = CARD_DB.find(x => x.id === townQuestDef.reward.cardId); return c ? c.name : townQuestDef.reward.cardId; })()} (card)</strong>}
+                Reward: {(() => {
+                  if (townQuestDef.conditionType === 'delivery') {
+                    if (townQuestDef.rewardType === 'gold') return <strong>{townQuestDef.rewardGold} gold</strong>;
+                    if (townQuestDef.rewardType === 'manalink') return <strong>Mana link life bonus</strong>;
+                    return <strong>Random card</strong>;
+                  }
+                  return townQuestDef.reward.type === 'gold'
+                    ? <strong>{townQuestDef.reward.amount} gold</strong>
+                    : <strong>{(() => { const c = CARD_DB.find(x => x.id === townQuestDef.reward.cardId); return c ? c.name : townQuestDef.reward.cardId; })()} (card)</strong>;
+                })()}
               </div>
               <button onClick={() => onQuestAccept(townQuestDef)} style={{
                 background:"linear-gradient(135deg,#2a1a04,#4a3010)",
@@ -355,8 +372,8 @@ return (
               }}>Accept Quest</button>
             </>
           )}
-          {/* Active quest, not complete */}
-          {activeQuest && !questComplete && (
+          {/* Active non-delivery quest, not complete */}
+          {!activeDelivery && activeQuest && !questComplete && (
             <>
               <div style={{ fontSize:14, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>⚔ {activeQuest.title}</div>
               <div style={{ fontSize:12, color:"#c0a070", marginBottom:10 }}>{activeQuest.desc}</div>
@@ -388,8 +405,8 @@ return (
               </div>
             </>
           )}
-          {/* Quest complete — claim reward */}
-          {activeQuest && questComplete && (
+          {/* Active non-delivery quest, complete — claim reward */}
+          {!activeDelivery && activeQuest && questComplete && (
             <>
               <div style={{ fontSize:15, color:"#80e080", fontFamily:"'Cinzel',serif", marginBottom:8 }}>⚔ Quest Complete!</div>
               <div style={{ fontSize:13, color:"#e0c060", fontFamily:"'Cinzel',serif", marginBottom:6 }}>{activeQuest.title}</div>
