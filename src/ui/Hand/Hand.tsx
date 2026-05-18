@@ -32,7 +32,9 @@ export function Hand({ side, cards, selCard, playableIids, onCardClick }: HandPr
         ? 'linear-gradient(180deg, rgba(40,16,8,.4), transparent)'
         : 'linear-gradient(180deg, transparent, rgba(20,40,10,.35))',
       minHeight: isOpp ? 70 : 158,
-      overflow: 'visible',
+      overflowX: 'auto',
+      overflowY: 'visible',
+      WebkitOverflowScrolling: 'touch',
     }}>
       {isOpp ? (
         <div style={{
