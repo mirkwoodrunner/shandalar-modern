@@ -389,24 +389,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- Smart suppression helper: skip the priority window if neither player
   // -- has an instant in hand or a non-mana activated battlefield ability.
   const requestPhaseAdvance = useCallback(() => {
-    // DIAGNOSTIC — remove after bug is confirmed
-    console.log('[requestPhaseAdvance] called', {
-      priorityWindow: s.priorityWindow,
-      priorityPasser: s.priorityPasser,
-      stackLength: s.stack?.length ?? 'undefined',
-      stack: s.stack,
-      phase: s.phase,
-    });
-
-    if (s.priorityWindow) {
-      console.warn('[requestPhaseAdvance] suppressed — priorityWindow still open');
-      return;
-    }
+    if (s.priorityWindow) return;
     // Do not attempt phase advance while stack has unresolved items
-    if (s.stack && s.stack.length > 0) {
-      console.warn('[DuelScreen] requestPhaseAdvance: stack not empty, advance suppressed');
-      return;
-    }
+    if (s.stack && s.stack.length > 0) return;
 
     // Only open priority windows during interactive phases
     if (!PRIORITY_WINDOW_PHASES.has(s.phase)) {
@@ -428,7 +413,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     } else {
       advancePhase();
     }
-  }, [s.priorityWindow, s.phase, s.p.hand, s.o.hand, s.p.bf, s.o.bf, openPriorityWindow, advancePhase]);
+  }, [s.priorityWindow, s.stack, s.phase, s.p.hand, s.o.hand, s.p.bf, s.o.bf, openPriorityWindow, advancePhase]);
 
   // -- Auto-advance phase when priority window closes (both players passed) --
   useEffect(() => {
