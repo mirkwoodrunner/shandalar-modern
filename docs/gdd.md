@@ -985,6 +985,19 @@ feature set, identified via source code and gameplay documentation audit.
 
 ---
 
+### Phase 7 Deliverable: Mobile Responsive Layout
+
+**Status:** Complete
+
+- `useIsMobile` hook added (`src/hooks/useIsMobile.js`) — ResizeObserver-based, 768px breakpoint
+- DuelScreen: left/right sidebars suppressed on mobile; `MobileActionDrawer` fixed bottom drawer added for log/ruleset/mana info; hand container bottom padding added to clear drawer
+- OverworldGame: log sidebar suppressed; D-pad buttons enlarged to 48px minimum; tile viewport reduced (22×14 → 12×9); toolbar set to horizontal scroll
+- Desktop layout: **zero changes** — all mobile branches are additive conditionals
+- New documentation: `docs/MOBILE_VS_PC.md` — canonical reference for all platform layout divergence
+- `MECHANICS_INDEX.md` updated: §6.1 Mobile Responsive Layout System added
+
+---
+
 ## 9. Design Decisions — Resolved
 
 | Question | Decision | Rationale |

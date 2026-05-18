@@ -4,6 +4,7 @@
 // All map logic lives in MapGenerator.js; duel logic in DuelCore.js.
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useIsMobile } from './hooks/useIsMobile.js';
 
 // -- Engine --------------------------------------------------------------------
 import {
@@ -307,6 +308,11 @@ const [log, setLog]             = useState(() => {
 // -- Viewport -------------------------------------------------------------
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const [zoom, setZoom]         = useState(1);
+
+// -- Mobile layout --------------------------------------------------------
+const isMobile = useIsMobile();
+const viewW = isMobile ? 12 : VIEW_W;
+const viewH = isMobile ? 9  : VIEW_H;
 
 // -- Canvas / animation ---------------------------------------------------
 const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId));
@@ -1443,8 +1449,8 @@ useEffect(() => {
     if (canvas) {
       const ctx = canvas.getContext('2d');
       const viewport = {
-        x: Math.max(0, Math.min(MAP_W - VIEW_W, viewOfs.x - Math.floor(VIEW_W / 2))),
-        y: Math.max(0, Math.min(MAP_H - VIEW_H, viewOfs.y - Math.floor(VIEW_H / 2))),
+        x: Math.max(0, Math.min(MAP_W - viewW, viewOfs.x - Math.floor(viewW / 2))),
+        y: Math.max(0, Math.min(MAP_H - viewH, viewOfs.y - Math.floor(viewH / 2))),
       };
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawCharacters(ctx, {
@@ -1647,7 +1653,9 @@ fontFamily: "'Crimson Text', serif",
     padding: '6px 12px',
     borderBottom: '2px solid rgba(200,160,40,.3)',
     background: 'rgba(0,0,0,.7)',
-    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    display: 'flex', alignItems: 'center', gap: 12, flexWrap: isMobile ? 'nowrap' : 'wrap',
+    overflowX: isMobile ? 'auto' : 'visible',
+    WebkitOverflowScrolling: 'touch',
   }}>
     <span style={{ fontSize: 13, fontFamily: "'Cinzel Decorative',serif", color: '#d0a030', letterSpacing: 2 }}>
       SHANDALAR
@@ -1706,7 +1714,7 @@ fontFamily: "'Crimson Text', serif",
             playerAnimRef.current = { ...playerAnimRef.current, moving: false };
           }, 200);
         }}
-        style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', width: 22, height: 22, borderRadius: 3, cursor: 'pointer', fontSize: 11 }}>
+        style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', width: 22, height: 22, borderRadius: 3, cursor: 'pointer', fontSize: isMobile ? 18 : 11, minWidth: isMobile ? 48 : undefined, minHeight: isMobile ? 48 : undefined, padding: isMobile ? '10px 16px' : undefined }}>
         {d === 'up' ? '▲' : d === 'down' ? '▼' : d === 'left' ? '◀' : '▶'}
       </button>
     ))}
@@ -1783,11 +1791,11 @@ fontFamily: "'Crimson Text', serif",
         tiles={tiles}
         playerPos={pos}
         viewport={{
-          x: Math.max(0, Math.min(MAP_W - VIEW_W, viewOfs.x - Math.floor(VIEW_W / 2))),
-          y: Math.max(0, Math.min(MAP_H - VIEW_H, viewOfs.y - Math.floor(VIEW_H / 2))),
+          x: Math.max(0, Math.min(MAP_W - viewW, viewOfs.x - Math.floor(viewW / 2))),
+          y: Math.max(0, Math.min(MAP_H - viewH, viewOfs.y - Math.floor(viewH / 2))),
         }}
-        viewW={VIEW_W}
-        viewH={VIEW_H}
+        viewW={viewW}
+        viewH={viewH}
         onTileClick={handleTileClick}
         canvasRef={canvasRef}
         enemies={enemies}
@@ -1807,6 +1815,7 @@ fontFamily: "'Crimson Text', serif",
     </div>
 
     {/* -- RIGHT SIDEBAR -------------------------------------------------- */}
+    {!isMobile && (
     <div style={{
       width: 'clamp(160px,22vw,210px)',
       borderLeft: '2px solid rgba(180,140,60,.25)',
@@ -1894,6 +1903,7 @@ fontFamily: "'Crimson Text', serif",
         <OWLog log={log} />
       </div>
     </div>
+    )}
   </div>
 
   {/* -- MODALS ---------------------------------------------------------- */}

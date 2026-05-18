@@ -1033,4 +1033,36 @@ ACTIVE (implemented during Phase 6 cutover)
 
 ---
 
+---
+
+# 6. UI / PLATFORM SYSTEMS
+
+---
+
+## 6.1 Mobile Responsive Layout System
+
+### Description
+Runtime detection of mobile viewport (≤ 768px) via `useIsMobile` hook. Activates alternate layout in DuelScreen and OverworldGame. Desktop layout is unmodified at all breakpoints above 768px. No game logic differs between platforms.
+
+### GDD Reference
+N/A — presentational layer only.
+
+### SYSTEMS.md Reference
+See `docs/MOBILE_VS_PC.md` (authoritative reference for all platform layout divergence).
+
+### Implementation
+```
+/src/hooks/useIsMobile.js        — detection hook (ResizeObserver + resize fallback)
+/src/DuelScreen.tsx              — sidebar suppression, MobileActionDrawer, hand padding
+/src/OverworldGame.jsx           — sidebar suppression, D-pad sizing, viewport scaling, toolbar scroll
+/docs/MOBILE_VS_PC.md           — complete divergence table and future-change rules
+```
+### Strict Constraints
+- Hook is read-only from the perspective of game state — it only reads viewport dimensions
+- All mobile branches must be `isMobile ? mobileValue : existingValue` — never restructure desktop-path code
+- Engine files (`DuelCore.js`, `AI.js`, etc.) must never be conditioned on `isMobile`
+
+### Status
+ACTIVE (Phase 7 — Mobile Support)
+
 # End of MECHANICS INDEX v1.1
