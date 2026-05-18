@@ -886,10 +886,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
         {/* -- RIGHT SIDEBAR ----------------------------------------------- */}
         {!isMobile && (
-        <div style={{
+        <div className="duel-sidebar" style={{
           width: 'clamp(160px,22vw,210px)',
           borderLeft: '2px solid rgba(180,140,60,.25)',
-          display: 'flex', flexDirection: 'column',
+          display: 'flex',
+          flexDirection: 'column',
           background: 'linear-gradient(180deg,#0e0c08,#0a0a08)',
           flexShrink: 0,
         }}>

@@ -38,3 +38,20 @@
   color: #ffcc88;
   box-shadow: 0 0 10px rgba(196,80,40,.6), inset 0 1px 1px rgba(255,255,255,.1);
 }
+
+@media (max-width: 640px) {
+  .pill:not([aria-current="step"]) {
+    display: none;
+  }
+
+  .pill[aria-current="step"] {
+    font-size: 11px;
+    padding: 5px 16px;
+    letter-spacing: 1px;
+  }
+
+  .bar {
+    justify-content: center;
+    padding: 3px 0;
+  }
+}

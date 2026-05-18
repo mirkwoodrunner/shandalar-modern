@@ -20,7 +20,13 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
       gap: 4,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          minWidth: 0,
+        }}>
           <span style={{
             fontSize: 13,
             fontFamily: 'var(--font-display)',
@@ -28,20 +34,20 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
             fontWeight: 700,
             letterSpacing: 2,
             textShadow: '0 0 8px rgba(196,160,64,.3)',
+            flexShrink: 0,
           }}>
             SHANDALAR
           </span>
 
-          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
-
-          <span style={{
+          {/* Hide on mobile */}
+          <span className="hide-mobile" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
+          <span className="hide-mobile" style={{
             fontSize: 11, color: 'var(--ink-muted)',
             fontFamily: 'var(--font-display)', letterSpacing: 1,
           }}>
             {rulesetName}
           </span>
-
-          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
+          <span className="hide-mobile" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>·</span>
 
           <span style={{
             fontSize: 11, color: 'var(--brass)',
@@ -50,6 +56,7 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
             background: 'rgba(196,160,64,.1)',
             border: '1px solid rgba(196,160,64,.3)',
             borderRadius: 2,
+            flexShrink: 0,
           }}>
             TURN {turn}
           </span>
@@ -59,8 +66,9 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
             color: active === 'p' ? 'var(--you)' : 'var(--opp)',
             fontFamily: 'var(--font-display)',
             letterSpacing: 1,
+            flexShrink: 0,
           }}>
-            {active === 'p' ? 'YOUR TURN' : 'Opponent thinking?'}
+            {active === 'p' ? 'YOUR TURN' : 'Opp...'}
           </span>
         </div>
 

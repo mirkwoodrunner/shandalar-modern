@@ -214,3 +214,14 @@ html, body, #root {
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* ── Mobile duel layout ─────────────────────────────── */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .duel-sidebar {
+    display: none !important;
+  }
+}
