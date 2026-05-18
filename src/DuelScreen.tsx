@@ -29,6 +29,7 @@ import { useFlash } from './hooks/useFlash';
 import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useIsMobile } from './hooks/useIsMobile.js';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
@@ -243,6 +244,84 @@ interface DuelScreenProps {
 }
 
 // -----------------------------------------------------------------------------
+// MOBILE-ONLY BOTTOM DRAWER
+// Only rendered when useIsMobile() returns true. Desktop path is not affected.
+// -----------------------------------------------------------------------------
+
+function MobileActionDrawer({ s, config, ruleFlags }: {
+  s: any;
+  config: any;
+  ruleFlags: { l: string; v: any }[];
+}) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 200,
+      background: 'linear-gradient(0deg,#0a0a08,#0e0c08)',
+      borderTop: '2px solid rgba(180,140,60,.35)',
+    }}>
+      {/* Toggle tab */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%',
+          background: 'rgba(196,160,64,.12)',
+          border: 'none',
+          borderBottom: open ? '1px solid rgba(180,140,60,.2)' : 'none',
+          color: '#c0a040',
+          fontFamily: "'Cinzel',serif",
+          fontSize: 11,
+          letterSpacing: 1,
+          padding: '6px 0',
+          cursor: 'pointer',
+          textTransform: 'uppercase',
+        }}
+      >
+        {open ? '▼ Info' : '▲ Info / Log'}
+      </button>
+
+      {open && (
+        <div style={{
+          maxHeight: '35vh',
+          overflowY: 'auto',
+          padding: '8px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          {/* Mana pools */}
+          <div style={{ fontSize: 10, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
+            MANA POOLS
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ fontSize: 9, color: '#806040' }}>You: {JSON.stringify(s.p.mana)}</div>
+            <div style={{ fontSize: 9, color: '#806040' }}>Opp: {JSON.stringify(s.o.mana)}</div>
+          </div>
+
+          {/* Ruleset flags */}
+          <div style={{ fontSize: 10, color: '#c0a040', fontFamily: "'Cinzel',serif", letterSpacing: 1, marginTop: 4 }}>
+            RULESET: {config.ruleset?.name ?? ''}
+          </div>
+          {ruleFlags.map((f: { l: string; v: any }) => (
+            <div key={f.l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: 'monospace' }}>
+              <span style={{ color: '#908060' }}>{f.l}</span>
+              <span style={{ color: f.v === true ? '#60ee60' : f.v === false ? '#ee4040' : '#e0c040', fontWeight: 700 }}>
+                {typeof f.v === 'boolean' ? (f.v ? 'ON' : 'OFF') : String(f.v)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // DUEL SCREEN ? hooks and handlers
 // -----------------------------------------------------------------------------
 
@@ -286,6 +365,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
   usePersistence(s);
+  const isMobile = useIsMobile();
 
   // -- Local UI state --------------------------------------------------------
   const [tooltip, setTooltip] = useState<{ card: any; pos: { x: number; y: number } } | null>(null);
@@ -706,7 +786,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* -- CENTER COLUMN ----------------------------------------------- */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 44 : 0 }}>
 
           {/* Opponent hand (face-down) */}
           <Hand side="opp" cards={s.o.hand.length} />
@@ -805,6 +885,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         </div>
 
         {/* -- RIGHT SIDEBAR ----------------------------------------------- */}
+        {!isMobile && (
         <div style={{
           width: 'clamp(160px,22vw,210px)',
           borderLeft: '2px solid rgba(180,140,60,.25)',
@@ -852,7 +933,17 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             <DuelLog log={adaptedLog} />
           </div>
         </div>
+        )}
       </div>
+
+      {/* -- MOBILE ACTION DRAWER -------------------------------------------- */}
+      {isMobile && (
+        <MobileActionDrawer
+          s={s}
+          config={config}
+          ruleFlags={ruleFlags}
+        />
+      )}
 
       {/* -- MODALS ---------------------------------------------------------- */}
 
