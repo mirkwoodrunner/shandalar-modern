@@ -1773,6 +1773,12 @@ case "RESOLVE_STACK": {
   s = { ...s, stack: s.stack.slice(0, -1) };
   s = resolveEff(s, top);
   if (!isPerm(top.card)) s = { ...s, [top.caster]: { ...s[top.caster], gy: [...s[top.caster].gy, { ...top.card }] } };
+  console.log('[RESOLVE_STACK] after resolution', {
+    stackLength: s.stack?.length,
+    stack: s.stack,
+    priorityWindow: s.priorityWindow,
+    priorityPasser: s.priorityPasser,
+  });
   return s;
 }
 
@@ -1829,11 +1835,18 @@ case "PASS_PRIORITY": {
 
 case "ADVANCE_PHASE": {
   if (s.priorityWindow) {
-    console.warn('[DuelCore] ADVANCE_PHASE blocked: priority window open');
+    console.warn('[ADVANCE_PHASE] blocked — priorityWindow open', {
+      priorityWindow: s.priorityWindow,
+      priorityPasser: s.priorityPasser,
+      stackLength: s.stack?.length,
+    });
     return s;
   }
   if (s.stack && s.stack.length > 0) {
-    console.warn('[DuelCore] ADVANCE_PHASE blocked: stack is not empty');
+    console.warn('[ADVANCE_PHASE] blocked — stack not empty', {
+      stack: s.stack,
+      priorityWindow: s.priorityWindow,
+    });
     return s;
   }
   if (s.pendingUpkeepChoice) return s;
