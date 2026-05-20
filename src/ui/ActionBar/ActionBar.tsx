@@ -11,6 +11,7 @@ interface ActionBarProps {
   onPassPriority?: () => void;
   onCancel?: () => void;
   onEndTurn?: () => void;
+  compact?: boolean;
 }
 
 export function ActionBar({
@@ -21,13 +22,14 @@ export function ActionBar({
   onPassPriority,
   onCancel,
   onEndTurn,
+  compact = false,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-      padding: '10px 16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: compact ? 6 : 10,
+      padding: compact ? '6px 10px' : '10px 16px',
       background: 'linear-gradient(180deg, var(--bg-panel-hi) 0%, #0c0806 100%)',
       borderTop: '1px solid rgba(180,140,70,.25)',
       borderBottom: '1px solid rgba(180,140,70,.25)',
