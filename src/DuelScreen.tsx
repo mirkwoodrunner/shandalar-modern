@@ -806,7 +806,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* -- CENTER COLUMN ----------------------------------------------- */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 44 : 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 'min(44px, 9vh)' : 0 }}>
 
           {/* Opponent hand (face-down) */}
           <Hand side="opp" cards={s.o.hand.length} compact={isMobile} />
@@ -879,45 +879,24 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           )}
 
           {/* Action bar */}
-          {isMobile ? (
-            <div style={{ maxHeight: '10vh', overflow: 'hidden', flexShrink: 0 }}>
-              <ActionBar
-                phase={s.phase}
-                hasSelection={!!s.selCard}
-                selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
-                onCast={handleCast}
-                onPassPriority={() => {
-                  if (s.stack?.length > 0) {
-                    resolveStack();
-                  } else if (s.priorityWindow && s.priorityPasser !== 'p') {
-                    passPriority('p');
-                  } else {
-                    requestPhaseAdvance();
-                  }
-                }}
-                onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-                onEndTurn={requestPhaseAdvance}
-              />
-            </div>
-          ) : (
-            <ActionBar
-              phase={s.phase}
-              hasSelection={!!s.selCard}
-              selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
-              onCast={handleCast}
-              onPassPriority={() => {
-                if (s.stack?.length > 0) {
-                  resolveStack();
-                } else if (s.priorityWindow && s.priorityPasser !== 'p') {
-                  passPriority('p');
-                } else {
-                  requestPhaseAdvance();
-                }
-              }}
-              onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-              onEndTurn={requestPhaseAdvance}
-            />
-          )}
+          <ActionBar
+            phase={s.phase}
+            compact={isMobile}
+            hasSelection={!!s.selCard}
+            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
+            onCast={handleCast}
+            onPassPriority={() => {
+              if (s.stack?.length > 0) {
+                resolveStack();
+              } else if (s.priorityWindow && s.priorityPasser !== 'p') {
+                passPriority('p');
+              } else {
+                requestPhaseAdvance();
+              }
+            }}
+            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
+            onEndTurn={requestPhaseAdvance}
+          />
 
           {/* Player hand */}
           <Hand
