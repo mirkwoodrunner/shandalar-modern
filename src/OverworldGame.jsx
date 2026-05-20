@@ -18,7 +18,7 @@ import { ARCHETYPES, CARD_DB } from './data/cards.js';
 import RULESETS from './data/rulesets.js';
 
 // -- Animation / AI -----------------------------------------------------------
-import { tickEnemyAI } from './engine/EnemyAI.js';
+import { tickEnemyAI, GRACE_MOVE_THRESHOLD } from './engine/EnemyAI.js';
 import { drawCharacters } from './ui/overworld/OverworldCanvas.js';
 import { spriteForMonster } from './ui/overworld/Sprite.jsx';
 
@@ -314,6 +314,9 @@ const isMobile = useIsMobile();
 const viewW = isMobile ? 12 : VIEW_W;
 const viewH = isMobile ? 9  : VIEW_H;
 
+// -- Grace period: enemies frozen until player has taken GRACE_MOVE_THRESHOLD steps
+const [graceMoves, setGraceMoves] = useState(0);
+
 // -- Canvas / animation ---------------------------------------------------
 const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId));
 const enemyTickRef  = useRef(0);
@@ -526,6 +529,7 @@ for (let ry = 0; ry < newTiles.length; ry++) {
 // Move counters
 const newMoves = moves + 1;
 setMoves(newMoves);
+setGraceMoves(g => Math.min(g + 1, GRACE_MOVE_THRESHOLD));
 setPos({ x: nx, y: ny });
 setTiles(newTiles);
 
@@ -742,6 +746,7 @@ castleMod,
 anteEnabled,
 context, ...extraData,
 sandbox: isSandbox,
+_ts: Date.now(),
 });
 }, [deck, ruleset, anteEnabled]);
 
@@ -925,6 +930,7 @@ if (ctx === 'dungeon') {
         anteEnabled: false,
         context: 'dungeon',
         sandbox: isSandbox,
+        _ts: Date.now(),
       });
       return; // skip clearing duelCfg
     } else {
@@ -1013,7 +1019,8 @@ if (ctx === 'arzakon') {
   }
 }
 
-// Clear duel state
+// Clear duel state and reset grace period on overworld re-entry
+setGraceMoves(0);
 setDuelCfg(null);
 
 }, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1033,6 +1040,7 @@ castleMod: { name: 'Dominion', desc: 'Arzakon commands all five colors. The fina
 anteEnabled: false,
 context: 'arzakon',
 sandbox: isSandbox,
+_ts: Date.now(),
 });
 }, [deck, ruleset, addLog]);
 
@@ -1230,6 +1238,7 @@ checkQuestProgress('dungeons_cleared');
 setDungeonScreen(null);
 setDungeonPlayerPos(null);
 setDungeonProg(null);
+setGraceMoves(0); // reset grace period on overworld entry
 }, [dungeonScreen, addLog, checkQuestProgress]);
 
 const handleDungeonInteract = useCallback((entity) => {
@@ -1431,9 +1440,9 @@ useEffect(() => {
   function loop() {
     frameCount++;
 
-    // Advance enemy AI every TICK_INTERVAL frames
+    // Advance enemy AI every TICK_INTERVAL frames (frozen during grace period)
     if (frameCount % TICK_INTERVAL === 0) {
-      setEnemies(prev => tickEnemyAI(prev, pos, tiles, TERRAIN));
+      setEnemies(prev => tickEnemyAI(prev, pos, tiles, TERRAIN, graceMoves));
     }
 
     // Advance player walk animation every 8 frames while moving
@@ -1483,7 +1492,7 @@ useEffect(() => {
   return () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
   };
-}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, enemies, viewOfs]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, enemies, viewOfs, graceMoves]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // WASD / ARROW KEY MOVEMENT
@@ -1534,7 +1543,7 @@ useEffect(() => {
 if (duelCfg) {
 return (
 <DuelScreen
-key={JSON.stringify({ ...duelCfg, _ts: Date.now() })}
+key={JSON.stringify(duelCfg)}
 config={duelCfg}
 onDuelEnd={handleDuelEnd}
 />
