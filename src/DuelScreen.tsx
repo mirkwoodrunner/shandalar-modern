@@ -809,44 +809,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 44 : 0 }}>
 
           {/* Opponent hand (face-down) */}
-          {isMobile ? (
-            <div style={{ maxHeight: '6vh', overflow: 'hidden', flexShrink: 0 }}>
-              <Hand side="opp" cards={s.o.hand.length} />
-            </div>
-          ) : (
-            <Hand side="opp" cards={s.o.hand.length} />
-          )}
+          <Hand side="opp" cards={s.o.hand.length} compact={isMobile} />
 
           {/* Opponent info banner */}
-          {isMobile ? (
-            <div style={{ maxHeight: '9vh', overflow: 'hidden', flexShrink: 0 }}>
-              <Banner
-                side="opp"
-                player={{
-                  life: s.o.life,
-                  max: config.ruleset.startingLife,
-                  lifeAnim: s.o.lifeAnim,
-                  mana: s.o.mana,
-                  lib: s.o.lib.length,
-                  gy: s.o.gy.length,
-                }}
-                onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
-              />
-            </div>
-          ) : (
-            <Banner
-              side="opp"
-              player={{
-                life: s.o.life,
-                max: config.ruleset.startingLife,
-                lifeAnim: s.o.lifeAnim,
-                mana: s.o.mana,
-                lib: s.o.lib.length,
-                gy: s.o.gy.length,
-              }}
-              onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
-            />
-          )}
+          <Banner
+            side="opp"
+            compact={isMobile}
+            player={{
+              life: s.o.life,
+              max: config.ruleset.startingLife,
+              lifeAnim: s.o.lifeAnim,
+              mana: s.o.mana,
+              lib: s.o.lib.length,
+              gy: s.o.gy.length,
+            }}
+            onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
+          />
 
           {/* Battlefield: opp + phase ribbon + you */}
           <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -863,35 +841,19 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           </div>
 
           {/* Player info banner */}
-          {isMobile ? (
-            <div style={{ maxHeight: '9vh', overflow: 'hidden', flexShrink: 0 }}>
-              <Banner
-                side="you"
-                player={{
-                  life: s.p.life,
-                  max: config.ruleset.startingLife,
-                  lifeAnim: s.p.lifeAnim,
-                  mana: s.p.mana,
-                  lib: s.p.lib.length,
-                  gy: s.p.gy.length,
-                }}
-                onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
-              />
-            </div>
-          ) : (
-            <Banner
-              side="you"
-              player={{
-                life: s.p.life,
-                max: config.ruleset.startingLife,
-                lifeAnim: s.p.lifeAnim,
-                mana: s.p.mana,
-                lib: s.p.lib.length,
-                gy: s.p.gy.length,
-              }}
-              onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
-            />
-          )}
+          <Banner
+            side="you"
+            compact={isMobile}
+            player={{
+              life: s.p.life,
+              max: config.ruleset.startingLife,
+              lifeAnim: s.p.lifeAnim,
+              mana: s.p.mana,
+              lib: s.p.lib.length,
+              gy: s.p.gy.length,
+            }}
+            onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
+          />
 
           {/* Channel mana button */}
           {s.p.channelActive && s.active === 'p' && (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') && s.p.life > 1 && (
@@ -958,23 +920,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           )}
 
           {/* Player hand */}
-          {isMobile ? (
-            <div style={{ maxHeight: '18vh', overflowX: 'auto', overflowY: 'hidden', flexShrink: 0 }}>
-              <Hand
-                side="you"
-                cards={yourHand}
-                selCard={s.selCard ?? null}
-                onCardClick={handleHandCardClick}
-              />
-            </div>
-          ) : (
-            <Hand
-              side="you"
-              cards={yourHand}
-              selCard={s.selCard ?? null}
-              onCardClick={handleHandCardClick}
-            />
-          )}
+          <Hand
+            side="you"
+            compact={isMobile}
+            cards={yourHand}
+            selCard={s.selCard ?? null}
+            onCardClick={handleHandCardClick}
+          />
         </div>
 
         {/* -- RIGHT SIDEBAR ----------------------------------------------- */}

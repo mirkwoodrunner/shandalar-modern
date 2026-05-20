@@ -18,9 +18,10 @@ interface BannerProps {
   flavorText?: string;
   onLifeClick?: () => void;
   onGraveyardClick?: () => void;
+  compact?: boolean;
 }
 
-export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick }: BannerProps) {
+export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick, compact = false }: BannerProps) {
   const isOpp = side === 'opp';
   const manaTotal = Object.values(player.mana).reduce((a, b) => a + b, 0);
 
@@ -32,13 +33,13 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
   return (
     <div style={{
       flexShrink: 0,
-      padding: '8px 14px',
+      padding: compact ? '4px 8px' : '8px 14px',
       background: bg,
       borderTop: `1px solid ${borderColor}`,
       borderBottom: `1px solid ${borderColor}`,
       display: 'flex',
       alignItems: 'center',
-      gap: 16,
+      gap: compact ? 8 : 16,
     }}>
       <LifeTotal
         life={player.life}
