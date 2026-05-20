@@ -64,6 +64,12 @@
 | B24 | Combat damage badge showed `?X` | Placeholder `?` never replaced with intended icon | Replaced with styled red circular badge using 🩸 (U+1FA78 Blood Drop) in both `src/ui/Card/FieldCard.tsx` and legacy `src/ui/shared/Card.jsx` |
 | B25 | Creatures and non-creatures mixed in battlefield row | No row separation below the land zone in `Half.tsx` | Split non-land permanents into CREATURES and SPELLS/ARTIFACTS rows using `isCurrentCreature()` helper; `isAnimatedLand` flag moves animated Mishra's Factory to the creature row; labels match existing Cinzel font/color style |
 
+### Phase 7 → Post-Phase 7 fixes
+
+| # | Bug | Root Cause | Fix |
+|---|-----|-----------|-----|
+| B-mobile-1 | Rotating device during mulligan triggered new hand draw | Component remount: `OverworldGame` re-renders on orientation change (via `useIsMobile` ResizeObserver) and the DuelScreen key previously used `Date.now()` at render time, causing a fresh remount and resetting mulligan state. `useReducer` initializer is stable (does not re-run on re-render). | Key stabilized: `_ts` captured inside `setDuelCfg` calls (not at render time); `mulliganDismissed` ref latches dismissed state across any remaining re-renders; `useDuel` initializer dependency array confirmed empty. |
+
 ---
 
 ## Validation Notes (v0.4 audit — corrected from v0.3)
@@ -556,6 +562,12 @@ Six archetypes with curated ~40-card lists:
 
 ---
 
+### 3.7.1 Enemy Grace Period
+
+**Enemy grace period:** Enemies do not move for the first 3 player steps after the overworld is entered (new game, post-duel return, post-dungeon return). Controlled by `GRACE_MOVE_THRESHOLD` in `src/engine/EnemyAI.js`. `graceMoves` state in `OverworldGame.jsx` counts steps since last entry; incremented in `doMove`, reset to 0 in `handleDuelEnd` (all contexts) and `handleDungeonExit`. Applies to all platforms equally.
+
+---
+
 ### 3.8 World Magic Spells *(Phase 7 — Complete)*
 
 Overworld power-ups separate from the 5 mage artifacts. Found via random map events (3% per
@@ -995,6 +1007,8 @@ feature set, identified via source code and gameplay documentation audit.
 - Desktop layout: **zero changes** — all mobile branches are additive conditionals
 - New documentation: `docs/MOBILE_VS_PC.md` — canonical reference for all platform layout divergence
 - `MECHANICS_INDEX.md` updated: §6.1 Mobile Responsive Layout System added
+
+**Mobile duel layout (Post-Phase 7):** Duel screen zones are `vh`-clamped on viewports ≤600px wide to ensure all six zones (opponent hand, opponent banner, battlefield, player banner, action bar, player hand) are simultaneously visible in portrait orientation. Each zone is conditionally wrapped in a `maxHeight`-constrained div when `isMobile` is true. CSS custom properties `--card-h` and `--banner-life-size` are scoped inside `@media (max-width: 600px)`. Desktop layout (≥600px) is unchanged. The battlefield container uses `flex: '1 1 0'` with `minHeight: 0` as a cross-platform fix to allow proper flex shrinking.
 
 ---
 

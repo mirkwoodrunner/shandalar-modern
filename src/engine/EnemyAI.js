@@ -2,6 +2,8 @@
 // Enemy wander/chase logic for overworld canvas layer.
 // No imports from DuelCore, AI.js, or React.
 
+export const GRACE_MOVE_THRESHOLD = 3;
+
 /**
  * Advance all enemy positions by one AI tick.
  *
@@ -9,9 +11,11 @@
  * @param {object} playerPos  {x, y}
  * @param {Array}  tiles      2D tile array (tiles[y][x])
  * @param {object} TERRAIN    Terrain constants (from MapGenerator.js)
+ * @param {number} graceMoves Player steps taken since last overworld entry; enemies frozen while < GRACE_MOVE_THRESHOLD
  * @returns {Array}           New enemy array (input is never mutated)
  */
-export function tickEnemyAI(enemies, playerPos, tiles, TERRAIN) {
+export function tickEnemyAI(enemies, playerPos, tiles, TERRAIN, graceMoves = GRACE_MOVE_THRESHOLD) {
+  if (graceMoves < GRACE_MOVE_THRESHOLD) return enemies;
   const canMoveTo = (x, y) => {
     const tile = tiles[y]?.[x];
     if (!tile) return false;

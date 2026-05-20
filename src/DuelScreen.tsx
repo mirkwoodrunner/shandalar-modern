@@ -379,6 +379,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const [manaChoicePopover, setManaChoicePopover] = useState<{
     open: boolean; colors: string[]; cardName: string; callback: ((c: string) => void) | null;
   }>({ open: false, colors: [], cardName: '', callback: null });
+  const mulliganDismissed = useRef(false);
   const [showMulligan, setShowMulligan] = useState(true);
   const [mulliganCount, setMulliganCount] = useState(0);
   const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
@@ -674,10 +675,18 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }, []);
   const handleTipLeave = useCallback(() => setTooltip(null), []);
 
-  const handleKeep = useCallback(() => setShowMulligan(false), []);
+  const handleKeep = useCallback(() => {
+    mulliganDismissed.current = true;
+    setShowMulligan(false);
+  }, []);
   const handleMulligan = useCallback(() => {
     mulligan(); setMulliganCount(c => c + 1);
   }, [mulligan]);
+
+  // Re-suppress modal if dismissed ref is set (survives re-renders and orientation change)
+  useEffect(() => {
+    if (mulliganDismissed.current) setShowMulligan(false);
+  }, [s.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Derived data for new components --------------------------------------
   const oppBfCards  = s.o.bf as unknown as CardData[];
@@ -708,6 +717,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       overflow: 'hidden',
       fontFamily: 'var(--font-body)',
       color: 'var(--ink-muted)',
+      ...(isMobile ? { fontSize: 'clamp(10px, 2.2vw, 14px)' } : {}),
     }}>
 
       {/* -- GAME OVER OVERLAY ----------------------------------------------- */}
@@ -744,20 +754,33 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       <TweaksPanel values={tweaks} setTweak={setTweak} />
 
       {/* -- TOPBAR ---------------------------------------------------------- */}
-      <Topbar
-        rulesetName={config.ruleset.name}
-        turn={s.turn}
-        active={s.active}
-        phase={s.phase}
-        onForfeit={() => onDuelEnd('forfeit', s)}
-      />
+      {isMobile ? (
+        <div style={{ flexShrink: 0, maxHeight: '7vh', overflow: 'hidden' }}>
+          <Topbar
+            rulesetName={config.ruleset.name}
+            turn={s.turn}
+            active={s.active}
+            phase={s.phase}
+            onForfeit={() => onDuelEnd('forfeit', s)}
+          />
+        </div>
+      ) : (
+        <Topbar
+          rulesetName={config.ruleset.name}
+          turn={s.turn}
+          active={s.active}
+          phase={s.phase}
+          onForfeit={() => onDuelEnd('forfeit', s)}
+        />
+      )}
 
       {/* -- CASTLE MODIFIER BANNER ------------------------------------------ */}
       {s.castleMod && (
         <div style={{
           background: 'rgba(100,20,0,.4)', borderBottom: '1px solid rgba(200,60,20,.3)',
-          padding: '4px 14px', display: 'flex', gap: 8, alignItems: 'center',
-          flexShrink: 0, fontSize: 10, fontFamily: 'var(--font-display)',
+          padding: isMobile ? '2px 8px' : '4px 14px',
+          display: 'flex', gap: 8, alignItems: 'center',
+          flexShrink: 0, fontSize: isMobile ? 8 : 10, fontFamily: 'var(--font-display)',
         }}>
           <span style={{ color: '#e08040', letterSpacing: 1 }}>CASTLE MODIFIER:</span>
           <span style={{ color: '#f0c060' }}>{s.castleMod.name}</span>
@@ -769,8 +792,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       {s.anteEnabled && (s.anteP || s.anteO) && (
         <div style={{
           background: 'rgba(60,30,0,.4)', borderBottom: '1px solid rgba(180,120,40,.2)',
-          padding: '3px 14px', display: 'flex', gap: 12, alignItems: 'center',
-          flexShrink: 0, fontSize: 9, fontFamily: 'var(--font-display)',
+          padding: isMobile ? '2px 8px' : '3px 14px',
+          display: 'flex', gap: 12, alignItems: 'center',
+          flexShrink: 0, fontSize: isMobile ? 8 : 9, fontFamily: 'var(--font-display)',
         }}>
           <span style={{ color: '#c0a040' }}>ANTE:</span>
           {s.anteP && <span style={{ color: '#a09060' }}>You: <strong style={{ color: '#f0c060' }}>{s.anteP.name}</strong></span>}
@@ -785,24 +809,47 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 44 : 0 }}>
 
           {/* Opponent hand (face-down) */}
-          <Hand side="opp" cards={s.o.hand.length} />
+          {isMobile ? (
+            <div style={{ maxHeight: '6vh', overflow: 'hidden', flexShrink: 0 }}>
+              <Hand side="opp" cards={s.o.hand.length} />
+            </div>
+          ) : (
+            <Hand side="opp" cards={s.o.hand.length} />
+          )}
 
           {/* Opponent info banner */}
-          <Banner
-            side="opp"
-            player={{
-              life: s.o.life,
-              max: config.ruleset.startingLife,
-              lifeAnim: s.o.lifeAnim,
-              mana: s.o.mana,
-              lib: s.o.lib.length,
-              gy: s.o.gy.length,
-            }}
-            onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
-          />
+          {isMobile ? (
+            <div style={{ maxHeight: '9vh', overflow: 'hidden', flexShrink: 0 }}>
+              <Banner
+                side="opp"
+                player={{
+                  life: s.o.life,
+                  max: config.ruleset.startingLife,
+                  lifeAnim: s.o.lifeAnim,
+                  mana: s.o.mana,
+                  lib: s.o.lib.length,
+                  gy: s.o.gy.length,
+                }}
+                onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
+              />
+            </div>
+          ) : (
+            <Banner
+              side="opp"
+              player={{
+                life: s.o.life,
+                max: config.ruleset.startingLife,
+                lifeAnim: s.o.lifeAnim,
+                mana: s.o.mana,
+                lib: s.o.lib.length,
+                gy: s.o.gy.length,
+              }}
+              onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
+            />
+          )}
 
           {/* Battlefield: opp + phase ribbon + you */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Battlefield
               phase={s.phase}
               oppCards={oppBfCards}
@@ -816,18 +863,35 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           </div>
 
           {/* Player info banner */}
-          <Banner
-            side="you"
-            player={{
-              life: s.p.life,
-              max: config.ruleset.startingLife,
-              lifeAnim: s.p.lifeAnim,
-              mana: s.p.mana,
-              lib: s.p.lib.length,
-              gy: s.p.gy.length,
-            }}
-            onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
-          />
+          {isMobile ? (
+            <div style={{ maxHeight: '9vh', overflow: 'hidden', flexShrink: 0 }}>
+              <Banner
+                side="you"
+                player={{
+                  life: s.p.life,
+                  max: config.ruleset.startingLife,
+                  lifeAnim: s.p.lifeAnim,
+                  mana: s.p.mana,
+                  lib: s.p.lib.length,
+                  gy: s.p.gy.length,
+                }}
+                onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
+              />
+            </div>
+          ) : (
+            <Banner
+              side="you"
+              player={{
+                life: s.p.life,
+                max: config.ruleset.startingLife,
+                lifeAnim: s.p.lifeAnim,
+                mana: s.p.mana,
+                lib: s.p.lib.length,
+                gy: s.p.gy.length,
+              }}
+              onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
+            />
+          )}
 
           {/* Channel mana button */}
           {s.p.channelActive && s.active === 'p' && (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') && s.p.life > 1 && (
@@ -853,31 +917,64 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           )}
 
           {/* Action bar */}
-          <ActionBar
-            phase={s.phase}
-            hasSelection={!!s.selCard}
-            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
-            onCast={handleCast}
-            onPassPriority={() => {
-              if (s.stack?.length > 0) {
-                resolveStack();
-              } else if (s.priorityWindow && s.priorityPasser !== 'p') {
-                passPriority('p');
-              } else {
-                requestPhaseAdvance();
-              }
-            }}
-            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
-            onEndTurn={requestPhaseAdvance}
-          />
+          {isMobile ? (
+            <div style={{ maxHeight: '10vh', overflow: 'hidden', flexShrink: 0 }}>
+              <ActionBar
+                phase={s.phase}
+                hasSelection={!!s.selCard}
+                selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
+                onCast={handleCast}
+                onPassPriority={() => {
+                  if (s.stack?.length > 0) {
+                    resolveStack();
+                  } else if (s.priorityWindow && s.priorityPasser !== 'p') {
+                    passPriority('p');
+                  } else {
+                    requestPhaseAdvance();
+                  }
+                }}
+                onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
+                onEndTurn={requestPhaseAdvance}
+              />
+            </div>
+          ) : (
+            <ActionBar
+              phase={s.phase}
+              hasSelection={!!s.selCard}
+              selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
+              onCast={handleCast}
+              onPassPriority={() => {
+                if (s.stack?.length > 0) {
+                  resolveStack();
+                } else if (s.priorityWindow && s.priorityPasser !== 'p') {
+                  passPriority('p');
+                } else {
+                  requestPhaseAdvance();
+                }
+              }}
+              onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
+              onEndTurn={requestPhaseAdvance}
+            />
+          )}
 
           {/* Player hand */}
-          <Hand
-            side="you"
-            cards={yourHand}
-            selCard={s.selCard ?? null}
-            onCardClick={handleHandCardClick}
-          />
+          {isMobile ? (
+            <div style={{ maxHeight: '18vh', overflowX: 'auto', overflowY: 'hidden', flexShrink: 0 }}>
+              <Hand
+                side="you"
+                cards={yourHand}
+                selCard={s.selCard ?? null}
+                onCardClick={handleHandCardClick}
+              />
+            </div>
+          ) : (
+            <Hand
+              side="you"
+              cards={yourHand}
+              selCard={s.selCard ?? null}
+              onCardClick={handleHandCardClick}
+            />
+          )}
         </div>
 
         {/* -- RIGHT SIDEBAR ----------------------------------------------- */}

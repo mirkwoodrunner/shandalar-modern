@@ -225,3 +225,10 @@ html, body, #root {
     display: none !important;
   }
 }
+
+@media (max-width: 600px) {
+  :root {
+    --card-h: clamp(72px, 14vh, 100px);
+    --banner-life-size: clamp(20px, 5vh, 32px);
+  }
+}

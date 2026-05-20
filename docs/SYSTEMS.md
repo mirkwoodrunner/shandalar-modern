@@ -1155,6 +1155,15 @@ Enemy AI movement is driven by the RAF loop in `OverworldGame.jsx`. `tickEnemyAI
 
 Only `TICK_INTERVAL` controls speed. Movement distance per step, pathfinding logic, and collision detection are independent and must not be changed to adjust speed.
 
+## 27.6 Enemy Grace Period
+
+`graceMoves` prop (number): counts player steps since last overworld entry. Enemy AI tick is suppressed while `graceMoves < GRACE_MOVE_THRESHOLD (3)`. Reset to 0 on every overworld entry event.
+
+- `GRACE_MOVE_THRESHOLD = 3` — exported constant from `src/engine/EnemyAI.js`
+- `graceMoves` state lives in `OverworldGame.jsx`; incremented in `doMove` (capped at threshold to prevent unbounded growth), reset to 0 in `handleDuelEnd` and `handleDungeonExit`
+- `tickEnemyAI(enemies, playerPos, tiles, TERRAIN, graceMoves)` — 5th parameter; defaults to `GRACE_MOVE_THRESHOLD` (no freeze) when omitted for backwards compatibility
+- Applies to all platforms equally (not mobile-only)
+
 ---
 
 # 28. MCTS (Monte Carlo Tree Search) AI Module
