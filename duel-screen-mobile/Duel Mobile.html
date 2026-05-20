@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shandalar Modern · Duel · Mobile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; }
+    body {
+      background: #1a1612;
+      color: #e8dcb0;
+      font-family: 'Crimson Text', serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #080502; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #5a4020, #3a2810); border-radius: 3px; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: .8; transform: scale(1); }
+      50%      { opacity: 1; transform: scale(1.04); }
+    }
+    @keyframes damageFlash {
+      0%   { filter: none; transform: translateX(0); }
+      20%  { filter: brightness(2.5) saturate(.2); transform: translateX(-3px); }
+      60%  { transform: translateX(2px); }
+      100% { filter: none; transform: translateX(0); }
+    }
+    @keyframes mdPlayPulse {
+      0%, 100% { box-shadow: 0 0 16px rgba(255,208,96,.45), inset 0 1px 0 rgba(255,255,255,.12); }
+      50%      { box-shadow: 0 0 26px rgba(255,208,96,.85), inset 0 1px 0 rgba(255,255,255,.18); }
+    }
+    @keyframes mdHandGlow {
+      0%, 100% { box-shadow: inset 0 18px 28px -18px rgba(122,184,74,.45); }
+      50%      { box-shadow: inset 0 18px 32px -18px rgba(122,184,74,.65); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="components/mobileCards.jsx"></script>
+  <script type="text/babel" src="components/mobileDuelScreen.jsx"></script>
+
+  <script type="text/babel">
+    // Wrap the duel screen in an iPhone bezel — using IOSDevice's children slot
+    // but stripped of nav bars since the duel screen owns its full chrome.
+    function Phone({ children }) {
+      return (
+        <div style={{
+          width: 402, height: 874,
+          background: '#050302',
+          borderRadius: 56,
+          border: '8px solid #161618',
+          boxShadow:
+            'inset 0 0 0 1.5px #2a2a2c,' +
+            ' 0 0 0 1px rgba(255,255,255,0.06),' +
+            ' 0 30px 80px rgba(0,0,0,0.6),' +
+            ' 0 10px 30px rgba(0,0,0,0.4)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Status bar overlay (so duel UI begins underneath the notch area) */}
+          <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:30, pointerEvents:'none' }}>
+            <IOSStatusBar dark={true} time="9:41" />
+          </div>
+          {/* Dynamic island */}
+          <div style={{
+            position:'absolute', top:11, left:'50%', transform:'translateX(-50%)',
+            width:124, height:36, background:'#000', borderRadius:20, zIndex:31,
+          }} />
+          {/* Home indicator */}
+          <div style={{
+            position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)',
+            width:134, height:5, background:'#fff', borderRadius:3, opacity:0.85, zIndex:32, pointerEvents:'none',
+          }} />
+          {/* Content fills the rest, with top padding for status bar */}
+          <div style={{ position:'absolute', inset:0, paddingTop:54, paddingBottom:18, display:'flex', flexDirection:'column' }}>
+            <div style={{ flex:1, overflow:'hidden' }}>{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="overview" title="Duel · Mobile" subtitle="Two layouts for the same battlefield. Tap a card to select; tap the LOG button or the peek strip to expand the chronicle.">
+            <DCArtboard id="stack" label="A · Stack — full info, log peek" width={460} height={940}>
+              <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center',
+                background:'radial-gradient(ellipse at 50% 40%, #2a221c, #14100c 70%)', padding:18 }}>
+                <Phone><MobileDuel /></Phone>
+              </div>
+            </DCArtboard>
+            <DCArtboard id="compact" label="B · Compact — denser, sheet log" width={460} height={940}>
+              <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center',
+                background:'radial-gradient(ellipse at 50% 40%, #2a221c, #14100c 70%)', padding:18 }}>
+                <Phone><MobileDuelCompact /></Phone>
+              </div>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
