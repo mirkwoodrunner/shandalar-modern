@@ -314,8 +314,10 @@ const isMobile = useIsMobile();
 const viewW = isMobile ? 12 : VIEW_W;
 const viewH = isMobile ? 9  : VIEW_H;
 
-// -- Grace period: enemies frozen until player has taken GRACE_MOVE_THRESHOLD steps
-const [graceMoves, setGraceMoves] = useState(0);
+// -- Grace period: use a ref so the RAF loop always reads current value without closure staleness.
+const graceMovesRef = useRef(0);
+// Stable per-duel key: incremented only at explicit duel launch, never on re-renders.
+const duelKeyRef = useRef(0);
 
 // -- Canvas / animation ---------------------------------------------------
 const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId));
@@ -529,7 +531,7 @@ for (let ry = 0; ry < newTiles.length; ry++) {
 // Move counters
 const newMoves = moves + 1;
 setMoves(newMoves);
-setGraceMoves(g => Math.min(g + 1, GRACE_MOVE_THRESHOLD));
+graceMovesRef.current = Math.min(graceMovesRef.current + 1, GRACE_MOVE_THRESHOLD);
 setPos({ x: nx, y: ny });
 setTiles(newTiles);
 
@@ -737,6 +739,7 @@ addLog(`Ignoring ${MAGE_NAMES[ev.color]}'s minion. Risk accepted.`, 'warn');
 // -------------------------------------------------------------------------
 
 const launchDuel = useCallback((oppArchKey, overworldHP, context, castleMod = null, extraData = {}) => {
+duelKeyRef.current += 1;
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
 oppArchKey,
@@ -921,6 +924,7 @@ if (ctx === 'dungeon') {
       setDungeonProg(newProg);
       const nextArch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
       addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further?`, 'event');
+      duelKeyRef.current += 1;
       setDuelCfg({
         pDeckIds: deck.map(c => c.id).filter(Boolean),
         oppArchKey: nextArch,
@@ -1020,7 +1024,7 @@ if (ctx === 'arzakon') {
 }
 
 // Clear duel state and reset grace period on overworld re-entry
-setGraceMoves(0);
+graceMovesRef.current = 0;
 setDuelCfg(null);
 
 }, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1031,6 +1035,7 @@ setDuelCfg(null);
 
 const launchArzakon = useCallback(() => {
 addLog('⚡ Arzakon manifests! The final battle begins!', 'danger');
+duelKeyRef.current += 1;
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
 oppArchKey: 'FIVE_COLOR_BOMB',
@@ -1238,7 +1243,7 @@ checkQuestProgress('dungeons_cleared');
 setDungeonScreen(null);
 setDungeonPlayerPos(null);
 setDungeonProg(null);
-setGraceMoves(0); // reset grace period on overworld entry
+graceMovesRef.current = 0; // reset grace period on overworld entry
 }, [dungeonScreen, addLog, checkQuestProgress]);
 
 const handleDungeonInteract = useCallback((entity) => {
@@ -1442,7 +1447,7 @@ useEffect(() => {
 
     // Advance enemy AI every TICK_INTERVAL frames (frozen during grace period)
     if (frameCount % TICK_INTERVAL === 0) {
-      setEnemies(prev => tickEnemyAI(prev, pos, tiles, TERRAIN, graceMoves));
+      setEnemies(prev => tickEnemyAI(prev, pos, tiles, TERRAIN, graceMovesRef.current));
     }
 
     // Advance player walk animation every 8 frames while moving
@@ -1492,7 +1497,7 @@ useEffect(() => {
   return () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
   };
-}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, enemies, viewOfs, graceMoves]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, enemies, viewOfs]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // WASD / ARROW KEY MOVEMENT
@@ -1543,7 +1548,7 @@ useEffect(() => {
 if (duelCfg) {
 return (
 <DuelScreen
-key={JSON.stringify(duelCfg)}
+key={duelKeyRef.current}
 config={duelCfg}
 onDuelEnd={handleDuelEnd}
 />

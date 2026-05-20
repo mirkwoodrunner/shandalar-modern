@@ -14,9 +14,10 @@ interface HandProps {
   selCard?: string | null;
   playableIids?: Set<string>;
   onCardClick?: (card: CardData) => void;
+  compact?: boolean;
 }
 
-export function Hand({ side, cards, selCard, playableIids, onCardClick }: HandProps) {
+export function Hand({ side, cards, selCard, playableIids, onCardClick, compact = false }: HandProps) {
   const isOpp = side === 'opp';
   const cardCount = typeof cards === 'number' ? cards : cards.length;
   const n = cardCount;
@@ -24,14 +25,16 @@ export function Hand({ side, cards, selCard, playableIids, onCardClick }: HandPr
   return (
     <div style={{
       flexShrink: 0,
-      padding: isOpp ? '8px 16px 4px' : '16px 16px 12px',
+      padding: compact
+        ? (isOpp ? '2px 8px 0px' : '6px 8px 2px')
+        : (isOpp ? '8px 16px 4px' : '16px 16px 12px'),
       display: 'flex',
       justifyContent: 'center',
       alignItems: isOpp ? 'flex-start' : 'flex-end',
       background: isOpp
         ? 'linear-gradient(180deg, rgba(40,16,8,.4), transparent)'
         : 'linear-gradient(180deg, transparent, rgba(20,40,10,.35))',
-      minHeight: isOpp ? 70 : 158,
+      minHeight: compact ? (isOpp ? 36 : 82) : (isOpp ? 70 : 158),
       overflowX: 'auto',
       overflowY: 'visible',
       WebkitOverflowScrolling: 'touch',
