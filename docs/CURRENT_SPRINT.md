@@ -80,6 +80,38 @@
 
 ---
 
+---
+
+## Mobile Banner Compaction + DuelScreenMobile Feature Parity
+
+### Features
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| Compact life-total banners on ≤ 640px viewports | `src/ui/Battlefield/LifeTotal.tsx`, `src/ui/Battlefield/Banner.tsx` | ✅ Done |
+| `useIsMobile` hook — 640px matchMedia variant | `src/hooks/useIsMobile.ts` (new) | ✅ Done |
+| Mulligan modal in `DuelScreenMobile` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
+| Black Lotus color picker in `DuelScreenMobile` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
+| Dual land color picker in `DuelScreenMobile` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
+| Scryfall card art in `DuelScreenMobile` | `src/ui/Mobile/HandCard.tsx`, `src/ui/Mobile/FieldCard.tsx` | ✅ Done |
+
+### Bug Fixes
+
+| Bug | Root Cause | Files Changed | Status |
+|-----|-----------|---------------|--------|
+| Mulligan modal auto-dismissed on mobile | `autoFocus` on Keep button received a coalesced tap event from the gesture that launched the duel; modal mounted within the browser's event window | `src/ui/Mulligan/MulliganModal.tsx` | ✅ Fixed |
+| Black Lotus sacrificed with no mana on mobile | `DuelScreenMobile.handleActivate` called `activateAbility` directly without showing `LotusColorPicker`; `chooseLotusColor` was not destructured from `useDuel` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Dual lands don't tap / add mana on mobile | `handleLandTap` fell through to `onCardTap` for `produces.length > 1` instead of opening `DualLandColorPicker` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Card images missing on mobile | `HandCard` and `FieldCard` in `src/ui/Mobile/` used `ArtPlaceholder` (static gradient) rather than `CardArtImage` (Scryfall with gradient fallback) | `src/ui/Mobile/HandCard.tsx`, `src/ui/Mobile/FieldCard.tsx` | ✅ Fixed |
+
+### Documentation updated
+- `docs/COMPONENT_REGISTRY.md` — created; `## Hooks` section with `useIsMobile.ts` entry
+- `docs/gdd.md` — mobile banner compaction note appended under Phase 7 mobile layout section
+- `docs/MOBILE_VS_PC.md` — Detection section updated with `useIsMobile.ts`; DuelScreen compact-column clarified; DuelScreenMobile Modals table added; Known Gaps updated
+- `docs/CURRENT_SPRINT.md` — this table
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

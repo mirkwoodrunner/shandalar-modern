@@ -21,6 +21,12 @@ Desktop (> 768px) remains the canonical experience. No game logic differs betwee
 // Uses ResizeObserver on document.body + window resize fallback.
 const isMobile = useIsMobile();
 
+// src/hooks/useIsMobile.ts  — presentation sizing hook (≤ 640px, matchMedia)
+// Used by src/ui/Battlefield/Banner.tsx and LifeTotal.tsx to compact banner
+// sizes when DuelScreen is active at 641–768px (isMobile=true but ≤640px=false).
+// Not imported by engine or OverworldGame.
+import { useIsMobile } from '../../hooks/useIsMobile'; // resolves to .ts
+
 // src/hooks/useMedia.ts  — generic matchMedia hook
 // Used by OverworldGame to gate the compact duel screen at ≤ 640px.
 const isCompactMobile = useMedia('(max-width: 640px)');
@@ -30,14 +36,20 @@ const isCompactMobile = useMedia('(max-width: 640px)');
 
 ## DuelScreen (`src/DuelScreen.tsx`) — Desktop/Tablet (> 640px)
 
-|Element                             |Desktop                   |Compact mobile (> 640px, ≤ 768px)         |
+|Element                             |Desktop (> 768px)         |Compact mobile (641–768px)                 |
 |------------------------------------|--------------------------|-------------------------------------------|
 |Left sidebar                        |Rendered (22vw, min 160px)|Hidden                                     |
 |Right sidebar                       |Rendered (22vw, min 160px)|Hidden                                     |
 |Sidebar content (log, ruleset, mana)|In sidebars               |`MobileActionDrawer` (fixed bottom, toggle)|
 |Player hand container               |No bottom padding         |`paddingBottom: 44px` (clears drawer)      |
+|Banner padding                      |`8px 14px`                |`4px 8px` (via `compact` prop)             |
+|Banner gap                          |`16px`                    |`8px` (via `compact` prop)                 |
+|Life number font size               |`52px`                    |`52px` (useIsMobile.ts 640px → false here) |
+|Health bar height                   |`10px`                    |`10px` (same reason)                       |
 |Card sizes                          |Unchanged                 |Unchanged                                  |
 |All game logic                      |Identical                 |Identical                                  |
+
+> **Note:** `LifeTotal.tsx` compact sizes (32px life font, 6px bar) only activate when `window.innerWidth ≤ 640px`. Since `DuelScreen` is only rendered for viewports > 640px, those values are reserved for devices that cross the threshold after duel launch (e.g., orientation changes when the duel was started just above 640px).
 
 ### MobileActionDrawer
 
@@ -93,8 +105,18 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 
 ### Shared hooks used by DuelScreenMobile
 
-- `useDuel` — same engine store as DuelScreen (no data fork)
+- `useDuel` — same engine store as DuelScreen (no data fork); `chooseLotusColor` and `mulligan` now also destructured
 - `usePhaseAdvance` (`src/hooks/usePhaseAdvance.ts`) — phase-advance logic shared with DuelScreen
+
+### Modals in DuelScreenMobile
+
+| Modal | Trigger | Component |
+|-------|---------|-----------|
+| Mulligan | On mount (`showMulligan = true`) | `MulliganModal` from `src/ui/Mulligan/` |
+| Black Lotus color pick | `handleActivate` detects `card.name === 'Black Lotus'` | `LotusColorPicker` from `TargetingOverlay.jsx` |
+| Dual land color pick | `handleLandTap` detects `produces.length > 1` | `DualLandColorPicker` from `TargetingOverlay.jsx` |
+
+All three modals use `position: fixed; z-index: 600` and are sourced from the same components as `DuelScreen`.
 
 ---
 
@@ -130,8 +152,9 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 - DungeonMap has no mobile layout (touch D-pad works but tile size is unoptimised)
 - TownModal / CastleModal / DeckManager modals are not tested at mobile widths
 - No pinch-to-zoom on the overworld canvas
-- DuelScreenMobile: no mulligan modal (auto-keep in v1)
 - DuelScreenMobile: no targeting arrows (TargetArrow overlay — Phase 8)
 - DuelScreenMobile: no card-preview on long-press (Phase 8)
+- DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired (mirrors Lotus pattern)
+- DuelScreenMobile: `GameOverModal` not yet rendered (auto-return to overworld after 3 s works)
 
 These gaps should be tracked as issues and addressed in a follow-up pass.
