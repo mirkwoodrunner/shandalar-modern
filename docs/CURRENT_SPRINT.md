@@ -112,6 +112,32 @@
 
 ---
 
+## DuelScreenMobile Combat + Interaction Fixes (post-banner-compaction)
+
+### Bug Fixes
+
+| Bug | Root Cause | Files Changed | Status |
+|-----|-----------|---------------|--------|
+| Summoning sickness veil shown on non-creature permanents (Mox Sapphire, etc.) | `FieldCard.tsx` veil condition lacked `isCre &&` guard; engine sets `summoningSick: true` on all non-haste ETBs | `src/ui/Mobile/FieldCard.tsx` | ✅ Fixed |
+| Subsequent spells do nothing on Cast tap | `handleCast` used stale `sel.card` snapshot; changed to look up card from live `s_state.p.hand` by `sel.iid` (matches desktop pattern) | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Direct damage spells (Lightning Bolt, etc.) deal no damage | Mobile `handleCast` passed `null` target instead of calling `resolveDefaultTarget`; damage spells default to `'o'` (opponent) when no target is selected | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Declaring attackers shows Activate button instead | `onCardTap` had no phase-context awareness; clicking a creature in `COMBAT_ATTACKERS` now calls `declareAttacker` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Mox Sapphire / Sol Ring require Activate button to tap for mana | Mana artifacts fell through to selection (showing Activate) instead of tapping directly; new `handleBfCardClick` routes `addMana` artifacts straight to `tapArtifactMana` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Black Lotus required Activate button; now shows color picker on direct click | Same root cause as above; `addMana3Any` effect now triggers `activateAbility` + `LotusColorPicker` on first click | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Activate button appeared for all battlefield cards | `sel.zone === 'bf'` always showed Activate; `handleBfCardClick` now only selects cards with non-mana activated abilities | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+
+### New functions / additions
+- `resolveDefaultTarget(card, state)` — module-level helper (mirrors `DuelScreen.tsx`); maps damage/draw spell effects to their default target (`'o'` or `'p'`)
+- `handleBfCardClick(card)` — unified battlefield click dispatcher replacing direct `onCardTap` calls for player cards; routes to `declareAttacker`, `tapArtifactMana`, `activateAbility`+color picker, or selection
+- `tapArtifactMana`, `declareAttacker` destructured from `useDuel`
+- `PHASE` imported from `../../engine/phases.js`
+
+### Documentation updated
+- `docs/MOBILE_VS_PC.md` — DuelScreenMobile interaction table updated; Known Gaps updated
+- `docs/CURRENT_SPRINT.md` — this table
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

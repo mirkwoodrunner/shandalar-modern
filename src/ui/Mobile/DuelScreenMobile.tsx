@@ -7,6 +7,7 @@ import { useDuel } from '../../hooks/useDuel.js';
 import { usePhaseAdvance } from '../../hooks/usePhaseAdvance';
 import { aiDecide } from '../../engine/AI.js';
 import { isLand, canPay } from '../../engine/DuelCore.js';
+import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -25,6 +26,13 @@ import { LogSheet } from './LogSheet';
 import type { LogEntry } from './LogSheet';
 
 import s from './styles.module.css';
+
+function resolveDefaultTarget(card: any, state: any): string | null {
+  const { effect } = card;
+  if (['damage3', 'damage5', 'damageX', 'psionicBlast', 'chainLightning'].includes(effect)) return 'o';
+  if (['draw3', 'gainLife3', 'gainLifeX', 'tutor', 'drawX'].includes(effect)) return state.selTgt ?? 'p';
+  return state.selTgt ?? null;
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -74,9 +82,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     state,
     dispatch,
     tapLand,
+    tapArtifactMana,
     playLand,
     castSpell,
     resolveStack,
+    declareAttacker,
     advancePhase,
     activateAbility,
     chooseLotusColor,
@@ -209,27 +219,60 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Action bar handlers ────────────────────────────────────────────────────
   const handleCast = useCallback(() => {
     if (!sel || sel.zone !== 'hand') return;
-    const card = sel.card as any;
+    const card = (s_state.p.hand as any[]).find((c: any) => c.iid === sel.iid);
+    if (!card) return;
     if (isLand(card)) {
       playLand(card.iid);
     } else {
-      castSpell(card.iid, s_state.selTgt ?? null, s_state.xVal ?? 1);
+      const tgt = s_state.selTgt ?? resolveDefaultTarget(card, s_state);
+      castSpell(card.iid, tgt, s_state.xVal ?? 1);
     }
     setSel(null);
-  }, [sel, s_state.selTgt, s_state.xVal, playLand, castSpell]);
+  }, [sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
 
   const handleActivate = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
-    const card = sel.card as any;
-    if (card?.name === 'Black Lotus') {
-      activateAbility(card.iid, null);
-      setShowLotus(true);
-      setSel(null);
-      return;
-    }
     activateAbility(sel.iid, null);
     setSel(null);
   }, [sel, activateAbility]);
+
+  // ── Battlefield card click dispatcher ─────────────────────────────────────
+  const handleBfCardClick = useCallback((card: CardData) => {
+    const c = card as any;
+
+    // Declare attackers: clicking a creature during the attackers step toggles it.
+    // The engine validates eligibility (not tapped, no summoning sickness without haste).
+    if (s_state.phase === PHASE.COMBAT_ATTACKERS && c.type?.includes('Creature')) {
+      declareAttacker(card.iid);
+      return;
+    }
+
+    // Mana-producing permanents: act immediately, no Activate button.
+    if (!c.tapped) {
+      // Black Lotus and any addMana3Any: sacrifice + choose color
+      if (c.activated?.effect === 'addMana3Any') {
+        activateAbility(card.iid, null);
+        setShowLotus(true);
+        return;
+      }
+      // Simple mana producers (Moxen, Sol Ring, Llanowar Elves, etc.): tap directly
+      if (c.activated?.effect === 'addMana') {
+        tapArtifactMana(card.iid);
+        return;
+      }
+    }
+
+    // Non-mana activated ability (ping, destroyTapped, pumpSelf, etc.) or
+    // multi-ability cards: select to reveal Activate button.
+    const hasNonManaActivation =
+      (c.activated && !c.activated.effect?.startsWith('addMana')) ||
+      Boolean(c.activatedAbilities);
+    if (hasNonManaActivation) {
+      setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
+    }
+    // Plain creatures / permanents with no activated ability: no action.
+    // (addManaAny / Birds of Paradise is a Known Gap — BopColorPicker not yet wired.)
+  }, [s_state.phase, activateAbility, tapArtifactMana, declareAttacker]);
 
   const handleCancel = useCallback(() => setSel(null), []);
 
@@ -355,7 +398,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             <FieldCard key={c.iid} card={c} density="creature"
               selected={selIid === c.iid}
               attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
-              onClick={() => onCardTap(c, 'bf')} />
+              onClick={() => handleBfCardClick(c)} />
           ))}
         </Row>
 
@@ -365,7 +408,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           {pPerms.map((c: CardData) => (
             <FieldCard key={c.iid} card={c} density="perm"
               selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+              onClick={() => handleBfCardClick(c)} />
           ))}
         </Row>
 
