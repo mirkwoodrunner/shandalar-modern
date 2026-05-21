@@ -290,6 +290,14 @@
   min-height: 34px;
 }
 
+/* ── Battlefield scroll container ─────────────────────────────────────────── */
+.bfScroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
 /* ── BF Divider ───────────────────────────────────────────────────────────── */
 .bfDivider {
   flex-shrink: 0;

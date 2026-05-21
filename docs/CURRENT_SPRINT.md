@@ -65,6 +65,21 @@
 
 ---
 
+## Bug Fixes (post-Mobile Compact)
+
+| Bug | Root Cause | Files Changed | Status |
+|-----|-----------|---------------|--------|
+| Mulligan retrigger on orientation change | Render condition used live `isCompactMobile`; crossing 640px mid-duel swapped component types, unmounting the old tree and re-initialising `useDuel` from scratch | `src/OverworldGame.jsx` | ✅ Fixed |
+| Player hand not visible on mobile | All battlefield rows had `flex-shrink: 0` with fixed min-heights; cumulative height (~937px) exceeded phone viewport, pushing hand strip off screen | `src/ui/Mobile/DuelScreenMobile.tsx`, `src/ui/Mobile/styles.module.css` | ✅ Fixed |
+
+### Fix details
+
+**Mulligan retrigger** — Added `duelScreenIsCompact` state. Snapshotted at each of the three duel launch sites (`launchDuel`, `handleDuelEnd` dungeon chain, `launchArzakon`) by calling `setDuelScreenIsCompact(isCompactMobile)` alongside `setDuelCfg`. Render condition now reads `duelScreenIsCompact` (frozen at launch) instead of live `isCompactMobile`, so orientation changes during an active duel cannot switch component types.
+
+**Hand not visible** — Added `.bfScroll { flex: 1; overflow-y: auto; min-height: 0 }` CSS class. Wrapped the six battlefield rows (opp lands → divider → your lands) in this container so the battlefield scrolls vertically when it overflows, keeping both Banners, the ActionBar and the hand strip as `flex-shrink: 0` anchored elements always visible.
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
