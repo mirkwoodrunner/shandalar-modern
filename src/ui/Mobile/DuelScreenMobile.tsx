@@ -258,67 +258,72 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       <Banner side="opp" player={oData} />
 
-      {/* Opp lands → perms → creatures (closing toward center) */}
-      <PipRow label="OPP · LANDS" count={oLands.length} accent="var(--opp)">
-        {oLands.map((c: CardData) => (
-          <LandPip key={c.iid} card={c} tapped={(c as any).tapped}
-            selected={selIid === c.iid}
-            onClick={() => onCardTap(c, 'bf')} />
-        ))}
-      </PipRow>
+      {/* Scrollable battlefield — grows to fill remaining height between the two banners */}
+      <div className={s.bfScroll}>
 
-      <Row label="OPP · PERMANENTS" count={oPerms.length} accent="var(--opp)"
-        minHeight={76}
-        bgFade="linear-gradient(180deg, rgba(40,16,8,.25), rgba(20,8,6,.3))">
-        {oPerms.map((c: CardData) => (
-          <FieldCard key={c.iid} card={c} density="perm"
-            selected={selIid === c.iid}
-            onClick={() => onCardTap(c, 'bf')} />
-        ))}
-      </Row>
+        {/* Opp lands → perms → creatures (closing toward center) */}
+        <PipRow label="OPP · LANDS" count={oLands.length} accent="var(--opp)">
+          {oLands.map((c: CardData) => (
+            <LandPip key={c.iid} card={c} tapped={(c as any).tapped}
+              selected={selIid === c.iid}
+              onClick={() => onCardTap(c, 'bf')} />
+          ))}
+        </PipRow>
 
-      <Row label="OPP · CREATURES" count={oCreatures.length} accent="var(--opp)"
-        minHeight={84}
-        bgFade="linear-gradient(180deg, rgba(40,16,8,.35), rgba(20,8,6,.4))">
-        {oCreatures.map((c: CardData) => (
-          <FieldCard key={c.iid} card={c} density="perm"
-            selected={selIid === c.iid}
-            onClick={() => onCardTap(c, 'bf')} />
-        ))}
-      </Row>
+        <Row label="OPP · PERMANENTS" count={oPerms.length} accent="var(--opp)"
+          minHeight={76}
+          bgFade="linear-gradient(180deg, rgba(40,16,8,.25), rgba(20,8,6,.3))">
+          {oPerms.map((c: CardData) => (
+            <FieldCard key={c.iid} card={c} density="perm"
+              selected={selIid === c.iid}
+              onClick={() => onCardTap(c, 'bf')} />
+          ))}
+        </Row>
 
-      <div className={s.bfDivider}>
-        <span className={s.bfDividerText}>⟡  BATTLEFIELD  ⟡</span>
-      </div>
+        <Row label="OPP · CREATURES" count={oCreatures.length} accent="var(--opp)"
+          minHeight={84}
+          bgFade="linear-gradient(180deg, rgba(40,16,8,.35), rgba(20,8,6,.4))">
+          {oCreatures.map((c: CardData) => (
+            <FieldCard key={c.iid} card={c} density="perm"
+              selected={selIid === c.iid}
+              onClick={() => onCardTap(c, 'bf')} />
+          ))}
+        </Row>
 
-      <Row label="YOUR · CREATURES" count={pCreatures.length} accent="var(--you)"
-        minHeight={96}
-        bgFade="linear-gradient(180deg, rgba(20,40,10,.4), rgba(14,28,6,.45))">
-        {pCreatures.map((c: CardData) => (
-          <FieldCard key={c.iid} card={c} density="creature"
-            selected={selIid === c.iid}
-            attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
-            onClick={() => onCardTap(c, 'bf')} />
-        ))}
-      </Row>
+        <div className={s.bfDivider}>
+          <span className={s.bfDividerText}>⟡  BATTLEFIELD  ⟡</span>
+        </div>
 
-      <Row label="YOUR · PERMANENTS" count={pPerms.length} accent="var(--you)"
-        minHeight={76}
-        bgFade="linear-gradient(180deg, rgba(20,28,12,.3), rgba(14,18,8,.4))">
-        {pPerms.map((c: CardData) => (
-          <FieldCard key={c.iid} card={c} density="perm"
-            selected={selIid === c.iid}
-            onClick={() => onCardTap(c, 'bf')} />
-        ))}
-      </Row>
+        <Row label="YOUR · CREATURES" count={pCreatures.length} accent="var(--you)"
+          minHeight={96}
+          bgFade="linear-gradient(180deg, rgba(20,40,10,.4), rgba(14,28,6,.45))">
+          {pCreatures.map((c: CardData) => (
+            <FieldCard key={c.iid} card={c} density="creature"
+              selected={selIid === c.iid}
+              attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
+              onClick={() => onCardTap(c, 'bf')} />
+          ))}
+        </Row>
 
-      <PipRow label="YOUR LANDS" count={pLands.length} accent="var(--you)">
-        {pLands.map((c: CardData) => (
-          <LandPip key={c.iid} card={c} tapped={(c as any).tapped} isPlayer
-            selected={selIid === c.iid}
-            onClick={() => handleLandTap(c)} />
-        ))}
-      </PipRow>
+        <Row label="YOUR · PERMANENTS" count={pPerms.length} accent="var(--you)"
+          minHeight={76}
+          bgFade="linear-gradient(180deg, rgba(20,28,12,.3), rgba(14,18,8,.4))">
+          {pPerms.map((c: CardData) => (
+            <FieldCard key={c.iid} card={c} density="perm"
+              selected={selIid === c.iid}
+              onClick={() => onCardTap(c, 'bf')} />
+          ))}
+        </Row>
+
+        <PipRow label="YOUR LANDS" count={pLands.length} accent="var(--you)">
+          {pLands.map((c: CardData) => (
+            <LandPip key={c.iid} card={c} tapped={(c as any).tapped} isPlayer
+              selected={selIid === c.iid}
+              onClick={() => handleLandTap(c)} />
+          ))}
+        </PipRow>
+
+      </div>{/* end bfScroll */}
 
       <Banner side="you" player={pData} />
 

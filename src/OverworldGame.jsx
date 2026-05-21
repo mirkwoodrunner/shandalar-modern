@@ -283,6 +283,7 @@ const [activeDelivery, setActiveDelivery] = useState(null);
 
 // -- Duel bridge ----------------------------------------------------------
 const [duelCfg, setDuelCfg]             = useState(null);
+const [duelScreenIsCompact, setDuelScreenIsCompact] = useState(false);
 const [dungeonProg, setDungeonProg]     = useState(null);
 const [encounterPopup, setEncounterPopup] = useState(null);
 const [postDuelChoice, setPostDuelChoice] = useState(null);
@@ -743,6 +744,7 @@ addLog(`Ignoring ${MAGE_NAMES[ev.color]}'s minion. Risk accepted.`, 'warn');
 
 const launchDuel = useCallback((oppArchKey, overworldHP, context, castleMod = null, extraData = {}) => {
 duelKeyRef.current += 1;
+setDuelScreenIsCompact(isCompactMobile);
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
 oppArchKey,
@@ -754,7 +756,7 @@ context, ...extraData,
 sandbox: isSandbox,
 _ts: Date.now(),
 });
-}, [deck, ruleset, anteEnabled]);
+}, [deck, ruleset, anteEnabled, isCompactMobile]);
 
 const handleDuelEnd = useCallback((outcome, duelState) => {
 const won      = outcome === 'win';
@@ -928,6 +930,7 @@ if (ctx === 'dungeon') {
       const nextArch = DUNGEON_ARCHETYPES[Math.floor(Math.random() * DUNGEON_ARCHETYPES.length)];
       addLog(`Room ${nextRoom + 1} of ${prog.totalRooms}. Descending further?`, 'event');
       duelKeyRef.current += 1;
+      setDuelScreenIsCompact(isCompactMobile);
       setDuelCfg({
         pDeckIds: deck.map(c => c.id).filter(Boolean),
         oppArchKey: nextArch,
@@ -1030,7 +1033,7 @@ if (ctx === 'arzakon') {
 graceMovesRef.current = 0;
 setDuelCfg(null);
 
-}, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore, checkQuestProgress]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [duelCfg, dungeonProg, anteEnabled, magesDefeated, dungeonsCleared, townsSaved, manaLinksTotal, deck, binder, ruleset, name, color, addLog, onScore, checkQuestProgress, isCompactMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
 // -------------------------------------------------------------------------
 // ARZAKON LAUNCH
@@ -1039,6 +1042,7 @@ setDuelCfg(null);
 const launchArzakon = useCallback(() => {
 addLog('⚡ Arzakon manifests! The final battle begins!', 'danger');
 duelKeyRef.current += 1;
+setDuelScreenIsCompact(isCompactMobile);
 setDuelCfg({
 pDeckIds: deck.map(c => c.id).filter(Boolean),
 oppArchKey: 'FIVE_COLOR_BOMB',
@@ -1050,7 +1054,7 @@ context: 'arzakon',
 sandbox: isSandbox,
 _ts: Date.now(),
 });
-}, [deck, ruleset, addLog]);
+}, [deck, ruleset, addLog, isCompactMobile]);
 
 // -------------------------------------------------------------------------
 // TOWN ACTIONS
@@ -1549,7 +1553,7 @@ useEffect(() => {
 // RENDER ? DUEL BRIDGE
 // -------------------------------------------------------------------------
 if (duelCfg) {
-return isCompactMobile ? (
+return duelScreenIsCompact ? (
 <DuelScreenMobile
 key={duelKeyRef.current}
 config={duelCfg}
