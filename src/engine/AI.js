@@ -48,6 +48,69 @@ function evaluateBoard(state) {
   return (myPower * 2) + lifeDelta + (cardDelta * 1.5) - (theirPower * 1.5);
 }
 
+// Score a spell's situational value in [0, 1].
+// Returns 1 = high value, 0 = no value. Profile weights still modulate.
+function scoreSpellValue(card, state, profile) {
+  const e = card.effect;
+
+  // Burn / direct damage to opponent: scales with damage vs life.
+  if (e === 'damage3' || e === 'damage5' || e === 'damage1' || e === 'damage2' ||
+      e === 'psionicBlast' || e === 'damageX' || e === 'disintegrate' ||
+      e === 'chainLightning' || e === 'drainLife') {
+    const dmg = e === 'damage1' ? 1
+              : e === 'damage2' ? 2
+              : e === 'damage3' ? 3
+              : e === 'damage5' ? 5
+              : e === 'psionicBlast' ? 4
+              : 3; // X spells, drainLife: assume X=3 baseline
+    if (dmg >= state.p.life) return 1.0;             // lethal: always cast
+    if (state.p.life <= 6) return 0.9;               // close to lethal
+    return Math.min(1.0, dmg / 8);                   // proportional otherwise
+  }
+
+  // Card draw: more valuable when hand is empty.
+  if (e === 'draw3' || e === 'draw1' || e === 'drawX') {
+    const handDeficit = Math.max(0, 5 - state.o.hand.length);
+    return 0.4 + (handDeficit * 0.1);
+  }
+
+  // Life gain: only valuable when low life.
+  if (e === 'gainLife3' || e === 'gainLife6' || e === 'gainLifeX' ||
+      e === 'gainLife1' || e === 'gainLife2') {
+    if (state.o.life <= 5) return 0.9;
+    if (state.o.life <= 10) return 0.5;
+    return 0.1;
+  }
+
+  // Tutor / regrowth: always reasonable.
+  if (e === 'tutor' || e === 'regrowth' || e === 'regrowthCreature') return 0.7;
+
+  // Default: neutral.
+  return 0.5;
+}
+
+// Threat score for an opposing creature. Higher = more dangerous.
+function scoreThreat(creature, state) {
+  const pow = getPow(creature, state);
+  const tou = getTou(creature, state);
+  const kws = creature.keywords || [];
+  let score = pow * 2 + tou;
+
+  if (kws.includes(KEYWORDS.FLYING.id))    score += 3;
+  if (kws.includes(KEYWORDS.TRAMPLE.id))   score += 2;
+  if (kws.includes(KEYWORDS.LIFELINK.id))  score += 3;
+  if (kws.includes(KEYWORDS.DEATHTOUCH.id))score += 4;
+  if (kws.includes(KEYWORDS.FIRST_STRIKE.id)) score += 2;
+
+  // Tapped creatures are less of an immediate threat.
+  if (creature.tapped) score -= 2;
+
+  // Summoning sick creatures threaten next turn, not this turn.
+  if (creature.summoningSick && !creature.keywords?.includes(KEYWORDS.HASTE.id)) score -= 1;
+
+  return score;
+}
+
 // --- MANA SIMULATION HELPERS --------------------------------------------------
 // Compute how much mana the AI can access (current pool + untapped lands).
 
@@ -113,6 +176,35 @@ function buildTapActions(state, cost) {
   }
 
   return { tapActions, affordable: vCanPay() };
+}
+
+// --- ACTIVATED ABILITIES ------------------------------------------------------
+
+function planActivatedAbilities(state, profile) {
+  const actions = [];
+
+  for (const c of state.o.bf) {
+    if (c.tapped) continue;
+
+    // Triskelion-style ping: spend a +1/+1 counter to deal 1 damage.
+    if (c.activated?.effect === 'triskelionPing' && (c.counters?.P1P1 || 0) > 0) {
+      // Target the smallest threat we can outright kill, else opponent face.
+      const killable = state.p.bf.filter(t =>
+        isCre(t) && getTou(t, state) - (t.damage || 0) === 1
+      );
+      if (killable.length) {
+        const tgt = killable.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a);
+        actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: [tgt.iid] });
+        continue;
+      }
+      // Fire face only if low player life — otherwise hold counters.
+      if (state.p.life <= 5) {
+        actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: ['p'] });
+      }
+    }
+  }
+
+  return actions;
 }
 
 // --- PHASE PLANNERS -----------------------------------------------------------
@@ -212,15 +304,18 @@ function planMain(state, profile, phase) {
 
     let spellTargets = null; // null = not yet resolved; [] = no target; [id] = targeted
 
-    // Removal: target highest-power threat on the player's battlefield.
+    // Removal: target highest-threat creature on the player's battlefield.
     const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
       'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
     if (isRemoval) {
       const threats = state.p.bf.filter(isCre);
       if (!threats.length) continue; // no valid target — skip without tapping
-      const target = threats.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-      if (Math.random() < profile.removalPriority) spellTargets = [target.iid];
-      else continue;
+      const target = threats.reduce((a, b) => scoreThreat(a, state) >= scoreThreat(b, state) ? a : b);
+      // Don't waste expensive removal on a trivial threat.
+      const targetScore = scoreThreat(target, state);
+      const minThreatForRemoval = card.cmc >= 4 ? 5 : 2;
+      if (targetScore < minThreatForRemoval && state.p.life > 8) continue;
+      spellTargets = [target.iid];
     }
 
     // Pump spells that need a target creature on the AI's battlefield.
@@ -230,26 +325,34 @@ function planMain(state, profile, phase) {
         const ownCreatures = state.o.bf.filter(isCre);
         if (!ownCreatures.length) continue; // no valid target — skip without tapping
         const target = ownCreatures.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-        if (Math.random() < profile.greedySpells) spellTargets = [target.iid];
+        if (profile.greedySpells >= 0.5) spellTargets = [target.iid];
         else continue;
       }
     }
 
     // Berserk.
     if (spellTargets === null && card.effect === 'berserk') {
-      const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
-      const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
-      if (!pool.length) continue; // no valid target — skip without tapping
-      const target = pool.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-      if (Math.random() < profile.greedySpells) spellTargets = [target.iid];
-      else continue;
+      // Prefer opposing attackers (they die EOT, so we're "removing" them).
+      const oppAttackers = state.p.bf.filter(c => isCre(c) && c.attacking);
+      if (oppAttackers.length) {
+        const target = oppAttackers.reduce((a, b) => getPow(b, state) >= getPow(a, state) ? b : a);
+        spellTargets = [target.iid];
+      } else {
+        // Fall back to own attackers for a lethal swing.
+        const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
+        const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
+        if (!pool.length) continue; // no valid target — skip without tapping
+        const target = pool.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
+        spellTargets = [target.iid];
+      }
     }
 
-    // Disintegrate / Drain Life.
+    // Disintegrate / Drain Life: kill smallest creature if one can be eliminated, else go face.
     if (spellTargets === null && (card.effect === "disintegrate" || card.effect === "drainLife")) {
       const threats = state.p.bf.filter(isCre);
-      const target = threats.length && Math.random() < 0.7
-        ? threats.reduce((a, b) => getTou(a, state) < getTou(b, state) ? a : b)
+      const killable = threats.filter(t => getTou(t, state) <= (cardXVal ?? 3));
+      const target = killable.length
+        ? killable.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a)
         : "p";
       spellTargets = [typeof target === "string" ? target : target.iid];
     }
@@ -260,14 +363,14 @@ function planMain(state, profile, phase) {
       spellTargets = [];
     }
 
-    // Generic spells (damage/draw/burn).
+    // Generic spells (damage/draw/burn): score by situational value.
     if (spellTargets === null) {
       const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
         'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
       const targetsOpp  = ['damage3','damage5','damageX','psionicBlast','chainLightning',
         'damage1','damage2','ping'].includes(card.effect);
-      if (!(isSorceryOk || isInstantOk)) continue;
-      if (Math.random() >= profile.greedySpells) continue;
+      const score = scoreSpellValue(card, state, profile);
+      if (score * profile.greedySpells < 0.35) continue;
       const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
       spellTargets = tgt ? [tgt] : [];
     }
@@ -291,6 +394,10 @@ function planMain(state, profile, phase) {
 
     actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions, _xVal: cardXVal });
   }
+
+  // Append activated ability actions (Triskelion, etc.).
+  const activated = planActivatedAbilities(virtualState, profile);
+  for (const a of activated) actions.push(a);
 
   actions.push({ type: 'PASS_PRIORITY' });
   return { phase, actions };
@@ -394,6 +501,40 @@ function planBlock(state, profile) {
         alreadyBlocking.add(bl.iid);
         blockActions.push({ type: 'BLOCK', blockerId: bl.iid, attackerId: lureAttId });
       }
+    }
+  }
+
+  // Aggregate lethal check: sum unblocked damage and force chumps if needed.
+  const totalIncoming = incomingAttackerIds.reduce((sum, id) => {
+    const att = getBF(state, id);
+    return att ? sum + getPow(att, state) : sum;
+  }, 0);
+
+  const isLethal = totalIncoming >= state.o.life;
+  const forcedChumps = new Set();
+
+  if (isLethal) {
+    // Sort attackers by power descending; chump the biggest first.
+    const sortedAttackers = [...incomingAttackerIds]
+      .map(id => getBF(state, id))
+      .filter(Boolean)
+      .sort((a, b) => getPow(b, state) - getPow(a, state));
+
+    let remainingDamage = totalIncoming;
+    const availableChumps = [...available];
+
+    for (const att of sortedAttackers) {
+      if (remainingDamage < state.o.life) break;
+      const chump = availableChumps.find(b =>
+        !alreadyBlocking.has(b.iid) && canBlockDuel(b, att)
+      );
+      if (!chump) continue;
+      alreadyBlocking.add(chump.iid);
+      forcedChumps.add(`${chump.iid}|${att.iid}`);
+      blockActions.push({ type: 'BLOCK', blockerId: chump.iid, attackerId: att.iid });
+      remainingDamage -= getPow(att, state);
+      const idx = availableChumps.indexOf(chump);
+      if (idx >= 0) availableChumps.splice(idx, 1);
     }
   }
 
