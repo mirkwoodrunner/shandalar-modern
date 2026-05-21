@@ -33,7 +33,7 @@ export function MulliganModal({ hand, mulliganCount, onKeep, onMulligan }: Mulli
         </div>
 
         <div className={styles.actions}>
-          <button className={styles.keepBtn} onClick={onKeep} autoFocus>
+          <button className={styles.keepBtn} onClick={onKeep}>
             Keep
           </button>
           {nextSize >= 4 && (
