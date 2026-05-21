@@ -69,6 +69,7 @@
 | # | Bug | Root Cause | Fix |
 |---|-----|-----------|-----|
 | B-mobile-1 | Rotating device during mulligan triggered new hand draw | Component remount: `OverworldGame` re-renders on orientation change (via `useIsMobile` ResizeObserver) and the DuelScreen key previously used `Date.now()` at render time, causing a fresh remount and resetting mulligan state. `useReducer` initializer is stable (does not re-run on re-render). | Key stabilized: `_ts` captured inside `setDuelCfg` calls (not at render time); `mulliganDismissed` ref latches dismissed state across any remaining re-renders; `useDuel` initializer dependency array confirmed empty. |
+| B-mobile-dm | DeckManager modal unusable on mobile portrait (overflow) and landscape (header height) | Fixed-width 760px modal with 220px CardPreviewPanel siblings; stacked header bars; no responsive logic | Added `useWindowSize` hook; portrait: tab switcher replaces two-column grid, CardPreviewPanel shown inline, tiles fill 50% width, header compacted, filters collapsible; landscape mobile: single-row header (~36px), compact controls bar (~30px), siblings hidden |
 
 ---
 
@@ -677,7 +678,7 @@ Phase 1 — Overworld  (shandalar.jsx)
       ├── <DungeonModal> name, rooms, modifier, known loot, enter/retreat
       ├── <CastleModal>  mage flavor, color border, challenge/withdraw
       ├── <EncounterModal> monster stats, engage/flee, outcome, win/lose result
-      ├── <DeckManager>  binder ↔ deck, color filter, swap, 40-card warning; <CardPreviewPanel> shows Scryfall art crop on click
+      ├── <DeckManager>  binder ↔ deck, color filter, swap, 40-card warning; <CardPreviewPanel> shows Scryfall art crop on click; portrait mobile: tab-switched single-panel view, inline card preview; landscape mobile: compact header/controls bars
       ├── <ManaLinkAlert> timed banner, respond/dismiss
       ├── <LogPanel>     scrolling chronicle, type-colored entries
       └── Victory / Defeat overlays

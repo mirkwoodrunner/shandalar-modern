@@ -9,6 +9,16 @@ import { MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_TITLES, CASTLE_NAMES, CASTLE_MODIF
 import { CARD_DB, POWERED_NINE_IDS } from '../../data/cards.js';
 import useCardArt from '../../utils/useCardArt.js';
 
+function useWindowSize() {
+  const [size, setSize] = React.useState({ w: window.innerWidth, h: window.innerHeight });
+  React.useEffect(() => {
+    const handler = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return size;
+}
+
 // --- CARD PRICE HELPER -------------------------------------------------------
 
 const cardPrice = c => Math.round((c.cmc||1)*8 + (c.rarity==="R"?32:c.rarity==="U"?12:0));
@@ -523,14 +533,14 @@ return (
 
 // --- CARD PREVIEW PANEL -------------------------------------------------------
 
-function CardPreviewPanel({ card }) {
+function CardPreviewPanel({ card, compact, onDismiss }) {
 const { url: artUrl, loading: artLoading } = useCardArt(card.name);
 const bd = thmOf(card).bd;
 const bandColor = card.color ? (MANA_HEX[card.color] || "#888") : "#888";
 const rarityDot = card.rarity === "R" ? "#f0c040" : card.rarity === "U" ? "#a0b8d0" : "#707070";
 return (
   <div style={{
-    width:220,
+    width: compact ? "100%" : 220,
     background:"linear-gradient(160deg,#12100a,#0e0c06)",
     border:`2px solid ${bd}`,
     borderRadius:8,
@@ -544,13 +554,14 @@ return (
     <div style={{ display:"flex", alignItems:"center", padding:"7px 8px 5px", gap:4, flexShrink:0 }}>
       <span style={{ flex:1, fontSize:13, fontFamily:"'Cinzel',serif", color:"#d4b040", fontWeight:700, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{card.name}</span>
       <span style={{ fontSize:11, fontFamily:"'Fira Code',monospace", color:"#c0a030", flexShrink:0 }}>{card.cost||""}</span>
+      {compact && onDismiss && <button onClick={onDismiss} style={{ background:"transparent", border:"none", color:"#e08060", cursor:"pointer", fontSize:14, flexShrink:0, padding:"0 0 0 4px", lineHeight:1 }}>✕</button>}
     </div>
 
     {/* Color band */}
     <div style={{ height:8, background:bandColor, flexShrink:0 }} />
 
     {/* Art window */}
-    <div style={{ height:150, background:"#080604", overflow:"hidden", flexShrink:0 }}>
+    <div style={{ height: compact ? 120 : 150, background:"#080604", overflow:"hidden", flexShrink:0 }}>
       {artUrl ? (
         <img src={artUrl} alt={card.name} style={{ width:"100%", height:"100%", objectFit:"cover", opacity:artLoading?0:1, transition:"opacity 0.3s ease" }} />
       ) : (
@@ -568,10 +579,12 @@ return (
       <div style={{ width:6, height:6, borderRadius:"50%", background:rarityDot, flexShrink:0 }} />
     </div>
 
-    {/* Rules text */}
-    <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", scrollbarWidth:"thin", minHeight:60 }}>
-      <span style={{ fontSize:11, fontFamily:"'Crimson Text',serif", fontStyle:"italic", color:"#d8cdb0", lineHeight:1.5 }}>{card.text||""}</span>
-    </div>
+    {/* Rules text — hidden in compact mode */}
+    {!compact && (
+      <div style={{ flex:1, overflowY:"auto", padding:"6px 8px", scrollbarWidth:"thin", minHeight:60 }}>
+        <span style={{ fontSize:11, fontFamily:"'Crimson Text',serif", fontStyle:"italic", color:"#d8cdb0", lineHeight:1.5 }}>{card.text||""}</span>
+      </div>
+    )}
 
     {/* Power/Toughness */}
     {isCre(card) && (
@@ -585,11 +598,11 @@ return (
 
 // --- DECK MANAGER -------------------------------------------------------------
 
-function DeckCardTile({ c, selected, onClick, side }) {
+function DeckCardTile({ c, selected, onClick, side, isMobile }) {
 const ca = CCOLOR[c.color] || "#888";
 return (
 <div onClick={onClick} style={{
-width:90, padding:"7px 7px 5px",
+width: isMobile ? "calc(50% - 4px)" : 90, boxSizing: isMobile ? "border-box" : undefined, padding:"7px 7px 5px",
 background: selected ? (side==="deck"?"rgba(240,192,64,.15)":"rgba(64,180,240,.15)") : thmOf(c).bg,
 border:`2px solid ${selected?(side==="deck"?"#f0c040":"#40b4f0"):thmOf(c).bd}`,
 borderRadius:6, cursor:"pointer", position:"relative",
@@ -623,6 +636,12 @@ onMouseLeave={e=>e.currentTarget.style.transform=""}
 
 export function DeckManager({ deck, binder, onClose, onSwap, onMoveToDeck, onMoveToBinder, worldMagics = [] }) {
 // TODO: hook point — if worldMagics.includes('tome_of_enlightenment'), skip the 4-copy duplicate check here
+const { w, h } = useWindowSize();
+const isMobilePortrait = w < 640;
+const isMobileLandscape = w < 900 && h < 500;
+const isMobile = isMobilePortrait || isMobileLandscape;
+const [activeTab, setActiveTab] = useState("deck");
+const [showFilters, setShowFilters] = useState(false);
 const [selD, setSelD] = useState(null);
 const [selB, setSelB] = useState(null);
 const [previewCard, setPreviewCard] = useState(null);
@@ -650,99 +669,205 @@ const avgCmc = deck.filter(c=>!isLand(c)).length
 return (
 <>
 <style>{`@keyframes cpFadeIn { from { opacity:0 } to { opacity:1 } }`}</style>
-<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding:16, gap:12 }}>
+<div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding: isMobile ? 0 : 16, gap: isMobile ? 0 : 12 }}>
 
-  {/* Left preview: shown when a deck card is selected */}
-  <div style={{ width:220, flexShrink:0, alignSelf:"center" }}>
+  {/* Left preview: desktop only */}
+  <div style={{ width:220, flexShrink:0, alignSelf:"center", display: isMobile ? "none" : undefined }}>
     {previewCard && previewSide==="left" && <CardPreviewPanel card={previewCard} />}
   </div>
 
-<div style={{ width:"100%", maxWidth:760, alignSelf:"stretch", background:"linear-gradient(160deg,#0e0c04,#080a04)", border:"2px solid rgba(180,160,60,.4)", borderRadius:12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
+<div style={{ width:"100%", maxWidth: isMobile ? "100%" : 760, height: isMobile ? "100%" : undefined, alignSelf: isMobile ? undefined : "stretch", background:"linear-gradient(160deg,#0e0c04,#080a04)", border: isMobile ? "none" : "2px solid rgba(180,160,60,.4)", borderRadius: isMobile ? 0 : 12, display:"flex", flexDirection:"column", boxShadow:"0 0 60px rgba(0,0,0,.9)", overflow:"hidden" }}>
 
     {/* Header */}
-    <div style={{ padding:"12px 16px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
-      <div>
-        <div style={{ fontSize:16, fontFamily:"'Cinzel',serif", color:"#e0c060", fontWeight:700 }}>◆ Deck Manager</div>
-        <div style={{ fontSize:10, color:"#6a5020", marginTop:2, display:"flex", gap:10 }}>
-          <span style={{ color:"#80c080" }}>{deck.length} cards</span>
-          <span>{lands} lands · {deck.filter(isCre).length} creatures · {deck.filter(c=>!isLand(c)&&!isCre(c)).length} spells</span>
-          <span>Avg CMC: {avgCmc}</span>
+    {isMobilePortrait ? (
+      <div style={{ padding:"8px 12px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+        <div>
+          <div style={{ fontSize:14, fontFamily:"'Cinzel',serif", color:"#e0c060", fontWeight:700 }}>◆ Deck Manager</div>
+          <div style={{ fontSize:9, color:"#6a5020", marginTop:1 }}>
+            <span style={{ color:"#80c080" }}>{deck.length} cards</span>{" | "}Binder: {binder.length} cards
+          </div>
         </div>
+        <button onClick={onClose} style={{ background:"rgba(80,20,10,.6)", border:"1px solid rgba(180,80,40,.5)", color:"#e08060", borderRadius:5, padding:"5px 14px", cursor:"pointer", fontSize:12, fontFamily:"'Cinzel',serif" }}>✕ Close</button>
       </div>
-      <button onClick={onClose} style={{ background:"rgba(80,20,10,.6)", border:"1px solid rgba(180,80,40,.5)", color:"#e08060", borderRadius:5, padding:"5px 14px", cursor:"pointer", fontSize:12, fontFamily:"'Cinzel',serif" }}>✕ Close</button>
-    </div>
+    ) : isMobileLandscape ? (
+      <div style={{ padding:"0 12px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, height:36 }}>
+        <div style={{ fontSize:12, fontFamily:"'Cinzel',serif", color:"#e0c060", fontWeight:700 }}>
+          ◆ Deck Manager — {deck.length} cards | {binder.length} binder
+        </div>
+        <button onClick={onClose} style={{ background:"rgba(80,20,10,.6)", border:"1px solid rgba(180,80,40,.5)", color:"#e08060", borderRadius:5, padding:"3px 10px", cursor:"pointer", fontSize:10, fontFamily:"'Cinzel',serif" }}>✕</button>
+      </div>
+    ) : (
+      <div style={{ padding:"12px 16px", borderBottom:"1px solid rgba(180,160,60,.2)", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, flexWrap:"wrap", gap:8 }}>
+        <div>
+          <div style={{ fontSize:16, fontFamily:"'Cinzel',serif", color:"#e0c060", fontWeight:700 }}>◆ Deck Manager</div>
+          <div style={{ fontSize:10, color:"#6a5020", marginTop:2, display:"flex", gap:10 }}>
+            <span style={{ color:"#80c080" }}>{deck.length} cards</span>
+            <span>{lands} lands · {deck.filter(isCre).length} creatures · {deck.filter(c=>!isLand(c)&&!isCre(c)).length} spells</span>
+            <span>Avg CMC: {avgCmc}</span>
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background:"rgba(80,20,10,.6)", border:"1px solid rgba(180,80,40,.5)", color:"#e08060", borderRadius:5, padding:"5px 14px", cursor:"pointer", fontSize:12, fontFamily:"'Cinzel',serif" }}>✕ Close</button>
+      </div>
+    )}
 
     {/* Controls */}
-    <div style={{ padding:"8px 16px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.2)" }}>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cards?" style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"4px 10px", borderRadius:5, fontSize:11, fontFamily:"'Cinzel',serif", width:140, outline:"none" }}/>
-      <div style={{ display:"flex", gap:3 }}>
-        {["ALL","W","U","B","R","G",""].map(f => (
-          <button key={f} onClick={()=>setColorFilt(f)} style={{ background:colorFilt===f?"rgba(200,160,40,.25)":"transparent", border:`1px solid ${colorFilt===f?"#c0a030":"#3a3010"}`, color:colorFilt===f?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{f||"◇"}</button>
-        ))}
+    {isMobilePortrait ? (
+      <>
+        <div style={{ padding:"6px 12px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:6, alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.2)" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cards?" style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"4px 10px", borderRadius:5, fontSize:11, fontFamily:"'Cinzel',serif", flex:1, outline:"none" }}/>
+          <button onClick={()=>setShowFilters(f=>!f)} style={{ background:showFilters?"rgba(200,160,40,.2)":"transparent", border:`1px solid ${showFilters?"#c0a030":"#3a3010"}`, color:showFilters?"#f0c040":"#6a5020", padding:"4px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontFamily:"'Cinzel',serif", flexShrink:0, whiteSpace:"nowrap" }}>⚙ Filters</button>
+        </div>
+        {showFilters && (
+          <div style={{ padding:"4px 12px 6px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.15)" }}>
+            <div style={{ display:"flex", gap:3, flexWrap:"wrap" }}>
+              {["ALL","W","U","B","R","G",""].map(f => (
+                <button key={f} onClick={()=>setColorFilt(f)} style={{ background:colorFilt===f?"rgba(200,160,40,.25)":"transparent", border:`1px solid ${colorFilt===f?"#c0a030":"#3a3010"}`, color:colorFilt===f?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{f||"◇"}</button>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:3 }}>
+              <span style={{ fontSize:9, color:"#6a5020", lineHeight:"24px" }}>Sort:</span>
+              {[["cmc","CMC"],["name","Name"],["type","Type"]].map(([k,l]) => (
+                <button key={k} onClick={()=>setSortBy(k)} style={{ background:sortBy===k?"rgba(200,160,40,.2)":"transparent", border:`1px solid ${sortBy===k?"#a08030":"#3a3010"}`, color:sortBy===k?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    ) : isMobileLandscape ? (
+      <div style={{ padding:"2px 12px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:4, alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.2)" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search?" style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"2px 8px", borderRadius:5, fontSize:9, fontFamily:"'Cinzel',serif", width:90, outline:"none" }}/>
+        <div style={{ display:"flex", gap:2 }}>
+          {["ALL","W","U","B","R","G",""].map(f => (
+            <button key={f} onClick={()=>setColorFilt(f)} style={{ background:colorFilt===f?"rgba(200,160,40,.25)":"transparent", border:`1px solid ${colorFilt===f?"#c0a030":"#3a3010"}`, color:colorFilt===f?"#f0c040":"#6a5020", padding:"1px 5px", borderRadius:4, cursor:"pointer", fontSize:8, fontFamily:"'Cinzel',serif" }}>{f||"◇"}</button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:2 }}>
+          <span style={{ fontSize:8, color:"#6a5020", lineHeight:"20px" }}>Sort:</span>
+          {[["cmc","CMC"],["name","Name"],["type","Type"]].map(([k,l]) => (
+            <button key={k} onClick={()=>setSortBy(k)} style={{ background:sortBy===k?"rgba(200,160,40,.2)":"transparent", border:`1px solid ${sortBy===k?"#a08030":"#3a3010"}`, color:sortBy===k?"#f0c040":"#6a5020", padding:"1px 5px", borderRadius:4, cursor:"pointer", fontSize:8, fontFamily:"'Cinzel',serif" }}>{l}</button>
+          ))}
+        </div>
       </div>
-      <div style={{ display:"flex", gap:3, marginLeft:"auto" }}>
-        <span style={{ fontSize:9, color:"#6a5020", lineHeight:"24px" }}>Sort:</span>
-        {[["cmc","CMC"],["name","Name"],["type","Type"]].map(([k,l]) => (
-          <button key={k} onClick={()=>setSortBy(k)} style={{ background:sortBy===k?"rgba(200,160,40,.2)":"transparent", border:`1px solid ${sortBy===k?"#a08030":"#3a3010"}`, color:sortBy===k?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{l}</button>
-        ))}
+    ) : (
+      <div style={{ padding:"8px 16px", borderBottom:"1px solid rgba(180,160,60,.12)", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", flexShrink:0, background:"rgba(0,0,0,.2)" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search cards?" style={{ background:"rgba(0,0,0,.5)", border:"1px solid #5a4020", color:"#f0d080", padding:"4px 10px", borderRadius:5, fontSize:11, fontFamily:"'Cinzel',serif", width:140, outline:"none" }}/>
+        <div style={{ display:"flex", gap:3 }}>
+          {["ALL","W","U","B","R","G",""].map(f => (
+            <button key={f} onClick={()=>setColorFilt(f)} style={{ background:colorFilt===f?"rgba(200,160,40,.25)":"transparent", border:`1px solid ${colorFilt===f?"#c0a030":"#3a3010"}`, color:colorFilt===f?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{f||"◇"}</button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:3, marginLeft:"auto" }}>
+          <span style={{ fontSize:9, color:"#6a5020", lineHeight:"24px" }}>Sort:</span>
+          {[["cmc","CMC"],["name","Name"],["type","Type"]].map(([k,l]) => (
+            <button key={k} onClick={()=>setSortBy(k)} style={{ background:sortBy===k?"rgba(200,160,40,.2)":"transparent", border:`1px solid ${sortBy===k?"#a08030":"#3a3010"}`, color:sortBy===k?"#f0c040":"#6a5020", padding:"3px 8px", borderRadius:4, cursor:"pointer", fontSize:9, fontFamily:"'Cinzel',serif" }}>{l}</button>
+          ))}
+        </div>
       </div>
-    </div>
+    )}
 
     {/* Action bar when selection made */}
     {(selD!==null||selB!==null) && (
-      <div style={{ padding:"8px 16px", borderBottom:"1px solid rgba(180,160,60,.12)", background:"rgba(200,160,40,.08)", display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
+      <div style={{ padding: isMobileLandscape ? "4px 12px" : "8px 16px", borderBottom:"1px solid rgba(180,160,60,.12)", background:"rgba(200,160,40,.08)", display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
         {selD!==null && selB!==null && (
           <>
-            <span style={{ fontSize:11, color:"#c0a860", flex:1 }}>Swap <strong style={{color:"#f0d060"}}>{fD[selD]?.name}</strong> ↔ <strong style={{color:"#60c0f0"}}>{fB[selB]?.name}</strong></span>
-            <button onClick={()=>{onSwap(fD[selD],fB[selB]);setSelD(null);setSelB(null);}} style={{ background:"linear-gradient(135deg,#1a2a10,#2a4020)", border:"1px solid #5a9040", color:"#80d060", padding:"6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11, fontWeight:700 }}>↔ Swap</button>
+            <span style={{ fontSize: isMobileLandscape ? 9 : 11, color:"#c0a860", flex:1, overflow:"hidden" }}>Swap <strong style={{color:"#f0d060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{fD[selD]?.name}</strong> ↔ <strong style={{color:"#60c0f0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{fB[selB]?.name}</strong></span>
+            <button onClick={()=>{onSwap(fD[selD],fB[selB]);setSelD(null);setSelB(null);}} style={{ background:"linear-gradient(135deg,#1a2a10,#2a4020)", border:"1px solid #5a9040", color:"#80d060", padding: isMobileLandscape ? "3px 8px" : "6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize: isMobileLandscape ? 9 : 11, fontWeight:700 }}>↔ Swap</button>
           </>
         )}
         {selD!==null && selB===null && (
           <>
-            <span style={{ fontSize:11, color:"#c0a860", flex:1 }}><strong style={{color:"#f0d060"}}>{fD[selD]?.name}</strong> selected from deck</span>
-            <button onClick={()=>{onMoveToBinder(fD[selD]);setSelD(null);}} style={{ background:"rgba(80,40,20,.5)", border:"1px solid #a06030", color:"#f0a050", padding:"6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11 }}>→ Move to Binder</button>
+            <span style={{ fontSize: isMobileLandscape ? 9 : 11, color:"#c0a860", flex:1, overflow:"hidden" }}><strong style={{color:"#f0d060", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{fD[selD]?.name}</strong> selected from deck</span>
+            <button onClick={()=>{onMoveToBinder(fD[selD]);setSelD(null);}} style={{ background:"rgba(80,40,20,.5)", border:"1px solid #a06030", color:"#f0a050", padding: isMobileLandscape ? "3px 8px" : "6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize: isMobileLandscape ? 9 : 11 }}>→ Move to Binder</button>
           </>
         )}
         {selB!==null && selD===null && (
           <>
-            <span style={{ fontSize:11, color:"#c0a860", flex:1 }}><strong style={{color:"#60c0f0"}}>{fB[selB]?.name}</strong> selected from binder</span>
-            <button onClick={()=>{onMoveToDeck(fB[selB]);setSelB(null);}} style={{ background:"rgba(20,60,30,.6)", border:"1px solid #408050", color:"#60e080", padding:"6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11 }}>← Add to Deck</button>
+            <span style={{ fontSize: isMobileLandscape ? 9 : 11, color:"#c0a860", flex:1, overflow:"hidden" }}><strong style={{color:"#60c0f0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{fB[selB]?.name}</strong> selected from binder</span>
+            <button onClick={()=>{onMoveToDeck(fB[selB]);setSelB(null);}} style={{ background:"rgba(20,60,30,.6)", border:"1px solid #408050", color:"#60e080", padding: isMobileLandscape ? "3px 8px" : "6px 14px", borderRadius:5, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize: isMobileLandscape ? 9 : 11 }}>← Add to Deck</button>
           </>
         )}
-        <button onClick={()=>{setSelD(null);setSelB(null);}} style={{ background:"transparent", border:"1px solid #5a3020", color:"#806040", padding:"5px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontFamily:"'Cinzel',serif" }}>✕</button>
+        <button onClick={()=>{setSelD(null);setSelB(null);}} style={{ background:"transparent", border:"1px solid #5a3020", color:"#806040", padding: isMobileLandscape ? "3px 8px" : "5px 10px", borderRadius:4, cursor:"pointer", fontSize:10, fontFamily:"'Cinzel',serif" }}>✕</button>
       </div>
     )}
 
-    {/* Two-panel grid */}
-    <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", overflow:"hidden", minHeight:0 }}>
-      {[
-        { label:`◆ DECK (${deck.length})${fD.length!==deck.length?` · showing ${fD.length}`:""}`, cards:fD, sel:selD, setSel:setSelD, side:"deck" },
-        { label:`◇ BINDER (${binder.length})${fB.length!==binder.length?` · showing ${fB.length}`:""}`, cards:fB, sel:selB, setSel:setSelB, side:"binder" },
-      ].map(({ label, cards, sel, setSel, side }, pi) => (
-        <div key={pi} style={{ borderRight:pi===0?"1px solid rgba(180,160,60,.15)":"none", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          <div style={{ padding:"8px 12px 6px", fontSize:10, fontFamily:"'Cinzel',serif", color:pi===0?"#d0a040":"#40a0d0", fontWeight:700, borderBottom:"1px solid rgba(180,160,60,.08)", flexShrink:0 }}>{label}</div>
-          <div style={{ flex:1, overflowY:"auto", padding:8, display:"flex", flexWrap:"wrap", gap:5, alignContent:"flex-start", scrollbarWidth:"thin" }}>
-            {cards.map((c,i) => (
+    {/* Portrait: tab-switched single panel with inline card preview */}
+    {isMobilePortrait ? (
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minHeight:0 }}>
+        <div style={{ display:"flex", flexShrink:0, borderBottom:"1px solid rgba(180,160,60,.12)" }}>
+          {[
+            { id:"deck",   label:`◆ Deck (${deck.length})` },
+            { id:"binder", label:`◇ Binder (${binder.length})` },
+          ].map(({ id, label }) => (
+            <button key={id} onClick={()=>setActiveTab(id)} style={{
+              flex:1, padding:"8px",
+              background: activeTab===id ? "rgba(200,160,40,.2)" : "transparent",
+              border: activeTab===id ? "1px solid #c0a030" : "1px solid transparent",
+              borderBottom:"none",
+              color: activeTab===id ? "#f0c040" : "#6a5020",
+              cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11,
+            }}>{label}</button>
+          ))}
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:8, display:"flex", flexWrap:"wrap", gap:4, alignContent:"flex-start", scrollbarWidth:"thin" }}>
+          {previewCard && (
+            <div style={{ width:"100%", marginBottom:6 }}>
+              <CardPreviewPanel card={previewCard} compact={true} onDismiss={()=>setPreviewCard(null)} />
+            </div>
+          )}
+          {(activeTab==="deck" ? fD : fB).map((c,i) => {
+            const side = activeTab==="deck" ? "deck" : "binder";
+            const sel  = activeTab==="deck" ? selD : selB;
+            const setSel = activeTab==="deck" ? setSelD : setSelB;
+            return (
               <DeckCardTile key={c.iid||i} c={c} selected={sel===i} onClick={()=>{
                 const alreadySel = sel===i;
                 setSel(alreadySel ? null : i);
                 if (alreadySel) { setPreviewCard(null); }
                 else { setPreviewCard(c); setPreviewSide(side==="deck"?"left":"right"); }
-              }} side={side} />
-            ))}
-            {!cards.length && <div style={{ fontSize:10, color:"#3a2810", fontStyle:"italic", padding:8 }}>{cards.length===0&&binder.length===0?"Empty.":"No cards match filter."}</div>}
-          </div>
+              }} side={side} isMobile={true} />
+            );
+          })}
+          {!(activeTab==="deck" ? fD : fB).length && (
+            <div style={{ fontSize:10, color:"#3a2810", fontStyle:"italic", padding:8 }}>
+              {(activeTab==="deck" ? deck : binder).length===0 ? "Empty." : "No cards match filter."}
+            </div>
+          )}
         </div>
-      ))}
-    </div>
+      </div>
+    ) : (
+      /* Desktop + Landscape: two-panel side-by-side grid */
+      <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", overflow:"hidden", minHeight:0 }}>
+        {[
+          { label:`◆ DECK (${deck.length})${fD.length!==deck.length?` · showing ${fD.length}`:""}`, cards:fD, sel:selD, setSel:setSelD, side:"deck" },
+          { label:`◇ BINDER (${binder.length})${fB.length!==binder.length?` · showing ${fB.length}`:""}`, cards:fB, sel:selB, setSel:setSelB, side:"binder" },
+        ].map(({ label, cards, sel, setSel, side }, pi) => (
+          <div key={pi} style={{ borderRight:pi===0?"1px solid rgba(180,160,60,.15)":"none", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            <div style={{ padding:"8px 12px 6px", fontSize:10, fontFamily:"'Cinzel',serif", color:pi===0?"#d0a040":"#40a0d0", fontWeight:700, borderBottom:"1px solid rgba(180,160,60,.08)", flexShrink:0 }}>{label}</div>
+            <div style={{ flex:1, overflowY:"auto", padding:8, display:"flex", flexWrap:"wrap", gap:5, alignContent:"flex-start", scrollbarWidth:"thin" }}>
+              {cards.map((c,i) => (
+                <DeckCardTile key={c.iid||i} c={c} selected={sel===i} onClick={()=>{
+                  const alreadySel = sel===i;
+                  setSel(alreadySel ? null : i);
+                  if (alreadySel) { setPreviewCard(null); }
+                  else { setPreviewCard(c); setPreviewSide(side==="deck"?"left":"right"); }
+                }} side={side} />
+              ))}
+              {!cards.length && <div style={{ fontSize:10, color:"#3a2810", fontStyle:"italic", padding:8 }}>{cards.length===0&&binder.length===0?"Empty.":"No cards match filter."}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
 
-    <div style={{ padding:"8px 16px", borderTop:"1px solid rgba(180,160,60,.12)", fontSize:10, color:"#4a3820", fontStyle:"italic", flexShrink:0, textAlign:"center" }}>
-      Click a card in one panel to select it · Select from both to swap · Select from one to move
-    </div>
+    {!isMobile && (
+      <div style={{ padding:"8px 16px", borderTop:"1px solid rgba(180,160,60,.12)", fontSize:10, color:"#4a3820", fontStyle:"italic", flexShrink:0, textAlign:"center" }}>
+        Click a card in one panel to select it · Select from both to swap · Select from one to move
+      </div>
+    )}
   </div>
 
-  {/* Right preview: shown when a binder card is selected */}
-  <div style={{ width:220, flexShrink:0, alignSelf:"center" }}>
+  {/* Right preview: desktop only */}
+  <div style={{ width:220, flexShrink:0, alignSelf:"center", display: isMobile ? "none" : undefined }}>
     {previewCard && previewSide==="right" && <CardPreviewPanel card={previewCard} />}
   </div>
 
