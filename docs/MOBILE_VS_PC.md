@@ -118,6 +118,7 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 1. **OverworldGame and other non-duel screens** continue to use `isMobile` branching inside the existing component (breakpoint: 768px).
 1. **Engine files** (`DuelCore.js`, `AI.js`, etc.) must never be conditioned on any mobile flag.
 1. **Both duel screens read from the same `useDuel` store** — never fork the data layer.
+1. **Screen-type choice is snapshotted at duel launch, not read live.** `OverworldGame` stores `duelScreenIsCompact` in state and sets it once alongside `setDuelCfg`. Never use the live `isCompactMobile` value in the render condition — doing so causes component-type swaps on orientation change which re-initialise the game engine and retrigger the mulligan.
 1. Document every new divergence in this file under the appropriate component's table.
 1. If a new screen/component is added (e.g., dungeon), add its own section here before implementing mobile layout for it.
 1. The compact-phone breakpoint (640px) is defined only in the `useMedia` call in `OverworldGame.jsx`. The general mobile breakpoint (768px) is defined only in `useIsMobile.js`. Change each at its single source.
