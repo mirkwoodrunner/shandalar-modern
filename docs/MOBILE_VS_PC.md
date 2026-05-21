@@ -105,18 +105,40 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 
 ### Shared hooks used by DuelScreenMobile
 
-- `useDuel` — same engine store as DuelScreen (no data fork); `chooseLotusColor` and `mulligan` now also destructured
+- `useDuel` — same engine store as DuelScreen (no data fork); `chooseLotusColor`, `mulligan`, `tapArtifactMana`, and `declareAttacker` also destructured
 - `usePhaseAdvance` (`src/hooks/usePhaseAdvance.ts`) — phase-advance logic shared with DuelScreen
+
+### Battlefield card interaction (`handleBfCardClick`)
+
+`DuelScreenMobile` routes player-battlefield clicks through `handleBfCardClick` (introduced after banner-compaction sprint). Priority order:
+
+| Condition | Action |
+|-----------|--------|
+| Phase is `COMBAT_ATTACKERS` AND card is a Creature | `declareAttacker(iid)` — engine validates eligibility |
+| `activated.effect === 'addMana3Any'` AND not tapped | `activateAbility` + show `LotusColorPicker` |
+| `activated.effect === 'addMana'` AND not tapped | `tapArtifactMana(iid)` — direct tap, no Activate button |
+| Card has non-mana `activated` ability OR `activatedAbilities` array | Toggle selection → Activate button in ActionBar |
+| All other cases (plain creatures, `addManaAny`/BOP) | No action (BOP is a Known Gap) |
 
 ### Modals in DuelScreenMobile
 
 | Modal | Trigger | Component |
 |-------|---------|-----------|
 | Mulligan | On mount (`showMulligan = true`) | `MulliganModal` from `src/ui/Mulligan/` |
-| Black Lotus color pick | `handleActivate` detects `card.name === 'Black Lotus'` | `LotusColorPicker` from `TargetingOverlay.jsx` |
+| Black Lotus color pick | `handleBfCardClick` detects `addMana3Any` effect | `LotusColorPicker` from `TargetingOverlay.jsx` |
 | Dual land color pick | `handleLandTap` detects `produces.length > 1` | `DualLandColorPicker` from `TargetingOverlay.jsx` |
 
 All three modals use `position: fixed; z-index: 600` and are sourced from the same components as `DuelScreen`.
+
+### Default targeting (`resolveDefaultTarget`)
+
+Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helper matching `DuelScreen.tsx`) to supply a default target when none is selected:
+
+| Effect group | Default target |
+|---|---|
+| `damage3`, `damage5`, `damageX`, `psionicBlast`, `chainLightning` | `'o'` (opponent) |
+| `draw3`, `gainLife3`, `gainLifeX`, `tutor`, `drawX` | `state.selTgt ?? 'p'` |
+| All others | `state.selTgt ?? null` |
 
 ---
 
@@ -154,7 +176,10 @@ All three modals use `position: fixed; z-index: 600` and are sourced from the sa
 - No pinch-to-zoom on the overworld canvas
 - DuelScreenMobile: no targeting arrows (TargetArrow overlay — Phase 8)
 - DuelScreenMobile: no card-preview on long-press (Phase 8)
-- DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired (mirrors Lotus pattern)
+- DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired; clicking BOP does nothing (mirrors `addMana3Any` Lotus pattern — needs `CHOOSE_BOP_COLOR` dispatch)
 - DuelScreenMobile: `GameOverModal` not yet rendered (auto-return to overworld after 3 s works)
+- DuelScreenMobile: no blocker declaration UI — player cannot declare blockers; phase advances automatically (Phase 8)
+- DuelScreenMobile: no explicit card targeting for spells that require a creature target (enchantCreature, ping, etc.) — only default targets work
+- DuelScreenMobile: `addManaAny` creatures (Birds of Paradise) effectively untappable for mana until BopColorPicker is wired
 
 These gaps should be tracked as issues and addressed in a follow-up pass.
