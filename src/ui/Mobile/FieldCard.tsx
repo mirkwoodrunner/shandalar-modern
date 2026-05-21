@@ -1,6 +1,6 @@
 import { FilCorner } from '../Card/FilCorner';
 import { Cost } from '../Card/Cost';
-import { ArtPlaceholder } from '../Card/ArtPlaceholder';
+import { CardArtImage } from '../Card/CardArtImage';
 import { frameOf } from '../Card/frame';
 import type { CardData } from '../Card/types';
 import s from './styles.module.css';
@@ -58,7 +58,7 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
       </div>
 
       <div className={s.fieldArt} style={{ border: `1px solid ${frame.bd}aa` }}>
-        <ArtPlaceholder frame={frame} label={card.type ?? ''} sm />
+        <CardArtImage cardName={card.name} frameColor={frame.glow} />
       </div>
 
       <div

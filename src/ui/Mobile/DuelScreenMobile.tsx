@@ -9,6 +9,9 @@ import { aiDecide } from '../../engine/AI.js';
 import { isLand, canPay } from '../../engine/DuelCore.js';
 import type { CardData } from '../Card/types';
 
+import { MulliganModal } from '../Mulligan/MulliganModal';
+import { LotusColorPicker, DualLandColorPicker } from '../duel/TargetingOverlay.jsx';
+
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
 import { Row } from './Row';
@@ -76,6 +79,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     resolveStack,
     advancePhase,
     activateAbility,
+    chooseLotusColor,
+    mulligan,
     applyAiActions,
     openPriorityWindow,
     passPriority,
@@ -95,6 +100,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const mulliganDismissed = useRef(false);
+  const [showMulligan, setShowMulligan] = useState(true);
+  const [mulliganCount, setMulliganCount] = useState(0);
+  const [showLotus, setShowLotus] = useState(false);
+  const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const aiRef = useRef(false);
   const prevPriorityWindow = useRef(false);
   const priorityWindowInitiator = useRef(false);
@@ -179,6 +189,18 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     return () => clearTimeout(t);
   }, [s_state.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Mulligan handlers ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (mulliganDismissed.current) setShowMulligan(false);
+  }, [s_state.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleKeep = useCallback(() => { mulliganDismissed.current = true; setShowMulligan(false); }, []);
+  const handleMulligan = useCallback(() => { mulligan(); setMulliganCount(c => c + 1); }, [mulligan]);
+
+  // ── Lotus handlers ─────────────────────────────────────────────────────────
+  const handleLotusChoose = useCallback((color: string) => { chooseLotusColor(color); setShowLotus(false); }, [chooseLotusColor]);
+  const handleLotusCancel = useCallback(() => { setShowLotus(false); }, []);
+
   // ── Card tap handler ───────────────────────────────────────────────────────
   const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
     setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone, card });
@@ -198,6 +220,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   const handleActivate = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
+    const card = sel.card as any;
+    if (card?.name === 'Black Lotus') {
+      activateAbility(card.iid, null);
+      setShowLotus(true);
+      setSel(null);
+      return;
+    }
     activateAbility(sel.iid, null);
     setSel(null);
   }, [sel, activateAbility]);
@@ -220,6 +249,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     if (c.tapped) { onCardTap(card, 'bf'); return; }
     if (c.produces && c.produces.length === 1) {
       tapLand(card.iid, c.produces[0]);
+    } else if (c.produces && c.produces.length > 1) {
+      setPendingDualLand({ card: c, colors: c.produces });
     } else {
       onCardTap(card, 'bf');
     }
@@ -247,6 +278,29 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={s.screen}>
+
+      {showMulligan && !s_state.over && (
+        <MulliganModal
+          hand={s_state.p.hand as CardData[]}
+          mulliganCount={mulliganCount}
+          onKeep={handleKeep}
+          onMulligan={handleMulligan}
+        />
+      )}
+      {showLotus && (
+        <LotusColorPicker onChoose={handleLotusChoose} onCancel={handleLotusCancel} />
+      )}
+      {pendingDualLand && (
+        <DualLandColorPicker
+          landName={pendingDualLand.card.name}
+          colors={pendingDualLand.colors}
+          onChoose={(color: string) => {
+            dispatch({ type: 'TAP_LAND', who: 'p', iid: pendingDualLand.card.iid, mana: color });
+            setPendingDualLand(null);
+          }}
+          onCancel={() => setPendingDualLand(null)}
+        />
+      )}
 
       <Topbar
         turn={s_state.turn}
