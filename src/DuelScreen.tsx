@@ -30,13 +30,11 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile.js';
+import { usePhaseAdvance } from './hooks/usePhaseAdvance';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
-
-// Phases where priority windows may open (interactive main phases + end step)
-const PRIORITY_WINDOW_PHASES = new Set([PHASE.MAIN_1, PHASE.MAIN_2, PHASE.END]);
 
 // -----------------------------------------------------------------------------
 // HELPERS
@@ -387,34 +385,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const prevPriorityWindow = useRef(false);
   const priorityWindowInitiator = useRef(false);
 
-  // -- Smart suppression helper: skip the priority window if neither player
-  // -- has an instant in hand or a non-mana activated battlefield ability.
-  const requestPhaseAdvance = useCallback(() => {
-    if (s.priorityWindow) return;
-    // Do not attempt phase advance while stack has unresolved items
-    if (s.stack && s.stack.length > 0) return;
-
-    // Only open priority windows during interactive phases
-    if (!PRIORITY_WINDOW_PHASES.has(s.phase)) {
-      advancePhase();
-      return;
-    }
-
-    const handHasInstant = (hand: any[]) =>
-      hand.some((c: any) => c.type === 'Instant' || c.type === 'Interrupt');
-    const bfHasActivated = (bf: any[]) =>
-      bf.some((c: any) => c.activated && !['addMana','addManaAny','addMana3Any'].includes(c.activated.effect));
-    const anyOptions =
-      handHasInstant(s.p.hand) ||
-      handHasInstant(s.o.hand) ||
-      bfHasActivated(s.p.bf) ||
-      bfHasActivated(s.o.bf);
-    if (anyOptions) {
-      openPriorityWindow();
-    } else {
-      advancePhase();
-    }
-  }, [s.priorityWindow, s.stack, s.phase, s.p.hand, s.o.hand, s.p.bf, s.o.bf, openPriorityWindow, advancePhase]);
+  const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
 
   // -- Auto-advance phase when priority window closes (both players passed) --
   useEffect(() => {

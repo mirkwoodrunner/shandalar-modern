@@ -1042,7 +1042,12 @@ ACTIVE (implemented during Phase 6 cutover)
 ## 6.1 Mobile Responsive Layout System
 
 ### Description
-Runtime detection of mobile viewport (≤ 768px) via `useIsMobile` hook. Activates alternate layout in DuelScreen and OverworldGame. Desktop layout is unmodified at all breakpoints above 768px. No game logic differs between platforms.
+Two breakpoints govern layout divergence:
+
+- **768px** (`useIsMobile`) — OverworldGame viewport, D-pad sizing, toolbar.
+- **640px** (`useMedia('(max-width: 640px)')`) — duel screen selection: `DuelScreenMobile` at ≤ 640px, `DuelScreen` above.
+
+`DuelScreenMobile` is a fully separate component tree in `src/ui/Mobile/`. It reads from the same `useDuel` store — no game logic fork. Desktop layout is unmodified at all breakpoints above 640px.
 
 ### GDD Reference
 N/A — presentational layer only.
@@ -1052,17 +1057,29 @@ See `docs/MOBILE_VS_PC.md` (authoritative reference for all platform layout dive
 
 ### Implementation
 ```
-/src/hooks/useIsMobile.js        — detection hook (ResizeObserver + resize fallback)
-/src/DuelScreen.tsx              — sidebar suppression, MobileActionDrawer, hand padding
-/src/OverworldGame.jsx           — sidebar suppression, D-pad sizing, viewport scaling, toolbar scroll
+/src/hooks/useIsMobile.js        — OverworldGame layout gate (≤ 768px, ResizeObserver)
+/src/hooks/useMedia.ts           — generic matchMedia hook; used for ≤ 640px duel gate
+/src/hooks/usePhaseAdvance.ts    — phase-advance logic shared by DuelScreen + DuelScreenMobile
+/src/DuelScreen.tsx              — desktop/tablet duel screen (> 640px)
+/src/ui/Mobile/                  — compact phone duel layout (≤ 640px):
+  DuelScreenMobile.tsx             root; engine wiring, AI loop, selection state
+  Topbar.tsx / PhaseBar.tsx / PhaseRibbon.tsx
+  Banner.tsx / ZoneChip.tsx
+  Row.tsx / PipRow.tsx
+  FieldCard.tsx / HandCard.tsx / LandPip.tsx
+  ActionBar.tsx / LogSheet.tsx
+  styles.module.css
+/src/OverworldGame.jsx           — renders DuelScreenMobile ≤ 640px, DuelScreen above
 /docs/MOBILE_VS_PC.md           — complete divergence table and future-change rules
 ```
+
 ### Strict Constraints
-- Hook is read-only from the perspective of game state — it only reads viewport dimensions
-- All mobile branches must be `isMobile ? mobileValue : existingValue` — never restructure desktop-path code
-- Engine files (`DuelCore.js`, `AI.js`, etc.) must never be conditioned on `isMobile`
+- Detection hooks are read-only from game-state perspective — they only read viewport dimensions
+- Engine files (`DuelCore.js`, `AI.js`, etc.) must never be conditioned on any mobile flag
+- Both duel screens read from the same `useDuel` store — data layer must never fork
+- Compact-phone layout changes belong in `src/ui/Mobile/`; do not add `isMobile` branches inside `DuelScreen.tsx` for ≤ 640px concerns
 
 ### Status
-ACTIVE (Phase 7 — Mobile Support)
+ACTIVE (Phase 7 — Mobile Support; compact duel screen added post-Phase 7)
 
-# End of MECHANICS INDEX v1.1
+# End of MECHANICS INDEX v1.2

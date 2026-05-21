@@ -48,6 +48,31 @@
 
   /* Special backgrounds */
   --bg-radial-center: #1a1208;
+
+  /* Frame parchment */
+  --frame-w-parch: #d8cfa6;
+  --frame-u-parch: #aac4dc;
+  --frame-b-parch: #b8a4c4;
+  --frame-r-parch: #d4b0a0;
+  --frame-g-parch: #b4c8a4;
+  --frame-a-parch: #bcc0c8;
+
+  /* Extended mobile palette */
+  --you-hi:           #a8d870;
+  --you-faint:        #dcffb8;
+  --you-text:         #7a9858;
+  --life-low:         #ff3030;
+  --life-mid:         #e0703a;
+  --opp-life:         #ff9070;
+  --you-life:         #a8e070;
+  --combat-border:    #c45028;
+  --combat-text:      #ffcc88;
+  --log-phase:        #7a8a9a;
+  --log-play:         #a8e070;
+  --log-opp-play:     #ff9070;
+  --log-damage:       #ff5a3a;
+  --log-heal:         #7ad0a0;
+  --log-close-color:  #e07050;
 }
 
 @keyframes pulse {
@@ -80,6 +105,11 @@
 @keyframes cardEnter {
   from { opacity: 0; transform: scale(.85) translateY(12px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes mdPlayPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(255,208,96,.45), inset 0 1px 0 rgba(255,255,255,.12); }
+  50%       { box-shadow: 0 0 26px rgba(255,208,96,.85), inset 0 1px 0 rgba(255,255,255,.18); }
 }
 
 /* Global focus ring */

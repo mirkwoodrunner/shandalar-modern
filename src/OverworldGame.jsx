@@ -30,6 +30,8 @@ import PostDuelChoiceModal from './ui/overworld/PostDuelChoiceModal.jsx';
 import WorldMagicPanel from './ui/overworld/WorldMagicPanel.jsx';
 import { DuelLog as OWLog } from './ui/layout/TechnicalLog.jsx';
 import DuelScreen from './DuelScreen.tsx';
+import DuelScreenMobile from './ui/Mobile/DuelScreenMobile';
+import { useMedia } from './hooks/useMedia';
 import { generateDungeon, checkLOS } from './engine/DungeonGenerator.js';
 import DungeonHUD from './ui/dungeon/DungeonHUD.jsx';
 import DungeonMap from './ui/dungeon/DungeonMap.jsx';
@@ -311,6 +313,7 @@ const [zoom, setZoom]         = useState(1);
 
 // -- Mobile layout --------------------------------------------------------
 const isMobile = useIsMobile();
+const isCompactMobile = useMedia('(max-width: 640px)');
 const viewW = isMobile ? 12 : VIEW_W;
 const viewH = isMobile ? 9  : VIEW_H;
 
@@ -1546,7 +1549,13 @@ useEffect(() => {
 // RENDER ? DUEL BRIDGE
 // -------------------------------------------------------------------------
 if (duelCfg) {
-return (
+return isCompactMobile ? (
+<DuelScreenMobile
+key={duelKeyRef.current}
+config={duelCfg}
+onDuelEnd={handleDuelEnd}
+/>
+) : (
 <DuelScreen
 key={duelKeyRef.current}
 config={duelCfg}
