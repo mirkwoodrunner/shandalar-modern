@@ -152,3 +152,88 @@ describe('Regression: AI block selection (Fix 1 — worthlessBlock)', () => {
     expect(plan.actions.some(a => a.type === 'BLOCK' && a.blockerId === 'blk-1')).toBe(true);
   });
 });
+
+describe('Regression: Tier 2 — multi-blocker lethal prevention', () => {
+  // AI-MLT-01: AI at 5 life, player attacks with three 2/2s for 6 total damage.
+  // AI has three 1/1 blockers. All three must block to prevent lethal.
+  it('AI-MLT-01: AI assigns all three 1/1 blockers when total incoming damage is lethal', () => {
+    function make22(iid) {
+      return {
+        iid, id: 'grizzly_bears', name: 'Grizzly Bears', type: 'Creature',
+        color: 'G', cmc: 2, cost: 'GG', effect: null, keywords: [],
+        tapped: false, summoningSick: false, attacking: true, blocking: null,
+        damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'p',
+        power: 2, toughness: 2,
+      };
+    }
+    function make11(iid) {
+      return {
+        iid, id: 'llanowar_elves', name: 'Llanowar Elves', type: 'Creature',
+        color: 'G', cmc: 1, cost: 'G', effect: null, keywords: [],
+        tapped: false, summoningSick: false, attacking: false, blocking: null,
+        damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+        power: 1, toughness: 1,
+      };
+    }
+    const att1 = make22('att-m1');
+    const att2 = make22('att-m2');
+    const att3 = make22('att-m3');
+    const blk1 = make11('blk-m1');
+    const blk2 = make11('blk-m2');
+    const blk3 = make11('blk-m3');
+    const base = makeState({
+      pBf: [att1, att2, att3],
+      oBf: [blk1, blk2, blk3],
+      phase: PHASE.COMBAT_BLOCKERS,
+      active: 'p',
+    });
+    // AI at 2 life: each individual 2/2 is lethal, so all three must block.
+    const state = { ...base, o: { ...base.o, life: 2 }, attackers: ['att-m1', 'att-m2', 'att-m3'] };
+    const plan = getAIPlan(state, PHASE.COMBAT_BLOCKERS);
+    const blockActions = plan.actions.filter(a => a.type === 'BLOCK');
+    expect(blockActions.length).toBe(3);
+  });
+});
+
+describe('Regression: Tier 2 — removal threat scoring', () => {
+  // AI-RMV-01: Player controls a 4/1 (no abilities) and a 2/2 flying.
+  // AI casts a removal spell. The 2/2 flying has a higher threat score, so it
+  // should be targeted rather than the 4/1.
+  it('AI-RMV-01: AI removal targets the 2/2 flyer over the 4/1 ground creature', () => {
+    // 3/1 ground: scoreThreat = 3*2+1 = 7 (no keywords)
+    const bigGround = {
+      iid: 'tgt-g', id: 'shivan_dragon_weak', name: 'Big Ground', type: 'Creature',
+      color: 'R', cmc: 3, cost: 'RRR', effect: null, keywords: [],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'p',
+      power: 3, toughness: 1,
+    };
+    const smallFlyer = {
+      iid: 'tgt-f', id: 'phantom_warrior', name: 'Small Flyer', type: 'Creature',
+      color: 'U', cmc: 2, cost: 'UU', effect: null, keywords: ['FLYING'],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'p',
+      power: 2, toughness: 2,
+    };
+    const removalSpell = {
+      iid: 'rm-1', id: 'terror', name: 'Terror', type: 'Instant',
+      color: 'B', cmc: 2, cost: 'BB', effect: 'destroy', keywords: [],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+    };
+    const base = makeState({
+      pBf: [bigGround, smallFlyer],
+      phase: PHASE.MAIN_1,
+      active: 'o',
+    });
+    const state = {
+      ...base,
+      o: { ...base.o, hand: [removalSpell], mana: { W: 0, U: 0, B: 2, R: 0, G: 0, C: 0 } },
+      oppArch: { id: 'MORTIS', profileId: 'MORTIS' },
+    };
+    const plan = getAIPlan(state, PHASE.MAIN_1);
+    const castAction = plan.actions.find(a => a.type === 'PLAY_CARD' && a.cardId === 'rm-1');
+    expect(castAction).toBeDefined();
+    expect(castAction.targets[0]).toBe('tgt-f');
+  });
+});

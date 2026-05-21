@@ -243,7 +243,37 @@ AI behavior follows:
 - AI must not mutate state
 - AI must not bypass DuelCore stack
 
-## 6.4 Mulligan
+## 6.4 Spell Casting Model
+
+Spell selection in `planMain` is state-aware, not random. Each spell category is evaluated in order:
+
+- **Removal** (`destroy`, `exileCreature`, `bounce`, etc.): targets the highest-scoring threat via `scoreThreat`, which weights power, toughness, and keywords (flying +3, lifelink +3, deathtouch +4, trample +2, first strike +2). Expensive removal (CMC ≥ 4) is withheld against trivial threats (score < 5) unless the opponent's life is ≤ 8.
+- **Generic spells** (burn, draw, life gain, tutor): scored 0–1 by `scoreSpellValue` based on situational relevance. Gate: `score * profile.greedySpells < 0.35` → skip. Lethal burn always scores 1.0; card draw scales with hand deficit; life gain scales with low AI life.
+- **Pump spells**: cast if `profile.greedySpells >= 0.5`, targeting the AI's highest-power creature.
+- **Berserk**: prefers an opposing attacker (they die at end of turn, making this removal); falls back to own attackers for a lethal swing.
+- **Disintegrate / Drain Life**: kills the highest-threat creature it can kill within the X budget; otherwise fires at the opponent's face.
+
+No `Math.random()` calls remain in `planMain`. Profile weights are knobs that modulate deterministic thresholds, not coin-flip gates.
+
+## 6.5 Blocking Model
+
+### Multi-Blocker Lethal Prevention
+
+Before the per-attacker blocking loop, `planBlock` computes `totalIncoming` (sum of all attacking powers). If `totalIncoming >= state.o.life`, the AI enters forced-chump mode: attackers are sorted by power descending, and chumps are assigned until remaining damage drops below lethal. These chumps are recorded in `alreadyBlocking` so the subsequent per-attacker loop skips them.
+
+### Per-Attacker Priority
+
+For each unblocked attacker the loop checks in order: favorable trade → survives → prevents lethal → skip.
+
+## 6.6 Activated Abilities
+
+`planActivatedAbilities(state, profile)` is called from `planMain` immediately before `PASS_PRIORITY`. Currently handles:
+
+- **Triskelion-style ping** (`activated.effect === 'triskelionPing'`): spends a `P1P1` counter to kill the highest-threat creature with exactly 1 remaining toughness. If no creature can be one-shot, fires at the opponent's face only when their life is ≤ 5.
+
+Mishra's Factory animation and regenerate are deferred to Tier 5 (require deeper turn planning).
+
+## 6.7 Mulligan
 
 `shouldMulligan(state)` is evaluated at the top of `aiDecide` before any phase dispatch. Rules:
 
