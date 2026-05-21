@@ -310,7 +310,8 @@ const [log, setLog]             = useState(() => {
 
 // -- Viewport -------------------------------------------------------------
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
-const [zoom, setZoom]         = useState(1);
+const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+const [zoom, setZoom]         = useState(() => isMobileDevice() ? 0.6 : 1);
 
 // -- Mobile layout --------------------------------------------------------
 const isMobile = useIsMobile();
@@ -1404,6 +1405,28 @@ y: Math.max(0, Math.min(22 - 1, v.y + (dir === 'up' ? -3 : dir === 'down' ? 3 : 
 
 const handleCenterPlayer = useCallback(() => setViewOfs({ x: pos.x, y: pos.y }), [pos]);
 
+// Auto-center on mobile at game start
+useEffect(() => {
+  if (isMobileDevice()) {
+    setViewOfs({ x: pos.x, y: pos.y });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // intentionally empty — fires once on mount only
+
+// Restore sensible zoom if user rotates device
+useEffect(() => {
+  const handleResize = () => {
+    setZoom(prev => {
+      const mobile = window.innerWidth <= 768;
+      if (mobile && prev > 0.8) return 0.6;
+      if (!mobile && prev < 0.8) return 1;
+      return prev;
+    });
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
 // -------------------------------------------------------------------------
 // GAME-LOSS side-effect
 // -------------------------------------------------------------------------
@@ -1749,9 +1772,13 @@ fontFamily: "'Crimson Text', serif",
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
       🎯 Center
     </button>
-    <button onClick={() => setZoom(z => z === 1 ? 0.8 : 1)}
+    <button onClick={() => setZoom(z => {
+      if (z >= 1) return 0.8;
+      if (z >= 0.8) return 0.6;
+      return 1;
+    })}
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      {zoom === 1 ? '🔍 Zoom Out' : '🔍 Zoom In'}
+      {zoom >= 1 ? '🔍 Zoom Out' : zoom >= 0.8 ? '🔍 Zoom –' : '🔍 Zoom In'}
     </button>
 
     {/* Deck button */}

@@ -146,7 +146,7 @@ LOSE CONDITIONS:
 - 6–8 dungeons per run, hidden until a sage reveals them
 - 5 mage castles, each placed in a distinct quadrant to ensure geographic spread
 - BFS pathfinding for click-to-move; one step executed per click
-- Viewport scrolling (4 directional buttons + Center-on-player) with zoom toggle (1× / 0.8×)
+- Viewport scrolling (4 directional buttons + Center-on-player) with zoom toggle (1× / 0.8× / 0.6×); mobile devices initialize at 0.6× zoom centered on the player position.
 
 **Town & structure name pools:**
 - 20 town names: Ardestan, Veldatha, Morheim, Caelthas, Sunspire, Duskwall, Greymere, Thornhaven, Ironwake, Silverbend, Coldwater, Emberfield, Ashwood, Deepmoor, Starfall, Crestholm, Mistpeak, Dawncroft, Stonebridge, Oakhearth
@@ -778,7 +778,7 @@ DungeonGenerator   procedural room+corridor layout; seeded RNG; entity placement
 Procedural 32×22 map · BFS pathfinding · fog of war · town modal (5 tabs) · dungeon modal · castle modal · encounter system · mana link events · deck manager · HUD · victory/defeat overlays · title screen
 
 ### Phase 2 — Duel Engine ✅ Complete
-Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequence · mana system with burn · 79-card local DB · 17-keyword registry · full combat pipeline · 27 effect handlers (5 stubs) · strategy-aware AI (4 profiles, 6 archetypes) · card tooltip · phase tracker · live mana pool · game log · mulligan · standalone setup screen
+Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequence · mana system with burn · 79-card local DB · 17-keyword registry · full combat pipeline · 27 effect handlers (5 stubs) · strategy-aware AI (4 profiles, 6 archetypes) · card tooltip · phase tracker · live mana pool · game log · mulligan (mobile-responsive: 2-row portrait layout, compressed landscape layout) · standalone setup screen
 
 ### Phase 3 — Integration & Progression ✅ Complete
 - Overworld encounters wire into Phase 2 duel engine

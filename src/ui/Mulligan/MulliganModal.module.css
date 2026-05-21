@@ -22,6 +22,8 @@
   box-shadow: 0 0 40px rgba(196, 160, 64, 0.25), 0 24px 60px rgba(0, 0, 0, 0.8);
   animation: cardEnter var(--t-slow) cubic-bezier(0.2, 1.2, 0.4, 1);
   max-width: 90vw;
+  max-height: 92vh;
+  overflow-y: auto;
 }
 
 .title {
@@ -123,4 +125,69 @@
   color: var(--ink-dim);
   font-style: italic;
   text-align: center;
+}
+
+/* ── Mobile portrait: wrap cards into 2 rows ───────────────────── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .modal {
+    padding: 24px 16px 20px;
+    gap: 14px;
+    max-width: 96vw;
+  }
+
+  .handRow {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 6px;
+    min-height: unset;
+    max-width: 100%;
+  }
+
+  /* Shrink each card so 4 fit per row comfortably */
+  .cardWrapper {
+    flex: 0 0 auto;
+    width: clamp(60px, 22vw, 88px);
+  }
+
+  /* Disable the fan rotation in 2-row layout — it causes misalignment */
+  .cardWrapper[style] {
+    transform: none !important;
+  }
+
+  .actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .keepBtn,
+  .mulliganBtn {
+    width: 100%;
+    font-size: 12px;
+    padding: 10px 16px;
+  }
+}
+
+/* ── Mobile landscape: single row, compressed cards ───────────── */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .modal {
+    padding: 16px 20px 14px;
+    gap: 10px;
+    max-width: 98vw;
+    max-height: 96vh;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .handRow {
+    gap: 4px;
+    min-height: unset;
+  }
+
+  .cardWrapper {
+    width: clamp(48px, 10vw, 72px);
+  }
 }
