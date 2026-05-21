@@ -77,7 +77,7 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
         </div>
       )}
 
-      {card.summoningSick && (
+      {isCre && card.summoningSick && (
         <div className={s.summonVeil}>
           <span className={s.summonText}>SUMMONING</span>
         </div>

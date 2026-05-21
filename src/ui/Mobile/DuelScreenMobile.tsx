@@ -209,14 +209,15 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Action bar handlers ────────────────────────────────────────────────────
   const handleCast = useCallback(() => {
     if (!sel || sel.zone !== 'hand') return;
-    const card = sel.card as any;
+    const card = (s_state.p.hand as any[]).find((c: any) => c.iid === sel.iid);
+    if (!card) return;
     if (isLand(card)) {
       playLand(card.iid);
     } else {
       castSpell(card.iid, s_state.selTgt ?? null, s_state.xVal ?? 1);
     }
     setSel(null);
-  }, [sel, s_state.selTgt, s_state.xVal, playLand, castSpell]);
+  }, [sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
 
   const handleActivate = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
