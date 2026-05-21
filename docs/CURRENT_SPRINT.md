@@ -138,6 +138,13 @@
 
 ---
 
+## Mobile Map & Mulligan Responsive Improvements
+
+- ✅ Mobile overworld: auto-fit zoom (0.6×) and center on player at game start; orientation-change listener adjusts zoom
+- ✅ Mulligan modal: 7-card hand wraps to 2 rows on mobile portrait; compressed single-row on landscape
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
