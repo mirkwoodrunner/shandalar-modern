@@ -38,6 +38,33 @@ import DungeonMap from './ui/dungeon/DungeonMap.jsx';
 import TreasureModal from './ui/dungeon/TreasureModal.jsx';
 
 // -----------------------------------------------------------------------------
+// MOBILE TOOLBAR STYLES
+// -----------------------------------------------------------------------------
+
+const OW_TOOLBAR_STYLES = `
+@media (max-width: 600px) {
+  .ow-toolbar {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 4px 8px;
+  }
+  .ow-toolbar-title {
+    font-size: 14px;
+    letter-spacing: 0.05em;
+  }
+  .ow-toolbar-ruleset select {
+    font-size: 10px;
+    padding: 2px 4px;
+    max-width: 130px;
+  }
+  .ow-toolbar-right {
+    flex-shrink: 1;
+    gap: 6px;
+  }
+}
+`;
+
+// -----------------------------------------------------------------------------
 // CONSTANTS (mirrors shandalar-phase4.jsx)
 // -----------------------------------------------------------------------------
 
@@ -318,6 +345,16 @@ const isMobile = useIsMobile();
 const isCompactMobile = useMedia('(max-width: 640px)');
 const viewW = isMobile ? 12 : VIEW_W;
 const viewH = isMobile ? 9  : VIEW_H;
+
+// Compute dynamic tile size on mobile so the grid fills available viewport.
+const tileSize = useMemo(() => {
+  if (!isMobile) return 34;
+  const availH = window.innerHeight - 88;
+  const availW = window.innerWidth - 16;
+  const byHeight = Math.floor(availH / viewH);
+  const byWidth  = Math.floor(availW / viewW);
+  return Math.max(18, Math.min(byHeight, byWidth));
+}, [isMobile, viewH, viewW]);
 
 // -- Grace period: use a ref so the RAF loop always reads current value without closure staleness.
 const graceMovesRef = useRef(0);
@@ -1502,7 +1539,7 @@ useEffect(() => {
         playerAnim: playerAnimRef.current,
         enemies,
         viewport,
-        tileSize: 34,
+        tileSize,
         tiles,
       });
     }
@@ -1634,12 +1671,13 @@ onCollect={() => setTreasureModal(null)}
 // -------------------------------------------------------------------------
 return (
 <div style={{
-height: '100vh', width: '100vw',
+height: '100dvh', width: '100vw',
 background: '#0a0e08',
 display: 'flex', flexDirection: 'column',
 overflow: 'hidden',
 fontFamily: "'Crimson Text', serif",
 }}>
+  <style>{OW_TOOLBAR_STYLES}</style>
 
   {/* -- GAME-LOSS OVERLAY ----------------------------------------------- */}
   {(gameLost || conquestLost) && (
@@ -1698,7 +1736,7 @@ fontFamily: "'Crimson Text', serif",
   )}
 
   {/* -- TOP BAR --------------------------------------------------------- */}
-  <div style={{
+  <div className="ow-toolbar" style={{
     flexShrink: 0,
     padding: '6px 12px',
     borderBottom: '2px solid rgba(200,160,40,.3)',
@@ -1707,24 +1745,26 @@ fontFamily: "'Crimson Text', serif",
     overflowX: isMobile ? 'auto' : 'visible',
     WebkitOverflowScrolling: 'touch',
   }}>
-    <span style={{ fontSize: 13, fontFamily: "'Cinzel Decorative',serif", color: '#d0a030', letterSpacing: 2 }}>
+    <span className="ow-toolbar-title" style={{ fontSize: 13, fontFamily: "'Cinzel Decorative',serif", color: '#d0a030', letterSpacing: 2 }}>
       SHANDALAR
     </span>
 
     {/* Ruleset selector */}
-    <select
-      value={ruleset.id}
-      onChange={e => setRuleset(RULESETS[e.target.value])}
-      style={{
-        background: '#1a1208', border: '1px solid rgba(200,160,60,.3)',
-        color: '#c0a040', borderRadius: 4, padding: '2px 6px', fontSize: 10,
-        fontFamily: "'Cinzel',serif", cursor: 'pointer',
-      }}
-    >
-      {Object.values(RULESETS).map(r => (
-        <option key={r.id} value={r.id}>{r.name}</option>
-      ))}
-    </select>
+    <div className="ow-toolbar-ruleset">
+      <select
+        value={ruleset.id}
+        onChange={e => setRuleset(RULESETS[e.target.value])}
+        style={{
+          background: '#1a1208', border: '1px solid rgba(200,160,60,.3)',
+          color: '#c0a040', borderRadius: 4, padding: '2px 6px', fontSize: 10,
+          fontFamily: "'Cinzel',serif", cursor: 'pointer',
+        }}
+      >
+        {Object.values(RULESETS).map(r => (
+          <option key={r.id} value={r.id}>{r.name}</option>
+        ))}
+      </select>
+    </div>
 
     {/* Ante toggle */}
     <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
@@ -1788,7 +1828,7 @@ fontFamily: "'Crimson Text', serif",
     </button>
 
     {/* Quit + sandbox badge */}
-    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+    <div className="ow-toolbar-right" style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
       {isSandbox && (
         <div style={{
           fontSize: 9,
@@ -1836,10 +1876,10 @@ fontFamily: "'Crimson Text', serif",
   )}
 
   {/* -- MAIN CONTENT ---------------------------------------------------- */}
-  <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
     {/* -- MAP ----------------------------------------------------------- */}
-    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
       <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
       <WorldMap
         tiles={tiles}
@@ -1850,6 +1890,7 @@ fontFamily: "'Crimson Text', serif",
         }}
         viewW={viewW}
         viewH={viewH}
+        tileSize={tileSize}
         onTileClick={handleTileClick}
         canvasRef={canvasRef}
         enemies={enemies}

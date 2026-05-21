@@ -360,6 +360,12 @@ Thin hooks that live alongside `useDuel.js` and share its constraints (no rules 
 | `useMedia` | `src/hooks/useMedia.ts` | Generic `matchMedia` wrapper with SSR guard. Returns a boolean that updates on viewport change. Used by `OverworldGame` to gate `DuelScreenMobile` at ≤ 640px. |
 | `useIsMobile` | `src/hooks/useIsMobile.js` | ResizeObserver-based breakpoint detector (≤ 768px). Used for OverworldGame layout adjustments and within DuelScreen for tablet-width tweaks. |
 
+### 11.3 UI/Overworld — Dynamic Tile Size
+
+`WorldMap` (`src/ui/overworld/WorldMap.jsx`) accepts an optional `tileSize` prop (default `34`). All grid template dimensions, tile element sizes, canvas dimensions, and empty-tile placeholders are derived from this prop so the grid scales uniformly.
+
+In `OverworldGame`, `tileSize` is computed via `useMemo`: when `isMobile` is true, it calculates the largest integer tile size that fits both the available viewport height (screen height − 88 px for toolbar and HUD) and available viewport width (screen width − 16 px), divided by the mobile viewport tile counts (`viewH = 9`, `viewW = 12`), clamped to a minimum of 18 px. On desktop `tileSize` is always `34`. This eliminates the black void below the map on portrait mobile.
+
 ---
 
 # 12. Determinism System
