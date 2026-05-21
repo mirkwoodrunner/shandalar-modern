@@ -243,6 +243,17 @@ AI behavior follows:
 - AI must not mutate state
 - AI must not bypass DuelCore stack
 
+## 6.4 Mulligan
+
+`shouldMulligan(state)` is evaluated at the top of `aiDecide` before any phase dispatch. Rules:
+
+- Only fires on turn 1 when the AI battlefield is empty and no lands have been played.
+- Mulligan if the opening hand has 0 or 1 lands.
+- Mulligan if the opening hand has `handSize - 1` or more lands (e.g. 6 of 7, or 5 of 6).
+- Capped at 2 mulligans total (`state.o.mulls < 2`).
+- Never mulligans below 5 cards.
+- Returns a single `{ type: 'MULLIGAN', who: 'o' }` action; no PASS_PRIORITY is appended.
+
 ---
 
 # 7. World System
