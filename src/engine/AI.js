@@ -298,7 +298,6 @@ function planMain(state, profile, phase) {
 
 function planAttack(state, profile) {
   const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
-  console.warn('[AI] planAttack candidates:', candidates.length);
   if (!candidates.length) return passPlan(PHASE.COMBAT_ATTACKERS);
 
   const attackerIds = [];
@@ -418,11 +417,8 @@ function planBlock(state, profile) {
     const survives = valid.find(b => getTou(b, state) > ap);
     const preventLethal = state.o.life <= ap ? valid[0] : null;
 
-    // Never block if attacker is smaller than all blockers with no keyword benefit.
-    const worthlessBlock = valid.find(b => getPow(b, state) > ap && getTou(b, state) > ap);
-
     const chosen = favorableTrade || survives || preventLethal;
-    if (chosen && chosen !== worthlessBlock) {
+    if (chosen) {
       alreadyBlocking.add(chosen.iid);
       blockActions.push({ type: 'BLOCK', blockerId: chosen.iid, attackerId: attId });
     }
@@ -440,6 +436,24 @@ function planEnd(state, profile) {
   // If AI is over hand size, discard lowest CMC card.
   // DuelCore handles discard-to-hand-size in CLEANUP, so this is a no-op here.
   return passPlan(PHASE.END);
+}
+
+// --- MULLIGAN DECISION --------------------------------------------------------
+
+function shouldMulligan(state) {
+  // Only legal at the very start of the AI's first opportunity.
+  if (state.turn !== 1) return false;
+  if (state.o.bf.length > 0) return false;
+  if (state.landsPlayed > 0) return false;
+  if ((state.o.mulls || 0) >= 2) return false;
+
+  const handSize = state.o.hand.length;
+  if (handSize < 5) return false; // never mulligan to 4 or below
+
+  const landCount = state.o.hand.filter(isLand).length;
+  if (landCount <= 1) return true;
+  if (landCount >= handSize - 1) return true; // 6 of 7, or 5 of 6
+  return false;
 }
 
 // --- MAIN ENTRY POINT ---------------------------------------------------------
@@ -503,6 +517,10 @@ function validateAction(action, state) {
  * @returns {object[]}   - Array of DuelCore GameAction objects
  */
 export function aiDecide(state) {
+  if (shouldMulligan(state)) {
+    return [{ type: 'MULLIGAN', who: 'o' }];
+  }
+
   const plan = getAIPlan(state, state.phase);
   const dcActions = [];
 
@@ -531,9 +549,12 @@ export function aiDecide(state) {
           if (action._xVal != null) dcActions.push({ type: 'SET_X', val: action._xVal });
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;
-          dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: action._xVal ?? 3 });
-          // Auto-resolve the stack after casting — no player priority window on AI turns.
-          dcActions.push({ type: 'RESOLVE_STACK' });
+          dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: action._xVal ?? null });
+          // Only emit RESOLVE_STACK for instants under stack-based ruleset.
+          // Sorceries, permanents, and batch-mode spells are already resolved by CAST_SPELL.
+          if (isInst(card) && state.ruleset?.stackType !== 'batch') {
+            dcActions.push({ type: 'RESOLVE_STACK' });
+          }
         }
         break;
       }
