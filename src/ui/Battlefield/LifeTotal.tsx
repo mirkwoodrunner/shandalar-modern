@@ -1,3 +1,5 @@
+import { useIsMobile } from '../../hooks/useIsMobile';
+
 type LifeSide = 'you' | 'opp';
 type LifeAnim = 'damage' | 'heal' | null;
 
@@ -11,6 +13,7 @@ interface LifeTotalProps {
 }
 
 export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalProps) {
+  const isMobile = useIsMobile();
   const isOpp = side === 'opp';
   const accent = isOpp ? 'var(--opp)' : 'var(--you)';
   const accentRaw = isOpp ? '#c45040' : '#7ab84a';
@@ -37,8 +40,8 @@ export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalPr
       onClick={onClick}
       style={{
         cursor: onClick ? 'pointer' : 'default',
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '8px 16px',
+        display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14,
+        padding: isMobile ? '4px 10px' : '8px 16px',
         background: 'linear-gradient(180deg, rgba(20,16,10,.7), rgba(10,8,6,.85))',
         border: `1px solid ${isOpp ? 'rgba(180,80,30,.4)' : 'rgba(80,140,40,.4)'}`,
         borderRadius: 4,
@@ -53,36 +56,36 @@ export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalPr
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
         <span style={{
-          fontSize: 9, color: accent,
+          fontSize: isMobile ? 8 : 9, color: accent,
           fontFamily: 'var(--font-display)', letterSpacing: 2,
           fontWeight: 700, textTransform: 'uppercase',
           textShadow: `0 0 6px ${accentRaw}66`,
         }}>{label}</span>
         <span style={{
-          fontSize: 11, color: 'var(--ink-faint)',
+          fontSize: isMobile ? 9 : 11, color: 'var(--ink-faint)',
           fontFamily: 'var(--font-body)', fontStyle: 'italic',
         }}>Life</span>
       </div>
 
       <div style={{
         position: 'relative',
-        fontSize: 52, fontFamily: 'var(--font-display)', fontWeight: 700,
+        fontSize: isMobile ? 32 : 52, fontFamily: 'var(--font-display)', fontWeight: 700,
         color: lifeColor, lineHeight: 1,
         textShadow: `0 0 14px ${lifeColor}55, 0 2px 4px rgba(0,0,0,.9)`,
         animation,
-        minWidth: 64, textAlign: 'center',
+        minWidth: isMobile ? 40 : 64, textAlign: 'center',
       }}>
         {life}
         <span style={{
-          position: 'absolute', top: 6, right: -8,
-          fontSize: 12, color: 'var(--ink-dim)',
+          position: 'absolute', top: isMobile ? 4 : 6, right: -8,
+          fontSize: isMobile ? 10 : 12, color: 'var(--ink-dim)',
           fontFamily: 'var(--font-body)',
         }}>/{max}</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 100 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: isMobile ? 70 : 100 }}>
         <div style={{
-          height: 10, background: 'var(--bg-deep)', borderRadius: 2,
+          height: isMobile ? 6 : 10, background: 'var(--bg-deep)', borderRadius: 2,
           border: '1px solid rgba(120,90,40,.4)',
           overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,.8)',
         }}>
