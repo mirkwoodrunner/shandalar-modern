@@ -142,6 +142,7 @@
 
 - ✅ Mobile overworld: auto-fit zoom (0.6×) and center on player at game start; orientation-change listener adjusts zoom
 - ✅ Mulligan modal: 7-card hand wraps to 2 rows on mobile portrait; compressed single-row on landscape
+- [x] Mobile portrait layout: toolbar overflow fix, HUD compact mode, dynamic tile sizing to fill screen, legend/mage panel hidden on mobile (≤600px)
 
 ---
 

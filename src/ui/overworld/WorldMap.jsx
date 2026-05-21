@@ -33,7 +33,7 @@ const TERRAIN_BG = {
 
 // --- SINGLE TILE -------------------------------------------------------------
 
-export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, onClick }) {
+export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, onClick }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -41,6 +41,7 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, onCli
     return (
       <div
         className="ow-tile ow-fog"
+        style={{ width: tileSize, height: tileSize }}
         onClick={() => onClick(tile)}
       />
     );
@@ -61,7 +62,7 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, onCli
   return (
     <div
       className={`ow-tile ${terrainClass} ${fogEdgeClass}`}
-      style={{ background: tileBg }}
+      style={{ background: tileBg, width: tileSize, height: tileSize }}
       onClick={() => onClick(tile)}
     >
       {/* Mana link corruption overlay */}
@@ -339,9 +340,32 @@ const OW_STYLES = `
   50%        { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0 16px var(--ring-glow); }
 }
 
+@media (max-width: 600px) {
+  .ow-hud {
+    padding: 4px 8px;
+    gap: 6px;
+    font-size: 10px;
+  }
+  .ow-hud-hp-bar {
+    width: 56px;
+    height: 10px;
+  }
+  .ow-hud-links {
+    gap: 3px;
+  }
+  .ow-hud-link-pip {
+    width: 6px;
+    height: 6px;
+  }
+  .ow-legend,
+  .ow-mage-panel {
+    display: none;
+  }
+}
+
 `;
 
-export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick, canvasRef, enemies = [] }) {
+export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 34, onTileClick, canvasRef, enemies = [] }) {
   const tileAt = (x, y) => tiles[y]?.[x] ?? null;
   const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
@@ -350,8 +374,8 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
     if (!e.defeated) enemyByTile[`${e.x},${e.y}`] = e;
   }
 
-  const gridWidth  = viewW * 34 + 16; // 34px tiles + 8px padding each side
-  const gridHeight = viewH * 34 + 16;
+  const gridWidth  = viewW * tileSize + 16;
+  const gridHeight = viewH * tileSize + 16;
 
   return (
     <>
@@ -361,8 +385,8 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
         {/* Terrain grid — unchanged */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${viewW}, 34px)`,
-          gridTemplateRows:    `repeat(${viewH}, 34px)`,
+          gridTemplateColumns: `repeat(${viewW}, ${tileSize}px)`,
+          gridTemplateRows:    `repeat(${viewH}, ${tileSize}px)`,
           gap: 0,
           padding: 8,
           background: 'radial-gradient(ellipse at center, #0c0906 0%, #050302 100%)',
@@ -379,7 +403,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
                 return (
                   <div
                     key={`${vx}-${vy}`}
-                    style={{ width: 34, height: 34, background: '#030202' }}
+                    style={{ width: tileSize, height: tileSize, background: '#030202' }}
                   />
                 );
               }
@@ -396,6 +420,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, onTileClick
                   isPlayer={x === playerPos.x && y === playerPos.y}
                   enemy={enemyByTile[`${x},${y}`] ?? null}
                   isFogEdge={isFogEdge}
+                  tileSize={tileSize}
                   onClick={onTileClick}
                 />
               );
@@ -428,7 +453,7 @@ const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
 const threshold = hasWard ? 5 : 3;
 
 return (
-<div style={{
+<div className="ow-hud" style={{
 display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
 padding: "6px 12px", background: "rgba(0,0,0,.5)",
 borderBottom: "1px solid rgba(200,160,60,.3)",
@@ -436,7 +461,7 @@ borderBottom: "1px solid rgba(200,160,60,.3)",
 {/* HP bar */}
 <div style={{ display:"flex", alignItems:"center", gap:5 }}>
 <span style={{ fontSize:11, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>HP</span>
-<div style={{ width:78, height:12, background:"#1a0a00", borderRadius:6, border:"1px solid #5a3010", overflow:"hidden" }}>
+<div className="ow-hud-hp-bar" style={{ width:78, height:12, background:"#1a0a00", borderRadius:6, border:"1px solid #5a3010", overflow:"hidden" }}>
 <div style={{
 width: `${(player.hp / player.maxHP) * 100}%`, height:"100%",
 background: player.hp > player.maxHP*.5 ? "linear-gradient(90deg,#c04020,#e06040)" : "linear-gradient(90deg,#800010,#c01020)",
@@ -451,7 +476,7 @@ transition: "width .4s", borderRadius: 6,
   <span style={{ fontSize:10, color:"#8090a0", fontFamily:"'Cinzel',serif" }}>Move {moves}</span>
 
   {/* Mana link pips */}
-  <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+  <div className="ow-hud-links" style={{ display:"flex", gap:5, alignItems:"center" }}>
     <span style={{ fontSize:10, color:"#a08060", fontFamily:"'Cinzel',serif" }}>LINKS:</span>
     {COLORS.map(c => {
       const lnk = manaLinks[c] || 0;
@@ -464,7 +489,7 @@ transition: "width .4s", borderRadius: 6,
           </div>
           <div style={{ display:"flex", gap:1 }}>
             {Array.from({ length: threshold }).map((_, i) => (
-              <div key={i} style={{
+              <div key={i} className="ow-hud-link-pip" style={{
                 width:5, height:5, borderRadius:1,
                 background: def?"#2a3020":i<lnk?MANA_HEX[c]:"rgba(255,255,255,.1)",
                 border:"1px solid rgba(255,255,255,.1)",
@@ -492,7 +517,7 @@ transition: "width .4s", borderRadius: 6,
 
 export function MapLegend() {
 return (
-<div style={{
+<div className="ow-legend" style={{
 position:"absolute", top:8, left:8, zIndex:10,
 background:"rgba(0,0,0,.75)", borderRadius:6, padding:"8px 12px",
 border:"1px solid rgba(200,160,60,.2)", fontSize:10, color:"#8a7050",
@@ -515,7 +540,7 @@ const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
 const threshold = hasWard ? 5 : 3;
 
 return (
-<div style={{
+<div className="ow-mage-panel" style={{
 position:"absolute", top:8, right:8, zIndex:10,
 background:"rgba(0,0,0,.75)", borderRadius:6, padding:"8px 12px",
 border:"1px solid rgba(200,160,60,.2)", fontSize:10, fontFamily:"'Cinzel',serif",
