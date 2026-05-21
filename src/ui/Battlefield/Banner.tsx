@@ -1,3 +1,4 @@
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { LifeTotal } from './LifeTotal';
 import { ZoneCount } from './ZoneCount';
 import { PoolDisplay } from '../Card/Cost';
@@ -22,6 +23,7 @@ interface BannerProps {
 }
 
 export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick, compact = false }: BannerProps) {
+  const isMobile = useIsMobile();
   const isOpp = side === 'opp';
   const manaTotal = Object.values(player.mana).reduce((a, b) => a + b, 0);
 
@@ -33,13 +35,13 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
   return (
     <div style={{
       flexShrink: 0,
-      padding: compact ? '4px 8px' : '8px 14px',
+      padding: (isMobile || compact) ? '4px 8px' : '8px 14px',
       background: bg,
       borderTop: `1px solid ${borderColor}`,
       borderBottom: `1px solid ${borderColor}`,
       display: 'flex',
       alignItems: 'center',
-      gap: compact ? 8 : 16,
+      gap: (isMobile || compact) ? 8 : 16,
     }}>
       <LifeTotal
         life={player.life}
@@ -55,7 +57,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
       {manaTotal > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          padding: '6px 10px',
+          padding: isMobile ? '3px 6px' : '6px 10px',
           background: 'rgba(0,0,0,.4)',
           border: '1px solid rgba(120,90,40,.3)',
           borderRadius: 3,

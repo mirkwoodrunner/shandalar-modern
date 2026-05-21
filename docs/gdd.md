@@ -1010,6 +1010,10 @@ feature set, identified via source code and gameplay documentation audit.
 
 **Mobile duel layout (Post-Phase 7):** Duel screen zones are `vh`-clamped on viewports ≤600px wide to ensure all six zones (opponent hand, opponent banner, battlefield, player banner, action bar, player hand) are simultaneously visible in portrait orientation. Each zone is conditionally wrapped in a `maxHeight`-constrained div when `isMobile` is true. CSS custom properties `--card-h` and `--banner-life-size` are scoped inside `@media (max-width: 600px)`. Desktop layout (≥600px) is unchanged. The battlefield container uses `flex: '1 1 0'` with `minHeight: 0` as a cross-platform fix to allow proper flex shrinking.
 
+- **Mobile banner compaction** (complete): `LifeTotal` and `Banner` use `useIsMobile()` to halve
+  padding and shrink the life-total font from 52 → 32 px on viewports ≤ 640 px, reclaiming
+  ~40 px of vertical space for the player battlefield. Desktop layout unchanged.
+
 ---
 
 ## 9. Design Decisions — Resolved
