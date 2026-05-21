@@ -350,6 +350,16 @@ It must NOT:
 - calculate outcomes
 - store authoritative state
 
+## 11.2 Additional UI Adapter Hooks
+
+Thin hooks that live alongside `useDuel.js` and share its constraints (no rules resolution, no state mutation):
+
+| Hook | File | Purpose |
+|------|------|---------|
+| `usePhaseAdvance` | `src/hooks/usePhaseAdvance.ts` | Encapsulates the priority-window suppression heuristic (skip window when no instant/activated ability is available). Returns a stable `requestPhaseAdvance` callback. Shared by `DuelScreen` and `DuelScreenMobile` — logic is defined once. |
+| `useMedia` | `src/hooks/useMedia.ts` | Generic `matchMedia` wrapper with SSR guard. Returns a boolean that updates on viewport change. Used by `OverworldGame` to gate `DuelScreenMobile` at ≤ 640px. |
+| `useIsMobile` | `src/hooks/useIsMobile.js` | ResizeObserver-based breakpoint detector (≤ 768px). Used for OverworldGame layout adjustments and within DuelScreen for tablet-width tweaks. |
+
 ---
 
 # 12. Determinism System

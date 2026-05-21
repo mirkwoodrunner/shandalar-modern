@@ -47,6 +47,24 @@
 
 ---
 
+## Mobile Compact Duel Screen (post-Phase 7)
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| `DuelScreenMobile` — compact phone layout (≤ 640px) | `src/ui/Mobile/` (13 new files) | ✅ Done |
+| `usePhaseAdvance` hook — extracted from DuelScreen, shared | `src/hooks/usePhaseAdvance.ts` | ✅ Done |
+| `useMedia` hook — generic matchMedia utility | `src/hooks/useMedia.ts` | ✅ Done |
+| `OverworldGame` — conditional render of two duel screens | `src/OverworldGame.jsx` | ✅ Done |
+| `tokens.css` — frame-parch vars, mobile palette, `mdPlayPulse` keyframe | `src/styles/tokens.css` | ✅ Done |
+
+### Documentation updated
+- `docs/MOBILE_VS_PC.md` — full rewrite to reflect two-component architecture, 640px breakpoint, component inventory, updated future-change rules
+- `docs/MECHANICS_INDEX.md` — §6.1 updated; new hooks, component tree, constraints; version bumped to v1.2
+- `docs/SYSTEMS.md` — §11.2 added documenting `usePhaseAdvance`, `useMedia`, `useIsMobile`
+- `docs/CURRENT_SPRINT.md` — this table
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
