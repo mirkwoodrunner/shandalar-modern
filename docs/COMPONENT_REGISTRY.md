@@ -24,5 +24,10 @@
 ### `ActionBar`
 - **File**: `src/ui/ActionBar/ActionBar.tsx`
 - **Props**:
-  - `isPlayerPriority` (`boolean`, default `true`) — when `true`, the Pass Priority button shows gold/active styling with label "YOUR PRIORITY"; when `false`, the button is muted (grey, 50% opacity) with label "WAITING...". Button remains clickable in both states.
-- **Source**: `isPlayerPriority` is computed in `DuelScreen.tsx` as `s.active === 'p' || (s.priorityWindow === true && s.priorityPasser !== 'p')`.
+  - `isPlayerPriority` (`boolean`, default `true`) — when `true`, the Pass Priority button uses the `'default'` `ActionButton` variant and shows "Pass Priority"; when `false`, uses the `'muted'` variant and shows "Waiting...". Button remains clickable in both states.
+- **Source**: `isPlayerPriority` is computed in `DuelScreen.tsx` as `s.active === 'p' || (Boolean(s.priorityWindow) && s.priorityPasser !== 'p')`.
+
+### `ActionButton`
+- **File**: `src/ui/ActionBar/ActionButton.tsx`
+- **Variants**: `'default'` | `'primary'` | `'end'` | `'ghost'` | `'muted'`
+- **`muted` variant**: dark background (`#1a1a1a → #111`), grey border (`rgba(80,80,80,.35)`), grey text (`#555555`), no shadow. Used for the Pass Priority button when the player does not hold priority.

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 
-export type ButtonVariant = 'default' | 'primary' | 'end' | 'ghost';
+export type ButtonVariant = 'default' | 'primary' | 'end' | 'ghost' | 'muted';
 
 const VARIANT_STYLES: Record<ButtonVariant, {
   bg: string; bd: string; color: string; shadow: string;
@@ -28,6 +28,12 @@ const VARIANT_STYLES: Record<ButtonVariant, {
     bg: 'transparent',
     bd: 'rgba(120,90,40,.4)',
     color: 'var(--ink-muted)',
+    shadow: 'none',
+  },
+  muted: {
+    bg: 'linear-gradient(180deg, #1a1a1a, #111)',
+    bd: 'rgba(80,80,80,.35)',
+    color: '#555555',
     shadow: 'none',
   },
 };
