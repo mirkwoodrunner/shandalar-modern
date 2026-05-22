@@ -579,6 +579,111 @@ function planEnd(state, profile) {
   return passPlan(PHASE.END);
 }
 
+// --- INSTANT-SPEED RESPONSE PLANNER ------------------------------------------
+// Called when AI has priority during the player's turn or in response to a
+// player spell. Only considers cards with type === 'Instant'. Counters and
+// reactive removal.
+
+function planInstantResponse(state, profile) {
+  const instants = state.o.hand.filter(c => isInst(c));
+  if (!instants.length) return passPlan(state.phase);
+
+  let virtualState = state;
+  const stackTop = state.stack && state.stack.length
+    ? state.stack[state.stack.length - 1]
+    : null;
+  const opponentSpellOnStack = stackTop && stackTop.caster === 'p';
+
+  const actions = [];
+
+  for (const card of instants) {
+    if (card.cmc > Object.values(computeAvailableMana(virtualState)).reduce((s, v) => s + v, 0)) {
+      continue;
+    }
+
+    let spellTargets = null;
+    const isCounter = card.effect === 'counter' || card.effect === 'counterCreature' ||
+                      card.effect === 'counterBlack' || card.effect === 'counterGreen' ||
+                      card.effect === 'counterWhite' || card.effect === 'powerSink' ||
+                      card.effect === 'destroyBlueOrCounter' || card.effect === 'destroyRedOrCounter';
+
+    if (isCounter) {
+      if (!opponentSpellOnStack) continue;
+      if (card.effect === 'counterBlack' && stackTop.card.color !== 'B') continue;
+      if (card.effect === 'counterGreen' && stackTop.card.color !== 'G') continue;
+      if (card.effect === 'counterWhite' && stackTop.card.color !== 'W') continue;
+      if (card.effect === 'counterCreature' && !isCre(stackTop.card)) continue;
+
+      const spellThreat = stackTop.card.cmc + (isCre(stackTop.card) ? 2 : 0) +
+                          (stackTop.card.effect?.startsWith('damage') ? 3 : 0) +
+                          (stackTop.card.effect === 'wrathAll' ? 10 : 0);
+      if (spellThreat < 3 && profile.greedySpells < 0.7) continue;
+      spellTargets = [];
+    }
+
+    // Instant-speed removal during opponent's attack.
+    const isRemoval = ['destroy','exileCreature','bounce','destroyTapped'].includes(card.effect);
+    if (spellTargets === null && isRemoval && state.phase === 'COMBAT_BLOCKERS') {
+      const attackingThreats = state.p.bf.filter(c => isCre(c) && c.attacking);
+      if (!attackingThreats.length) continue;
+      const target = attackingThreats.reduce((a, b) =>
+        scoreThreat(a, state) >= scoreThreat(b, state) ? a : b
+      );
+      spellTargets = [target.iid];
+    }
+
+    // Instant burn at face for lethal only.
+    const isBurn = ['damage3','damage5','damage1','damage2','damageX','psionicBlast','disintegrate'].includes(card.effect);
+    if (spellTargets === null && isBurn) {
+      const dmg = card.effect === 'damage1' ? 1
+                : card.effect === 'damage2' ? 2
+                : card.effect === 'damage3' ? 3
+                : card.effect === 'damage5' ? 5
+                : card.effect === 'psionicBlast' ? 4
+                : 3;
+      if (dmg >= state.p.life) {
+        spellTargets = ['p'];
+      } else {
+        continue; // hold burn for our own turn unless lethal
+      }
+    }
+
+    // Fog: cast if AI is about to take significant damage.
+    if (spellTargets === null && card.effect === 'fog') {
+      const incoming = state.attackers?.reduce((sum, id) => {
+        const att = getBF(state, id);
+        return att ? sum + getPow(att, state) : sum;
+      }, 0) || 0;
+      if (incoming < 4 && state.o.life > 8) continue;
+      spellTargets = [];
+    }
+
+    if (spellTargets === null) continue;
+
+    const { tapActions, affordable } = buildTapActions(virtualState, card.cost);
+    if (!affordable) continue;
+
+    for (const ta of tapActions) {
+      if (ta.type === 'TAP_LAND' || ta.type === 'TAP_ART_MANA') {
+        virtualState = {
+          ...virtualState,
+          o: {
+            ...virtualState.o,
+            bf: virtualState.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
+          },
+        };
+      }
+    }
+
+    actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions });
+    // One instant per priority window — re-evaluate on the next tick.
+    break;
+  }
+
+  actions.push({ type: 'PASS_PRIORITY', who: 'o' });
+  return { phase: state.phase, actions };
+}
+
 // --- MULLIGAN DECISION --------------------------------------------------------
 
 function shouldMulligan(state) {
@@ -610,6 +715,11 @@ function shouldMulligan(state) {
 export function getAIPlan(gameState, phase) {
   const profileId = gameState.oppArch?.profileId || gameState.oppArch?.id || 'GENERIC';
   const profile = AI_PROFILES[profileId] ?? AI_PROFILES.GENERIC;
+
+  // Instant-speed response: priority window open during the player's turn.
+  if (gameState.priorityWindow && gameState.active === 'p') {
+    return planInstantResponse(gameState, profile);
+  }
 
   switch (phase) {
     case PHASE.UPKEEP:           return planUpkeep(gameState, profile);
@@ -718,7 +828,11 @@ export function aiDecide(state) {
       }
 
       case 'PASS_PRIORITY':
-        // No DuelCore action ? phase advance is handled by DuelScreen after aiDecide returns.
+        // For instant-speed (priority window open), emit to DuelCore to close the window.
+        // For phase-end passes (no window), DuelScreen handles phase advance.
+        if (state.priorityWindow) {
+          dcActions.push({ type: 'PASS_PRIORITY', who: 'o' });
+        }
         break;
 
       default:

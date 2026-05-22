@@ -284,6 +284,30 @@ Mishra's Factory animation and regenerate are deferred to Tier 5 (require deeper
 - Never mulligans below 5 cards.
 - Returns a single `{ type: 'MULLIGAN', who: 'o' }` action; no PASS_PRIORITY is appended.
 
+## 6.8 AI Instant-Speed Response
+
+`planInstantResponse(state, profile)` is invoked by `getAIPlan` when `priorityWindow === true && active === 'p'` (the player holds priority). The hook in `DuelScreen.tsx` triggers a 200 ms delayed call to `aiDecide` when those conditions hold and the AI has not already passed (`priorityPasser !== 'o'`).
+
+### Trigger Conditions
+
+- `state.priorityWindow === true`
+- `state.active === 'p'` (player's turn — AI is the reactive side)
+- `state.priorityPasser !== 'o'` (AI has not already passed this window)
+- `state.over === null`
+
+### Instant Selection Rules (evaluated in order)
+
+1. **Counter-spells**: cast if there is an opponent spell on the stack (`stackTop.caster === 'p'`), the counter type matches the spell's color/type, and `spellThreat ≥ 3` OR `profile.greedySpells ≥ 0.7`. Threat = `card.cmc + (creature ? 2 : 0) + (burn effect ? 3 : 0) + (wrathAll ? 10 : 0)`.
+2. **Instant removal** (`destroy`, `exileCreature`, `bounce`, `destroyTapped`): cast during `COMBAT_BLOCKERS` phase if attacking threats exist; targets the highest-scoring threat via `scoreThreat`.
+3. **Burn at face**: cast only when damage would be lethal to the player (`dmg >= state.p.life`). Held otherwise.
+4. **Fog**: cast if incoming attack damage ≥ 4 or AI life ≤ 8.
+
+At most **one instant is cast per priority window**. After casting (or if no action is taken), `PASS_PRIORITY { who: 'o' }` is always appended.
+
+### Infinite-Loop Guard
+
+`DuelScreen.tsx` gates the effect on `s.priorityPasser !== 'o'`. After the AI's `PASS_PRIORITY` is processed by DuelCore, `priorityPasser` becomes `'o'`, re-triggering the effect with a failing guard. The prior `setTimeout` is cancelled by cleanup, preventing a second dispatch.
+
 ---
 
 # 7. World System
