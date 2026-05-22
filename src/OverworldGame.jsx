@@ -1853,7 +1853,7 @@ fontFamily: "'Crimson Text', serif",
   )}
 
   {/* -- MAIN CONTENT ---------------------------------------------------- */}
-  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', height: 0 }}>
 
     {/* -- MAP ----------------------------------------------------------- */}
     <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0, height: '100%' }}>

@@ -392,7 +392,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
       setScale(Math.max(0.4, s));
     };
     measure();
-    const t = setTimeout(measure, 50);
+    const t = setTimeout(measure, 150);
     window.addEventListener('resize', measure);
     return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
   }, [viewW, viewH, tileSize]);

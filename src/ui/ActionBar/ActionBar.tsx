@@ -56,37 +56,12 @@ export function ActionBar({
         </ActionButton>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <div style={{
-          fontSize: 10,
-          fontFamily: 'var(--font-display)',
-          color: isPlayerPriority ? '#c0a040' : '#606060',
-          letterSpacing: 0.5,
-        }}>
-          {isPlayerPriority ? 'YOUR PRIORITY' : 'WAITING...'}
-        </div>
-        <button
-          onClick={onPassPriority}
-          style={{
-            background: isPlayerPriority ? 'rgba(180,140,40,.25)' : 'rgba(60,60,60,.2)',
-            border: `1.5px solid ${isPlayerPriority ? 'rgba(200,160,60,.6)' : 'rgba(100,100,100,.3)'}`,
-            color: isPlayerPriority ? '#f0d060' : '#606060',
-            opacity: isPlayerPriority ? 1 : 0.5,
-            cursor: isPlayerPriority ? 'pointer' : 'default',
-            padding: '8px 18px',
-            borderRadius: 3,
-            fontFamily: 'var(--font-display)',
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: 1.2,
-            textTransform: 'uppercase',
-            transition: 'all var(--t-fast)',
-            textShadow: '0 1px 2px rgba(0,0,0,.7)',
-          }}
-        >
-          Pass Priority
-        </button>
-      </div>
+      <ActionButton
+        variant={isPlayerPriority ? 'default' : 'muted'}
+        onClick={onPassPriority}
+      >
+        {isPlayerPriority ? 'Pass Priority' : 'Waiting...'}
+      </ActionButton>
 
       <ActionButton variant="end" onClick={onEndTurn}>
         End Turn {'→'}

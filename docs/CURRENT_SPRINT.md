@@ -165,6 +165,17 @@
 
 ---
 
+## Map Portrait Height + Pass Priority Button State
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| Map height threading fixed: `height: 0` on flex main content div; `height: 100%` on map column and centering divs. Scale now correctly fills portrait height. | `src/OverworldGame.jsx`, `src/ui/overworld/WorldMap.jsx` | ✅ Done |
+| WorldMap scale setTimeout delay increased from 50 ms to 150 ms to allow flex layout to settle on first render. | `src/ui/overworld/WorldMap.jsx` | ✅ Done |
+| Pass Priority button shows "Waiting..." in muted grey when AI has priority; "Pass Priority" in normal style when player holds priority. `isPlayerPriority` threaded from DuelScreen to ActionBar and `InstantPriorityBar`. | `src/DuelScreen.tsx`, `src/ui/ActionBar/ActionBar.tsx`, `src/ui/ActionBar/ActionButton.tsx`, `src/ui/ActionBar/InstantPriorityBar.tsx` | ✅ Done |
+| `ActionButton` `'muted'` variant added (dark background, grey border, #555555 text). | `src/ui/ActionBar/ActionButton.tsx` | ✅ Done |
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

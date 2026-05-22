@@ -25,6 +25,7 @@ interface InstantPriorityBarProps {
   onSelectCard: (iid: string) => void;
   onActivate: (card: CardData) => void;
   onPass: () => void;
+  isPlayerPriority?: boolean;
 }
 
 function totalMana(pool: ManaPool): number {
@@ -182,9 +183,9 @@ export function InstantPriorityBar({
         onClick={onPass}
         style={{
           padding: '6px 14px',
-          background: '#4a3520',
-          color: '#e8d5a0',
-          border: '1px solid #7a5c30',
+          background: 'linear-gradient(180deg, #2a2218, #1a1510)',
+          color: 'var(--ink-parchment)',
+          border: '1.5px solid #7a5a30',
           borderRadius: 4,
           cursor: 'pointer',
           fontFamily: 'inherit',

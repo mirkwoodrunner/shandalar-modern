@@ -666,6 +666,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     if (mulliganDismissed.current) setShowMulligan(false);
   }, [s.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Priority state -------------------------------------------------------
+  const isPlayerPriority: boolean =
+    s.active === 'p' ||
+    (Boolean(s.priorityWindow) && s.priorityPasser !== 'p');
+
   // -- Derived data for new components --------------------------------------
   const oppBfCards  = s.o.bf as unknown as CardData[];
   const yourBfCards = s.p.bf as unknown as CardData[];
@@ -862,7 +867,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             compact={isMobile}
             hasSelection={!!s.selCard}
             selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
-            isPlayerPriority={s.active === 'p' || (s.priorityWindow === true && s.priorityPasser !== 'p')}
+            isPlayerPriority={isPlayerPriority}
             onCast={handleCast}
             onPassPriority={() => {
               if (s.stack?.length > 0) {
