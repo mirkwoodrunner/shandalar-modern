@@ -349,6 +349,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     resolveChoice,
     resolveUpkeepChoice,
     useChannel,
+    undoManaTaps,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -672,6 +673,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     s.active === 'p' ||
     (Boolean(s.priorityWindow) && s.priorityPasser !== 'p');
 
+  const canUndoMana: boolean =
+    s.active === 'p' &&
+    (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') &&
+    (s.stack?.length ?? 0) === 0 &&
+    (s.spellsThisTurn ?? 0) === 0 &&
+    s.manaTapSnapshot !== null;
+
   // -- Derived data for new components --------------------------------------
   const oppBfCards  = s.o.bf as unknown as CardData[];
   const yourBfCards = s.p.bf as unknown as CardData[];
@@ -869,6 +877,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             hasSelection={!!s.selCard}
             selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
             isPlayerPriority={isPlayerPriority}
+            canUndo={canUndoMana}
+            onUndo={undoManaTaps}
             onCast={handleCast}
             onPassPriority={() => {
               if (s.stack?.length > 0) {

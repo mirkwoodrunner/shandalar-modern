@@ -99,6 +99,9 @@ dispatch({ type: "PASS_PRIORITY", who }), []);
 const useChannel = useCallback(() =>
 dispatch({ type: "USE_CHANNEL", who: "p" }), []);
 
+const undoManaTaps = useCallback(() =>
+dispatch({ type: "UNDO_MANA_TAPS" }), []);
+
 return {
 state,
 dispatch,
@@ -124,6 +127,7 @@ resolveUpkeepChoice,
 openPriorityWindow,
 passPriority,
 useChannel,
+undoManaTaps,
 };
 }
 

@@ -1332,4 +1332,27 @@ Each exported function corresponds to one or more card effect identifiers.
 
 ---
 
+# 30. Mana Tap Undo
+
+## 30.1 State Field
+
+**`manaTapSnapshot`** — `{ pBfTapped: [{iid, tapped}], pMana: ManaPool } | null`
+
+Snapshot of player battlefield tap states and mana pool taken immediately before the first player mana tap of the turn. Cleared when a spell is cast, when the phase advances, or when `UNDO_MANA_TAPS` is dispatched. `null` = undo unavailable.
+
+## 30.2 UNDO_MANA_TAPS Action
+
+- **Who:** Player only (p)
+- **Preconditions:** `manaTapSnapshot !== null`, `spellsThisTurn === 0`, stack is empty, phase is `MAIN_1` or `MAIN_2`
+- **Effect:** Restores `p.bf` tapped states and `p.mana` from `manaTapSnapshot`; clears `manaTapSnapshot`
+- **Purpose:** Allows the player to un-tap mana sources tapped this turn before any spell is cast
+
+## 30.3 Snapshot Lifecycle
+
+- Taken on the first `TAP_LAND` or `TAP_ART_MANA` action by the player when `spellsThisTurn === 0`
+- Cleared by: `CAST_SPELL`, `ADVANCE_PHASE`, `CLEANUP` phase entry, or `UNDO_MANA_TAPS`
+- AI taps (`action.who === 'o'`) never create or affect the snapshot
+
+---
+
 # End of SYSTEMS v1.1

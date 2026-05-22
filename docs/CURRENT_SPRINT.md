@@ -201,6 +201,8 @@
 
 ---
 
+- [x] Mana tap undo button (desktop + mobile) — `UNDO_MANA_TAPS` action, `manaTapSnapshot` state field
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

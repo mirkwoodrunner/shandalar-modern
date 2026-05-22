@@ -13,6 +13,8 @@ interface ActionBarProps {
   onCancel?: () => void;
   onEndTurn?: () => void;
   compact?: boolean;
+  canUndo?: boolean;
+  onUndo?: () => void;
 }
 
 export function ActionBar({
@@ -25,6 +27,8 @@ export function ActionBar({
   onCancel,
   onEndTurn,
   compact = false,
+  canUndo,
+  onUndo,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
@@ -53,6 +57,12 @@ export function ActionBar({
       {hasSelection && (
         <ActionButton variant="ghost" onClick={onCancel}>
           Cancel
+        </ActionButton>
+      )}
+
+      {canUndo && (
+        <ActionButton variant="ghost" onClick={onUndo}>
+          {'↩'} Undo Taps
         </ActionButton>
       )}
 
