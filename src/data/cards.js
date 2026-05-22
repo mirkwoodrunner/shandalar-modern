@@ -698,54 +698,63 @@ export const POWERED_NINE_IDS = [
 export const ARCHETYPES = {
 WHITE_WEENIE: {
 name:"White Weenie", color:"W", strategy:"aggro",
+profileId: "DELENIA",
 deck:[
 ...Array(4).fill("savannah_lions"), ...Array(4).fill("white_knight"), ...Array(2).fill("benalish_hero"), ...Array(2).fill("tundra_wolves"), ...Array(2).fill("pearled_unicorn"), ...Array(2).fill("moorish_cavalry"), ...Array(2).fill("serra_angel"), ...Array(2).fill("mesa_pegasus"), ...Array(2).fill("swords_to_plowshares"), ...Array(2).fill("disenchant"), ...Array(2).fill("wrath_of_god"), ...Array(1).fill("balance"), ...Array(1).fill("crusade"), ...Array(2).fill("holy_armor"), ...Array(17).fill("plains"),
 ]},
 
 BLUE_CONTROL: {
 name:"Blue Control", color:"U", strategy:"control",
+profileId: "XYLOS",
 deck:[
 ...Array(4).fill("counterspell"), ...Array(2).fill("force_spike"), ...Array(2).fill("remove_soul"), ...Array(2).fill("power_sink"), ...Array(3).fill("unsummon"), ...Array(2).fill("boomerang"), ...Array(2).fill("psionic_blast"), ...Array(1).fill("braingeyser"), ...Array(1).fill("ancestral_recall"), ...Array(1).fill("time_walk"), ...Array(2).fill("phantom_monster"), ...Array(2).fill("azure_drake"), ...Array(2).fill("air_elemental"), ...Array(1).fill("mahamoti_djinn"), ...Array(2).fill("mana_short"), ...Array(17).fill("island"),
 ]},
 
 BLUE_TEMPO: {
 name:"Blue Tempo", color:"U", strategy:"control",
+profileId: "XYLOS",
 deck:[
 ...Array(4).fill("flying_men"), ...Array(4).fill("dandan"), ...Array(3).fill("phantom_warrior"), ...Array(2).fill("azure_drake"), ...Array(4).fill("counterspell"), ...Array(3).fill("unsummon"), ...Array(3).fill("boomerang"), ...Array(2).fill("force_spike"), ...Array(2).fill("mana_short"), ...Array(2).fill("psionic_blast"), ...Array(1).fill("braingeyser"), ...Array(1).fill("ancestral_recall"), ...Array(1).fill("time_walk"), ...Array(18).fill("island"),
 ]},
 
 BLACK_REANIMATOR: {
 name:"Black Reanimator", color:"B", strategy:"combo",
+profileId: "MORTIS",
 deck:[
 ...Array(4).fill("dark_ritual"), ...Array(3).fill("hypnotic_specter"), ...Array(2).fill("sengir_vampire"), ...Array(2).fill("lord_of_the_pit"), ...Array(2).fill("nightmare"), ...Array(2).fill("juzam_djinn"), ...Array(3).fill("terror"), ...Array(2).fill("sinkhole"), ...Array(2).fill("demonic_tutor"), ...Array(2).fill("mind_twist"), ...Array(2).fill("animate_dead"), ...Array(1).fill("drain_life"), ...Array(2).fill("black_knight"), ...Array(2).fill("royal_assassin"), ...Array(17).fill("swamp"),
 ]},
 
 BLACK_CONTROL: {
 name:"Black Control", color:"B", strategy:"control",
+profileId: "MORTIS",
 deck:[
 ...Array(4).fill("dark_ritual"), ...Array(4).fill("hypnotic_specter"), ...Array(3).fill("frozen_shade"), ...Array(3).fill("bog_wraith"), ...Array(2).fill("vampire_bats"), ...Array(2).fill("zombie_master"), ...Array(4).fill("terror"), ...Array(2).fill("dark_banishing"), ...Array(2).fill("sinkhole"), ...Array(2).fill("mind_twist"), ...Array(2).fill("pestilence"), ...Array(1).fill("demonic_tutor"), ...Array(1).fill("drain_life"), ...Array(18).fill("swamp"),
 ]},
 
 RED_BURN: {
 name:"Red Burn", color:"R", strategy:"aggro",
+profileId: "KARAG",
 deck:[
 ...Array(4).fill("lightning_bolt"), ...Array(4).fill("chain_lightning"), ...Array(3).fill("fireball"), ...Array(2).fill("disintegrate"), ...Array(2).fill("lava_axe"), ...Array(2).fill("earthquake"), ...Array(3).fill("monss_goblin_raiders"), ...Array(2).fill("goblin_balloon_brigade"), ...Array(2).fill("goblin_king"), ...Array(2).fill("hill_giant"), ...Array(2).fill("dragon_whelp"), ...Array(1).fill("shivan_dragon"), ...Array(19).fill("mountain"),
 ]},
 
 RED_AGGRO: {
 name:"Goblin Horde", color:"R", strategy:"aggro",
+profileId: "KARAG",
 deck:[
 ...Array(4).fill("monss_goblin_raiders"), ...Array(4).fill("goblin_hero"), ...Array(3).fill("goblin_balloon_brigade"), ...Array(3).fill("goblin_king"), ...Array(2).fill("ironclaw_orcs"), ...Array(2).fill("orcish_artillery"), ...Array(2).fill("hurloon_minotaur"), ...Array(4).fill("lightning_bolt"), ...Array(4).fill("chain_lightning"), ...Array(2).fill("fireball"), ...Array(2).fill("earthquake"), ...Array(18).fill("mountain"),
 ]},
 
 GREEN_STOMPY: {
 name:"Green Stompy", color:"G", strategy:"aggro",
+profileId: "SYLVARA",
 deck:[
 ...Array(4).fill("llanowar_elves"), ...Array(4).fill("fyndhorn_elves"), ...Array(2).fill("kird_ape"), ...Array(3).fill("grizzly_bears"), ...Array(2).fill("war_mammoth"), ...Array(2).fill("erhnam_djinn"), ...Array(2).fill("craw_wurm"), ...Array(1).fill("force_of_nature"), ...Array(2).fill("birds_of_paradise"), ...Array(3).fill("giant_growth"), ...Array(2).fill("berserk"), ...Array(1).fill("regrowth"), ...Array(2).fill("tranquility"), ...Array(2).fill("taiga"), ...Array(16).fill("forest"),
 ]},
 
 ARTIFACT_CONTROL: {
 name:"Artifact Control", color:"", strategy:"control",
+profileId: "GENERIC",
 deck:[
 "black_lotus","sol_ring","mana_vault","basalt_monolith", ...Array(2).fill("ornithopter"), ...Array(2).fill("juggernaut"), ...Array(2).fill("clockwork_beast"), ...Array(2).fill("colossus_of_sardia"), ...Array(2).fill("triskelion"), ...Array(2).fill("su_chi"),
 "nevinyrral_disk","icy_manipulator","disrupting_scepter","rod_of_ruin", ...Array(2).fill("living_wall"), ...Array(2).fill("brass_man"), ...Array(2).fill("mox_pearl"), ...Array(2).fill("mox_sapphire"), ...Array(2).fill("mox_jet"), ...Array(2).fill("mox_ruby"), ...Array(2).fill("mox_emerald"), ...Array(4).fill("plains"), ...Array(3).fill("island"), ...Array(3).fill("swamp"), ...Array(3).fill("mountain"), ...Array(3).fill("forest"),
@@ -753,6 +762,7 @@ deck:[
 
 FIVE_COLOR_BOMB: {
 name:"Five-Color Chaos", color:"WUBRG", strategy:"bomb",
+profileId: "ARZAKON",
 deck:[
 "black_lotus","sol_ring","ancestral_recall","time_walk","demonic_tutor", ...Array(2).fill("mox_pearl"), ...Array(2).fill("mox_sapphire"), ...Array(2).fill("mox_jet"), ...Array(2).fill("mox_ruby"), ...Array(2).fill("mox_emerald"),
 "swords_to_plowshares","wrath_of_god","armageddon","balance","counterspell","mind_twist",

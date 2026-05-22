@@ -192,6 +192,15 @@
 
 ---
 
+## B27: AI Never Casts Spells (All Random Encounter Opponents)
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| B27: Added `profileId` to all 10 random encounter archetypes in `ARCHETYPES` so `getAIPlan` resolves the correct AI profile instead of falling back to GENERIC | `src/data/cards.js` | ✅ Done |
+| B27: Lowered score gate in `evaluateAndCast` from `< 0.35` to `< 0.10` so spells pass the gate for all profiles (DELENIA, XYLOS, SYLVARA, GENERIC), while zero-value plays (e.g. life-gain at full health for XYLOS) remain suppressed | `src/engine/AI.js` | ✅ Done |
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

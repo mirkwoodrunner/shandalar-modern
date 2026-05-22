@@ -409,7 +409,7 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
 
   // Score-based skip check (preserves Tier 2 behavior).
   const score = scoreSpellValue(card, virtualState, profile);
-  if (score * profile.greedySpells < 0.35) {
+  if (score * profile.greedySpells < 0.10) {
     // Removal and counters bypass the score gate — they have their own gating in selectTarget.
     const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
       'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
