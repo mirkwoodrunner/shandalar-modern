@@ -177,6 +177,20 @@
 
 ---
 
+## Sandbox Debug Panel Restored
+
+### Sandbox Debug Panel Restored
+
+| File | Change |
+|------|--------|
+| `src/DuelScreen.tsx` | `SandboxDebugPanel` block added to right sidebar; gated on `config.context === 'sandbox' && !isMobile`; shows opponent hand with card names and costs, full ordered library top-to-bottom with 1-based position numbers, top card highlighted gold |
+
+- No engine files modified
+- Mobile unaffected (`isMobile` guard)
+- `docs/COMPONENT_REGISTRY.md` updated
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
