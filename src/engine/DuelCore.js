@@ -1406,7 +1406,7 @@ if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: d
 }
 
 if (next === PHASE.CLEANUP) {
-ns = { ...ns, turnState: { ...ns.turnState, damageLog: [] } };
+ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -1664,6 +1664,7 @@ pendingChoice: null,
 pendingUpkeepChoice: null,
 priorityWindow: false,
 priorityPasser: null,
+manaTapSnapshot: null,
 };
 }
 
@@ -1677,18 +1678,55 @@ let s = state;
 
 switch (action.type) {
 
-case "TAP_LAND":
-  return applyOvergrowthTap(s, action.who, action.iid, action.mana);
+case "TAP_LAND": {
+  let ns = s;
+  if (action.who === 'p' && ns.manaTapSnapshot === null && ns.spellsThisTurn === 0) {
+    ns = {
+      ...ns,
+      manaTapSnapshot: {
+        pBfTapped: ns.p.bf.map(c => ({ iid: c.iid, tapped: c.tapped })),
+        pMana: { ...ns.p.mana },
+      },
+    };
+  }
+  return applyOvergrowthTap(ns, action.who, action.iid, action.mana);
+}
 
 case "TAP_ART_MANA": {
   const w = action.who;
   const c = s[w].bf.find(x => x.iid === action.iid);
   if (!c || c.tapped || !c.activated?.effect?.startsWith("addMana")) return s;
+  let ns = s;
+  if (action.who === 'p' && ns.manaTapSnapshot === null && ns.spellsThisTurn === 0) {
+    ns = {
+      ...ns,
+      manaTapSnapshot: {
+        pBfTapped: ns.p.bf.map(card => ({ iid: card.iid, tapped: card.tapped })),
+        pMana: { ...ns.p.mana },
+      },
+    };
+  }
   const ms = c.activated.mana || "";
-  s = { ...s, [w]: { ...s[w], bf: s[w].bf.map(x => x.iid === action.iid ? { ...x, tapped: true } : x) } };
-  const mp = { ...s[w].mana };
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === action.iid ? { ...x, tapped: true } : x) } };
+  const mp = { ...ns[w].mana };
   for (const ch of ms) if ("WUBRGC".includes(ch)) mp[ch] = (mp[ch] || 0) + 1;
-  return dlog({ ...s, [w]: { ...s[w], mana: mp } }, `${w} taps ${c.name} for mana.`, "mana");
+  return dlog({ ...ns, [w]: { ...ns[w], mana: mp } }, `${w} taps ${c.name} for mana.`, "mana");
+}
+
+case "UNDO_MANA_TAPS": {
+  const snap = s.manaTapSnapshot;
+  if (!snap) return s;
+  const restoredBf = s.p.bf.map(c => {
+    const snapEntry = snap.pBfTapped.find(e => e.iid === c.iid);
+    if (!snapEntry) return c;
+    return { ...c, tapped: snapEntry.tapped };
+  });
+  let ns = {
+    ...s,
+    p: { ...s.p, bf: restoredBf, mana: { ...snap.pMana } },
+    manaTapSnapshot: null,
+  };
+  return dlog(ns, "Mana taps undone.", "mana");
 }
 
 case "PLAY_LAND": {
@@ -1728,6 +1766,7 @@ case "CAST_SPELL": {
   const xSpend = c.cost?.toUpperCase().includes('X') ? (action.xVal || s.xVal || 1) : 0;
   if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
+  s = { ...s, manaTapSnapshot: null };
   let manaAfterPay = payMana(s[w].mana, c.cost);
   if (xSpend > 0) {
     let remaining = xSpend;
@@ -1837,6 +1876,7 @@ case "ADVANCE_PHASE": {
     return s;
   }
   if (s.pendingUpkeepChoice) return s;
+  s = { ...s, manaTapSnapshot: null };
   return advPhase(s);
 }
 

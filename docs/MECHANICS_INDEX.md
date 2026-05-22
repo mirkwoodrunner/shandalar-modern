@@ -1082,4 +1082,12 @@ See `docs/MOBILE_VS_PC.md` (authoritative reference for all platform layout dive
 ### Status
 ACTIVE (Phase 7 — Mobile Support; compact duel screen added post-Phase 7)
 
+## Mana Tap Undo
+
+- Trigger: Player taps a land (`TAP_LAND`) or mana artifact (`TAP_ART_MANA`) during `MAIN_1` or `MAIN_2` while `spellsThisTurn === 0`
+- Available: Until the player casts a spell or the phase advances
+- Effect: Untaps all sources tapped this turn, removes the mana from pool
+- UI: "Undo Taps" button in `ActionBar`, visible only when undo is available (`canUndoMana === true`)
+- Implementation: `UNDO_MANA_TAPS` action in `DuelCore.js`; `manaTapSnapshot` state field in `buildDuelState`
+
 # End of MECHANICS INDEX v1.2
