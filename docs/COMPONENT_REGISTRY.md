@@ -31,3 +31,10 @@
 - **File**: `src/ui/ActionBar/ActionButton.tsx`
 - **Variants**: `'default'` | `'primary'` | `'end'` | `'ghost'` | `'muted'`
 - **`muted` variant**: dark background (`#1a1a1a → #111`), grey border (`rgba(80,80,80,.35)`), grey text (`#555555`), no shadow. Used for the Pass Priority button when the player does not hold priority.
+
+### `SandboxDebugPanel`
+- **File**: inline JSX in `src/DuelScreen.tsx`, right sidebar
+- **Render condition**: `config.context === 'sandbox' && !isMobile` (desktop only; silent on mobile viewports ≤ 640px)
+- **Shows**: opponent hand — each card by name and mana cost (face-up); full ordered opponent library top-to-bottom with 1-based position numbers; top card (#1) highlighted gold (`#f0c060`) and bold
+- **Data sources**: `s.o.hand` and `s.o.lib` from `useDuel` state
+- **No engine dependency**: reads state only; no dispatch or engine import

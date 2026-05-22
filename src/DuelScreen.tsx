@@ -933,6 +933,127 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             ))}
           </div>
 
+          {/* -- SANDBOX DEBUG PANEL (desktop only) */}
+          {config.context === 'sandbox' && !isMobile && (
+            <div style={{
+              borderBottom: '1px solid rgba(180,140,60,.15)',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              maxHeight: 340,
+            }}>
+              <div style={{
+                fontSize: 10,
+                color: '#e06040',
+                fontFamily: 'var(--font-display)',
+                letterSpacing: 1,
+                padding: '7px 12px 5px',
+                fontWeight: 700,
+                borderBottom: '1px solid rgba(224,96,64,.2)',
+                flexShrink: 0,
+              }}>
+                SANDBOX DEBUG
+              </div>
+              <div style={{ overflowY: 'auto', scrollbarWidth: 'thin' }}>
+                {/* Opponent Hand */}
+                <div style={{ padding: '6px 12px 4px' }}>
+                  <div style={{
+                    fontSize: 9,
+                    color: '#c07040',
+                    fontFamily: 'var(--font-display)',
+                    letterSpacing: 1,
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}>
+                    OPP HAND ({(s.o.hand as any[]).length})
+                  </div>
+                  {(s.o.hand as any[]).length === 0 ? (
+                    <div style={{ fontSize: 9, color: '#4a3820', fontStyle: 'italic' }}>Empty</div>
+                  ) : (
+                    (s.o.hand as any[]).map((c: any, i: number) => (
+                      <div key={c.iid ?? i} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'baseline',
+                        fontSize: 9,
+                        fontFamily: 'var(--font-mono)',
+                        marginBottom: 2,
+                        gap: 4,
+                      }}>
+                        <span style={{
+                          color: '#d0a060',
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {c.name}
+                        </span>
+                        <span style={{ color: '#706040', flexShrink: 0, fontSize: 8 }}>
+                          {c.cost || 'land'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div style={{ borderTop: '1px solid rgba(180,140,60,.10)', margin: '2px 0' }} />
+                {/* Opponent Library */}
+                <div style={{ padding: '6px 12px 6px' }}>
+                  <div style={{
+                    fontSize: 9,
+                    color: '#c07040',
+                    fontFamily: 'var(--font-display)',
+                    letterSpacing: 1,
+                    marginBottom: 4,
+                    fontWeight: 700,
+                  }}>
+                    OPP LIBRARY ({(s.o.lib as any[]).length}) top first
+                  </div>
+                  {(s.o.lib as any[]).length === 0 ? (
+                    <div style={{ fontSize: 9, color: '#4a3820', fontStyle: 'italic' }}>Empty</div>
+                  ) : (
+                    (s.o.lib as any[]).map((c: any, i: number) => (
+                      <div key={c.iid ?? i} style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: 5,
+                        fontSize: 9,
+                        fontFamily: 'var(--font-mono)',
+                        marginBottom: 2,
+                      }}>
+                        <span style={{
+                          color: '#4a3820',
+                          flexShrink: 0,
+                          width: 18,
+                          textAlign: 'right',
+                          fontSize: 8,
+                        }}>
+                          {i + 1}.
+                        </span>
+                        <span style={{
+                          color: i === 0 ? '#f0c060' : '#907050',
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontWeight: i === 0 ? 700 : 400,
+                        }}>
+                          {c.name}
+                        </span>
+                        <span style={{ color: '#504030', flexShrink: 0, fontSize: 8 }}>
+                          {c.cost || 'land'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Game log */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '6px 0' }}>
             <div style={{
