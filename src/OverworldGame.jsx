@@ -338,7 +338,7 @@ const [log, setLog]             = useState(() => {
 // -- Viewport -------------------------------------------------------------
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth <= 768;
-const [zoom, setZoom]         = useState(() => isMobileDevice() ? 0.6 : 1);
+const [mapScale, setMapScale] = useState(1);
 
 // -- Mobile layout --------------------------------------------------------
 const isMobile = useIsMobile();
@@ -367,6 +367,7 @@ const enemyTickRef  = useRef(0);
 const animFrameRef  = useRef(null);
 const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
 const canvasRef     = useRef(null);
+const mapContainerRef = useRef(null);
 
 // -- Derived --------------------------------------------------------------
 const hasBoots  = artifacts.some(a => a.id === 'boots'  && a.owned);
@@ -1450,18 +1451,19 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []); // intentionally empty — fires once on mount only
 
-// Restore sensible zoom if user rotates device
+// Compute map scale from container dimensions so the grid fills available space.
 useEffect(() => {
-  const handleResize = () => {
-    setZoom(prev => {
-      const mobile = window.innerWidth <= 768;
-      if (mobile && prev > 0.8) return 0.6;
-      if (!mobile && prev < 0.8) return 1;
-      return prev;
-    });
+  const updateScale = () => {
+    if (!mapContainerRef.current) return;
+    const { width, height } = mapContainerRef.current.getBoundingClientRect();
+    const scaleX = width  / (VIEW_W * 34 + 16);
+    const scaleY = height / (VIEW_H * 34 + 16);
+    setMapScale(Math.min(scaleX, scaleY, 2.0));
   };
-  window.addEventListener('resize', handleResize);
-  return () => window.removeEventListener('resize', handleResize);
+  window.addEventListener('resize', updateScale);
+  updateScale();
+  setTimeout(updateScale, 0);
+  return () => window.removeEventListener('resize', updateScale);
 }, []);
 
 // -------------------------------------------------------------------------
@@ -1812,13 +1814,12 @@ fontFamily: "'Crimson Text', serif",
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
       🎯 Center
     </button>
-    <button onClick={() => setZoom(z => {
-      if (z >= 1) return 0.8;
-      if (z >= 0.8) return 0.6;
-      return 1;
+    <button onClick={() => setMapScale(s => {
+      if (s > 1.0) return Math.max(0.6, +(s - 0.2).toFixed(2));
+      return Math.min(2.0, +(s + 0.2).toFixed(2));
     })}
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      {zoom >= 1 ? '🔍 Zoom Out' : zoom >= 0.8 ? '🔍 Zoom –' : '🔍 Zoom In'}
+      {mapScale > 1.0 ? '🔍 Zoom Out' : '🔍 Zoom In'}
     </button>
 
     {/* Deck button */}
@@ -1879,8 +1880,8 @@ fontFamily: "'Crimson Text', serif",
   <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
     {/* -- MAP ----------------------------------------------------------- */}
-    <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-      <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+    <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ transform: `scale(${mapScale})` }}>
       <WorldMap
         tiles={tiles}
         playerPos={pos}
@@ -1906,6 +1907,7 @@ fontFamily: "'Crimson Text', serif",
         events={mlEvents}
         onRespond={handleRespondAlert}
         onDismiss={handleDismissAlert}
+        isMobile={isMobile}
       />
     </div>
 
@@ -1914,7 +1916,7 @@ fontFamily: "'Crimson Text', serif",
     <div style={{
       width: 'clamp(160px,22vw,210px)',
       borderLeft: '2px solid rgba(180,140,60,.25)',
-      display: 'flex', flexDirection: 'column',
+      display: log.length > 0 ? 'flex' : 'none', flexDirection: 'column',
       background: 'linear-gradient(180deg,#0e0c08,#0a0a08)',
       flexShrink: 0, overflow: 'hidden',
     }}>

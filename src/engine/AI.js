@@ -546,9 +546,20 @@ function planMain(state, profile, phase) {
   }
 
   // 2. Play a land if we have one and haven't played one this turn.
+  // After queuing the land play, mirror it into virtualState so downstream mana
+  // calculations see the new land and can cast spells on the same turn.
   const land = state.o.hand.find(isLand);
   if (land && state.landsPlayed < 1) {
     actions.push({ type: 'PLAY_CARD', cardId: land.iid, targets: [], isLand: true });
+    virtualState = {
+      ...virtualState,
+      o: {
+        ...virtualState.o,
+        hand: virtualState.o.hand.filter(h => h.iid !== land.iid),
+        bf: [...virtualState.o.bf, { ...land, tapped: false }],
+      },
+      landsPlayed: 1,
+    };
   }
 
   // 3. Generate primary plan (greedy curve fit via selectBestCurve).

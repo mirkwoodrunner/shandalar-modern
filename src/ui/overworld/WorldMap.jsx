@@ -566,7 +566,7 @@ color: def?"#405030":lnk>=threshold?"#e02020":lnk>=threshold-1?"#e08020":"#a0907
 
 // --- MANA LINK ALERT ---------------------------------------------------------
 
-export function ManaLinkAlert({ events, onRespond, onDismiss }) {
+export function ManaLinkAlert({ events, onRespond, onDismiss, isMobile = false }) {
 if (!events.length) return null;
 const ev = events[0];
 const hx = MANA_HEX[ev.color];
@@ -576,25 +576,32 @@ return (
 position:"absolute", top:10, left:"50%", transform:"translateX(-50%)",
 zIndex:100,
 background: `linear-gradient(135deg,#1a0808,${hx}20)`,
-border:`2px solid ${hx}`, borderRadius:7, padding:"10px 16px",
-maxWidth:430, boxShadow:`0 0 20px ${hx}60`,
+border:`2px solid ${hx}`, borderRadius: isMobile ? 6 : 7,
+padding: isMobile ? '8px 12px' : '10px 16px',
+maxWidth: isMobile ? '90vw' : 430,
+fontSize: isMobile ? 11 : undefined,
+boxShadow:`0 0 20px ${hx}60`,
 animation:"alertDrop .3s ease-out",
 }}>
-<div style={{ fontSize:11, fontFamily:"'Cinzel',serif", color:hx, marginBottom:4, letterSpacing:1 }}>
+<div style={{ fontSize: isMobile ? 13 : 11, fontFamily:"'Cinzel',serif", color:hx, marginBottom:4, letterSpacing:1 }}>
 {MANA_SYM[ev.color]} MANA LINK ALERT
 </div>
-<div style={{ fontSize:12, color:"#e0c090", marginBottom:8 }}>
+<div style={{ fontSize: isMobile ? 11 : 12, color:"#e0c090", marginBottom:8 }}>
 <strong>{MAGE_NAMES[ev.color]}</strong> sends <strong>{ev.minionName}</strong> to seize <strong>{ev.townName}</strong>!{" "}
 <strong style={{ color:"#ff8040" }}>{ev.movesLeft} moves</strong> remaining.
 </div>
 <div style={{ display:"flex", gap:6 }}>
 <button onClick={() => onRespond(ev)} style={{
 flex:2, background:`${hx}20`, border:`1px solid ${hx}`, color:hx,
-padding:"5px 12px", borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:11,
+padding: isMobile ? '4px 10px' : '5px 12px',
+borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif",
+fontSize: isMobile ? 11 : 11,
 }}>⚡ Rush to {ev.townName}</button>
 <button onClick={() => onDismiss(ev)} style={{
 flex:1, background:"transparent", border:"1px solid #5a3020", color:"#806040",
-padding:"5px", borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:10,
+padding: isMobile ? '4px' : '5px',
+borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif",
+fontSize: isMobile ? 11 : 10,
 }}>Ignore</button>
 </div>
 {events.length > 1 && (
