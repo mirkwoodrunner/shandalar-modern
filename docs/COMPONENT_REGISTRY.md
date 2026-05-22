@@ -34,7 +34,7 @@
 
 ### `SandboxDebugPanel`
 - **File**: inline JSX in `src/DuelScreen.tsx`, right sidebar
-- **Render condition**: `config.context === 'sandbox' && !isMobile` (desktop only; silent on mobile viewports ≤ 640px)
+- **Render condition**: `config.sandbox === true && !isMobile` (desktop only; silent on mobile viewports ≤ 640px)
 - **Shows**: opponent hand — each card by name and mana cost (face-up); full ordered opponent library top-to-bottom with 1-based position numbers; top card (#1) highlighted gold (`#f0c060`) and bold
 - **Data sources**: `s.o.hand` and `s.o.lib` from `useDuel` state
 - **No engine dependency**: reads state only; no dispatch or engine import

@@ -234,6 +234,7 @@ interface DuelConfig {
   castleMod?: { name: string; desc: string } | null;
   anteEnabled?: boolean;
   context?: string;
+  sandbox?: boolean;
 }
 
 interface DuelScreenProps {
@@ -934,7 +935,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           </div>
 
           {/* -- SANDBOX DEBUG PANEL (desktop only) */}
-          {config.context === 'sandbox' && !isMobile && (
+          {config.sandbox === true && !isMobile && (
             <div style={{
               borderBottom: '1px solid rgba(180,140,60,.15)',
               flexShrink: 0,

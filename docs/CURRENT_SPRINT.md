@@ -188,6 +188,7 @@
 - No engine files modified
 - Mobile unaffected (`isMobile` guard)
 - `docs/COMPONENT_REGISTRY.md` updated
+- **Bug fix**: Render guard corrected from `config.context === 'sandbox'` to `config.sandbox === true`; `OverworldGame.jsx` passes `sandbox: isSandbox` on every duel config but never sets `context` to `'sandbox'`. `DuelConfig` interface updated to include `sandbox?: boolean`.
 
 ---
 
