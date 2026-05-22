@@ -556,7 +556,7 @@ function planMain(state, profile, phase) {
       o: {
         ...virtualState.o,
         hand: virtualState.o.hand.filter(h => h.iid !== land.iid),
-        bf: [...virtualState.o.bf, { ...land, tapped: false }],
+        bf: [...virtualState.o.bf, { ...land, tapped: false, summoningSick: false }],
       },
       landsPlayed: 1,
     };
