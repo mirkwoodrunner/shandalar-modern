@@ -15,9 +15,10 @@ interface ActionBarProps {
   onCancel: () => void;
   onPass: () => void;
   onEnd: () => void;
+  isPlayerPriority?: boolean;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerPriority = true }: ActionBarProps) {
   if (!sel) {
     return (
       <div className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
@@ -25,12 +26,16 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd }: 
           className={s.actionBtn}
           onClick={onPass}
           style={{
-            background: 'linear-gradient(180deg, #2a2218, #14100a)',
-            border: '1px solid #7a5a30',
-            color: 'var(--ink-parchment)',
+            background: isPlayerPriority
+              ? 'rgba(60,50,20,.85)'
+              : 'rgba(30,30,30,.6)',
+            border: `1px solid ${isPlayerPriority ? 'rgba(200,160,60,.6)' : 'rgba(80,80,80,.35)'}`,
+            color: isPlayerPriority ? '#f0d060' : '#555555',
+            opacity: isPlayerPriority ? 1 : 0.55,
+            transition: 'all 0.15s',
           }}
         >
-          Pass Priority
+          {isPlayerPriority ? 'Pass Priority' : 'Waiting...'}
         </button>
         <button
           className={s.actionBtn}

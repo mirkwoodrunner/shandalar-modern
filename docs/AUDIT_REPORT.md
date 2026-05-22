@@ -58,6 +58,11 @@ src/ui/interaction.ts                    ← imported by NOTHING (orphan even wi
 - `DuelScreen.tsx` is imported by **nothing** in the active app graph.
 - Assessment: `DuelScreen.tsx` is an in-progress design-system replacement for `DuelScreen.jsx`. The transition is incomplete — the `.tsx` tree exists alongside the `.jsx` tree but the cutover has not happened.
 
+**`src/ui/duel/TargetingOverlay.jsx` — ActionBar**
+- `TargetingOverlay.jsx` exports an `ActionBar` function (named export + default object). This ActionBar is **not rendered** by any file in the active app graph; the mobile path uses `src/ui/Mobile/ActionBar.tsx` instead.
+- Updated with `isPlayerPriority = true` default prop and Pass Priority / Waiting... visual state logic to match the `.tsx` ActionBar path behavior.
+- The actual mobile priority fix was applied to `src/ui/Mobile/ActionBar.tsx` (accepts `isPlayerPriority` prop) and `src/ui/Mobile/DuelScreenMobile.tsx` (computes and passes `isPlayerPriority`).
+
 ### 1.3 Import Extension Correctness
 
 `DuelScreen.tsx` imports all `.tsx`/`.ts` siblings without extensions (e.g., `from './ui/Topbar/Topbar'`), relying on TypeScript resolver. This is consistent and correct for a TypeScript project. No bare-extension mismatches detected within the tsx tree.

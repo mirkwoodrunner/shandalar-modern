@@ -17,6 +17,7 @@ onResolveStack,
 onSetX,
 pendingActivate,
 onCancelActivate,
+isPlayerPriority = true,
 }) {
 const selDef  = state.p.hand.find(c => c.iid === state.selCard);
 const inMain  = state.phase === "MAIN_1" || state.phase === "MAIN_2";
@@ -104,23 +105,25 @@ display: "flex", alignItems: "center", gap: 8, minHeight: 44,
     </div>
   )}
 
-  {/* Next Phase / End Turn */}
+  {/* Pass Priority / Waiting */}
   <div style={{ marginLeft:"auto", display:"flex", gap:6 }}>
-    {isMyTurn && (
-      <button onClick={onAdvancePhase} style={{
-        background: "linear-gradient(135deg,#1e1a04,#302808)",
-        border: "2px solid rgba(220,180,40,.5)", color: "#f5d040",
-        padding: "6px 18px", borderRadius: 6, cursor: "pointer",
-        fontSize: 12, fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: 1,
-      }}>
-        {state.phase === "CLEANUP" ? "↩ End Turn" : "Next Phase →"}
-      </button>
-    )}
-    {!isMyTurn && (
-      <span style={{ fontSize:11, color:"#6a5a30", padding:"6px 12px", fontFamily:"'Cinzel',serif", fontStyle:"italic" }}>
-        Opponent's turn--
-      </span>
-    )}
+    <button onClick={onAdvancePhase} style={{
+      background: isPlayerPriority
+        ? 'rgba(60,50,20,.85)'
+        : 'rgba(30,30,30,.6)',
+      border: `1px solid ${isPlayerPriority ? 'rgba(200,160,60,.6)' : 'rgba(80,80,80,.35)'}`,
+      color: isPlayerPriority ? '#f0d060' : '#555555',
+      opacity: isPlayerPriority ? 1 : 0.55,
+      padding: '5px 14px',
+      borderRadius: 5,
+      cursor: 'pointer',
+      fontSize: 11,
+      fontFamily: "'Cinzel',serif",
+      fontWeight: 700,
+      transition: 'all 0.15s',
+    }}>
+      {isPlayerPriority ? 'Pass Priority' : 'Waiting...'}
+    </button>
   </div>
 </div>
 

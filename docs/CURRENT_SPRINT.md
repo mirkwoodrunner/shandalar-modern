@@ -173,6 +173,7 @@
 | WorldMap scale setTimeout delay increased from 50 ms to 150 ms to allow flex layout to settle on first render. | `src/ui/overworld/WorldMap.jsx` | ✅ Done |
 | Pass Priority button shows "Waiting..." in muted grey when AI has priority; "Pass Priority" in normal style when player holds priority. `isPlayerPriority` threaded from DuelScreen to ActionBar and `InstantPriorityBar`. | `src/DuelScreen.tsx`, `src/ui/ActionBar/ActionBar.tsx`, `src/ui/ActionBar/ActionButton.tsx`, `src/ui/ActionBar/InstantPriorityBar.tsx` | ✅ Done |
 | `ActionButton` `'muted'` variant added (dark background, grey border, #555555 text). | `src/ui/ActionBar/ActionButton.tsx` | ✅ Done |
+| Priority button Waiting.../Pass state applied to legacy TargetingOverlay.jsx ActionBar (mobile path). Root cause: mobile path uses `OverworldGame.jsx` → `DuelScreenMobile.tsx` → `src/ui/Mobile/ActionBar.tsx`; `isPlayerPriority` prop added to Mobile ActionBar and threaded from DuelScreenMobile. TargetingOverlay.jsx ActionBar also updated (unused but kept consistent). | `src/ui/duel/TargetingOverlay.jsx`, `src/ui/Mobile/ActionBar.tsx`, `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
 
 ---
 
