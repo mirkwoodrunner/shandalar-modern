@@ -243,17 +243,34 @@ AI behavior follows:
 - AI must not mutate state
 - AI must not bypass DuelCore stack
 
-## 6.4 Spell Casting Model
+## 6.4 AI Module Structure (Tier 4)
 
-Spell selection in `planMain` is state-aware, not random. Each spell category is evaluated in order:
+`planMain` is a thin coordinator. All decisions are made by four single-responsibility helpers:
 
-- **Removal** (`destroy`, `exileCreature`, `bounce`, etc.): targets the highest-scoring threat via `scoreThreat`, which weights power, toughness, and keywords (flying +3, lifelink +3, deathtouch +4, trample +2, first strike +2). Expensive removal (CMC ≥ 4) is withheld against trivial threats (score < 5) unless the opponent's life is ≤ 8.
-- **Generic spells** (burn, draw, life gain, tutor): scored 0–1 by `scoreSpellValue` based on situational relevance. Gate: `score * profile.greedySpells < 0.35` → skip. Lethal burn always scores 1.0; card draw scales with hand deficit; life gain scales with low AI life.
-- **Pump spells**: cast if `profile.greedySpells >= 0.5`, targeting the AI's highest-power creature.
-- **Berserk**: prefers an opposing attacker (they die at end of turn, making this removal); falls back to own attackers for a lethal swing.
+### `selectPlayableCards(state, phase)` → `{ card, effectiveCost, xVal }[]`
+
+Pure legality filter. Iterates `state.o.hand`, skips lands (handled separately), enforces sorcery-speed timing against an empty stack, respects `castRestriction`, and rejects cards whose CMC exceeds the total available mana ceiling. For X spells, computes the maximum X value and substitutes it into `effectiveCost`. Returns entries sorted CMC-descending.
+
+### `selectTarget(card, state, profile, xVal)` → `string[] | null`
+
+Per-effect target selection. Returns `null` if the spell has no valid target or should not be cast in the current board state (returns null = skip without tapping mana). Per-effect rules:
+
+- **Counter-spells**: requires an opponent spell on the stack (`top.controller === 'p'`).
+- **Removal** (`destroy`, `exileCreature`, `bounce`, etc.): targets the highest-scoring threat via `scoreThreat`. Expensive removal (CMC ≥ 4) is withheld against trivial threats (score < 5) unless the opponent's life is ≤ 8.
+- **Pump spells**: requires `profile.greedySpells >= 0.5` and an AI creature on the battlefield; targets the highest-power creature.
+- **Berserk**: prefers an opposing attacker (they die EOT, making this removal); falls back to own attackers.
 - **Disintegrate / Drain Life**: kills the highest-threat creature it can kill within the X budget; otherwise fires at the opponent's face.
+- **Generic spells**: returns `['o']`, `['p']`, or `[]` depending on targeting direction.
 
-No `Math.random()` calls remain in `planMain`. Profile weights are knobs that modulate deterministic thresholds, not coin-flip gates.
+### `evaluateAndCast(playable, spellTargets, virtualState, profile)` → `{ actions, newVirtualState } | null`
+
+Scoring gate and tap-action construction. Applies `scoreSpellValue(card, virtualState, profile) * profile.greedySpells < 0.35` to skip low-value generic spells (removal and counter-spells bypass the gate). Calls `buildTapActions` and returns `null` if unaffordable. On success, immutably marks tapped sources in the returned `newVirtualState` so subsequent spells in the same plan don't over-commit mana.
+
+### `planMain(state, profile, phase)` → `AITurnPlan`
+
+Coordinator. Sequentially: (1) Channel top-up if active and helpful; (2) play a land if in hand and not yet played; (3) iterate `selectPlayableCards` → `selectTarget` → `evaluateAndCast` for each card; (4) append activated abilities; (5) append `PASS_PRIORITY`.
+
+No `Math.random()` calls exist in the spell-casting pipeline. Profile weights are knobs that modulate deterministic thresholds, not coin-flip gates.
 
 ## 6.5 Blocking Model
 
