@@ -152,7 +152,7 @@
 |--------|--------------|--------|
 | Map auto-scales to fill container; dynamic scale replaces fixed zoom toggle; empty sidebar collapses on desktop | `src/OverworldGame.jsx` | ✅ Done |
 | Town-under-attack modal compacted on mobile (`isMobile` guard; desktop unchanged) | `src/OverworldGame.jsx`, `src/ui/overworld/WorldMap.jsx` | ✅ Done |
-| AI spell-casting fixed: `virtualState` updated after land play so mana count is accurate for same-turn spell evaluation | `src/engine/AI.js`, `tests/duel-regression.mjs` | ✅ Done |
+| B26: AI plays land but casts no spells — `virtualState` now updated after land PLAY_CARD so `selectPlayableCards` sees the new mana source; `summoningSick: false` set on virtual land entry | `src/engine/AI.js` | ✅ Done |
 
 ---
 
