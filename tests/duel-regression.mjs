@@ -237,3 +237,66 @@ describe('Regression: Tier 2 — removal threat scoring', () => {
     expect(castAction.targets[0]).toBe('tgt-f');
   });
 });
+
+describe('Regression: AI_CASTS_SPELL_TURN_4 — virtualState updated after land play', () => {
+  // AI_CASTS_SPELL_TURN_4: AI hand has a Plains plus castable spells.
+  // AI bf has 3 untapped Plains already. On this turn (landsPlayed=0) the AI plays
+  // the 4th Plains, then should have 4 mana available and cast at least one spell.
+  // Before the fix, virtualState was not updated after the land play, so totalMana
+  // was 3 (one short), and savannah_lions (W, cmc 1) or white_knight (WW, cmc 2)
+  // would fail the mana ceiling guard, leaving no spells cast.
+  it('AI_CASTS_SPELL_TURN_4: AI casts a spell on the same turn it plays a land', () => {
+    function makePlains(iid) {
+      return {
+        iid, id: 'plains', name: 'Plains', type: 'Land',
+        color: 'W', cmc: 0, cost: '', effect: null, keywords: [],
+        tapped: false, summoningSick: false, attacking: false, blocking: null,
+        damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+        produces: ['W'],
+      };
+    }
+    const handPlains = makePlains('hand-plains');
+    const savannah = {
+      iid: 'hand-sl', id: 'savannah_lions', name: 'Savannah Lions', type: 'Creature',
+      color: 'W', cmc: 1, cost: 'W', effect: null, keywords: [],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+      power: 2, toughness: 1,
+    };
+    const whiteKnight = {
+      iid: 'hand-wk', id: 'white_knight', name: 'White Knight', type: 'Creature',
+      color: 'W', cmc: 2, cost: 'WW', effect: null, keywords: ['FIRST_STRIKE', 'PROTECTION_BLACK'],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+      power: 2, toughness: 2,
+    };
+    const serraAngel = {
+      iid: 'hand-sa', id: 'serra_angel', name: 'Serra Angel', type: 'Creature',
+      color: 'W', cmc: 5, cost: 'WWWWW', effect: null, keywords: ['FLYING', 'VIGILANCE'],
+      tapped: false, summoningSick: false, attacking: false, blocking: null,
+      damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+      power: 4, toughness: 4,
+    };
+    const bf1 = makePlains('bf-p1');
+    const bf2 = makePlains('bf-p2');
+    const bf3 = makePlains('bf-p3');
+
+    const base = makeState({ phase: PHASE.MAIN_1, active: 'o' });
+    const state = {
+      ...base,
+      landsPlayed: 0,
+      o: {
+        ...base.o,
+        hand: [handPlains, savannah, whiteKnight, serraAngel],
+        bf: [bf1, bf2, bf3],
+      },
+      oppArch: { id: 'DELENIA', profileId: 'DELENIA' },
+    };
+
+    const plan = getAIPlan(state, PHASE.MAIN_1);
+    const spellActions = plan.actions.filter(a =>
+      a.type === 'PLAY_CARD' && !a.isLand
+    );
+    expect(spellActions.length).toBeGreaterThan(0);
+  });
+});
