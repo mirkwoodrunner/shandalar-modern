@@ -208,6 +208,189 @@ function planActivatedAbilities(state, profile) {
 }
 
 // --- PHASE PLANNERS -----------------------------------------------------------
+//
+// Planner single-responsibility helpers (Tier 4 extraction):
+//
+// selectPlayableCards(state, phase) -> { card, effectiveCost, xVal }[]
+//   Pure filter: which cards in AI hand could legally be cast right now?
+//   Considers timing (sorcery vs instant speed), cast restrictions, and mana ceiling.
+//   Does NOT evaluate strategic value.
+//
+// selectTarget(card, state, profile, xVal) -> string[] | null
+//   Per-effect target selection. Returns null if no valid target or if the
+//   effect should not be cast in the current board state.
+//
+// evaluateAndCast(playable, spellTargets, virtualState, profile)
+//   -> { actions, newVirtualState } | null
+//   Applies the score gate, builds tap actions, and emits the PLAY_CARD spec action.
+//   Returns null if the card should be skipped (score too low or unaffordable).
+//
+// planMain(state, profile, phase) -> AITurnPlan
+//   Coordinator: wires channel top-up, land play, spell casting, and activated
+//   abilities into an ordered action list. All decisions are delegated to helpers.
+
+// --- CARD SELECTION HELPERS ---------------------------------------------------
+
+// Returns an array of { card, effectiveCost, xVal } for cards the AI could legally cast.
+// Does not consider strategic value — only legality and affordability ceiling.
+function selectPlayableCards(state, phase) {
+  const totalManaCeiling = Object.values(computeAvailableMana(state))
+    .reduce((s, v) => s + v, 0);
+
+  const stackEmpty = !state.stack?.length;
+  const playable = [];
+
+  for (const card of state.o.hand) {
+    if (isLand(card)) {
+      // Lands handled separately by caller.
+      continue;
+    }
+
+    const isSorceryOk = (isCre(card) || isSort(card)) && stackEmpty;
+    const isInstantOk = isInst(card);
+    if (!isSorceryOk && !isInstantOk) continue;
+
+    if (card.castRestriction === 'beforeCombatDamage') {
+      if (!BEFORE_COMBAT_DAMAGE_PHASES.has(phase)) continue;
+    }
+
+    if (card.cmc > totalManaCeiling) continue;
+
+    let effectiveCost = card.cost;
+    let xVal = null;
+    if (/X/i.test(card.cost)) {
+      const baseCost = card.cost.replace(/X/gi, '');
+      const baseReq = parseMana(baseCost);
+      const baseManaNeeded = Object.values(baseReq).reduce((s, v) => s + v, 0);
+      xVal = totalManaCeiling - baseManaNeeded;
+      if (xVal < 1) continue;
+      effectiveCost = String(xVal) + baseCost.replace(/[{}]/g, '');
+    }
+
+    playable.push({ card, effectiveCost, xVal });
+  }
+
+  // Preserve current CMC-descending sort. Tier 5 will change this.
+  playable.sort((a, b) => b.card.cmc - a.card.cmc);
+  return playable;
+}
+
+// Returns target array for a spell, or null if no valid target / shouldn't cast.
+function selectTarget(card, state, profile, xVal = null) {
+  const isCounter = card.effect === 'counter' || card.effect === 'counterCreature';
+  if (isCounter) {
+    const top = state.stack[state.stack.length - 1];
+    if (!top || top.controller !== 'p') return null;
+    return [];
+  }
+
+  const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
+    'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
+  if (isRemoval) {
+    const threats = state.p.bf.filter(isCre);
+    if (!threats.length) return null;
+    const target = threats.reduce((a, b) =>
+      scoreThreat(a, state) >= scoreThreat(b, state) ? a : b
+    );
+    const targetScore = scoreThreat(target, state);
+    const minThreatForRemoval = card.cmc >= 4 ? 5 : 2;
+    if (targetScore < minThreatForRemoval && state.p.life > 8) return null;
+    return [target.iid];
+  }
+
+  const needsOwnCreature = ['pumpCreature','gainFlying','pumpPower','enchantCreature'].includes(card.effect);
+  if (needsOwnCreature) {
+    if (profile.greedySpells < 0.5) return null;
+    const ownCreatures = state.o.bf.filter(isCre);
+    if (!ownCreatures.length) return null;
+    const target = ownCreatures.reduce((a, b) =>
+      getPow(a, state) >= getPow(b, state) ? a : b
+    );
+    return [target.iid];
+  }
+
+  if (card.effect === 'berserk') {
+    const oppAttackers = state.p.bf.filter(c => isCre(c) && c.attacking);
+    if (oppAttackers.length) {
+      const target = oppAttackers.reduce((a, b) =>
+        getPow(b, state) >= getPow(a, state) ? b : a
+      );
+      return [target.iid];
+    }
+    const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
+    const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
+    if (!pool.length) return null;
+    const target = pool.reduce((a, b) =>
+      getPow(a, state) >= getPow(b, state) ? a : b
+    );
+    return [target.iid];
+  }
+
+  if (card.effect === 'disintegrate' || card.effect === 'drainLife') {
+    const threats = state.p.bf.filter(isCre);
+    const killThreshold = xVal ?? 3;
+    const killable = threats.filter(t => getTou(t, state) <= killThreshold);
+    const target = killable.length
+      ? killable.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a)
+      : 'p';
+    return [typeof target === 'string' ? target : target.iid];
+  }
+
+  if (card.effect === 'regrowthCreature' || card.effect === 'reanimateOwn') {
+    if (!state.o.gy.some(isCre)) return null;
+    return [];
+  }
+
+  const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
+    'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
+  const targetsOpp = ['damage3','damage5','damageX','psionicBlast','chainLightning',
+    'damage1','damage2','ping'].includes(card.effect);
+  const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
+  return tgt ? [tgt] : [];
+}
+
+// Decide whether to cast a playable card and emit the action.
+// Returns { actions, newVirtualState } or null if cast was skipped.
+function evaluateAndCast(playable, spellTargets, virtualState, profile) {
+  const { card, effectiveCost, xVal } = playable;
+
+  // Score-based skip check (preserves Tier 2 behavior).
+  const score = scoreSpellValue(card, virtualState, profile);
+  if (score * profile.greedySpells < 0.35) {
+    // Removal and counters bypass the score gate — they have their own gating in selectTarget.
+    const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
+      'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
+    const isCounter = card.effect === 'counter' || card.effect === 'counterCreature';
+    if (!isRemoval && !isCounter) return null;
+  }
+
+  const { tapActions, affordable } = buildTapActions(virtualState, effectiveCost);
+  if (!affordable) return null;
+
+  let nextVirtual = virtualState;
+  for (const ta of tapActions) {
+    if (ta.type === 'TAP_LAND' || ta.type === 'TAP_ART_MANA') {
+      nextVirtual = {
+        ...nextVirtual,
+        o: {
+          ...nextVirtual.o,
+          bf: nextVirtual.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
+        },
+      };
+    }
+  }
+
+  return {
+    actions: [{
+      type: 'PLAY_CARD',
+      cardId: card.iid,
+      targets: spellTargets,
+      _tapActions: tapActions,
+      _xVal: xVal,
+    }],
+    newVirtualState: nextVirtual,
+  };
+}
 
 function passPlan(phase) {
   return { phase, actions: [{ type: 'PASS_PRIORITY' }] };
@@ -225,21 +408,17 @@ const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
 
 function planMain(state, profile, phase) {
   const actions = [];
-  let availMana = computeAvailableMana(state);
-  let totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
-
-  const sorted = [...state.o.hand].sort((a, b) => b.cmc - a.cmc);
-
-  // Virtual state tracks which lands have already been designated for spells this
-  // turn, so we don't over-commit mana across multiple PLAY_CARDs in one plan.
   let virtualState = state;
 
-  // Channel: if active, greedily add USE_CHANNEL actions to top up mana for best spell
+  // 1. Channel: top up colorless mana if it would let us cast a big spell.
   if (state.o.channelActive && state.o.life > 2) {
-    const bestSpell = sorted.filter(c => !isLand(c))[0];
+    const sorted = [...state.o.hand].filter(c => !isLand(c)).sort((a, b) => b.cmc - a.cmc);
+    const bestSpell = sorted[0];
     if (bestSpell) {
       const { affordable } = buildTapActions(state, bestSpell.cost);
       if (!affordable) {
+        const availMana = computeAvailableMana(state);
+        const totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
         const shortfall = Math.max(0, bestSpell.cmc - totalMana);
         const channelCount = Math.min(shortfall, state.o.life - 2);
         for (let i = 0; i < channelCount; i++) {
@@ -254,148 +433,32 @@ function planMain(state, profile, phase) {
               life: state.o.life - channelCount,
             },
           };
-          availMana = computeAvailableMana(virtualState);
-          totalMana = Object.values(availMana).reduce((s, v) => s + v, 0);
         }
       }
     }
   }
 
-  for (const card of sorted) {
-    // Land: always play one if available, no mana cost required.
-    if (isLand(card) && state.landsPlayed < 1) {
-      actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: [], isLand: true });
-      continue;
-    }
-
-    if (isLand(card)) continue; // land already played this turn
-
-    // Only cast at sorcery speed during MAIN phases with empty stack.
-    const stackEmpty = !state.stack?.length;
-    const isSorceryOk = (isCre(card) || isSort(card)) && stackEmpty;
-    const isInstantOk = isInst(card);
-
-    if (!isSorceryOk && !isInstantOk) continue;
-
-    if (card.castRestriction === 'beforeCombatDamage') {
-      if (!BEFORE_COMBAT_DAMAGE_PHASES.has(phase)) continue;
-    }
-
-    const isCounter = card.effect === 'counter' || card.effect === 'counterCreature';
-    if (isCounter && (state.stack.length === 0 || state.stack[state.stack.length - 1]?.controller !== 'p')) continue;
-
-    if (card.cmc > totalMana) continue; // can't afford even with all lands tapped
-
-    // X spells: strip X from cost, derive xVal from available mana, skip if can't pump X >= 1
-    let effectiveCost = card.cost;
-    let cardXVal = null;
-    if (/X/i.test(card.cost)) {
-      const baseCost = card.cost.replace(/X/gi, '');
-      const baseReq = parseMana(baseCost);
-      const baseManaNeeded = Object.values(baseReq).reduce((s, v) => s + v, 0);
-      const vMana = computeAvailableMana(virtualState);
-      const vTotal = Object.values(vMana).reduce((s, v) => s + v, 0);
-      cardXVal = vTotal - baseManaNeeded;
-      if (cardXVal < 1) continue;
-      effectiveCost = String(cardXVal) + baseCost.replace(/[{}]/g, '');
-    }
-
-    // --- Build the spell action FIRST; only tap if the spell is actually valid ---
-
-    let spellTargets = null; // null = not yet resolved; [] = no target; [id] = targeted
-
-    // Removal: target highest-threat creature on the player's battlefield.
-    const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
-      'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
-    if (isRemoval) {
-      const threats = state.p.bf.filter(isCre);
-      if (!threats.length) continue; // no valid target — skip without tapping
-      const target = threats.reduce((a, b) => scoreThreat(a, state) >= scoreThreat(b, state) ? a : b);
-      // Don't waste expensive removal on a trivial threat.
-      const targetScore = scoreThreat(target, state);
-      const minThreatForRemoval = card.cmc >= 4 ? 5 : 2;
-      if (targetScore < minThreatForRemoval && state.p.life > 8) continue;
-      spellTargets = [target.iid];
-    }
-
-    // Pump spells that need a target creature on the AI's battlefield.
-    if (spellTargets === null) {
-      const needsOwnCreature = ['pumpCreature','gainFlying','pumpPower','enchantCreature'].includes(card.effect);
-      if (needsOwnCreature) {
-        const ownCreatures = state.o.bf.filter(isCre);
-        if (!ownCreatures.length) continue; // no valid target — skip without tapping
-        const target = ownCreatures.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-        if (profile.greedySpells >= 0.5) spellTargets = [target.iid];
-        else continue;
-      }
-    }
-
-    // Berserk.
-    if (spellTargets === null && card.effect === 'berserk') {
-      // Prefer opposing attackers (they die EOT, so we're "removing" them).
-      const oppAttackers = state.p.bf.filter(c => isCre(c) && c.attacking);
-      if (oppAttackers.length) {
-        const target = oppAttackers.reduce((a, b) => getPow(b, state) >= getPow(a, state) ? b : a);
-        spellTargets = [target.iid];
-      } else {
-        // Fall back to own attackers for a lethal swing.
-        const ownAttackers = state.o.bf.filter(c => isCre(c) && c.attacking);
-        const pool = ownAttackers.length ? ownAttackers : state.o.bf.filter(isCre);
-        if (!pool.length) continue; // no valid target — skip without tapping
-        const target = pool.reduce((a, b) => getPow(a, state) >= getPow(b, state) ? a : b);
-        spellTargets = [target.iid];
-      }
-    }
-
-    // Disintegrate / Drain Life: kill smallest creature if one can be eliminated, else go face.
-    if (spellTargets === null && (card.effect === "disintegrate" || card.effect === "drainLife")) {
-      const threats = state.p.bf.filter(isCre);
-      const killable = threats.filter(t => getTou(t, state) <= (cardXVal ?? 3));
-      const target = killable.length
-        ? killable.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a)
-        : "p";
-      spellTargets = [typeof target === "string" ? target : target.iid];
-    }
-
-    // Raise Dead / Resurrection.
-    if (spellTargets === null && (card.effect === "regrowthCreature" || card.effect === "reanimateOwn")) {
-      if (!state.o.gy.some(isCre)) continue; // nothing to recur — skip without tapping
-      spellTargets = [];
-    }
-
-    // Generic spells (damage/draw/burn): score by situational value.
-    if (spellTargets === null) {
-      const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
-        'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
-      const targetsOpp  = ['damage3','damage5','damageX','psionicBlast','chainLightning',
-        'damage1','damage2','ping'].includes(card.effect);
-      const score = scoreSpellValue(card, state, profile);
-      if (score * profile.greedySpells < 0.35) continue;
-      const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
-      spellTargets = tgt ? [tgt] : [];
-    }
-
-    // spellTargets is now resolved. Only NOW check affordability and build tap actions.
-    const { tapActions, affordable } = buildTapActions(virtualState, effectiveCost);
-    if (!affordable) continue;
-
-    // Mark the virtually tapped lands so subsequent spells don't over-commit.
-    for (const ta of tapActions) {
-      if (ta.type === 'TAP_LAND' || ta.type === 'TAP_ART_MANA') {
-        virtualState = {
-          ...virtualState,
-          o: {
-            ...virtualState.o,
-            bf: virtualState.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
-          },
-        };
-      }
-    }
-
-    actions.push({ type: 'PLAY_CARD', cardId: card.iid, targets: spellTargets, _tapActions: tapActions, _xVal: cardXVal });
+  // 2. Play a land if we have one and haven't played one this turn.
+  const land = state.o.hand.find(isLand);
+  if (land && state.landsPlayed < 1) {
+    actions.push({ type: 'PLAY_CARD', cardId: land.iid, targets: [], isLand: true });
   }
 
-  // Append activated ability actions (Triskelion, etc.).
+  // 3. Select playable spells, then cast them in order.
+  const playable = selectPlayableCards(virtualState, phase);
+
+  for (const entry of playable) {
+    const targets = selectTarget(entry.card, virtualState, profile, entry.xVal);
+    if (targets === null) continue;
+
+    const result = evaluateAndCast(entry, targets, virtualState, profile);
+    if (!result) continue;
+
+    actions.push(...result.actions);
+    virtualState = result.newVirtualState;
+  }
+
+  // 4. Activated abilities (Tier 2).
   const activated = planActivatedAbilities(virtualState, profile);
   for (const a of activated) actions.push(a);
 
@@ -773,6 +836,13 @@ export function aiDecide(state) {
   }
 
   const plan = getAIPlan(state, state.phase);
+
+  // Contract: planner output must have phase and actions[].
+  if (!plan || !Array.isArray(plan.actions)) {
+    console.error('[AI] getAIPlan returned malformed plan:', plan);
+    return [];
+  }
+
   const dcActions = [];
 
   for (const action of plan.actions) {
@@ -786,17 +856,11 @@ export function aiDecide(state) {
         if (isLand(card)) {
           dcActions.push({ type: 'PLAY_LAND', who: 'o', iid: card.iid });
         } else {
-          // Use pre-built tap actions from planMain if present (avoids double-tapping
-          // when multiple spells are planned in the same turn — see Bug B13).
-          const tapActions = action._tapActions || (() => {
-            const r = buildTapActions(state, card.cost);
-            if (!r.affordable) {
-              console.warn(`[AI] PLAY_CARD: cannot afford ${card.name} — skipping.`);
-              return null;
-            }
-            return r.tapActions;
-          })();
-          if (!tapActions) break;
+          const tapActions = action._tapActions;
+          if (!tapActions) {
+            console.error(`[AI] PLAY_CARD missing _tapActions for ${card.name}. Planner bug.`);
+            break;
+          }
           if (action._xVal != null) dcActions.push({ type: 'SET_X', val: action._xVal });
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;

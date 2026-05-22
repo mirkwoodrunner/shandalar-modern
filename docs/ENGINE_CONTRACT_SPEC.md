@@ -245,6 +245,15 @@ When `state.priorityWindow === true && state.active === 'p'`, `getAIPlan` routes
 - The adapter translates `PASS_PRIORITY` → `{ type: 'PASS_PRIORITY', who: 'o' }` to DuelCore only when `state.priorityWindow` is true. Outside a priority window, `PASS_PRIORITY` remains a no-op (DuelScreen handles phase advance).
 - The hook in `DuelScreen.tsx` guards on `state.priorityPasser !== 'o'` to ensure the AI fires **at most once per window**.
 
+## 5.4 Adapter Contract (Tier 4)
+
+The `aiDecide` adapter is now a **pure translation layer**. All decisions are made by `getAIPlan` and its planners. The adapter MUST NOT make decisions.
+
+Specifically:
+- Every `PLAY_CARD` spec action produced by the planners MUST include `_tapActions`. If `_tapActions` is absent, that is a planner bug; the adapter logs an error and skips the action — it does not reconstruct tap actions as a fallback.
+- The adapter validates the plan contract at entry: if `getAIPlan` returns a malformed plan (not an object with `actions[]`), the adapter logs an error and returns `[]`.
+- The adapter is responsible only for: `PLAY_LAND` / `CAST_SPELL` / `SET_X` / `RESOLVE_STACK` emit order, `DECLARE_ATTACKER`, `DECLARE_BLOCKER`, `ACTIVATE_ABILITY`, and conditional `PASS_PRIORITY` emission during open priority windows.
+
 ---
 
 # 6. UI Contract (useDuel.js)

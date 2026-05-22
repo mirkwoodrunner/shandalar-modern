@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Tier 4 — AI Architectural Cleanup
+
+This tier is a refactor. Behavior is unchanged.
+
+- **Change 1 — `selectPlayableCards`**: Extracted from `planMain`. Pure function that returns `{ card, effectiveCost, xVal }[]` for all legally castable cards. Handles timing rules, `castRestriction`, mana ceiling check, and X-spell substitution. No strategic evaluation.
+- **Change 2 — `selectTarget`**: Extracted from `planMain`. Per-effect function that returns a target array or `null` (skip without tapping mana). Covers counter-spells, removal, pump spells (with `greedySpells >= 0.5` gate preserved), Berserk, Disintegrate/Drain Life (deterministic killability threshold), Raise Dead / Resurrection, and generic spells.
+- **Change 3 — `evaluateAndCast`**: Extracted from `planMain`. Applies the `scoreSpellValue * greedySpells < 0.35` gate, calls `buildTapActions`, and emits the `PLAY_CARD` spec action with pre-built `_tapActions`. Returns `{ actions, newVirtualState }` or `null`.
+- **Change 4 — `planMain` rewritten as coordinator**: Body is now under 80 lines. Delegates to the three helpers above. Step order: channel top-up → land play → spell loop → activated abilities → `PASS_PRIORITY`.
+- **Change 5 — `aiDecide` adapter stripped of fallback logic**: The `PLAY_CARD` case no longer reconstructs tap actions as a fallback. If `_tapActions` is absent (a planner bug), it logs `console.error` and breaks — fail-fast per project error-handling philosophy.
+- **Change 6 — Contract check at top of `aiDecide`**: If `getAIPlan` returns a malformed plan, logs `console.error` and returns `[]`.
+- **Test — `tests/ai-refactor-parity.mjs`**: Snapshot test verifying deterministic output for a fixed game state across 10 calls, counter-spell filtering, removal targeting, and plan structure.
+
 ### Tier 3 — Instant-Speed AI Response
 
 - **Change 1 — `planInstantResponse` planner**: Added to `AI.js` after `planEnd`. Evaluates the AI's instant-speed options when it has priority during the player's turn. Handles counter-spells (scored by spell threat: CMC + creature/burn/wrath multipliers), instant removal during combat (targeting via `scoreThreat`), burn at face for lethal only, and Fog when incoming damage is significant. Casts at most one instant per window; always terminates with `PASS_PRIORITY { who: 'o' }`.
