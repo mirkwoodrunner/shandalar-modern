@@ -301,6 +301,10 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   const selIid = sel?.iid ?? null;
 
+  const isPlayerPriority =
+    s_state.active === 'p' ||
+    (Boolean(s_state.priorityWindow) && s_state.priorityPasser !== 'p');
+
   // ── Derived player data ────────────────────────────────────────────────────
   const pData = {
     life: s_state.p.life,
@@ -431,6 +435,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onCancel={handleCancel}
         onPass={handlePass}
         onEnd={requestPhaseAdvance}
+        isPlayerPriority={isPlayerPriority}
       />
 
       {/* Hand strip */}
