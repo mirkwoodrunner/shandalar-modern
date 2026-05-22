@@ -862,6 +862,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             compact={isMobile}
             hasSelection={!!s.selCard}
             selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
+            isPlayerPriority={s.active === 'p' || (s.priorityWindow === true && s.priorityPasser !== 'p')}
             onCast={handleCast}
             onPassPriority={() => {
               if (s.stack?.length > 0) {

@@ -156,6 +156,15 @@
 
 ---
 
+## Map Fill + Pass Priority Indicator
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| Map grid scales to fill container via CSS transform in WorldMap component; measurement taken at grid container level, not page level | `src/ui/overworld/WorldMap.jsx`, `src/OverworldGame.jsx` | ✅ Done |
+| Pass Priority button greyed when AI has priority; gold when player holds priority; `isPlayerPriority` prop threaded from DuelScreen to ActionBar | `src/DuelScreen.tsx`, `src/ui/ActionBar/ActionBar.tsx` | ✅ Done |
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

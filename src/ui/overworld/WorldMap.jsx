@@ -377,10 +377,31 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
   const gridWidth  = viewW * tileSize + 16;
   const gridHeight = viewH * tileSize + 16;
 
+  const containerRef = React.useRef(null);
+  const [scale, setScale] = React.useState(1);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (!width || !height) return;
+      const gridW = viewW * tileSize + 16;
+      const gridH = viewH * tileSize + 16;
+      const s = Math.min(width / gridW, height / gridH);
+      setScale(Math.max(0.4, s));
+    };
+    measure();
+    const t = setTimeout(measure, 50);
+    window.addEventListener('resize', measure);
+    return () => { clearTimeout(t); window.removeEventListener('resize', measure); };
+  }, [viewW, viewH, tileSize]);
+
   return (
-    <>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <style>{OW_STYLES}</style>
       <SpriteStyles />
+      <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', flexShrink: 0 }}>
       <div style={{ position: 'relative', display: 'inline-block' }}>
         {/* Terrain grid — unchanged */}
         <div style={{
@@ -442,7 +463,8 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
           }}
         />
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 
