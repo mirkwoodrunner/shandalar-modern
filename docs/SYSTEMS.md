@@ -247,9 +247,9 @@ AI behavior follows:
 
 `planMain` is a thin coordinator. All decisions are made by four single-responsibility helpers:
 
-### `selectPlayableCards(state, phase)` → `{ card, effectiveCost, xVal }[]`
+### `selectPlayableCards(state, phase)` → `{ card, effectiveCost, xVal, effectiveCmc }[]`
 
-Pure legality filter. Iterates `state.o.hand`, skips lands (handled separately), enforces sorcery-speed timing against an empty stack, respects `castRestriction`, and rejects cards whose CMC exceeds the total available mana ceiling. For X spells, computes the maximum X value and substitutes it into `effectiveCost`. Returns entries sorted CMC-descending.
+Pure legality filter. Iterates `state.o.hand`, skips lands (handled separately), enforces sorcery-speed timing against an empty stack, respects `castRestriction`, and rejects cards whose CMC exceeds the total available mana ceiling. For X spells, computes the maximum X value and substitutes it into `effectiveCost` and `effectiveCmc`. Returns entries ordered by `selectBestCurve` to maximise mana utilisation (Tier 5; previously sorted CMC-descending).
 
 ### `selectTarget(card, state, profile, xVal)` → `string[] | null`
 
@@ -300,6 +300,31 @@ Mishra's Factory animation and regenerate are deferred to Tier 5 (require deeper
 - Capped at 2 mulligans total (`state.o.mulls < 2`).
 - Never mulligans below 5 cards.
 - Returns a single `{ type: 'MULLIGAN', who: 'o' }` action; no PASS_PRIORITY is appended.
+
+## 6.9 AI Strategic Depth (Tier 5)
+
+### Curve Fitting
+
+`selectPlayableCards` returns candidates ordered by `selectBestCurve`. The greedy descending pass selects the highest-CMC affordable card, subtracts its cost from the budget, and repeats. A secondary pass then tries dropping each of the three most expensive candidates in turn and re-running the greedy fit; if any alternative uses more total mana than the greedy result, that alternative is returned instead. This is O(n²) on hand size (bounded at 7), so worst-case is negligible.
+
+Note: `effectiveCmc` is a generic-mana proxy. Color requirements are enforced downstream by `buildTapActions`; if a chosen combination cannot actually be paid, `evaluateAndCast` returns null and the card is skipped.
+
+### Plan Scoring
+
+`planMain` generates two candidate turn plans from the same `selectBestCurve` card set:
+
+1. **Primary (greedy)**: cards executed in the order returned by `selectBestCurve` (highest-CMC first after budget optimisation).
+2. **Alternative (tempo)**: same cards executed cheapest-first.
+
+Each plan is simulated against a virtual state using `applyVirtualPlay` and scored with `evaluateBoard`. The plan with the higher score is executed. Because both plans use the same card set (just different order), the difference in score reflects target selection ordering and mana-availability differences across the two sequences.
+
+### MCTS Expansion
+
+Profiles with `aggression >= 0.9` (currently KARAG at 1.0) use `getBestMove(virtualState, candidates, 600)` to pick between the two plans instead of direct score comparison. The `candidates` array wraps each plan as a `{ action: { type: 'PLAN', actions }, label }` object. If MCTS does not recognise the `PLAN` action type and returns null, the selector falls back to `evaluateBoard` score comparison automatically.
+
+### Performance Constraint
+
+Turn calculation is budgeted at 500ms p95 on a mid-range device. If profiling shows this exceeded: (1) lower MCTS iterations from 600 to 300 or remove the MCTS branch; (2) if still exceeded, evaluate only one plan (drop the alternative-plan generation).
 
 ## 6.8 AI Instant-Speed Response
 

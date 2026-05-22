@@ -245,6 +245,18 @@ When `state.priorityWindow === true && state.active === 'p'`, `getAIPlan` routes
 - The adapter translates `PASS_PRIORITY` → `{ type: 'PASS_PRIORITY', who: 'o' }` to DuelCore only when `state.priorityWindow` is true. Outside a priority window, `PASS_PRIORITY` remains a no-op (DuelScreen handles phase advance).
 - The hook in `DuelScreen.tsx` guards on `state.priorityPasser !== 'o'` to ensure the AI fires **at most once per window**.
 
+## 5.5 Virtual-State Simulation — Known Limitation (Tier 5)
+
+`applyVirtualPlay` in `AI.js` produces approximate virtual states used solely for turn-plan scoring. It is **not a true simulator**. Specifically:
+
+- Creatures enter with `summoningSick: true` regardless of haste.
+- Removal is modelled as immediate battlefield removal; it does not model protection, regeneration, or indestructible.
+- Non-creature, non-removal spells have no board impact in the simulation (hand removal only).
+- Mana tracking is not updated — scoring uses creature/life deltas only, not available-mana delta.
+- The virtual state is never fed back into DuelCore. It exists purely as a heuristic scoring input for `evaluateBoard`.
+
+Any discrepancy between the simulated and resolved outcome is acceptable. DuelCore remains the sole authority on actual game state.
+
 ## 5.4 Adapter Contract (Tier 4)
 
 The `aiDecide` adapter is now a **pure translation layer**. All decisions are made by `getAIPlan` and its planners. The adapter MUST NOT make decisions.
