@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Tier 3 — Instant-Speed AI Response
+
+- **Change 1 — `planInstantResponse` planner**: Added to `AI.js` after `planEnd`. Evaluates the AI's instant-speed options when it has priority during the player's turn. Handles counter-spells (scored by spell threat: CMC + creature/burn/wrath multipliers), instant removal during combat (targeting via `scoreThreat`), burn at face for lethal only, and Fog when incoming damage is significant. Casts at most one instant per window; always terminates with `PASS_PRIORITY { who: 'o' }`.
+- **Change 2 — `getAIPlan` priority-window gate**: Added an early-exit check before the phase switch: if `gameState.priorityWindow && gameState.active === 'p'`, routes to `planInstantResponse` instead of the phase planner. Prevents the main-phase planner from re-running during a window on the player's turn.
+- **Change 3 — `PASS_PRIORITY` adapter emits to DuelCore during windows**: The `PASS_PRIORITY` case in `aiDecide` now pushes `{ type: 'PASS_PRIORITY', who: 'o' }` to DuelCore when `state.priorityWindow` is true. Outside a priority window, the no-op behavior is preserved (DuelScreen handles phase advance).
+- **Change 4 — `DuelScreen.tsx` AI priority hook**: Replaced the simple AI priority-window handler (which cast any affordable instant at `tgt: 'p'`) with a context-aware effect. When `active === 'p'` (player's turn), uses `aiDecide` (200 ms delay) so `planInstantResponse` runs with full context. When `active === 'o'` (AI's own turn), passes priority immediately with no evaluation — the AI already acted in the main loop. Both paths guard on `priorityPasser !== 'o'` and `!over` to prevent re-firing. Dependency array is `[s.priorityWindow, s.active, s.priorityPasser, s.over]`.
+
+> **Breaking-change risk**: The AI may now hold priority and dispatch actions during the player's turn. Any workflow that assumed the AI never acts while `active === 'p'` is now invalid. The constraint is strictly scoped: the AI only acts inside an open priority window (`state.priorityWindow === true`), and only once per window.
+
 ### Tier 2 — AI Heuristic Improvements
 
 - **Change 1 — Scored spell evaluation**: Replaced `Math.random() >= profile.greedySpells` in the generic-spells block with a `scoreSpellValue(card, state, profile)` helper that scores spells 0–1 by situational value (lethal burn = 1.0, draw scales with hand deficit, life gain scales with low life). Gate is now `score * profile.greedySpells < 0.35`.

@@ -227,6 +227,7 @@ AI may:
 ✔ Read GameState snapshot  
 ✔ Evaluate board state  
 ✔ Generate valid GameAction objects  
+✔ Produce actions during the **player's turn**, restricted to an open priority window (`state.priorityWindow === true && state.active === 'p'`)
 
 AI may NOT:
 
@@ -234,6 +235,15 @@ AI may NOT:
 ❌ simulate combat results  
 ❌ bypass DuelCore validation  
 ❌ directly trigger system effects  
+
+## 5.3 AI Priority-Window Contract
+
+When `state.priorityWindow === true && state.active === 'p'`, `getAIPlan` routes to `planInstantResponse` instead of the phase planner. The following invariants hold:
+
+- AI remains **read-only**: `planInstantResponse` reads `state` and produces `GameAction` objects; it does not mutate state.
+- At most **one `PLAY_CARD` action** is emitted per priority window. The plan always terminates with `PASS_PRIORITY { who: 'o' }`.
+- The adapter translates `PASS_PRIORITY` → `{ type: 'PASS_PRIORITY', who: 'o' }` to DuelCore only when `state.priorityWindow` is true. Outside a priority window, `PASS_PRIORITY` remains a no-op (DuelScreen handles phase advance).
+- The hook in `DuelScreen.tsx` guards on `state.priorityPasser !== 'o'` to ensure the AI fires **at most once per window**.
 
 ---
 

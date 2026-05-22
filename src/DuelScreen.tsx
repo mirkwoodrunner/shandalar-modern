@@ -411,20 +411,27 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     prevPriorityWindow.current = s.priorityWindow;
   }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -- AI priority window handler: evaluate instants, then pass immediately --
+  // -- AI priority window handler -----------------------------------------------
+  // During the player's turn: uses planInstantResponse via aiDecide (200 ms delay
+  // so the player sees the window open before the AI responds).
+  // During the AI's own turn: AI already acted in the main loop; just pass quickly.
+  // Guard on priorityPasser prevents re-firing after the AI has already passed.
   useEffect(() => {
-    if (!s.priorityWindow) return;
+    if (!s.priorityWindow || s.priorityPasser === 'o' || s.over) return;
+    if (s.active !== 'p') {
+      // AI's own turn priority window — pass immediately, no complex evaluation.
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    // Player's turn — AI responds using planInstantResponse via aiDecide.
     const timer = setTimeout(() => {
-      const aiInstant = s.o.hand.find(
-        (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s.o.mana, c.cost)
-      );
-      if (aiInstant) {
-        dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
-      }
-      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
-    }, 0);
+      const acts = aiDecide(s);
+      if (acts && acts.length) applyAiActions(acts);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Keyboard shortcuts ----------------------------------------------------
   const isIdle = s.active === 'p' && !pendingActivate;
