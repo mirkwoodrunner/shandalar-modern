@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Tier 5 — AI Strategic Depth
+
+- **Curve-based card selection**: `selectPlayableCards` no longer sorts by CMC descending. A new `selectBestCurve` helper runs a greedy descending pass augmented with up to three "drop the biggest" alternatives to find the card combination that maximises mana utilisation without exceeding the budget. Example: on 4 mana with a 4-drop + two 2-drops, the AI now casts both 2-drops instead of the 4-drop.
+- **Multi-plan scoring with `evaluateBoard`**: `planMain` generates two candidate plans — greedy (from `selectBestCurve`) and tempo (cheapest-first using the same card set). Each plan is simulated against a virtual state via `applyVirtualPlay` and scored with `evaluateBoard`. The higher-scoring plan is executed. `evaluateBoard` is no longer dead code.
+- **MCTS gated on high aggression**: Profiles with `aggression >= 0.9` (currently KARAG at 1.0) use `getBestMove` with 600 iterations to choose between the two candidate plans instead of score comparison. Falls back to score comparison if MCTS returns null.
+- **Performance budget**: Turn calculation is bounded at 500ms p95. If exceeded, remove the MCTS branch first, then simplify to a single plan.
+
 ### Tier 4 — AI Architectural Cleanup
 
 This tier is a refactor. Behavior is unchanged.

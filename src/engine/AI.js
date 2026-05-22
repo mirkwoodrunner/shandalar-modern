@@ -1,14 +1,18 @@
 // src/engine/AI.js
-// AI decision generator ? produces GameAction objects for DuelCore to execute.
+// AI decision generator — produces GameAction objects for DuelCore to execute.
 // Per design spec S3 and SYSTEMS.md S6.
 //
 // STRICT CONSTRAINTS (ENGINE_CONTRACT_SPEC.md S5):
-//   ? May read GameState snapshots
-//   ? May generate valid GameAction objects
-//   ? CANNOT mutate GameState
-//   ? CANNOT simulate combat results directly
-//   ? CANNOT bypass DuelCore validation
-//   ? CANNOT make async calls or access the network
+//   ✓ May read GameState snapshots
+//   ✓ May generate valid GameAction objects
+//   ✗ CANNOT mutate GameState
+//   ✗ CANNOT simulate combat results directly
+//   ✗ CANNOT bypass DuelCore validation
+//   ✗ CANNOT make async calls or access the network
+//
+// Tier 5 adds curve-fitting and multi-plan evaluation. MCTS may be consulted
+// for high-aggression profiles (aggression >= 0.9). All evaluation uses virtual
+// state — DuelCore remains the sole mutator.
 
 import { ARCHETYPES } from '../data/cards.js';
 import KEYWORDS from '../data/keywords.js';
@@ -209,12 +213,17 @@ function planActivatedAbilities(state, profile) {
 
 // --- PHASE PLANNERS -----------------------------------------------------------
 //
-// Planner single-responsibility helpers (Tier 4 extraction):
+// Planner single-responsibility helpers (Tier 4 extraction, Tier 5 augmented):
 //
-// selectPlayableCards(state, phase) -> { card, effectiveCost, xVal }[]
+// selectPlayableCards(state, phase) -> { card, effectiveCost, xVal, effectiveCmc }[]
 //   Pure filter: which cards in AI hand could legally be cast right now?
 //   Considers timing (sorcery vs instant speed), cast restrictions, and mana ceiling.
-//   Does NOT evaluate strategic value.
+//   Does NOT evaluate strategic value. Order is determined by selectBestCurve.
+//
+// selectBestCurve(candidates, manaBudget) -> candidates[]
+//   Greedy mana-fit: picks the combination that maximises mana spent without
+//   exceeding the budget. Descending-CMC greedy pass augmented with up to three
+//   "drop the biggest" alternatives.
 //
 // selectTarget(card, state, profile, xVal) -> string[] | null
 //   Per-effect target selection. Returns null if no valid target or if the
@@ -225,20 +234,28 @@ function planActivatedAbilities(state, profile) {
 //   Applies the score gate, builds tap actions, and emits the PLAY_CARD spec action.
 //   Returns null if the card should be skipped (score too low or unaffordable).
 //
+// applyVirtualPlay(virtualState, action) -> virtualState
+//   Approximate virtual-state update for scoring. Creatures enter sick, removal
+//   removes targets. Does NOT replicate full effect resolution.
+//
+// scoreTurnPlan(plan, baseState) -> number
+//   Simulates each PLAY_CARD in a plan against baseState and returns evaluateBoard score.
+//
 // planMain(state, profile, phase) -> AITurnPlan
-//   Coordinator: wires channel top-up, land play, spell casting, and activated
-//   abilities into an ordered action list. All decisions are delegated to helpers.
+//   Coordinator: channel top-up → land play → two candidate plans (greedy and tempo)
+//   → score/MCTS selection → activated abilities → PASS_PRIORITY.
 
 // --- CARD SELECTION HELPERS ---------------------------------------------------
 
-// Returns an array of { card, effectiveCost, xVal } for cards the AI could legally cast.
+// Returns an array of { card, effectiveCost, xVal, effectiveCmc } for cards the AI could legally cast.
 // Does not consider strategic value — only legality and affordability ceiling.
+// Order is determined by selectBestCurve to maximise mana utilisation.
 function selectPlayableCards(state, phase) {
   const totalManaCeiling = Object.values(computeAvailableMana(state))
     .reduce((s, v) => s + v, 0);
 
   const stackEmpty = !state.stack?.length;
-  const playable = [];
+  const candidates = [];
 
   for (const card of state.o.hand) {
     if (isLand(card)) {
@@ -258,6 +275,7 @@ function selectPlayableCards(state, phase) {
 
     let effectiveCost = card.cost;
     let xVal = null;
+    let effectiveCmc = card.cmc;
     if (/X/i.test(card.cost)) {
       const baseCost = card.cost.replace(/X/gi, '');
       const baseReq = parseMana(baseCost);
@@ -265,14 +283,49 @@ function selectPlayableCards(state, phase) {
       xVal = totalManaCeiling - baseManaNeeded;
       if (xVal < 1) continue;
       effectiveCost = String(xVal) + baseCost.replace(/[{}]/g, '');
+      effectiveCmc = baseManaNeeded + xVal;
     }
 
-    playable.push({ card, effectiveCost, xVal });
+    candidates.push({ card, effectiveCost, xVal, effectiveCmc });
   }
 
-  // Preserve current CMC-descending sort. Tier 5 will change this.
-  playable.sort((a, b) => b.card.cmc - a.card.cmc);
-  return playable;
+  return selectBestCurve(candidates, totalManaCeiling);
+}
+
+// Greedy mana-fit: picks the combination of candidates that maximises mana spent
+// without exceeding the budget. Runs a greedy descending pass then checks up to
+// three "drop the largest" alternatives. O(n^2) but n is bounded by hand size.
+function selectBestCurve(candidates, manaBudget) {
+  const sorted = [...candidates].sort((a, b) => b.effectiveCmc - a.effectiveCmc);
+  const greedy = [];
+  let remaining = manaBudget;
+  for (const c of sorted) {
+    if (c.effectiveCmc <= remaining) {
+      greedy.push(c);
+      remaining -= c.effectiveCmc;
+    }
+  }
+  const greedyCost = greedy.reduce((s, c) => s + c.effectiveCmc, 0);
+
+  if (sorted.length > 1) {
+    for (let dropIdx = 0; dropIdx < Math.min(sorted.length, 3); dropIdx++) {
+      const without = sorted.filter((_, i) => i !== dropIdx);
+      const alt = [];
+      let altRem = manaBudget;
+      for (const c of without) {
+        if (c.effectiveCmc <= altRem) {
+          alt.push(c);
+          altRem -= c.effectiveCmc;
+        }
+      }
+      const altCost = alt.reduce((s, c) => s + c.effectiveCmc, 0);
+      if (altCost > greedyCost) {
+        return alt;
+      }
+    }
+  }
+
+  return greedy;
 }
 
 // Returns target array for a spell, or null if no valid target / shouldn't cast.
@@ -392,6 +445,60 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
   };
 }
 
+// --- TURN PLAN EVALUATION -----------------------------------------------------
+
+// Apply a single PLAY_CARD action to a virtual state for scoring purposes only.
+// Returns a new virtual state. Does NOT replicate full effect resolution — only
+// approximate board impact (creatures enter, mana spent, life paid, hand reduced).
+// This is a scoring heuristic, not a true simulator. See ENGINE_CONTRACT_SPEC known limitations.
+function applyVirtualPlay(virtualState, action) {
+  if (action.type !== 'PLAY_CARD') return virtualState;
+  const card = virtualState.o.hand.find(c => c.iid === action.cardId);
+  if (!card) return virtualState;
+
+  let ns = {
+    ...virtualState,
+    o: {
+      ...virtualState.o,
+      hand: virtualState.o.hand.filter(c => c.iid !== action.cardId),
+    },
+  };
+
+  if (isLand(card)) {
+    ns = { ...ns, o: { ...ns.o, bf: [...ns.o.bf, { ...card, tapped: false }] } };
+    return ns;
+  }
+
+  if (isCre(card)) {
+    // Creature enters tapped+sick for scoring purposes (approximates next-turn impact).
+    ns = { ...ns, o: { ...ns.o, bf: [...ns.o.bf, { ...card, tapped: false, summoningSick: true }] } };
+  }
+
+  // For removal, approximate the target's removal from the opponent's board.
+  if (action.targets?.length && typeof action.targets[0] === 'string' &&
+      action.targets[0] !== 'p' && action.targets[0] !== 'o') {
+    const targetIid = action.targets[0];
+    ns = {
+      ...ns,
+      p: { ...ns.p, bf: ns.p.bf.filter(c => c.iid !== targetIid) },
+    };
+  }
+
+  return ns;
+}
+
+// Score a candidate plan by simulating each PLAY_CARD against virtualState
+// and calling evaluateBoard on the resulting position.
+function scoreTurnPlan(plan, baseState) {
+  let virtual = baseState;
+  for (const action of plan.actions) {
+    if (action.type === 'PLAY_CARD') {
+      virtual = applyVirtualPlay(virtual, action);
+    }
+  }
+  return evaluateBoard(virtual);
+}
+
 function passPlan(phase) {
   return { phase, actions: [{ type: 'PASS_PRIORITY' }] };
 }
@@ -444,22 +551,69 @@ function planMain(state, profile, phase) {
     actions.push({ type: 'PLAY_CARD', cardId: land.iid, targets: [], isLand: true });
   }
 
-  // 3. Select playable spells, then cast them in order.
-  const playable = selectPlayableCards(virtualState, phase);
-
-  for (const entry of playable) {
-    const targets = selectTarget(entry.card, virtualState, profile, entry.xVal);
+  // 3. Generate primary plan (greedy curve fit via selectBestCurve).
+  const primaryPlayable = selectPlayableCards(virtualState, phase);
+  const primaryActions = [];
+  let primaryVirtual = virtualState;
+  for (const entry of primaryPlayable) {
+    const targets = selectTarget(entry.card, primaryVirtual, profile, entry.xVal);
     if (targets === null) continue;
-
-    const result = evaluateAndCast(entry, targets, virtualState, profile);
+    const result = evaluateAndCast(entry, targets, primaryVirtual, profile);
     if (!result) continue;
-
-    actions.push(...result.actions);
-    virtualState = result.newVirtualState;
+    primaryActions.push(...result.actions);
+    primaryVirtual = result.newVirtualState;
   }
 
-  // 4. Activated abilities (Tier 2).
-  const activated = planActivatedAbilities(virtualState, profile);
+  // 4. Generate alternative plan: cast cheapest-first (tempo curve) using the same
+  // candidate set returned by selectBestCurve, but ordered lowest-CMC first.
+  const altPlayable = [...primaryPlayable].sort((a, b) => a.effectiveCmc - b.effectiveCmc);
+  const altActions = [];
+  let altVirtual = virtualState;
+  for (const entry of altPlayable) {
+    const targets = selectTarget(entry.card, altVirtual, profile, entry.xVal);
+    if (targets === null) continue;
+    const result = evaluateAndCast(entry, targets, altVirtual, profile);
+    if (!result) continue;
+    altActions.push(...result.actions);
+    altVirtual = result.newVirtualState;
+  }
+
+  // 5. Choose between the two plans.
+  // High-aggression profiles (>= 0.9, currently KARAG) use MCTS for plan selection.
+  // All other profiles fall back to evaluateBoard score comparison.
+  let chosenActions;
+  let chosenVirtual;
+
+  if (profile.aggression >= 0.9 && primaryActions.length > 0 && altActions.length > 0) {
+    const candidates = [
+      { action: { type: 'PLAN', actions: primaryActions }, label: 'primary' },
+      { action: { type: 'PLAN', actions: altActions },     label: 'alt' },
+    ];
+    const best = getBestMove(virtualState, candidates, 600);
+    if (best == null) {
+      // MCTS returned nothing (unknown PLAN type or empty rollout); fall back to scoring.
+      const primaryScore = scoreTurnPlan({ actions: primaryActions }, virtualState);
+      const altScore    = scoreTurnPlan({ actions: altActions },    virtualState);
+      chosenActions = primaryScore >= altScore ? primaryActions : altActions;
+      chosenVirtual = primaryScore >= altScore ? primaryVirtual : altVirtual;
+    } else if (best.label === 'alt') {
+      chosenActions = altActions;
+      chosenVirtual = altVirtual;
+    } else {
+      chosenActions = primaryActions;
+      chosenVirtual = primaryVirtual;
+    }
+  } else {
+    const primaryScore = scoreTurnPlan({ actions: primaryActions }, virtualState);
+    const altScore    = scoreTurnPlan({ actions: altActions },    virtualState);
+    chosenActions = primaryScore >= altScore ? primaryActions : altActions;
+    chosenVirtual = primaryScore >= altScore ? primaryVirtual : altVirtual;
+  }
+
+  for (const a of chosenActions) actions.push(a);
+
+  // 6. Activated abilities (Tier 2).
+  const activated = planActivatedAbilities(chosenVirtual, profile);
   for (const a of activated) actions.push(a);
 
   actions.push({ type: 'PASS_PRIORITY' });
