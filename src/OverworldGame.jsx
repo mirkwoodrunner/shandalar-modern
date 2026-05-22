@@ -338,7 +338,6 @@ const [log, setLog]             = useState(() => {
 // -- Viewport -------------------------------------------------------------
 const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
 const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth <= 768;
-const [mapScale, setMapScale] = useState(1);
 
 // -- Mobile layout --------------------------------------------------------
 const isMobile = useIsMobile();
@@ -367,7 +366,6 @@ const enemyTickRef  = useRef(0);
 const animFrameRef  = useRef(null);
 const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
 const canvasRef     = useRef(null);
-const mapContainerRef = useRef(null);
 
 // -- Derived --------------------------------------------------------------
 const hasBoots  = artifacts.some(a => a.id === 'boots'  && a.owned);
@@ -1451,21 +1449,6 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []); // intentionally empty — fires once on mount only
 
-// Compute map scale from container dimensions so the grid fills available space.
-useEffect(() => {
-  const updateScale = () => {
-    if (!mapContainerRef.current) return;
-    const { width, height } = mapContainerRef.current.getBoundingClientRect();
-    const scaleX = width  / (VIEW_W * 34 + 16);
-    const scaleY = height / (VIEW_H * 34 + 16);
-    setMapScale(Math.min(scaleX, scaleY, 2.0));
-  };
-  window.addEventListener('resize', updateScale);
-  updateScale();
-  setTimeout(updateScale, 0);
-  return () => window.removeEventListener('resize', updateScale);
-}, []);
-
 // -------------------------------------------------------------------------
 // GAME-LOSS side-effect
 // -------------------------------------------------------------------------
@@ -1814,13 +1797,6 @@ fontFamily: "'Crimson Text', serif",
       style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
       🎯 Center
     </button>
-    <button onClick={() => setMapScale(s => {
-      if (s > 1.0) return Math.max(0.6, +(s - 0.2).toFixed(2));
-      return Math.min(2.0, +(s + 0.2).toFixed(2));
-    })}
-      style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(200,160,60,.2)', color: '#c0a040', padding: '2px 8px', borderRadius: 3, cursor: 'pointer', fontSize: 10, fontFamily: "'Cinzel',serif" }}>
-      {mapScale > 1.0 ? '🔍 Zoom Out' : '🔍 Zoom In'}
-    </button>
 
     {/* Deck button */}
     <button onClick={() => setModal('deck')}
@@ -1880,8 +1856,8 @@ fontFamily: "'Crimson Text', serif",
   <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
     {/* -- MAP ----------------------------------------------------------- */}
-    <div ref={mapContainerRef} style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
-      <div style={{ transform: `scale(${mapScale})` }}>
+    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0, height: '100%' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <WorldMap
         tiles={tiles}
         playerPos={pos}
