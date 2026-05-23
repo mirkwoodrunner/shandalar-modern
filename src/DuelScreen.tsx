@@ -669,9 +669,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }, [s.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Priority state -------------------------------------------------------
-  const isPlayerPriority: boolean =
-    s.active === 'p' ||
-    (Boolean(s.priorityWindow) && s.priorityPasser !== 'p');
 
   const canUndoMana: boolean =
     s.active === 'p' &&
@@ -876,7 +873,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             compact={isMobile}
             hasSelection={!!s.selCard}
             selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
-            isPlayerPriority={isPlayerPriority}
+            isPlayerTurn={s.active === 'p'}
+            isWaitingForAI={s.priorityWindow === true && s.priorityPasser === 'p'}
+            priorityWindowOpen={s.priorityWindow === true}
             canUndo={canUndoMana}
             onUndo={undoManaTaps}
             onCast={handleCast}

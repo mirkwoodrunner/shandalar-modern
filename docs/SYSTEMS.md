@@ -981,6 +981,19 @@ Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && 
 | `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
 | `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |
 
+## 18.9 ActionBar Turn Guard
+
+`ActionBar` receives three additional props: `isPlayerTurn` (bool), `isWaitingForAI` (bool), and `priorityWindowOpen` (bool).
+
+- **End Turn** is `disabled` when `isPlayerTurn === false`.
+- **Pass Priority** is `disabled` when:
+  - `isWaitingForAI === true` (priorityWindow open AND `priorityPasser === 'p'`): also relabeled "Waiting..."
+  - `!isPlayerTurn && !priorityWindowOpen`: AI turn with no active priority window (nothing for the player to pass)
+- **Pass Priority stays enabled** when `!isPlayerTurn && priorityWindowOpen`: the player must still explicitly pass for `'p'` to close an AI-turn priority window (DuelCore's `PASS_PRIORITY` reducer requires both players to pass).
+- Cast button is also gated behind `isPlayerTurn` to prevent UI inconsistency.
+
+`requestPhaseAdvance()` (from `usePhaseAdvance`) is shared by both the player UI and the AI loop. The UI guard is in the button `disabled` prop and the `isIdle` keyboard shortcut check — not in `usePhaseAdvance` itself (which must remain unconstrained for the AI loop).
+
 ---
 
 # 19. Holy Ground — Landwalk Suppression

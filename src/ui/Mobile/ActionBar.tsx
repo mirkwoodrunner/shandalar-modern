@@ -15,12 +15,17 @@ interface ActionBarProps {
   onCancel: () => void;
   onPass: () => void;
   onEnd: () => void;
-  isPlayerPriority?: boolean;
+  isPlayerTurn?: boolean;
+  isWaitingForAI?: boolean;
+  priorityWindowOpen?: boolean;
   canUndo?: boolean;
   onUndo?: () => void;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerPriority = true, canUndo, onUndo }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo }: ActionBarProps) {
+  const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
+  const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
+
   if (!sel) {
     return (
       <div className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
@@ -39,26 +44,31 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
         )}
         <button
           className={s.actionBtn}
-          onClick={onPass}
+          onClick={ppDisabled ? undefined : onPass}
+          disabled={ppDisabled}
           style={{
-            background: isPlayerPriority
-              ? 'rgba(60,50,20,.85)'
-              : 'rgba(30,30,30,.6)',
-            border: `1px solid ${isPlayerPriority ? 'rgba(200,160,60,.6)' : 'rgba(80,80,80,.35)'}`,
-            color: isPlayerPriority ? '#f0d060' : '#555555',
-            opacity: isPlayerPriority ? 1 : 0.55,
+            background: ppDisabled
+              ? 'rgba(30,30,30,.6)'
+              : 'rgba(60,50,20,.85)',
+            border: `1px solid ${ppDisabled ? 'rgba(80,80,80,.35)' : 'rgba(200,160,60,.6)'}`,
+            color: ppDisabled ? '#555555' : '#f0d060',
+            opacity: ppDisabled ? 0.55 : 1,
+            cursor: ppDisabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s',
           }}
         >
-          {isPlayerPriority ? 'Pass Priority' : 'Waiting...'}
+          {ppLabel}
         </button>
         <button
           className={s.actionBtn}
-          onClick={onEnd}
+          onClick={!isPlayerTurn ? undefined : onEnd}
+          disabled={!isPlayerTurn}
           style={{
             background: 'linear-gradient(180deg, #3a2018, #1c0e0a)',
             border: '1px solid #a85030',
             color: 'var(--brass-hi)',
+            opacity: !isPlayerTurn ? 0.4 : 1,
+            cursor: !isPlayerTurn ? 'not-allowed' : 'pointer',
             boxShadow: '0 0 8px rgba(168,80,48,.55), inset 0 1px 0 rgba(255,255,255,.07)',
           }}
         >

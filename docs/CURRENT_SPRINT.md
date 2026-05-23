@@ -192,6 +192,16 @@
 
 ---
 
+## Bug Fix: Player Could Pass Turn on Behalf of AI
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| `ActionBar.tsx`: added `isPlayerTurn` and `isWaitingForAI` props; "Pass Priority" and "End Turn" disabled when `!isPlayerTurn`; "Pass Priority" relabeled "Waiting..." and disabled when `isWaitingForAI`; Cast button gated on `isPlayerTurn` | `src/ui/ActionBar/ActionBar.tsx` | ✅ Fixed |
+| `DuelScreen.tsx`: passes `isPlayerTurn={s.active === 'p'}` and `isWaitingForAI={s.priorityWindow === true && s.priorityPasser === 'p'}` to ActionBar; removed now-unused `isPlayerPriority` computed variable | `src/DuelScreen.tsx` | ✅ Fixed |
+| `usePhaseAdvance.ts`: `requestPhaseAdvance` early-returns when `s.active !== 'p'` (defensive layer against keyboard shortcuts during AI turn) | `src/hooks/usePhaseAdvance.ts` | ✅ Fixed |
+
+---
+
 ## B27: AI Never Casts Spells (All Random Encounter Opponents)
 
 | Change | Files Changed | Status |
