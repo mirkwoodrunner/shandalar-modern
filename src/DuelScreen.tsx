@@ -875,6 +875,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
             isPlayerTurn={s.active === 'p'}
             isWaitingForAI={s.priorityWindow === true && s.priorityPasser === 'p'}
+            priorityWindowOpen={s.priorityWindow === true}
             canUndo={canUndoMana}
             onUndo={undoManaTaps}
             onCast={handleCast}

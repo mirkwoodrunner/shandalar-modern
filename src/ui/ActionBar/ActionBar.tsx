@@ -9,6 +9,7 @@ interface ActionBarProps {
   selectedCard?: { type?: string; subtype?: string; name?: string } | null;
   isPlayerTurn?: boolean;
   isWaitingForAI?: boolean;
+  priorityWindowOpen?: boolean;
   onCast?: () => void;
   onPassPriority?: () => void;
   onCancel?: () => void;
@@ -24,6 +25,7 @@ export function ActionBar({
   selectedCard,
   isPlayerTurn = true,
   isWaitingForAI = false,
+  priorityWindowOpen = false,
   onCast,
   onPassPriority,
   onCancel,
@@ -35,7 +37,11 @@ export function ActionBar({
   const inMain = MAIN_PHASES.has(phase);
 
   const passPriorityLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
-  const passPriorityDisabled = isWaitingForAI || !isPlayerTurn;
+  // PP is disabled when: player already passed in priority window (Waiting), OR
+  // it's the AI turn AND no priority window is open (no valid reason to press PP).
+  // PP remains enabled on AI turn when a priority window IS open — the player
+  // must still pass for 'p' to close the window (PASS_PRIORITY requires both sides).
+  const passPriorityDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
 
   return (
     <div style={{

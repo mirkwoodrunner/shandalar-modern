@@ -21,8 +21,6 @@ export function usePhaseAdvance(
   openPriorityWindow: () => void,
 ): () => void {
   return useCallback(() => {
-    // Never fire during AI turn
-    if (s.active !== 'p') return;
     if (s.priorityWindow) return;
     if (s.stack && s.stack.length > 0) return;
     if (!PRIORITY_WINDOW_PHASES.has(s.phase)) {
@@ -40,7 +38,6 @@ export function usePhaseAdvance(
       advancePhase();
     }
   }, [
-    s.active,
     s.priorityWindow,
     s.stack,
     s.phase,

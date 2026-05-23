@@ -302,9 +302,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   const selIid = sel?.iid ?? null;
 
-  const isPlayerPriority =
-    s_state.active === 'p' ||
-    (Boolean(s_state.priorityWindow) && s_state.priorityPasser !== 'p');
+  const isPlayerTurn = s_state.active === 'p';
+  const isWaitingForAI = s_state.priorityWindow === true && s_state.priorityPasser === 'p';
 
   const canUndoMana: boolean =
     s_state.active === 'p' &&
@@ -443,7 +442,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onCancel={handleCancel}
         onPass={handlePass}
         onEnd={requestPhaseAdvance}
-        isPlayerPriority={isPlayerPriority}
+        isPlayerTurn={isPlayerTurn}
+        isWaitingForAI={isWaitingForAI}
+        priorityWindowOpen={s_state.priorityWindow === true}
         canUndo={canUndoMana}
         onUndo={undoManaTaps}
       />

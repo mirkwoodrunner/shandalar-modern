@@ -983,13 +983,16 @@ Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && 
 
 ## 18.9 ActionBar Turn Guard
 
-`ActionBar` receives two additional props: `isPlayerTurn` (bool) and `isWaitingForAI` (bool).
+`ActionBar` receives three additional props: `isPlayerTurn` (bool), `isWaitingForAI` (bool), and `priorityWindowOpen` (bool).
 
-- When `isPlayerTurn === false`: "Pass Priority" and "End Turn" are both `disabled`.
-- When `isWaitingForAI === true` (priorityWindow open AND `priorityPasser === 'p'`): "Pass Priority" label changes to "Waiting..." and is `disabled`.
+- **End Turn** is `disabled` when `isPlayerTurn === false`.
+- **Pass Priority** is `disabled` when:
+  - `isWaitingForAI === true` (priorityWindow open AND `priorityPasser === 'p'`): also relabeled "Waiting..."
+  - `!isPlayerTurn && !priorityWindowOpen`: AI turn with no active priority window (nothing for the player to pass)
+- **Pass Priority stays enabled** when `!isPlayerTurn && priorityWindowOpen`: the player must still explicitly pass for `'p'` to close an AI-turn priority window (DuelCore's `PASS_PRIORITY` reducer requires both players to pass).
 - Cast button is also gated behind `isPlayerTurn` to prevent UI inconsistency.
 
-`requestPhaseAdvance()` (in `src/hooks/usePhaseAdvance.ts`) contains a defensive early-return: `if (s.active !== 'p') return;` — ensures no phase skip even if a button handler fires unexpectedly (e.g., keyboard shortcut during AI turn).
+`requestPhaseAdvance()` (from `usePhaseAdvance`) is shared by both the player UI and the AI loop. The UI guard is in the button `disabled` prop and the `isIdle` keyboard shortcut check — not in `usePhaseAdvance` itself (which must remain unconstrained for the AI loop).
 
 ---
 
