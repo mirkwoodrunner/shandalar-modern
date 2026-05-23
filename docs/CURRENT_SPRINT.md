@@ -213,6 +213,50 @@
 
 - [x] Mana tap undo button (desktop + mobile) — `UNDO_MANA_TAPS` action, `manaTapSnapshot` state field
 
+---
+
+## MCTS Rollout Quality + Integration Audit ✅ Complete
+
+### MCTS Integration Audit
+
+**A1 — Call Site Inventory**
+
+| Call Site | File:Line | Caller | budgetMs | Candidates Empty? |
+|-----------|-----------|--------|----------|-------------------|
+| `getBestMove` | `AI.js:603` | `planMain` | 600 | No — guarded by `primaryActions.length > 0 && altActions.length > 0` |
+| `getBestMove` | `AI.js:693` | `planAttack` | 400 | No — always 2 elements (DECLARE_ATTACKER + ADVANCE_PHASE) |
+| `scoreMoves` | `MCTS.js` | `getBestMove` | — | internal only |
+| `rollout` | `MCTS.js` | `scoreMoves` | — | internal only |
+
+**A2 — Action Type Mismatch**
+
+`CAST_SPELL` is a valid `duelReducer` action type (DuelCore.js:1747). MCTS rollouts correctly use `CAST_SPELL`. `PLAY_CARD` is NOT a valid duelReducer action type — it is an AI-internal plan format converted to DuelCore actions by `aiDecide()` at the compatibility adapter layer; `duelReducer` silently ignores it (`default: return s`). No action type mismatch for MCTS rollout simulations.
+
+**Critical finding:** The `planMain` MCTS call (AI.js:603) passes `{ type: 'PLAN', actions: [...] }` candidates. `PLAN` is not a valid duelReducer action type, so both candidates produce identical next-states. All rollouts compare equivalent positions — MCTS comparison at this call site is statistically meaningless. (Out of scope for this sprint; deferred to AI.js audit pass.)
+
+**A3 — Mana Tap Gap (Critical)**
+
+`CAST_SPELL` reads from `s[w].mana` (the mana pool) and does NOT auto-tap lands. `burnMana()` clears the mana pool at every phase boundary (DuelCore.js `advPhase` line 1159). Neither `randomMainAction` nor `policyMainAction` dispatches `TAP_LAND` before `CAST_SPELL`. Result: the pool is empty when `canPay()` is checked in rollout main phases; `canPay` returns false for all nonzero-cost cards; rollouts never cast spells — confirmed pass-fest. Fix requires pre-tapping lands per card cost in the rollout policy; deferred to a future engine-aware rollout pass.
+
+**A4 — Priority Window Interaction**
+
+`ADVANCE_PHASE` is silently blocked (returns `s` unchanged) when `priorityWindow: true`. If `priorityWindow` is true in the rollout start state, `stepOnce` loops forever (turn never changes, depthLimit condition never fires). At all current call sites, MCTS is invoked during the AI's own turn where `priorityWindow` is false. `stepOnce` never dispatches `OPEN_PRIORITY_WINDOW`. Rollouts are immune to priority window blocking in practice. Latent infinite-loop risk exists if `getBestMove` is called during an open priority window.
+
+**A5 — `evaluateBoard` Name Collision**
+
+`AI.js` has a private (non-exported) `evaluateBoard(state)` at line 47. `MCTS.js` introduces a private (non-exported) `evaluateBoard(s, who)`. Different module scopes, different signatures, no cross-import of these symbols. No naming conflict.
+
+### MCTS Deepening Changes
+
+| Change | Description | Status |
+|--------|-------------|--------|
+| Replace `heuristicWinner` with `evaluateBoard` | Weighted board evaluator: life delta (*1.5), board power/toughness with flying (*1.4) and trample (*1.1) evasion weights and toughness (*0.3), board delta (*2.0), hand size delta (*1.2), mana development (untapped lands + pool) delta (*0.5) | ✅ Done |
+| Replace `randomMainAction` with `policyMainAction` | Land-first priority; then highest-CMC affordable non-land spell sorted descending by CMC sum | ✅ Done |
+| Replace `randomAttack` with `policyAttack` | Evasion-aware: attacks with flyers vs. no opposing flyers; attacks when no legal blockers; attacks when attacker's power kills best blocker; skips suicidal/unfavorable attacks | ✅ Done |
+| Replace even-split `scoreMoves` with UCB1 bandit allocator | Seed phase: 3 rollouts per candidate; UCB1 phase: exploration constant C=sqrt(2), selects highest-UCB1 candidate for each remaining iteration within budget; `next` cloned states stripped from return value | ✅ Done |
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

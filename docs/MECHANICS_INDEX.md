@@ -896,8 +896,16 @@ ACTIVE
 ## 2.3 MCTS Module
 
 ### Description
-Monte Carlo rollout engine used by AI.js for move scoring. Simulates random play-outs
+Monte Carlo rollout engine used by AI.js for move scoring. Simulates policy-guided play-outs
 from candidate game states to estimate win probability.
+
+Phase 7 (initial): random play policy (`randomMainAction`, `randomAttack`), life+power heuristic
+fallback (`heuristicWinner`), even-split time budget across candidates.
+
+Phase 7 upgrade (MCTS rollout quality audit): `policyMainAction` (land-first, highest-CMC
+affordable spell), `policyAttack` (evasion-aware, avoids suicidal attacks), `evaluateBoard`
+weighted board evaluator (life delta, board power/toughness with evasion weights, hand size,
+mana development), UCB1 bandit budget allocator with 3-iteration seed phase per candidate.
 
 ### SYSTEMS.md Reference
 Section 28 (MCTS Monte Carlo AI Module)
