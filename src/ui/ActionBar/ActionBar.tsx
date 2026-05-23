@@ -7,7 +7,8 @@ interface ActionBarProps {
   phase: string;
   hasSelection: boolean;
   selectedCard?: { type?: string; subtype?: string; name?: string } | null;
-  isPlayerPriority?: boolean;
+  isPlayerTurn?: boolean;
+  isWaitingForAI?: boolean;
   onCast?: () => void;
   onPassPriority?: () => void;
   onCancel?: () => void;
@@ -21,7 +22,8 @@ export function ActionBar({
   phase,
   hasSelection,
   selectedCard,
-  isPlayerPriority = true,
+  isPlayerTurn = true,
+  isWaitingForAI = false,
   onCast,
   onPassPriority,
   onCancel,
@@ -31,6 +33,9 @@ export function ActionBar({
   onUndo,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
+
+  const passPriorityLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
+  const passPriorityDisabled = isWaitingForAI || !isPlayerTurn;
 
   return (
     <div style={{
@@ -49,7 +54,7 @@ export function ActionBar({
         background: 'linear-gradient(90deg, transparent, var(--brass), transparent)',
       }} />
 
-      {hasSelection && inMain && (
+      {hasSelection && inMain && isPlayerTurn && (
         <ActionButton variant="primary" onClick={onCast}>
           {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
@@ -67,13 +72,18 @@ export function ActionBar({
       )}
 
       <ActionButton
-        variant={isPlayerPriority ? 'default' : 'muted'}
-        onClick={onPassPriority}
+        variant="default"
+        onClick={passPriorityDisabled ? undefined : onPassPriority}
+        disabled={passPriorityDisabled}
       >
-        {isPlayerPriority ? 'Pass Priority' : 'Waiting...'}
+        {passPriorityLabel}
       </ActionButton>
 
-      <ActionButton variant="end" onClick={onEndTurn}>
+      <ActionButton
+        variant="end"
+        onClick={!isPlayerTurn ? undefined : onEndTurn}
+        disabled={!isPlayerTurn}
+      >
         End Turn {'→'}
       </ActionButton>
     </div>

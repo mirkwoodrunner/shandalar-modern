@@ -981,6 +981,16 @@ Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && 
 | `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
 | `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |
 
+## 18.9 ActionBar Turn Guard
+
+`ActionBar` receives two additional props: `isPlayerTurn` (bool) and `isWaitingForAI` (bool).
+
+- When `isPlayerTurn === false`: "Pass Priority" and "End Turn" are both `disabled`.
+- When `isWaitingForAI === true` (priorityWindow open AND `priorityPasser === 'p'`): "Pass Priority" label changes to "Waiting..." and is `disabled`.
+- Cast button is also gated behind `isPlayerTurn` to prevent UI inconsistency.
+
+`requestPhaseAdvance()` (in `src/hooks/usePhaseAdvance.ts`) contains a defensive early-return: `if (s.active !== 'p') return;` — ensures no phase skip even if a button handler fires unexpectedly (e.g., keyboard shortcut during AI turn).
+
 ---
 
 # 19. Holy Ground — Landwalk Suppression
