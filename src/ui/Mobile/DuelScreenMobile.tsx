@@ -96,6 +96,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     passPriority,
     resolveChoice,
     resolveUpkeepChoice,
+    undoManaTaps,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -305,6 +306,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     s_state.active === 'p' ||
     (Boolean(s_state.priorityWindow) && s_state.priorityPasser !== 'p');
 
+  const canUndoMana: boolean =
+    s_state.active === 'p' &&
+    (s_state.phase === 'MAIN_1' || s_state.phase === 'MAIN_2') &&
+    (s_state.stack?.length ?? 0) === 0 &&
+    (s_state.spellsThisTurn ?? 0) === 0 &&
+    s_state.manaTapSnapshot !== null;
+
   // ── Derived player data ────────────────────────────────────────────────────
   const pData = {
     life: s_state.p.life,
@@ -436,6 +444,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onPass={handlePass}
         onEnd={requestPhaseAdvance}
         isPlayerPriority={isPlayerPriority}
+        canUndo={canUndoMana}
+        onUndo={undoManaTaps}
       />
 
       {/* Hand strip */}
