@@ -16,12 +16,27 @@ interface ActionBarProps {
   onPass: () => void;
   onEnd: () => void;
   isPlayerPriority?: boolean;
+  canUndo?: boolean;
+  onUndo?: () => void;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerPriority = true }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerPriority = true, canUndo, onUndo }: ActionBarProps) {
   if (!sel) {
     return (
       <div className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
+        {canUndo && (
+          <button
+            className={s.actionBtn}
+            onClick={onUndo}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(120,90,40,.5)',
+              color: 'var(--ink-parchment)',
+            }}
+          >
+            {'↩'} Undo Taps
+          </button>
+        )}
         <button
           className={s.actionBtn}
           onClick={onPass}
