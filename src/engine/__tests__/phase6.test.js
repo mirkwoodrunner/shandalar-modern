@@ -9,25 +9,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { duelReducer, hasKw, canBlockDuel } from '../DuelCore.js';
 import { PHASE } from '../phases.js';
-
-// ─── Shared factories ─────────────────────────────────────────────────────────
-
-function makePlayerState(overrides = {}) {
-  return {
-    life: 20,
-    lib: [],
-    hand: [],
-    bf: [],
-    gy: [],
-    exile: [],
-    mana: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 },
-    extraTurns: 0,
-    mulls: 0,
-    lifeAnim: null,
-    poisonCounters: 0,
-    ...overrides,
-  };
-}
+import { makePlayerState, makeState, makeCreature, makeLand } from './_factory.js';
 
 /**
  * Returns a minimal valid GameState with sane defaults.

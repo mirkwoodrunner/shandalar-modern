@@ -268,3 +268,20 @@
 | Random map events (Nomad's Bazaar, Diamond Mine, Gemcutter's Guild) | Medium | Referenced by World Magic system (Sword of Resistance); standalone event tiles add loop variety |
 | Tome of Enlightenment: enforce 4-copy deck limit to make the spell meaningful | Low | No limit currently enforced; adds value to the spell |
 | Staff of Thunder: wire to OverworldCanvas enemy removal | Low | TODO stub left in WorldMagicPanel; requires OverworldCanvas enemy removal API |
+
+---
+
+## Test Scaffolding
+
+`src/engine/__tests__/_factory.js` is now the canonical source for shared test factories (`makePlayerState`, `makeState`, `makeCreature`, `makeLand`, `makeSpell`). All `__tests__` files and scenario files import from there; local duplicates are an anti-pattern.
+
+`tests/scenarios/` is the designated location for scenario-based regression tests -- one file per bug or feature validated.
+
+### Claude Code workflow for new scenario tests
+
+- Copy `tests/scenarios/_template.test.js` to `tests/scenarios/<your-scenario-name>.test.js`
+- Replace the describe/it blocks with the scenario being validated
+- Run: `npm test -- tests/scenarios/<your-scenario-name>.test.js`
+- Confirm the test fails before applying the fix
+- Apply the fix, re-run, confirm it passes
+- Leave the file in place as a permanent regression test

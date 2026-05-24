@@ -134,7 +134,9 @@ src/utils/scryfallArt.js     — Scryfall art fetch/cache pipeline
 src/utils/useCardArt.js      — React hook for card art
 src/OverworldGame.jsx        — overworld game loop
 src/DuelScreen.jsx           — active duel screen (jsx; .tsx cutover pending)
-tests/duel-regression.mjs    — Node.js regression harness (import DuelCore directly)
+tests/scenarios/                        — scenario-based regression tests (one file per bug/feature)
+tests/scenarios/_template.test.js       — copy this to start a new scenario
+src/engine/__tests__/_factory.js        — shared test factories; import from here, do not duplicate
 docs/SYSTEMS.md              — mechanical specifications (source of truth)
 docs/gdd.md                  — design intent and phase history
 docs/CURRENT_SPRINT.md       — active sprint state
@@ -157,6 +159,8 @@ docs/AI.md                   — AI role definitions
 - Touch engine files while working on a UI bug
 - Skip documentation updates
 - Introduce raw emoji characters into JSX files
+- Duplicate makeState/makeCreature/makeLand/makeSpell factory functions in test files
+  instead of importing from `src/engine/__tests__/_factory.js`
 
 ---
 
