@@ -4,7 +4,7 @@
 // All map logic lives in MapGenerator.js; duel logic in DuelCore.js.
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useIsMobile } from './hooks/useIsMobile.js';
+import { useIsMobile } from './hooks/useIsMobile';
 
 // -- Engine --------------------------------------------------------------------
 import {

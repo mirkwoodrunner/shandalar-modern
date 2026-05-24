@@ -29,7 +29,7 @@ import { useFlash } from './hooks/useFlash';
 import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { useIsMobile } from './hooks/useIsMobile.js';
+import { useIsMobile } from './hooks/useIsMobile';
 import { usePhaseAdvance } from './hooks/usePhaseAdvance';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
