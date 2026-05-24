@@ -1372,4 +1372,27 @@ Snapshot of player battlefield tap states and mana pool taken immediately before
 
 ---
 
+# 31. Test Infrastructure
+
+## 31.1 Shared Factory Module
+
+Shared test factories live in `src/engine/__tests__/_factory.js`.
+All `__tests__` files and scenario files import from this module.
+Do not duplicate `makePlayerState`, `makeState`, `makeCreature`, `makeLand`, or `makeSpell` in individual test files.
+
+Exported factories:
+- `makePlayerState(overrides = {})` -- default 20-life player with empty zones and zero mana
+- `makeState(overrides = {})` -- minimal valid GameState; defaults to `PHASE.MAIN_1`, active `'p'`, turn 1
+- `makeCreature(iid, overrides = {})` -- 2/2 Green Grizzly Bears, controller `'o'`
+- `makeLand(iid, overrides = {})` -- Forest, produces G, controller `'p'`
+- `makeSpell(iid, overrides = {})` -- Lightning Bolt, Instant, Red, cmc 1, controller `'p'`
+
+## 31.2 Scenario Tests
+
+Scenario-based regression tests live in `tests/scenarios/`.
+Each file covers exactly one bug or feature. Use `tests/scenarios/_template.test.js` as a starting point.
+Both the `__tests__` files and `tests/scenarios/` files import factories from the same shared module.
+
+---
+
 # End of SYSTEMS v1.1
