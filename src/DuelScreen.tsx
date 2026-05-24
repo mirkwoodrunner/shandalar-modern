@@ -525,6 +525,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Activated ability handler (defined before handleCardClick) ------------
   const handleActivate = useCallback((card: any) => {
+    // Never allow player to activate opponent-controlled cards.
+    const playerOwns = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
+    if (!playerOwns) return;
+
     // Cards with activatedAbilities array use the AbilityMenu popover.
     if (card.activatedAbilities) { setAbilityMenu({ card }); return; }
     if (!card.activated) return;
@@ -535,7 +539,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       setPendingActivate(card); selectCard(card.iid); return;
     }
     activateAbility(card.iid, null);
-  }, [activateAbility, selectCard]);
+  }, [activateAbility, selectCard, s.p.bf]);
 
   // -- Card click dispatcher -------------------------------------------------
   const handleCardClick = useCallback((card: any, zone: string) => {
@@ -565,8 +569,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         setPendingActivate(null); selectCard(null); selectTarget(null);
         return;
       }
-      if ((card as any).activatedAbilities) { handleActivate(card); return; }
-      if (card.activated) { handleActivate(card); return; }
+      // If a spell is selected in hand, this click is targeting - not activating.
+      const handSpellSelected = s.selCard
+        ? (s.p.hand as any[]).some((c: any) => c.iid === s.selCard)
+        : false;
+      if (!handSpellSelected) {
+        if ((card as any).activatedAbilities) { handleActivate(card); return; }
+        if (card.activated) { handleActivate(card); return; }
+      }
       selectTarget(card.iid);
       return;
     }
@@ -585,7 +595,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       return;
     }
   }, [
-    s.over, s.selCard, s.selTgt, s.phase, pendingActivate,
+    s.over, s.selCard, s.selTgt, s.phase, s.p.hand, pendingActivate,
     selectCard, selectTarget, tapLand, tapArtifactMana,
     declareAttacker, declareBlocker, activateAbility, handleActivate,
   ]);
