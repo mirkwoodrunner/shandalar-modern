@@ -51,25 +51,12 @@ class GameErrorBoundary extends React.Component {
   }
 }
 
-// -- Engine ------------------------------------------------------------------
-import { generateMap, findPath, revealAround, TERRAIN, COLORS, MANA_HEX, MANA_SYM, MAGE_NAMES, MAGE_ARCHS, CASTLE_MODIFIERS, DUNGEON_ARCHETYPES, MONSTER_TABLE } from './engine/MapGenerator.js';
-import { duelReducer, buildDuelState, makeId, shuffle, PHASE_SEQ, PHASE_LBL, COMBAT_PHASES, isCre, isLand, isInst, isArt, isEnch, isPerm, isSort, canPay, applyOvergrowthTap, getBF, getPow, getTou, hasKw, checkDeath } from './engine/DuelCore.js';
-import { aiDecide } from './engine/AI.js';
-
-// -- Data --------------------------------------------------------------------
-import { CARD_DB, ARCHETYPES, getCardById, POWERED_NINE_IDS } from './data/cards.js';
-import RULESETS from './data/rulesets.js';
-
 // -- UI ----------------------------------------------------------------------
 import { TitleScreen } from './ui/layout/GameWrapper.jsx';
 import { ScoreScreen } from './ui/overworld/EncounterModal.jsx';
-import DuelScreen from './DuelScreen.tsx'; // assembled below ? see note
-import OverworldGame from './OverworldGame.jsx'; // assembled below ? see note
+import OverworldGame from './OverworldGame.jsx';
 
-// --- NOTE ---------------------------------------------------------------------
-// DuelScreen and OverworldGame are large compound components that wire the engine
-// to the UI. They live in separate files for maintainability.
-// If those files haven't been created yet, App.jsx still boots to TitleScreen.
+// OverworldGame owns the full game loop including duel transitions.
 
 export default function App() {
 const [screen, setScreen]     = useState("title");   // title | game | score

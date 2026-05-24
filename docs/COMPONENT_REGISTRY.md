@@ -6,6 +6,7 @@
 - **File**: `src/hooks/useIsMobile.ts`
 - **Purpose**: Returns `true` when `window.innerWidth ≤ breakpoint` (default 640 px). Updates reactively via `matchMedia`. Used by presentation components only — never imported into engine files.
 - **Consumers**: `LifeTotal.tsx`, `Banner.tsx`
+- **Note**: `src/hooks/useIsMobile.js` (768 px, ResizeObserver-based) was deleted as a stale duplicate; `.ts` (640 px, `matchMedia`-based) is canonical per `CLAUDE.md`.
 
 ## Components
 

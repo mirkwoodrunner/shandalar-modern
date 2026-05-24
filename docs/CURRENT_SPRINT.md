@@ -271,6 +271,16 @@
 
 ---
 
+## Dead Artifact Cleanup
+
+| Item | Action |
+|---|---|
+| `src/hooks/useIsMobile.js` | Deleted — stale 768px duplicate; `.ts` (640px) is canonical per CLAUDE.md |
+| Dead engine imports in `src/App.jsx` | Removed — MapGenerator, DuelCore, AI, cards, rulesets, DuelScreen imports unused since OverworldGame took over game loop |
+| `duel-screen-mobile/` directory | Deleted — pre-production mockups superseded by `src/ui/Mobile/DuelScreenMobile.tsx` |
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
