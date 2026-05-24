@@ -87,8 +87,10 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     castSpell,
     resolveStack,
     declareAttacker,
+    declareBlocker,
     advancePhase,
     activateAbility,
+    selectTarget,
     chooseLotusColor,
     mulligan,
     applyAiActions,
@@ -213,9 +215,26 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const handleLotusCancel = useCallback(() => { setShowLotus(false); }, []);
 
   // ── Card tap handler ───────────────────────────────────────────────────────
-  const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
+  // isOpp=true is passed for all opponent-controlled cards.
+  const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf', isOpp = false) => {
+    if (isOpp) {
+      // Hand spell selected -> target this card; keep sel pointing at the hand card.
+      if (sel?.zone === 'hand') {
+        selectTarget(card.iid);
+        return;
+      }
+      // Player creature selected during COMBAT_BLOCKERS -> declare blocker.
+      if (sel?.zone === 'bf' && s_state.phase === PHASE.COMBAT_BLOCKERS) {
+        const playerOwns = (s_state.p.bf as any[]).some((c: any) => c.iid === sel.iid);
+        if (playerOwns) {
+          declareBlocker(sel.iid, card.iid);
+          setSel(null);
+          return;
+        }
+      }
+    }
     setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone, card });
-  }, []);
+  }, [sel, s_state.phase, s_state.p.bf, selectTarget, declareBlocker]);
 
   // ── Action bar handlers ────────────────────────────────────────────────────
   const handleCast = useCallback(() => {
@@ -229,53 +248,58 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       castSpell(card.iid, tgt, s_state.xVal ?? 1);
     }
     setSel(null);
-  }, [sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
+    selectTarget(null);
+  }, [sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell, selectTarget]);
 
   const handleActivate = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
+    // Never activate opponent-controlled cards.
+    const playerOwns = (s_state.p.bf as any[]).some((c: any) => c.iid === sel.iid);
+    if (!playerOwns) return;
     activateAbility(sel.iid, null);
     setSel(null);
-  }, [sel, activateAbility]);
+  }, [sel, s_state.p.bf, activateAbility]);
 
-  // ── Battlefield card click dispatcher ─────────────────────────────────────
+  // ── Battlefield card click dispatcher (player cards only) ─────────────────
   const handleBfCardClick = useCallback((card: CardData) => {
     const c = card as any;
 
-    // Declare attackers: clicking a creature during the attackers step toggles it.
-    // The engine validates eligibility (not tapped, no summoning sickness without haste).
     if (s_state.phase === PHASE.COMBAT_ATTACKERS && c.type?.includes('Creature')) {
       declareAttacker(card.iid);
       return;
     }
 
-    // Mana-producing permanents: act immediately, no Activate button.
+    // COMBAT_BLOCKERS: select this player creature as a blocker candidate.
+    // After selecting, tap an attacking opponent creature to complete the declaration.
+    if (s_state.phase === PHASE.COMBAT_BLOCKERS && c.type?.includes('Creature')) {
+      setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
+      return;
+    }
+
     if (!c.tapped) {
-      // Black Lotus and any addMana3Any: sacrifice + choose color
       if (c.activated?.effect === 'addMana3Any') {
         activateAbility(card.iid, null);
         setShowLotus(true);
         return;
       }
-      // Simple mana producers (Moxen, Sol Ring, Llanowar Elves, etc.): tap directly
       if (c.activated?.effect === 'addMana') {
         tapArtifactMana(card.iid);
         return;
       }
     }
 
-    // Non-mana activated ability (ping, destroyTapped, pumpSelf, etc.) or
-    // multi-ability cards: select to reveal Activate button.
     const hasNonManaActivation =
       (c.activated && !c.activated.effect?.startsWith('addMana')) ||
       Boolean(c.activatedAbilities);
     if (hasNonManaActivation) {
       setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
     }
-    // Plain creatures / permanents with no activated ability: no action.
-    // (addManaAny / Birds of Paradise is a Known Gap — BopColorPicker not yet wired.)
   }, [s_state.phase, activateAbility, tapArtifactMana, declareAttacker]);
 
-  const handleCancel = useCallback(() => setSel(null), []);
+  const handleCancel = useCallback(() => {
+    setSel(null);
+    selectTarget(null);
+  }, [selectTarget]);
 
   const handlePass = useCallback(() => {
     if (s_state.stack?.length > 0) {
@@ -374,7 +398,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           {oLands.map((c: CardData) => (
             <LandPip key={c.iid} card={c} tapped={(c as any).tapped}
               selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+              onClick={() => onCardTap(c, 'bf', true)} />
           ))}
         </PipRow>
 
@@ -383,8 +407,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           bgFade="linear-gradient(180deg, rgba(40,16,8,.25), rgba(20,8,6,.3))">
           {oPerms.map((c: CardData) => (
             <FieldCard key={c.iid} card={c} density="perm"
-              selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+              selected={selIid === c.iid || s_state.selTgt === c.iid}
+              onClick={() => onCardTap(c, 'bf', true)} />
           ))}
         </Row>
 
@@ -393,8 +417,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           bgFade="linear-gradient(180deg, rgba(40,16,8,.35), rgba(20,8,6,.4))">
           {oCreatures.map((c: CardData) => (
             <FieldCard key={c.iid} card={c} density="perm"
-              selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+              selected={selIid === c.iid || s_state.selTgt === c.iid}
+              onClick={() => onCardTap(c, 'bf', true)} />
           ))}
         </Row>
 
@@ -437,6 +461,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       <ActionBar
         sel={sel}
+        phase={s_state.phase}
         onCast={handleCast}
         onActivate={handleActivate}
         onCancel={handleCancel}

@@ -10,6 +10,7 @@ export interface Selection {
 
 interface ActionBarProps {
   sel: Selection | null;
+  phase?: string;
   onCast: () => void;
   onActivate: () => void;
   onCancel: () => void;
@@ -22,7 +23,7 @@ interface ActionBarProps {
   onUndo?: () => void;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo }: ActionBarProps) {
+export function ActionBar({ sel, phase, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo }: ActionBarProps) {
   const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
   const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
 
@@ -126,7 +127,39 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
     );
   }
 
-  // Battlefield selection
+  // Battlefield selection — blocking mode: player creature selected, waiting for attacker tap
+  if (sel.zone === 'bf' && phase === 'COMBAT_BLOCKERS') {
+    return (
+      <div className={s.actionBar} style={{ borderTop: '1px solid rgba(120,160,80,.5)', gap: 8 }}>
+        <span style={{
+          flex: 1,
+          fontSize: 11,
+          color: 'var(--you)',
+          fontFamily: "'Cinzel', serif",
+          letterSpacing: 0.5,
+          textAlign: 'center',
+          alignSelf: 'center',
+        }}>
+          Now tap an attacker to block
+        </span>
+        <button
+          className={s.actionBtn}
+          onClick={onCancel}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(120,90,40,.5)',
+            color: 'var(--ink-parchment)',
+            flex: 0,
+            minWidth: 64,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  // Battlefield selection — activate mode
   return (
     <div className={s.actionBar} style={{ borderTop: '1px solid rgba(196,160,64,.4)' }}>
       <button
