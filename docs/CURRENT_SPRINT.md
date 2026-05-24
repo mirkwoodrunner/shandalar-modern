@@ -257,6 +257,20 @@
 
 ---
 
+## Bug Fixes — Mobile Targeting Arrow & Opponent Ability Activation
+
+### B28: Clicking opponent creature with spell selected showed "Activate" UI instead of targeting
+- **Root cause:** In `pBf` zone of `handleCardClick`, activate checks (`activatedAbilities` / `card.activated`) fired before the hand-spell-selected check, intercepting clicks intended as targeting. Additionally, `handleActivate` had no ownership guard, so an opponent card could in theory reach the activate path if a code path routed it there.
+- **Fix:** Added `handSpellSelected` guard in `pBf` zone; activate path is bypassed when player has a spell selected in hand. Added ownership guard at top of `handleActivate` to block activation of any card not in `s.p.bf`. Added `s.p.bf` to `handleActivate` dep array and `s.p.hand` to `handleCardClick` dep array.
+- **Files changed:** `src/DuelScreen.tsx`
+
+### B29: TargetArrow not visible on mobile
+- **Root cause:** Arrow was never drawn because `selectTarget` was not being called — Bug B28 was intercepting the tap as an activate instead. Fixing B28 restores the targeting flow.
+- **Additional checks performed:** `TargetArrow` confirmed at outermost div level (no transformed ancestor); no `isMyTurn` guard wrapping it; `data-iid` confirmed present on `HandCard.tsx` (line 36) and `FieldCard.tsx` (line 39).
+- **Files changed:** `src/DuelScreen.tsx` (B28 fix restores targeting; no additional files required)
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
