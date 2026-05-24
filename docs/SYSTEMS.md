@@ -1314,15 +1314,19 @@ Provides rollout-based move scoring as a complement to the heuristic AI in AI.js
 Used for candidate move evaluation when the AI has multiple plausible actions.
 
 ## 28.3 API
-- `rollout(state, depthLimit=20)` — simulates a random game from the given state up to depthLimit turns; returns 'p' or 'o' (winner).
-- `scoreMoves(state, candidateMoves, budgetMs=800)` — runs rollouts for each candidate move within the time budget; returns moves sorted by win rate.
+- `rollout(state, depthLimit=20)` — simulates a game from the given state up to depthLimit turns; returns 'p' or 'o' (winner).
+- `scoreMoves(state, candidateMoves, budgetMs=800)` — runs UCB1-allocated rollouts for each candidate move within the time budget; returns moves sorted by win rate.
 - `getBestMove(state, candidateMoves, budgetMs=800)` — returns the single highest-scoring candidate.
 
 ## 28.4 Constraints
 - Read-only: no mutation of the passed state. All rollouts operate on deep-copied state.
-- Random play policy: uses `randomMainAction`, `randomAttack`, `randomBlock` — not the full AI heuristic.
-- Heuristic fallback: if game is not `over` after depthLimit turns, `heuristicWinner` estimates the winner by comparing life + board power.
-- Budget enforcement: per-candidate time budget = totalBudgetMs / candidateCount.
+- Policy play: uses `policyMainAction` (highest-CMC affordable spell, land-first) and `policyAttack` (evasion-aware, avoids suicidal attacks). Blocking retains the existing `randomBlock` heuristic (favorable-trade or life-threat block).
+- Board evaluator: `evaluateBoard(s, who)` replaces the old `heuristicWinner`. Scores life delta (*1.5), board power/toughness with evasion weights (flying *1.4, trample *1.1, toughness *0.3) times 2.0, hand size delta (*1.2), and mana development delta (untapped lands + pool) times 0.5. Used at rollout terminal/fallback.
+- Budget enforcement: UCB1 bandit allocator — each candidate is seeded with 3 rollouts before UCB1 selects the most promising candidate for each remaining iteration within the time budget. Exploration constant C = sqrt(2).
+
+## 28.5 Known Limitations
+- Mana tap gap: CAST_SPELL reads from the mana pool (s[w].mana), which burnMana() clears at every phase boundary. policyMainAction never dispatches TAP_LAND, so canPay() always returns false for nonzero-cost cards in rollouts. Rollout main phases effectively never cast spells. A future pass should pre-tap lands matching card cost before each CAST_SPELL in the rollout policy.
+- planMain MCTS call (AI.js:603) passes { type: 'PLAN' } actions not recognized by duelReducer; both candidates evaluate from identical states. That call site's MCTS output is statistically meaningless (deferred fix, not in MCTS.js scope).
 
 ---
 
