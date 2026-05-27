@@ -281,6 +281,23 @@
 
 ---
 
+## Duel Bug Batch 1 ✅ Complete
+
+| Bug | Root Cause | Files Changed | Status |
+|-----|-----------|---------------|--------|
+| Undo checkpoint not reset after spell resolves | `TAP_LAND`/`TAP_ART_MANA` snapshot guard used `spellsThisTurn === 0`; after first cast this was always >0. `canUndoMana` also required `spellsThisTurn === 0` | `src/engine/DuelCore.js`, `src/DuelScreen.tsx` | ✅ Fixed |
+| Instants cannot be cast outside Main phases | No UI mechanism to open a priority window mid-phase; `OPEN_PRIORITY_WINDOW` existed but had no trigger | `src/DuelScreen.tsx` | ✅ Fixed |
+| Goblin King lord effect not continuous; wrong targets | `globalPump` mutated base stats once; Goblin King `targets:"black"` was wrong; no lord layer in `getPow`/`getTou`/`hasKw` | `src/engine/DuelCore.js`, `src/data/cards.js` | ✅ Fixed |
+| Mahamoti Djinn block validation incorrect for dual lands | Specific landwalk keywords (MOUNTAINWALK, etc.) not checked by `canBlockDuel`; Volcanic Island lacked `subtype` | `src/engine/DuelCore.js`, `src/data/cards.js` | ✅ Fixed |
+
+### Documentation updated
+- `docs/SYSTEMS.md` — §30.3 snapshot lifecycle corrected; §32 Lord Effect System added
+- `docs/gdd.md` — `globalPump`/`lordEffect` row added to §3.2.5 effect table
+- `CLAUDE.md` — Lord Effect Pattern section + architectural decision notes added
+- `docs/CURRENT_SPRINT.md` — this table
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

@@ -25,7 +25,7 @@ export const CARD_DB = [
 {id:"taiga",           name:"Taiga",           type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {R} or {G}.)",produces:["R","G"],rarity:"R"},
 {id:"savannah",        name:"Savannah",        type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {G} or {W}.)",produces:["G","W"],rarity:"R"},
 {id:"scrubland",       name:"Scrubland",       type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {W} or {B}.)",produces:["W","B"],rarity:"R"},
-{id:"volcanic_island", name:"Volcanic Island", type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {U} or {R}.)",produces:["U","R"],rarity:"R"},
+{id:"volcanic_island", name:"Volcanic Island", type:"Land",subtype:"Island Mountain",color:"",cmc:0,cost:"",text:"({T}: Add {U} or {R}.)",produces:["U","R"],rarity:"R"},
 {id:"bayou",           name:"Bayou",           type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {B} or {G}.)",produces:["B","G"],rarity:"R"},
 {id:"plateau",         name:"Plateau",         type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {R} or {W}.)",produces:["R","W"],rarity:"R"},
 {id:"tropical_island", name:"Tropical Island", type:"Land",color:"",cmc:0,cost:"",text:"({T}: Add {G} or {U}.)",produces:["G","U"],rarity:"R"},
@@ -98,7 +98,7 @@ export const CARD_DB = [
 {id:"stromgald_cabal",  name:"Stromgald Cabal",  type:"Creature",subtype:"Human Knight",    color:"B",cmc:3,cost:"1BB", power:2,toughness:2,keywords:[],rarity:"R",text:"{T}, Pay 1 life: Counter target white spell.",activated:{cost:"BB",effect:"counterWhite"}},
 
 // -- RED CREATURES -------------------------------------------
-{id:"goblin_king",      name:"Goblin King",              type:"Creature",subtype:"Goblin",    color:"R",cmc:3,cost:"1RR", power:2,toughness:2,keywords:[],rarity:"R",text:"Other Goblins get +1/+1 and have mountainwalk."},
+{id:"goblin_king",      name:"Goblin King",              type:"Creature",subtype:"Goblin Legend",color:"R",cmc:3,cost:"1RR", power:2,toughness:2,keywords:[],rarity:"R",text:"Other Goblins get +1/+1 and have mountainwalk.",effect:"lordEffect",targets:"goblin",mod:{power:1,toughness:1},lordKeywords:["MOUNTAINWALK"]},
 {id:"shivan_dragon",    name:"Shivan Dragon",            type:"Creature",subtype:"Dragon",    color:"R",cmc:6,cost:"4RR", power:5,toughness:5,keywords:[KEYWORDS.FLYING.id],rarity:"U",text:"Flying\n{R}: This creature gets +1/+0 until end of turn.",activated:{cost:"R",effect:"pumpPower"}},
 {id:"earth_elemental",  name:"Earth Elemental",          type:"Creature",subtype:"Elemental", color:"R",cmc:5,cost:"3RR", power:4,toughness:5,keywords:[],rarity:"C",text:""},
 {id:"goblin_balloon_brigade",   name:"Goblin Balloon Brigade",   type:"Creature",subtype:"Goblin",    color:"R",cmc:1,cost:"R",   power:1,toughness:1,keywords:[],rarity:"C",text:"{R}: This creature gains flying until end of turn.",activated:{cost:"R",effect:"gainFlying"}},

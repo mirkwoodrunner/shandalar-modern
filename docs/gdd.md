@@ -309,6 +309,8 @@ All effects are dispatched from `resolveEffect(state, stackItem)`. Fully impleme
 | `addManaAny` | Birds of Paradise (activated T) | Taps bird, sets `pendingBop:true`. `BopColorPicker` modal dispatches `CHOOSE_BOP_COLOR`. Adds 1 mana of chosen color. | ✅ Complete (Phase 5) |
 | `addMana3Any` | Black Lotus | `LotusColorPicker` modal. `CHOOSE_LOTUS_COLOR` adds 3 mana of chosen color. | ✅ Complete (Phase 4) |
 
+| `globalPump` / `lordEffect` | Crusade, Bad Moon, Goblin King | Continuous layer read by `getPow`/`getTou`/`hasKw` at compute time. No state mutation. Lords match by color (Crusade/Bad Moon) or subtype (Goblin King). Keyword grants via `lordKeywords[]`. | ✅ Complete (Batch 1) |
+
 **No remaining stub effects in the core card DB.**
 
 **ID/name mismatches in card DB** *(code bugs to fix in Phase 4)*:

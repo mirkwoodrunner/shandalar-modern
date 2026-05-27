@@ -173,6 +173,20 @@ docs/AI.md                   — AI role definitions
 - **Priority window phases:** `PRIORITY_WINDOW_PHASES` whitelist = `Set(['MAIN_1', 'MAIN_2', 'END'])`
 - **Enemy grace period:** `GRACE_MOVE_THRESHOLD = 3` in `EnemyAI.js`
 - **Mulligan latch:** `mulliganDismissed` ref prevents modal reappearing on orientation change
+- **Lord effect pattern:** Cards with `effect:"lordEffect"` or `effect:"globalPump"` are continuous static abilities, NOT resolved via `resolveEff`. Bonuses are computed by `getPow`, `getTou`, and `hasKw` at read time by scanning the battlefield.
+- **Mana tap undo snapshot:** Created on first `TAP_LAND`/`TAP_ART_MANA` when `stack.length === 0` (not `spellsThisTurn === 0`). Resets after stack drains to zero, enabling undo for post-resolution taps.
+
+---
+
+## Lord Effect Pattern
+
+Cards with `effect:"lordEffect"` or `effect:"globalPump"` are NOT resolved via `resolveEff`.
+They are continuous static abilities read by `getPow`, `getTou`, and `hasKw` at compute time.
+Do not add mutations for these effects in `resolveEff`. The lord layer in these three
+functions scans the full battlefield each call -- keep this read-only.
+
+Color targets (`"white"`, `"black"`, etc.) match against `card.color` (single-letter uppercase).
+Subtype targets (`"goblin"`, etc.) match via word-split of `card.subtype.toLowerCase()`.
 
 ---
 
