@@ -35,10 +35,26 @@ export const isArt    = c => !!c?.type?.includes("Artifact");
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
 export function hasKw(c, kw, state = null) {
-  const found =
+  let found =
     (c.keywords     || []).includes(kw) ||
     (c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw)) ||
     (c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw));
+  // Lord keyword layer: scan battlefield for lordEffect/globalPump permanents
+  if (!found && state && c.subtype) {
+    const COLOR_MAP = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
+    const COLOR_TARGETS = new Set(Object.keys(COLOR_MAP));
+    const allBf = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
+    for (const lord of allBf) {
+      if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
+      if (lord.iid === c.iid) continue;
+      const t = lord.targets?.toLowerCase();
+      if (!t) continue;
+      const matches = COLOR_TARGETS.has(t)
+        ? c.color === COLOR_MAP[t]
+        : c.subtype?.toLowerCase().split(' ').some(s => s === t);
+      if (matches && lord.lordKeywords?.includes(kw)) { found = true; break; }
+    }
+  }
   if (!found) return false;
   // Holy Ground (Option B): suppress landwalk keywords when defending player controls Holy Ground.
   if (state && kw.endsWith("WALK")) {
@@ -132,8 +148,23 @@ else if (c.dynamicType === "forestBonus")  p = 1 + (state[c.controller]?.bf.some
 }
 const eotPow  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.power || 0), 0);
 const enchPow = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.power || 0), 0);
-const crusadePow = (state && c.color === "W" && [...state.p.bf, ...state.o.bf].some(x => x.id === "crusade")) ? 1 : 0;
-return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow + crusadePow);
+let lordPow = 0;
+if (state) {
+  const COLOR_MAP_P = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
+  const COLOR_TARGETS_P = new Set(Object.keys(COLOR_MAP_P));
+  const allBf_p = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
+  for (const lord of allBf_p) {
+    if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
+    if (lord.iid === c.iid) continue;
+    const t = lord.targets?.toLowerCase();
+    if (!t) continue;
+    const matches = COLOR_TARGETS_P.has(t)
+      ? c.color === COLOR_MAP_P[t]
+      : c.subtype?.toLowerCase().split(' ').some(s => s === t);
+    if (matches) lordPow += lord.mod?.power ?? 0;
+  }
+}
+return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow + lordPow);
 }
 
 export function getTou(c, state) {
@@ -150,8 +181,23 @@ else if (c.dynamicType === "forestBonus")  t = 1 + (state[c.controller]?.bf.some
 }
 const eotTou  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.toughness || 0), 0);
 const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughness || 0), 0);
-const crusadeTou = (state && c.color === "W" && [...state.p.bf, ...state.o.bf].some(x => x.id === "crusade")) ? 1 : 0;
-return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou + crusadeTou);
+let lordTou = 0;
+if (state) {
+  const COLOR_MAP_T = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
+  const COLOR_TARGETS_T = new Set(Object.keys(COLOR_MAP_T));
+  const allBf_t = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
+  for (const lord of allBf_t) {
+    if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
+    if (lord.iid === c.iid) continue;
+    const t2 = lord.targets?.toLowerCase();
+    if (!t2) continue;
+    const matches = COLOR_TARGETS_T.has(t2)
+      ? c.color === COLOR_MAP_T[t2]
+      : c.subtype?.toLowerCase().split(' ').some(s => s === t2);
+    if (matches) lordTou += lord.mod?.toughness ?? 0;
+  }
+}
+return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou + lordTou);
 }
 
 export function canBlockDuel(bl, at, defBf, state = null) {
@@ -168,10 +214,23 @@ if (bl.protection) {
 }
 if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
-// defBf is the defending player's battlefield (optional ? skipped if not provided).
+// defBf is the defending player's battlefield (optional -- skipped if not provided).
 if (hasKw(at, KEYWORDS.LANDWALK.id, state) && at.landwalkType && defBf) {
-  const landSubtype = at.landwalkType.charAt(0).toUpperCase() + at.landwalkType.slice(1).toLowerCase();
-  if (defBf.some(c => isLand(c) && c.subtype?.includes(landSubtype))) return false;
+  const landSub = at.landwalkType.toLowerCase();
+  if (defBf.some(c => isLand(c) && c.subtype?.toLowerCase().includes(landSub))) return false;
+}
+// Specific landwalk keywords (including those granted via lord effects through hasKw lord layer)
+if (defBf) {
+  const SPECIFIC_WALKS = [
+    [KEYWORDS.MOUNTAINWALK.id, 'mountain'],
+    [KEYWORDS.FORESTWALK.id,   'forest'],
+    [KEYWORDS.ISLANDWALK.id,   'island'],
+    [KEYWORDS.SWAMPWALK.id,    'swamp'],
+    [KEYWORDS.PLAINSWALK.id,   'plains'],
+  ];
+  for (const [kw, sub] of SPECIFIC_WALKS) {
+    if (hasKw(at, kw, state) && defBf.some(c => isLand(c) && c.subtype?.toLowerCase().includes(sub))) return false;
+  }
 }
 return true;
 }
@@ -1028,6 +1087,13 @@ case "disintegrate": {
   ns = dlog(ns, `${card.name} deals ${xVal} damage${tgtC ? ` to ${tgtC.name}` : ""}.`, "damage");
   break;
 }
+case "globalPump":
+case "lordEffect": {
+  // Continuous effect -- applied via getPow/getTou/hasKw lord layer at read time.
+  // No state mutation here.
+  ns = dlog(ns, `${card.name} is a continuous lord (${card.targets}).`, "effect");
+  break;
+}
 case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, "effect"); break;
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
@@ -1680,7 +1746,7 @@ switch (action.type) {
 
 case "TAP_LAND": {
   let ns = s;
-  if (action.who === 'p' && ns.manaTapSnapshot === null && ns.spellsThisTurn === 0) {
+  if (action.who === 'p' && ns.manaTapSnapshot === null && (ns.stack?.length ?? 0) === 0) {
     ns = {
       ...ns,
       manaTapSnapshot: {
@@ -1697,7 +1763,7 @@ case "TAP_ART_MANA": {
   const c = s[w].bf.find(x => x.iid === action.iid);
   if (!c || c.tapped || !c.activated?.effect?.startsWith("addMana")) return s;
   let ns = s;
-  if (action.who === 'p' && ns.manaTapSnapshot === null && ns.spellsThisTurn === 0) {
+  if (action.who === 'p' && ns.manaTapSnapshot === null && (ns.stack?.length ?? 0) === 0) {
     ns = {
       ...ns,
       manaTapSnapshot: {

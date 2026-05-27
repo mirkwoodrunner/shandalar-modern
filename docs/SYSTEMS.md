@@ -1366,9 +1366,37 @@ Snapshot of player battlefield tap states and mana pool taken immediately before
 
 ## 30.3 Snapshot Lifecycle
 
-- Taken on the first `TAP_LAND` or `TAP_ART_MANA` action by the player when `spellsThisTurn === 0`
+- Taken on the first `TAP_LAND` or `TAP_ART_MANA` action by the player when `stack.length === 0` (stack must be empty; replaces the old `spellsThisTurn === 0` guard)
 - Cleared by: `CAST_SPELL`, `ADVANCE_PHASE`, `CLEANUP` phase entry, or `UNDO_MANA_TAPS`
+- A new snapshot is taken after any spell resolves and drains the stack to zero, enabling undo for subsequent taps
 - AI taps (`action.who === 'o'`) never create or affect the snapshot
+
+---
+
+# 32. Lord Effect System (Continuous Static Abilities)
+
+## Description
+Lord effects (Goblin King, Crusade, Bad Moon) are continuous static abilities evaluated
+at read time via `getPow`/`getTou`/`hasKw`, not one-time state mutations.
+
+## State Shape
+No new state fields. Lords are identified by `effect: "lordEffect"` or legacy
+`effect: "globalPump"` on battlefield permanents.
+
+## Matching Rules
+- Color targets (`"white"`, `"black"`, etc.): match `card.color` via COLOR_MAP (`white` -> `W`, etc.)
+- Subtype targets (`"goblin"`, etc.): match `card.subtype` via lowercase word split
+- Lords do not affect themselves (iid guard)
+- Multiple lords of the same type stack additively
+
+## Keyword Grants
+Lords may grant keywords via `lordKeywords: string[]` on the card data.
+`hasKw()` reads this layer last, after `enchantments[]` and `eotBuffs[]`.
+
+## Landwalk Evaluation
+All landwalk checks in `canBlockDuel` use specific keyword IDs (MOUNTAINWALK, FORESTWALK, etc.)
+with `land.subtype?.toLowerCase().includes(type)` matching to correctly handle dual lands.
+Dual lands must have `subtype` set (e.g. `"Island Mountain"` for Volcanic Island).
 
 ---
 

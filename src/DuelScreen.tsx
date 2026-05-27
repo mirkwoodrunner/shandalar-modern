@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // -- Engine / hooks -------------------------------------------------------------
 import { useDuel } from './hooks/useDuel.js';
 import { aiDecide } from './engine/AI.js';
-import { isLand, isArt, canPay } from './engine/DuelCore.js';
+import { isLand, isArt, canPay, isInst } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 
 // -- New design system components ----------------------------------------------
@@ -684,7 +684,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     s.active === 'p' &&
     (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') &&
     (s.stack?.length ?? 0) === 0 &&
-    (s.spellsThisTurn ?? 0) === 0 &&
     s.manaTapSnapshot !== null;
 
   // -- Derived data for new components --------------------------------------
@@ -873,6 +872,31 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 }}
               >
                 ⬡ Channel (1 life → {'{C}'})
+              </button>
+            </div>
+          )}
+
+          {/* Cast Instant button -- visible during priority-eligible phases when no window is open */}
+          {!s.priorityWindow &&
+            s.active === 'p' &&
+            !['UNTAP', 'DRAW', 'CLEANUP'].includes(s.phase) &&
+            (s.p.hand as any[]).some((c: any) => isInst(c)) && (
+            <div style={{ padding: '2px 8px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={openPriorityWindow}
+                style={{
+                  background: 'linear-gradient(135deg,rgba(40,40,80,0.8),rgba(0,0,0,0.5))',
+                  border: '1px solid rgba(80,100,180,0.6)',
+                  color: '#8090e0',
+                  padding: '4px 10px',
+                  borderRadius: 5,
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: "'Cinzel',serif",
+                  fontWeight: 700,
+                }}
+              >
+                Cast Instant
               </button>
             </div>
           )}
