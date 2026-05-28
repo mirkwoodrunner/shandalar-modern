@@ -1360,9 +1360,9 @@ Snapshot of player battlefield tap states and mana pool taken immediately before
 ## 30.2 UNDO_MANA_TAPS Action
 
 - **Who:** Player only (p)
-- **Preconditions:** `manaTapSnapshot !== null`, `spellsThisTurn === 0`, stack is empty, phase is `MAIN_1` or `MAIN_2`
+- **Preconditions:** `manaTapSnapshot !== null`, stack is empty, phase is `MAIN_1` or `MAIN_2`
 - **Effect:** Restores `p.bf` tapped states and `p.mana` from `manaTapSnapshot`; clears `manaTapSnapshot`
-- **Purpose:** Allows the player to un-tap mana sources tapped this turn before any spell is cast
+- **Purpose:** Allows the player to un-tap mana sources tapped this turn (before or after casting a spell, as long as the stack has drained)
 
 ## 30.3 Snapshot Lifecycle
 
