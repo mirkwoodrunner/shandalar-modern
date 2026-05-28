@@ -298,6 +298,18 @@
 
 ---
 
+## B30: Mobile Undo Button Never Visible
+
+| Root Cause | Files Changed | Status |
+|-----------|---------------|--------|
+| `canUndoMana` in `DuelScreenMobile.tsx` included a stale `spellsThisTurn === 0` guard not present in the desktop `DuelScreen.tsx`. The earlier Duel Bug Batch 1 fix (B1 row) corrected `DuelCore.js` and `DuelScreen.tsx` but missed the mobile screen. Removed the guard to match desktop logic. | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+
+### Documentation updated
+- `docs/SYSTEMS.md` — §30.2 preconditions updated to remove stale `spellsThisTurn === 0` requirement
+- `docs/CURRENT_SPRINT.md` — this table
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |

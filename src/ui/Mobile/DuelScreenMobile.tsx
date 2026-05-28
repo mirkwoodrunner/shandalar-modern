@@ -309,7 +309,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     s_state.active === 'p' &&
     (s_state.phase === 'MAIN_1' || s_state.phase === 'MAIN_2') &&
     (s_state.stack?.length ?? 0) === 0 &&
-    (s_state.spellsThisTurn ?? 0) === 0 &&
     s_state.manaTapSnapshot !== null;
 
   // ── Derived player data ────────────────────────────────────────────────────
