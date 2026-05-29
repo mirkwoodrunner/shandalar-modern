@@ -421,8 +421,12 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
   if (!affordable) return null;
 
   let nextVirtual = virtualState;
+
+  // Track mana produced by tapping sources into a running pool.
+  const vManaAfterTap = { ...virtualState.o.mana };
+
   for (const ta of tapActions) {
-    if (ta.type === 'TAP_LAND' || ta.type === 'TAP_ART_MANA') {
+    if (ta.type === 'TAP_LAND') {
       nextVirtual = {
         ...nextVirtual,
         o: {
@@ -430,8 +434,47 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
           bf: nextVirtual.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
         },
       };
+      // Credit the mana this land produced.
+      const color = ta.mana || 'C';
+      vManaAfterTap[color] = (vManaAfterTap[color] || 0) + 1;
+    } else if (ta.type === 'TAP_ART_MANA') {
+      const src = nextVirtual.o.bf.find(c => c.iid === ta.iid);
+      nextVirtual = {
+        ...nextVirtual,
+        o: {
+          ...nextVirtual.o,
+          bf: nextVirtual.o.bf.map(c => c.iid === ta.iid ? { ...c, tapped: true } : c),
+        },
+      };
+      // Credit each mana character this artifact produces.
+      if (src?.activated?.mana) {
+        for (const ch of src.activated.mana) {
+          if ('WUBRGC'.includes(ch)) vManaAfterTap[ch] = (vManaAfterTap[ch] || 0) + 1;
+        }
+      }
     }
   }
+
+  // Deduct the spell's cost from the virtual pool so subsequent spells in
+  // this planning loop see the correct remaining mana.
+  const req = parseMana(effectiveCost);
+  const poolAfterCast = { ...vManaAfterTap };
+  for (const color of ['W', 'U', 'B', 'R', 'G', 'C']) {
+    poolAfterCast[color] = Math.max(0, (poolAfterCast[color] || 0) - (req[color] || 0));
+  }
+  // Deduct generic cost from whatever colored mana remains (greedy, mirrors buildTapActions).
+  let generic = req.generic || 0;
+  for (const color of ['W', 'U', 'B', 'R', 'G', 'C']) {
+    if (generic <= 0) break;
+    const spend = Math.min(generic, poolAfterCast[color] || 0);
+    poolAfterCast[color] = (poolAfterCast[color] || 0) - spend;
+    generic -= spend;
+  }
+
+  nextVirtual = {
+    ...nextVirtual,
+    o: { ...nextVirtual.o, mana: poolAfterCast },
+  };
 
   return {
     actions: [{
@@ -482,6 +525,16 @@ function applyVirtualPlay(virtualState, action) {
       ...ns,
       p: { ...ns.p, bf: ns.p.bf.filter(c => c.iid !== targetIid) },
     };
+  }
+
+  // Credit mana-producing spells (e.g. Dark Ritual) into the virtual pool
+  // so downstream scoring and planning see the mana as available.
+  if (card.effect === 'addMana' && Array.isArray(card.mana)) {
+    const newPool = { ...ns.o.mana };
+    for (const ch of card.mana) {
+      if ('WUBRGC'.includes(ch)) newPool[ch] = (newPool[ch] || 0) + 1;
+    }
+    ns = { ...ns, o: { ...ns.o, mana: newPool } };
   }
 
   return ns;

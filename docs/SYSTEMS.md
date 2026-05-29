@@ -266,6 +266,8 @@ Per-effect target selection. Returns `null` if the spell has no valid target or 
 
 Scoring gate and tap-action construction. Applies `scoreSpellValue(card, virtualState, profile) * profile.greedySpells < 0.35` to skip low-value generic spells (removal and counter-spells bypass the gate). Calls `buildTapActions` and returns `null` if unaffordable. On success, immutably marks tapped sources in the returned `newVirtualState` so subsequent spells in the same plan don't over-commit mana.
 
+**Virtual mana tracking (planMain):** `evaluateAndCast` now maintains a running `poolAfterCast` that credits each tapped land/artifact into a virtual pool, then deducts the spell's full cost (colored + generic) before storing the result in `newVirtualState.o.mana`. This means the next spell evaluated in the loop calls `buildTapActions` against an already-spent pool, correctly reflecting remaining mana and preventing double-counting of already-tapped sources. `applyVirtualPlay` also credits mana-producing spells (`effect: 'addMana'`) into the virtual pool using the card's `mana` array, so `scoreTurnPlan` can see that ramp spells (e.g. Dark Ritual) make follow-up casts affordable.
+
 ### `planMain(state, profile, phase)` → `AITurnPlan`
 
 Coordinator. Sequentially: (1) Channel top-up if active and helpful; (2) play a land if in hand and not yet played; (3) iterate `selectPlayableCards` → `selectTarget` → `evaluateAndCast` for each card; (4) append activated abilities; (5) append `PASS_PRIORITY`.
