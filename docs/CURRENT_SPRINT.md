@@ -213,6 +213,18 @@
 
 - [x] Mana tap undo button (desktop + mobile) — `UNDO_MANA_TAPS` action, `manaTapSnapshot` state field
 
+## Fix: Undo Taps Button Phase Restriction
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| Remove `MAIN_1`/`MAIN_2` phase guard from `canUndoMana` in `DuelScreen.tsx` | `src/DuelScreen.tsx` | ✅ Fixed |
+| Remove same stale guard from `canUndoMana` in `DuelScreenMobile.tsx` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Fixed |
+| Add `data-testid="undo-taps-button"` to mobile `ActionBar` undo button | `src/ui/Mobile/ActionBar.tsx` | ✅ Done |
+| Add sandbox escape hatches (`__duelDispatch`, `__duelState`) to `DuelScreenMobile.tsx` | `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
+| Add `/?duel=sandbox-mobile` entry point rendering `DuelScreenMobile` directly | `src/App.jsx` | ✅ Done |
+| Playwright tests driving real components via escape hatches (Suites A/B/C) | `tests/e2e/undo-mana-taps-all-phases.spec.js` | ✅ Done |
+| `docs/SYSTEMS.md` §30.2 preconditions updated (phase-agnostic) | `docs/SYSTEMS.md` | ✅ Done |
+
 ---
 
 ## MCTS Rollout Quality + Integration Audit ✅ Complete

@@ -56,6 +56,7 @@ import { TitleScreen } from './ui/layout/GameWrapper.jsx';
 import { ScoreScreen } from './ui/overworld/EncounterModal.jsx';
 import OverworldGame from './OverworldGame.jsx';
 import DuelScreen from './DuelScreen.tsx';
+import DuelScreenMobile from './ui/Mobile/DuelScreenMobile';
 import { getCardById } from './data/cards.js';
 
 // OverworldGame owns the full game loop including duel transitions.
@@ -119,7 +120,9 @@ const FALLBACK_DECK = [
 ];
 
 // Evaluated once at module scope -- no re-render cost.
-const sandboxMode = new URLSearchParams(window.location.search).get('duel') === 'sandbox';
+const _duelParam = new URLSearchParams(window.location.search).get('duel');
+const sandboxMode       = _duelParam === 'sandbox';
+const sandboxMobileMode = _duelParam === 'sandbox-mobile';
 
 // ---------------------------------------------------------------------------
 // Sandbox entry point
@@ -175,14 +178,68 @@ function SandboxApp() {
 }
 
 // ---------------------------------------------------------------------------
+// Sandbox-mobile entry point (?duel=sandbox-mobile)
+// Renders DuelScreenMobile directly so Playwright tests can exercise it
+// without going through the full OverworldGame flow.
+// ---------------------------------------------------------------------------
+
+function SandboxMobileApp() {
+  const [deckIds, setDeckIds] = useState(null);
+
+  useEffect(() => {
+    fetch('/sandbox-decklist.txt')
+      .then(r => r.text())
+      .then(text => setDeckIds(parseDecklistText(text)))
+      .catch(() => setDeckIds(FALLBACK_DECK));
+  }, []);
+
+  if (deckIds === null) {
+    return <div data-testid="sandbox-loading">Loading sandbox...</div>;
+  }
+
+  const injectedIds = new URLSearchParams(window.location.search)
+    .get('cards')?.split(',').filter(Boolean) ?? [];
+
+  const landIds = injectedIds.length ? resolveManaSupport(injectedIds) : [];
+  const forcedIds = [...landIds, ...injectedIds];
+
+  const sandboxMobileConfig = {
+    pDeckIds: [...forcedIds, ...deckIds],
+    oppArchKey: 'AGGRO_RED',
+    ruleset: {
+      name:             'Sandbox',
+      startingLife:     20,
+      startingHandSize: 7,
+      manaBurn:         false,
+      stackType:        'full',
+      deathtouch:       true,
+      exileZone:        false,
+    },
+    overworldHP:  20,
+    castleMod:    null,
+    anteEnabled:  false,
+    sandbox:      true,
+    forcedHandIds: forcedIds,
+  };
+
+  return (
+    <div data-testid="duel-screen-wrapper">
+      <DuelScreenMobile
+        config={sandboxMobileConfig}
+        onDuelEnd={() => { window.location.href = '/'; }}
+      />
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
 // Normal app
 // ---------------------------------------------------------------------------
 
 export default function App() {
-  if (sandboxMode) {
-    return <SandboxApp />;
-  }
-
+  if (sandboxMode)       return <SandboxApp />;
+  if (sandboxMobileMode) return <SandboxMobileApp />;
   return <NormalApp />;
 }
 

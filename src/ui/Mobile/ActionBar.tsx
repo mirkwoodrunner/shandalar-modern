@@ -33,6 +33,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
           <button
             className={s.actionBtn}
             onClick={onUndo}
+            data-testid="undo-taps-button"
             style={{
               background: 'transparent',
               border: '1px solid rgba(120,90,40,.5)',
