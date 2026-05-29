@@ -191,9 +191,56 @@ Subtype targets (`"goblin"`, etc.) match via word-split of `card.subtype.toLower
 
 ---
 
+## Testing
+
+### Unit tests (Vitest)
+```
+npm test                     # run all unit + snapshot tests
+npm run test:e2e             # run Playwright e2e suite
+npm run test:e2e:ui          # Playwright UI mode
+```
+
+### Playwright setup (one-time)
+```
+npx playwright install chromium
+```
+
+### Sandbox entry point
+Navigate to `/?duel=sandbox` to bypass the title screen and boot directly
+into a duel using `public/sandbox-decklist.txt`.
+
+URL params:
+- `?duel=sandbox` -- required to activate sandbox mode
+- `?aiSpeed=0` -- set AI delay to 0 ms (use in all e2e tests)
+- `?cards=card_id,card_id` -- prepend specific card IDs to the player deck;
+  basic lands to cover their mana costs are automatically prepended alongside them
+
+### Escape hatches (sandbox mode only)
+```
+window.__duelDispatch(action)   // drive the engine directly from page.evaluate
+window.__duelState()            // read current GameState snapshot
+```
+
+### data-testid inventory
+| testid | element |
+|---|---|
+| `duel-screen` | DuelScreen wrapper div |
+| `sandbox-loading` | loading placeholder during decklist fetch |
+| `phase-bar` | PhaseBar container |
+| `phase-active` | currently active phase pill |
+| `phase-pip-<PHASE>` | inactive phase pill |
+| `cast-button` | Cast / Play action button |
+| `cancel-button` | Cancel action button |
+| `undo-taps-button` | Undo Taps action button |
+| `pass-priority-button` | Pass Priority action button |
+| `end-turn-button` | End Turn action button |
+| `hand-card-<iid>` | individual card in player hand |
+
+---
+
 ## Reference Documents
 
-- [`docs/SYSTEMS.md`](docs/SYSTEMS.md) — mechanical truth
-- [`docs/AI.md`](docs/AI.md) — full AI role definitions
-- [`docs/ENGINE_CONTRACT_SPEC.md`](docs/ENGINE_CONTRACT_SPEC.md) — system contracts
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution guidelines
+- [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
+- [`docs/AI.md`](docs/AI.md) -- full AI role definitions
+- [`docs/ENGINE_CONTRACT_SPEC.md`](docs/ENGINE_CONTRACT_SPEC.md) -- system contracts
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) -- contribution guidelines

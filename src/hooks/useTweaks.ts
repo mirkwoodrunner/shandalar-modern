@@ -9,13 +9,19 @@ export interface TweakValues {
   aiSpeed: number;
 }
 
+function readAiSpeedParam(): number {
+  const raw = new URLSearchParams(window.location.search).get('aiSpeed');
+  const n   = raw !== null ? Number(raw) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : 400;
+}
+
 const TWEAK_DEFAULTS: TweakValues = {
   arrowColor: '#ffd060',
   arrowThickness: 3,
   arrowStyle: 'solid',
   arrowGlow: true,
   arrowAnimate: true,
-  aiSpeed: 400,
+  aiSpeed: readAiSpeedParam(),
 };
 
 export function useTweaks() {

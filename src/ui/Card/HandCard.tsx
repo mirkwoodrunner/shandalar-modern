@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import React, { memo } from 'react';
 import { Cost } from './Cost';
 import { FilCorner } from './FilCorner';
 import { CardArtImage } from './CardArtImage';
@@ -6,7 +6,7 @@ import { frameOf } from './frame';
 import type { CardData } from './types';
 import styles from './HandCard.module.css';
 
-interface HandCardProps {
+interface HandCardProps extends React.HTMLAttributes<HTMLDivElement> {
   card: CardData;
   selected?: boolean;
   playable?: boolean;
@@ -15,7 +15,7 @@ interface HandCardProps {
   onClick?: () => void;
 }
 
-function HandCardInner({ card, selected, playable, fanAngle = 0, fanY = 0, onClick }: HandCardProps) {
+function HandCardInner({ card, selected, playable, fanAngle = 0, fanY = 0, onClick, ...rest }: HandCardProps) {
   const frame = frameOf(card);
 
   const borderColor = selected ? 'var(--brass)' : playable ? 'var(--you)' : frame.bd;
@@ -35,6 +35,7 @@ function HandCardInner({ card, selected, playable, fanAngle = 0, fanY = 0, onCli
       onClick={onClick}
       data-iid={card.iid}
       title={`${card.name}\n${card.text ?? ''}`}
+      {...rest}
       style={{
         background: `linear-gradient(155deg, ${frame.bg}, #0a0806 80%)`,
         border: `2px solid ${borderColor}`,

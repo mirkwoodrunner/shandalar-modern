@@ -1424,4 +1424,29 @@ Both the `__tests__` files and `tests/scenarios/` files import factories from th
 
 ---
 
+## 31.3 E2E Testing Infrastructure
+
+Playwright config lives at `playwright.config.js`. E2E tests are in `e2e/` (new) and `tests/e2e/` (legacy).
+
+Sandbox mode (`?duel=sandbox`) is the required entry point for all e2e tests.
+It loads `public/sandbox-decklist.txt` at runtime and is completely inert in
+normal builds -- no URL param, no sandbox behaviour.
+
+The `?aiSpeed=<ms>` param overrides the initial value of `tweaks.aiSpeed`
+(defined in `useTweaks.ts`). Set to 0 in all e2e tests to eliminate AI timing
+non-determinism.
+
+`window.__duelDispatch` and `window.__duelState` are exposed only when
+`config.sandbox === true`. They are cleaned up on unmount.
+
+`SANDBOX_FORCE_HAND` is the only engine action added for sandbox purposes. It
+moves named card iids from `p.lib` into `p.hand` with no game rules evaluated.
+It lives in `DuelCore.js` `duelReducer` and is the only permitted engine touch in
+this feature set. Hand size limits are not enforced for this action.
+
+`data-testid` attributes exist on: ActionBar buttons, Hand cards, PhaseBar pills,
+and the DuelScreen wrapper. They carry no runtime overhead.
+
+---
+
 # End of SYSTEMS v1.1

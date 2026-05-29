@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type ButtonVariant = 'default' | 'primary' | 'end' | 'ghost' | 'muted';
@@ -38,14 +38,14 @@ const VARIANT_STYLES: Record<ButtonVariant, {
   },
 };
 
-interface ActionButtonProps {
+interface ActionButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: ButtonVariant;
   disabled?: boolean;
   onClick?: () => void;
 }
 
-export function ActionButton({ children, variant = 'default', disabled, onClick }: ActionButtonProps) {
+export function ActionButton({ children, variant = 'default', disabled, onClick, ...rest }: ActionButtonProps) {
   const [hovered, setHovered] = useState(false);
   const s = VARIANT_STYLES[variant];
 
@@ -55,6 +55,7 @@ export function ActionButton({ children, variant = 'default', disabled, onClick 
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      {...rest}
       style={{
         background: s.bg,
         border: `1.5px solid ${s.bd}`,

@@ -75,6 +75,7 @@ export function Hand({ side, cards, selCard, playableIids, onCardClick, compact 
                 fanAngle={angle}
                 fanY={y}
                 onClick={() => onCardClick?.(c)}
+                data-testid={`hand-card-${c.iid}`}
               />
             );
           })}

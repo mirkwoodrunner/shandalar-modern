@@ -27,7 +27,7 @@ interface PhaseBarProps {
 
 export function PhaseBar({ phase }: PhaseBarProps) {
   return (
-    <div className={styles.bar}>
+    <div className={styles.bar} data-testid="phase-bar">
       {PHASE_SEQ.map(p => {
         const active = p === phase;
         const combat = COMBAT_PHASES.has(p);
@@ -37,6 +37,7 @@ export function PhaseBar({ phase }: PhaseBarProps) {
             key={p}
             className={`${styles.pill} ${active ? variantClass : ''}`}
             aria-current={active ? 'step' : undefined}
+            data-testid={active ? 'phase-active' : `phase-pip-${p}`}
           >
             {PHASE_LBL[p]}
           </div>
