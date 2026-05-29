@@ -235,6 +235,7 @@ interface DuelConfig {
   anteEnabled?: boolean;
   context?: string;
   sandbox?: boolean;
+  forcedHandIds?: string[];
 }
 
 interface DuelScreenProps {
@@ -365,6 +366,43 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
   usePersistence(s);
+
+  // -- Sandbox escape hatches (only active when config.sandbox === true) ------
+  useEffect(() => {
+    if (!config.sandbox) return;
+    (window as any).__duelDispatch = dispatch;
+    (window as any).__duelState   = () => state;
+    return () => {
+      delete (window as any).__duelDispatch;
+      delete (window as any).__duelState;
+    };
+  }, [config.sandbox, dispatch, state]);
+
+  const sandboxHandFired = useRef(false);
+
+  useEffect(() => {
+    if (!config.sandbox) return;
+    if (!config.forcedHandIds?.length) return;
+    if (sandboxHandFired.current) return;
+    sandboxHandFired.current = true;
+
+    const forcedIds = config.forcedHandIds;
+    const remaining = [...state.p.lib];
+    const iids: string[] = [];
+
+    for (const cardId of forcedIds) {
+      const idx = remaining.findIndex(c => c.id === cardId);
+      if (idx !== -1) {
+        iids.push(remaining[idx].iid);
+        remaining.splice(idx, 1);
+      }
+    }
+
+    if (iids.length) {
+      dispatch({ type: 'SANDBOX_FORCE_HAND', iids });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isMobile = useIsMobile();
 
   // -- Local UI state --------------------------------------------------------
@@ -495,7 +533,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       const acts = aiDecide(s);
       if (acts.length) applyAiActions(acts);
       setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
-    }, 500 + Math.random() * 350);
+    }, tweaks.aiSpeed);
     return () => clearTimeout(t);
   }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -708,7 +746,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -------------------------------------------------------------------------
 
   return (
-    <div style={{
+    <div data-testid="duel-screen" style={{
       height: '100vh', width: '100vw',
       background: 'var(--bg-base)',
       display: 'flex', flexDirection: 'column',

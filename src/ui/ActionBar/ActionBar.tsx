@@ -61,18 +61,18 @@ export function ActionBar({
       }} />
 
       {hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))) && (
-        <ActionButton variant="primary" onClick={onCast}>
+        <ActionButton variant="primary" onClick={onCast} data-testid="cast-button">
           {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
       )}
       {hasSelection && (
-        <ActionButton variant="ghost" onClick={onCancel}>
+        <ActionButton variant="ghost" onClick={onCancel} data-testid="cancel-button">
           Cancel
         </ActionButton>
       )}
 
       {canUndo && (
-        <ActionButton variant="ghost" onClick={onUndo}>
+        <ActionButton variant="ghost" onClick={onUndo} data-testid="undo-taps-button">
           {'↩'} Undo Taps
         </ActionButton>
       )}
@@ -81,6 +81,7 @@ export function ActionBar({
         variant="default"
         onClick={passPriorityDisabled ? undefined : onPassPriority}
         disabled={passPriorityDisabled}
+        data-testid="pass-priority-button"
       >
         {passPriorityLabel}
       </ActionButton>
@@ -89,6 +90,7 @@ export function ActionBar({
         variant="end"
         onClick={!isPlayerTurn ? undefined : onEndTurn}
         disabled={!isPlayerTurn}
+        data-testid="end-turn-button"
       >
         End Turn {'→'}
       </ActionButton>
