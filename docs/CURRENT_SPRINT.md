@@ -328,6 +328,21 @@
 
 ---
 
+## Bug fix: Cast button now appears for instants during any priority window
+
+Bug fix: Cast button now appears when an instant is selected during a priority window in any phase, not just MAIN_1/MAIN_2. Removed the standalone "Cast Instant" button from DuelScreen.
+
+| Change | Files Changed | Status |
+|--------|--------------|--------|
+| `ActionBar.tsx`: import `isInst`; Cast button condition changed to `inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))` | `src/ui/ActionBar/ActionBar.tsx` | ✅ Fixed |
+| `DuelScreen.tsx`: removed "Cast Instant" button block that tried to paper over the missing Cast button | `src/DuelScreen.tsx` | ✅ Fixed |
+
+### Documentation updated
+- `docs/SYSTEMS.md` — §18.7 rewritten to describe the ActionBar cast condition; Cast Instant button removed
+- `docs/CURRENT_SPRINT.md` — this entry
+
+---
+
 ## Up Next — Phase 8 Candidates
 
 | Item | Priority | Notes |
