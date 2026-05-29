@@ -471,6 +471,14 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
     generic -= spend;
   }
 
+  // Credit mana produced by this spell (e.g. Dark Ritual) into the pool so
+  // subsequent spells in the planning loop see the extra mana as available.
+  if (card.effect === 'addMana' && Array.isArray(card.mana)) {
+    for (const ch of card.mana) {
+      if ('WUBRGC'.includes(ch)) poolAfterCast[ch] = (poolAfterCast[ch] || 0) + 1;
+    }
+  }
+
   nextVirtual = {
     ...nextVirtual,
     o: { ...nextVirtual.o, mana: poolAfterCast },
@@ -616,30 +624,56 @@ function planMain(state, profile, phase) {
   }
 
   // 3. Generate primary plan (greedy curve fit via selectBestCurve).
+  // After any addMana spell resolves, re-select playable cards from the updated
+  // virtual state so that ramp-unlocked follow-ups enter the iteration.
   const primaryPlayable = selectPlayableCards(virtualState, phase);
   const primaryActions = [];
   let primaryVirtual = virtualState;
-  for (const entry of primaryPlayable) {
+  const primaryTried = new Set();
+  let pi = 0;
+  while (pi < primaryPlayable.length) {
+    const entry = primaryPlayable[pi++];
+    if (primaryTried.has(entry.card.iid)) continue;
+    primaryTried.add(entry.card.iid);
     const targets = selectTarget(entry.card, primaryVirtual, profile, entry.xVal);
     if (targets === null) continue;
     const result = evaluateAndCast(entry, targets, primaryVirtual, profile);
     if (!result) continue;
     primaryActions.push(...result.actions);
     primaryVirtual = result.newVirtualState;
+    // Ramp spell resolved: re-query playable cards so newly-affordable spells
+    // are added to the candidate list for this planning pass.
+    if (entry.card.effect === 'addMana') {
+      for (const newEntry of selectPlayableCards(primaryVirtual, phase)) {
+        if (!primaryTried.has(newEntry.card.iid)) primaryPlayable.push(newEntry);
+      }
+    }
   }
 
   // 4. Generate alternative plan: cast cheapest-first (tempo curve) using the same
   // candidate set returned by selectBestCurve, but ordered lowest-CMC first.
-  const altPlayable = [...primaryPlayable].sort((a, b) => a.effectiveCmc - b.effectiveCmc);
+  // Same ramp re-selection logic applied here.
+  const altPlayable = [...primaryPlayable.slice(0, primaryPlayable.length)]
+    .sort((a, b) => a.effectiveCmc - b.effectiveCmc);
   const altActions = [];
   let altVirtual = virtualState;
-  for (const entry of altPlayable) {
+  const altTried = new Set();
+  let ai = 0;
+  while (ai < altPlayable.length) {
+    const entry = altPlayable[ai++];
+    if (altTried.has(entry.card.iid)) continue;
+    altTried.add(entry.card.iid);
     const targets = selectTarget(entry.card, altVirtual, profile, entry.xVal);
     if (targets === null) continue;
     const result = evaluateAndCast(entry, targets, altVirtual, profile);
     if (!result) continue;
     altActions.push(...result.actions);
     altVirtual = result.newVirtualState;
+    if (entry.card.effect === 'addMana') {
+      for (const newEntry of selectPlayableCards(altVirtual, phase)) {
+        if (!altTried.has(newEntry.card.iid)) altPlayable.push(newEntry);
+      }
+    }
   }
 
   // 5. Choose between the two plans.

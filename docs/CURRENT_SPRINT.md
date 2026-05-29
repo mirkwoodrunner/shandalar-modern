@@ -316,8 +316,10 @@
 
 | Fix | File(s) Changed | Status |
 |-----|----------------|--------|
-| `evaluateAndCast`: credit tapped-source mana into `vManaAfterTap`; deduct spell cost into `poolAfterCast`; store result in `newVirtualState.o.mana` so next spell in the loop sees correct remaining mana | `src/engine/AI.js` | ✅ Done |
+| `evaluateAndCast`: credit tapped-source mana into `vManaAfterTap`; deduct spell cost; credit spell's produced mana (`addMana`) into `poolAfterCast`; store in `newVirtualState.o.mana` so next spell in the loop sees correct remaining mana | `src/engine/AI.js` | ✅ Done |
 | `applyVirtualPlay`: credit `addMana` spells (e.g. Dark Ritual) into virtual pool via `card.mana` array so `scoreTurnPlan` sees ramp-enabled follow-up affordability | `src/engine/AI.js` | ✅ Done |
+| `planMain`: after any `addMana` spell is cast, re-call `selectPlayableCards` on updated virtual state and extend the candidate list with newly-affordable spells | `src/engine/AI.js` | ✅ Done |
+| Playwright E2E tests: 4 scenarios verifying ramp chaining, negative control, and no-overextension | `tests/e2e/ai-mana-tracking.spec.js`, `playwright.config.js` | ✅ Done |
 
 ### Documentation updated
 - `docs/SYSTEMS.md` — Updated `evaluateAndCast` entry with virtual mana tracking detail

@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers playwright test",
     "oracle:sync": "node scryfall/sync-oracle-text.js",
     "oracle:apply": "node scryfall/apply-oracle-patch.js"
   },
@@ -17,6 +18,7 @@
     "unzipper": "^0.12.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.1",
