@@ -266,6 +266,10 @@ Per-effect target selection. Returns `null` if the spell has no valid target or 
 
 Scoring gate and tap-action construction. Applies `scoreSpellValue(card, virtualState, profile) * profile.greedySpells < 0.35` to skip low-value generic spells (removal and counter-spells bypass the gate). Calls `buildTapActions` and returns `null` if unaffordable. On success, immutably marks tapped sources in the returned `newVirtualState` so subsequent spells in the same plan don't over-commit mana.
 
+**Virtual mana tracking (planMain):** `evaluateAndCast` maintains a running `poolAfterCast` that (1) credits each tapped land/artifact's mana contribution, (2) deducts the spell's full cost (colored + generic), and (3) credits any mana the spell itself produces (`effect:'addMana'`, `card.mana` array). The resulting pool is stored in `newVirtualState.o.mana`. Subsequent spells in the loop call `buildTapActions` against this post-cast pool, correctly seeing remaining mana and preventing double-counting of already-tapped sources. `applyVirtualPlay` also credits `addMana` spells for `scoreTurnPlan` scoring purposes.
+
+**Ramp re-selection (planMain):** `selectPlayableCards` evaluates affordability at a single point in time based on `computeAvailableMana`. After an `addMana` spell is successfully cast in the primary or alt planning loop, `planMain` calls `selectPlayableCards` again on the updated virtual state (which now has the produced mana in its pool) and appends any newly-affordable candidates to the active iteration list. This allows a single-pass planner to chain Dark Ritual → follow-up spell within the same main phase.
+
 ### `planMain(state, profile, phase)` → `AITurnPlan`
 
 Coordinator. Sequentially: (1) Channel top-up if active and helpful; (2) play a land if in hand and not yet played; (3) iterate `selectPlayableCards` → `selectTarget` → `evaluateAndCast` for each card; (4) append activated abilities; (5) append `PASS_PRIORITY`.

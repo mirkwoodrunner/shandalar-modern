@@ -893,6 +893,26 @@ ACTIVE
 
 ---
 
+## 2.2 AI Virtual Mana Simulation
+
+### Description
+The AI's multi-spell planning loop (`planMain`) uses a virtual state to track mana spent and produced across sequential spell evaluations without mutating `GameState`.
+
+**`evaluateAndCast`:** After `buildTapActions` selects which lands/artifacts to tap, their mana is credited into `vManaAfterTap`. The spell's cost (colored + generic) is then deducted into `poolAfterCast`, which is stored in `newVirtualState.o.mana`. Each subsequent spell evaluated in the loop starts from this post-cast pool, preventing double-counting of already-tapped sources.
+
+**`applyVirtualPlay`:** When a played card has `effect === 'addMana'` and a `mana` array (e.g. `["B","B","B"]` for Dark Ritual), those characters are credited into the virtual pool. This allows `scoreTurnPlan` to correctly evaluate follow-up cast affordability after ramp spells.
+
+### SYSTEMS.md Reference
+- Section 6 (`evaluateAndCast` entry)
+
+### Implementation
+- `src/engine/AI.js` — `evaluateAndCast` (`poolAfterCast` block), `applyVirtualPlay` (`addMana` credit block)
+
+### Invariant
+New `addMana` cards added to `cards.js` must use a flat `mana` array of color characters for `applyVirtualPlay` to credit them. String-only `mana` fields are not credited.
+
+---
+
 ## 2.3 MCTS Module
 
 ### Description
