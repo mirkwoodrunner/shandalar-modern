@@ -964,17 +964,14 @@ When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow])`
 
 The AI casts at most one instant per window. If the AI has no affordable instant, it passes immediately.
 
-## 18.7 InstantPriorityBar UI
+## 18.7 ActionBar Cast Button During Priority Windows
 
-Component: `src/ui/ActionBar/InstantPriorityBar.tsx`
+When a priority window is open and the player holds priority, selecting an Instant or Interrupt from hand causes the Cast button in `ActionBar` to appear regardless of the current phase. The Cast Instant button has been removed; the standard ActionBar cast flow handles all speeds.
 
-Rendered in DuelScreen above the `ActionBar` when `s.priorityWindow === true && s.priorityPasser !== 'p'` (i.e., the player still holds priority).
+`ActionBar` condition: `hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard)))`
 
-- Displays each `type === 'Instant'` card from `s.p.hand` as a clickable button (name + formatted cost). Clicking calls `selectCard(iid)` to enter the standard cast flow.
-- Displays each non-mana activated card from `s.p.bf` as a clickable button. Clicking calls `handleActivate(card)`.
-- Grayed color (but still clickable) when `canAffordCost(mana, card.cost)` returns false.
-- Always shows a "Pass Priority" button that dispatches `PASS_PRIORITY({ who: 'p' })`.
-- Positioned at `z-index: 200` so it does not obscure targeting overlays (which use higher z-index values).
+- In MAIN_1 or MAIN_2: the Cast button appears for any selected card (sorcery, instant, land).
+- In any other phase with a priority window open: the Cast button appears only when the selected card is an Instant or Interrupt.
 
 ## 18.8 System Files
 

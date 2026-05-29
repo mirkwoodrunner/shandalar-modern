@@ -1,4 +1,4 @@
-import { isLand } from '../../engine/DuelCore.js';
+import { isLand, isInst } from '../../engine/DuelCore.js';
 import { ActionButton } from './ActionButton';
 
 const MAIN_PHASES = new Set(['MAIN_1', 'MAIN_2']);
@@ -60,7 +60,7 @@ export function ActionBar({
         background: 'linear-gradient(90deg, transparent, var(--brass), transparent)',
       }} />
 
-      {hasSelection && inMain && isPlayerTurn && (
+      {hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))) && (
         <ActionButton variant="primary" onClick={onCast}>
           {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
