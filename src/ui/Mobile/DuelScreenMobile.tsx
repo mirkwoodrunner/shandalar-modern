@@ -120,6 +120,17 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const prevPriorityWindow = useRef(false);
   const priorityWindowInitiator = useRef(false);
 
+  // ── Sandbox escape hatches (mirrors DuelScreen.tsx; only active in sandbox) ──
+  useEffect(() => {
+    if (!config.sandbox) return;
+    (window as any).__duelDispatch = dispatch;
+    (window as any).__duelState   = () => state;
+    return () => {
+      delete (window as any).__duelDispatch;
+      delete (window as any).__duelState;
+    };
+  }, [config.sandbox, dispatch, state]);
+
   // ── Phase advance (shared logic with desktop) ─────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s_state, advancePhase, openPriorityWindow);
 
@@ -307,7 +318,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   const canUndoMana: boolean =
     s_state.active === 'p' &&
-    (s_state.phase === 'MAIN_1' || s_state.phase === 'MAIN_2') &&
     (s_state.stack?.length ?? 0) === 0 &&
     s_state.manaTapSnapshot !== null;
 

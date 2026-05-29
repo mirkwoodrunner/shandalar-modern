@@ -720,7 +720,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   const canUndoMana: boolean =
     s.active === 'p' &&
-    (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') &&
     (s.stack?.length ?? 0) === 0 &&
     s.manaTapSnapshot !== null;
 

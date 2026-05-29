@@ -39,3 +39,17 @@
 - **Shows**: opponent hand — each card by name and mana cost (face-up); full ordered opponent library top-to-bottom with 1-based position numbers; top card (#1) highlighted gold (`#f0c060`) and bold
 - **Data sources**: `s.o.hand` and `s.o.lib` from `useDuel` state
 - **No engine dependency**: reads state only; no dispatch or engine import
+
+### `Mobile/ActionBar` — undo button
+- **File**: `src/ui/Mobile/ActionBar.tsx`
+- **testid**: `data-testid="undo-taps-button"` on the undo button (added alongside the fix that made the button phase-agnostic; previously absent)
+- **Render condition**: `canUndo === true && sel === null` — button is the first child of the no-selection action bar
+
+### `SandboxMobileApp` — sandbox-mobile entry point
+- **File**: `src/App.jsx` (`SandboxMobileApp` function)
+- **URL**: `/?duel=sandbox-mobile`
+- **Purpose**: Renders `DuelScreenMobile` directly (bypassing `OverworldGame`) so Playwright tests can exercise the mobile component without driving the full overworld flow. Passes the same sandbox deck + injected cards as `SandboxApp`. Sets `config.sandbox = true` so the escape hatches (`window.__duelDispatch`, `window.__duelState`) are activated inside `DuelScreenMobile`.
+
+### `DuelScreenMobile` — sandbox escape hatches
+- **File**: `src/ui/Mobile/DuelScreenMobile.tsx`
+- **Escape hatches**: `window.__duelDispatch` and `window.__duelState` are exposed (and cleaned up) via a `useEffect` gated on `config.sandbox`. Pattern mirrors `DuelScreen.tsx`. Active only when the component is mounted with `config.sandbox === true`.
