@@ -12,7 +12,7 @@ test.describe('Difficulty system', () => {
     await expect(page.getByText('Apprentice')).toBeVisible();
     await expect(page.getByText('Magician')).toBeVisible();
     await expect(page.getByText('Sorcerer')).toBeVisible();
-    await expect(page.getByText('Wizard')).toBeVisible();
+    await expect(page.getByText('Wizard', { exact: true })).toBeVisible();
   });
 
   test('Enter Shandalar button is disabled until color is selected', async ({ page }) => {
