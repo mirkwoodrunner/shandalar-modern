@@ -1449,4 +1449,30 @@ and the DuelScreen wrapper. They carry no runtime overhead.
 
 ---
 
+# 33. Difficulty System
+
+## 33.1 Overview
+
+Difficulty is selected at game start and stored in `startConfig.difficulty` (string key of `DIFFICULTIES`). It is read-only for the duration of the campaign.
+
+Source of truth: `src/data/difficulties.js`
+
+## 33.2 Player life
+
+`difficulty.startingLife` sets both overworld HP and duel starting life. Color choice does not affect life totals. Mana links can increase max/current HP above this base.
+
+## 33.3 Enemy duel life
+
+Enemy duel life = `difficulty.tierLife[tier - 1]`. Tier is 1-3 and is set at enemy spawn time in `MapGenerator.js`. The `hp` field on `MONSTER_TABLE` entries is legacy display only.
+
+## 33.4 Boss life
+
+Boss duel life = `difficulty.bossBase + (magesDefeated.length x difficulty.bossPerKill)`. Computed at encounter open time using current `magesDefeated` array length. Arzakon (fought after all 5 mages) receives the full 5-stack bonus.
+
+## 33.5 Starting deck generation
+
+`generateStartingDeck(primaryColor, difficultyId, seed)` in `difficulties.js` produces a randomized deck. Color distribution follows `difficulty.colorWeights`. Card draw is weighted by rarity (C: 10, U: 4, R: 1) with an off-color multiplier per difficulty. Colorless artifacts are eligible at all difficulties but treated as one rarity step up; rare artifacts are excluded. Land count targets ~42.5% of deck size with per-difficulty variance. Land color split is proportional to spell color counts with per-difficulty shift variance.
+
+---
+
 # End of SYSTEMS v1.1

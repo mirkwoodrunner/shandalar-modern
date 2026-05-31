@@ -130,6 +130,7 @@ export const DUNGEON_ARCHETYPES = [
 ];
 
 export const MONSTER_TABLE = {
+// hp is legacy display only; duel life is computed from difficulty.tierLife at encounter time
 PLAINS:   [
 { name:"Pegasus Cavalry",    hp:10, archKey:"WHITE_WEENIE",    tier:1 },
 { name:"Knight of the Keep", hp:14, archKey:"WHITE_WEENIE",    tier:2 },

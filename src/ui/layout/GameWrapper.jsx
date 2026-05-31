@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { MANA_HEX, MANA_SYM, COLORS } from '../../engine/MapGenerator.js';
+import DIFFICULTIES from '../../data/difficulties.js';
 
 const COLOR_META = {
 W: { name:"White", label:"Order & Protection",  hp:22, gold:40, flavor:"The light of justice guides your blade." },
@@ -18,7 +19,8 @@ G: { name:"Green", label:"Growth & Might",      hp:22, gold:30, flavor:"The land
 export function TitleScreen({ onStart }) {
 const [col, setCol]     = useState(null);
 const [name, setName]   = useState("");
-const [step, setStep]   = useState("intro"); // intro | choose | name
+const [step, setStep]   = useState("intro"); // intro | choose
+const [diff, setDiff]   = useState("APPRENTICE");
 
 return (
 <div style={{
@@ -67,59 +69,142 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
       </div>
     )}
 
-    {step === "choose" && (
-      <div style={{ animation:"fadeIn .5s ease-out" }}>
-        <div style={{ fontSize:12, color:"#8a6040", marginBottom:16, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>Choose the color of your magic.</div>
-        <div style={{ display:"flex", gap:10, justifyContent:"center", marginBottom:22 }}>
+    {step === 'choose' && (
+      <div style={{ animation: 'fadeIn .5s ease-out' }}>
+
+        {/* Color selection */}
+        <div style={{ fontSize: 12, color: '#8a6040', marginBottom: 12, fontFamily: "'Crimson Text',serif", fontStyle: 'italic' }}>
+          Choose the color of your magic.
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 10 }}>
           {COLORS.map(c => {
             const m = COLOR_META[c];
             const hx = MANA_HEX[c];
             const sel = col === c;
             return (
-              <div key={c} onClick={() => setCol(c)} style={{
-                width:100, padding:"14px 8px", cursor:"pointer",
-                background: sel ? `${hx}18` : "rgba(255,255,255,.02)",
-                border:`2px solid ${sel?hx:"rgba(255,255,255,.08)"}`,
-                borderRadius:8, boxShadow:sel?`0 0 16px ${hx}50`:"none",
-                transition:"all .2s", transform:sel?"translateY(-4px)":"none",
-              }}>
-                <div style={{ fontSize:38, marginBottom:6, textAlign:"center", color:hx, lineHeight:1 }}><span className="mana-sym">{MANA_SYM[c]}</span></div>
-                <div style={{ fontSize:11, fontFamily:"'Cinzel',serif", color:sel?hx:"#6a5030", marginBottom:3 }}>{m.name}</div>
-                <div style={{ fontSize:8, color:"#5a4020", lineHeight:1.4 }}>{m.label}</div>
-                <div style={{ marginTop:6, fontSize:9, color:sel?hx:"#4a3010" }}>♥{m.hp} ◆{m.gold}g</div>
+              <div
+                key={c}
+                data-testid={`color-${c}`}
+                onClick={() => setCol(c)}
+                style={{
+                  width: 88, padding: '12px 6px', cursor: 'pointer',
+                  background: sel ? `${hx}18` : 'rgba(255,255,255,.02)',
+                  border: `2px solid ${sel ? hx : 'rgba(255,255,255,.08)'}`,
+                  borderRadius: 8,
+                  boxShadow: sel ? `0 0 16px ${hx}50` : 'none',
+                  transition: 'all .2s',
+                  transform: sel ? 'translateY(-4px)' : 'none',
+                }}
+              >
+                <div style={{ fontSize: 34, marginBottom: 4, textAlign: 'center', color: hx, lineHeight: 1 }}>
+                  <span className="mana-sym">{MANA_SYM[c]}</span>
+                </div>
+                <div style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: sel ? hx : '#6a5030', marginBottom: 2 }}>{m.name}</div>
+                <div style={{ fontSize: 7, color: '#5a4020', lineHeight: 1.4 }}>{m.label}</div>
+                <div style={{ marginTop: 4, fontSize: 8, color: sel ? hx : '#4a3010' }}>{'◆'}{m.gold}g</div>
               </div>
             );
           })}
         </div>
-        {col && <div style={{ marginBottom:14, fontStyle:"italic", fontSize:12, color:"#a09060", fontFamily:"'Crimson Text',serif" }}>"{COLOR_META[col].flavor}"</div>}
-        <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={() => setStep("intro")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>← Back</button>
-          <button disabled={!col} onClick={() => setStep("name")} style={{ background:col?"linear-gradient(135deg,#1a1004,#2e1c08)":"rgba(0,0,0,.3)", border:`1px solid ${col?MANA_HEX[col]:"#2a1804"}`, color:col?MANA_HEX[col]:"#3a2810", padding:"9px 26px", borderRadius:5, cursor:col?"pointer":"not-allowed", fontSize:12, fontFamily:"'Cinzel',serif" }}>Name Your Wizard →</button>
-        </div>
-      </div>
-    )}
 
-    {step === "name" && col && (
-      <div style={{ animation:"fadeIn .5s ease-out" }}>
-        <div style={{ fontSize:12, color:"#8a6040", marginBottom:14, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>What is the name by which you shall be known in Shandalar?</div>
+        {/* Color flavor text */}
+        {col && (
+          <div style={{ marginBottom: 16, fontStyle: 'italic', fontSize: 11, color: '#a09060', fontFamily: "'Crimson Text',serif" }}>
+            &ldquo;{COLOR_META[col].flavor}&rdquo;
+          </div>
+        )}
+
+        <div style={{ width: '100%', height: 1, background: 'rgba(200,160,40,.12)', margin: '4px 0 16px' }} />
+
+        {/* Difficulty selection */}
+        <div style={{ fontSize: 12, color: '#8a6040', marginBottom: 10, fontFamily: "'Crimson Text',serif", fontStyle: 'italic' }}>
+          Choose your difficulty.
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 }}>
+          {Object.values(DIFFICULTIES).map(d => {
+            const sel = diff === d.id;
+            return (
+              <div
+                key={d.id}
+                onClick={() => setDiff(d.id)}
+                style={{
+                  flex: 1, maxWidth: 110, padding: '10px 6px', cursor: 'pointer', textAlign: 'center',
+                  background: sel ? 'rgba(200,160,40,.12)' : 'rgba(255,255,255,.02)',
+                  border: `2px solid ${sel ? 'rgba(200,160,40,.7)' : 'rgba(255,255,255,.08)'}`,
+                  borderRadius: 8,
+                  boxShadow: sel ? '0 0 14px rgba(200,160,40,.35)' : 'none',
+                  transition: 'all .2s',
+                  transform: sel ? 'translateY(-3px)' : 'none',
+                }}
+              >
+                <div style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: sel ? '#f0c040' : '#6a5030', marginBottom: 3 }}>
+                  {d.name}
+                </div>
+                <div style={{ fontSize: 7, color: '#5a4020', lineHeight: 1.4, fontFamily: "'Crimson Text',serif", fontStyle: 'italic' }}>
+                  {d.description}
+                </div>
+                <div style={{ marginTop: 5, fontSize: 8, color: sel ? '#c0a030' : '#4a3010' }}>
+                  {'♥'}{d.startingLife} life
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ width: '100%', height: 1, background: 'rgba(200,160,40,.12)', margin: '4px 0 16px' }} />
+
+        {/* Wizard name */}
+        <div style={{ fontSize: 12, color: '#8a6040', marginBottom: 10, fontFamily: "'Crimson Text',serif", fontStyle: 'italic' }}>
+          Name your wizard.
+        </div>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && onStart({ color:col, name:name.trim()||`The ${COLOR_META[col].name} Mage`, seed:Date.now() })}
-          placeholder="Enter your wizard's name?"
+          onKeyDown={e => {
+            if (e.key === 'Enter' && col) {
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff });
+            }
+          }}
+          placeholder="Enter your wizard's name..."
           maxLength={24}
-          style={{ background:"rgba(0,0,0,.5)", border:"1px solid rgba(200,160,40,.4)", color:"#f0d080", padding:"10px 16px", borderRadius:6, fontSize:15, fontFamily:"'Cinzel',serif", width:280, outline:"none", marginBottom:18, letterSpacing:1 }}
+          style={{
+            background: 'rgba(0,0,0,.5)',
+            border: `1px solid ${col ? `${MANA_HEX[col]}60` : 'rgba(200,160,40,.3)'}`,
+            color: '#f0d080', padding: '9px 14px', borderRadius: 6,
+            fontSize: 14, fontFamily: "'Cinzel',serif",
+            width: 260, outline: 'none', marginBottom: 18, letterSpacing: 1,
+            transition: 'border-color .2s',
+          }}
         />
-        <br/>
-        <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
-          <button onClick={() => setStep("choose")} style={{ background:"transparent", border:"1px solid #3a2810", color:"#6a4820", padding:"8px 18px", borderRadius:5, cursor:"pointer", fontSize:11, fontFamily:"'Cinzel',serif" }}>← Back</button>
-          <button onClick={() => onStart({ color:col, name:name.trim()||`The ${COLOR_META[col].name} Mage`, seed:Date.now() })} style={{
-            background:`linear-gradient(135deg,${MANA_HEX[col]}20,${MANA_HEX[col]}10)`,
-            border:`2px solid ${MANA_HEX[col]}`, color:MANA_HEX[col],
-            padding:"11px 30px", borderRadius:6, cursor:"pointer",
-            fontSize:13, fontFamily:"'Cinzel',serif", letterSpacing:2,
-          }}>→ Enter Shandalar</button>
+        <br />
+
+        {/* Nav buttons */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+          <button
+            onClick={() => setStep('intro')}
+            style={{ background: 'transparent', border: '1px solid #3a2810', color: '#6a4820', padding: '8px 18px', borderRadius: 5, cursor: 'pointer', fontSize: 11, fontFamily: "'Cinzel',serif" }}
+          >
+            {'←'} Back
+          </button>
+          <button
+            disabled={!col}
+            onClick={() => {
+              if (!col) return;
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff });
+            }}
+            style={{
+              background: col ? `linear-gradient(135deg,${MANA_HEX[col]}20,${MANA_HEX[col]}10)` : 'rgba(0,0,0,.3)',
+              border: `2px solid ${col ? MANA_HEX[col] : '#2a1804'}`,
+              color: col ? MANA_HEX[col] : '#3a2810',
+              padding: '11px 30px', borderRadius: 6,
+              cursor: col ? 'pointer' : 'not-allowed',
+              fontSize: 13, fontFamily: "'Cinzel',serif", letterSpacing: 2,
+            }}
+          >
+            {'→'} Enter Shandalar
+          </button>
         </div>
+
       </div>
     )}
   </div>
