@@ -15,6 +15,7 @@ WORLD_MAGICS,
 } from './engine/MapGenerator.js';
 import { isLand } from './engine/DuelCore.js';
 import { ARCHETYPES, CARD_DB } from './data/cards.js';
+import DIFFICULTIES, { generateStartingDeck } from './data/difficulties.js';
 import RULESETS from './data/rulesets.js';
 
 // -- Animation / AI -----------------------------------------------------------
@@ -218,12 +219,13 @@ return { ...found, iid: mkId() };
 
 /**
 
-- @param {object} startConfig  { color: "W"|"U"|"B"|"R"|"G", name: string, seed: number }
+- @param {object} startConfig  { color: "W"|"U"|"B"|"R"|"G", name: string, seed: number, difficulty: string }
 - @param {function} onQuit     () => void ? returns to title
 - @param {function} onScore    (data) => void ? hands off to ScoreScreen
   */
   export default function OverworldGame({ startConfig, onQuit, onScore }) {
-  const { color, name, seed } = startConfig;
+  const { color, name, seed, difficulty: difficultyId = 'APPRENTICE' } = startConfig;
+  const difficulty = DIFFICULTIES[difficultyId] || DIFFICULTIES.APPRENTICE;
   const isSandbox = !!startConfig.sandbox;
   const startDef = START_DECKS[color];
 
@@ -258,12 +260,20 @@ const [moves, setMoves] = useState(0);
 // -- Player ---------------------------------------------------------------
 const [player, setPlayer] = useState({
 name, color,
-hp: startDef.hp, maxHP: startDef.maxHP,
+hp: difficulty.startingLife, maxHP: difficulty.startingLife,
 gold: isSandbox ? 9999 : startDef.gold,
 gems: isSandbox ? 99 : 0,
 redAmulets: 0,
 });
-const [deck, setDeck]         = useState(() => isSandbox ? [] : buildDeck(startDef.deckIds));
+const [deck, setDeck]         = useState(() => {
+  if (isSandbox) return [];
+  const ids = generateStartingDeck(color, difficultyId, seed);
+  return ids.map(id => {
+    const def = CARD_DB.find(c => c.id === id);
+    if (!def) return null;
+    return { ...def, iid: mkId() };
+  }).filter(Boolean);
+});
 const [binder, setBinder]     = useState(() => {
   if (!isSandbox) return [];
   return CARD_DB.flatMap(card =>
@@ -486,12 +496,17 @@ opponentAnteCard = { ...pool[Math.floor(Math.random() * pool.length)], iid: mkId
 }
 }
 
+const monsterTier = monsterMeta.tier || 1;
+const enemyDuelLife = context === 'monster'
+  ? difficulty.tierLife[Math.min(monsterTier - 1, 2)]
+  : (extraData.oppLife ?? null);
+
 setEncounterPopup({
 oppArchKey,
 overworldHP,
 context,
 castleMod,
-extraData,
+extraData: { ...extraData, ...(enemyDuelLife != null ? { oppLife: enemyDuelLife } : {}) },
 monsterName,
 monsterFlavor,
 monsterColor,
@@ -501,7 +516,7 @@ fleeCost,
 canFlee,
 tier: monsterMeta.tier || null,
 });
-}, [deck, anteEnabled]);
+}, [deck, anteEnabled, difficulty]);
 
 // -------------------------------------------------------------------------
 // DELIVERY COMPLETION
@@ -1362,9 +1377,11 @@ if (!col || activeTile.castleData.defeated) return;
 const mod = CASTLE_MODIFIERS[col];
 addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
 setModal(null);
-// Castle boss starting life is set in DuelCore via archetype; TODO verify
-openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col });
-}, [activeTile, player.hp, openEncounterPopup, addLog]);
+// TODO: MAGE_ARCHS routes to regular archetypes (e.g. WHITE_WEENIE), not BOSS_* decks.
+// Wire BOSS_* decks to castle context in a future sprint.
+const bossLife = difficulty.bossBase + magesDefeated.length * difficulty.bossPerKill;
+openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col, oppLife: bossLife });
+}, [activeTile, player.hp, openEncounterPopup, addLog, difficulty, magesDefeated]);
 
 // -------------------------------------------------------------------------
 // COUNTER-ATTACK (RECLAIM CORRUPTED TOWN)

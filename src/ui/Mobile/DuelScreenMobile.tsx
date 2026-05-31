@@ -104,6 +104,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     config.overworldHP,
     config.castleMod,
     config.anteEnabled ?? false,
+    config.oppLife ?? null,
   );
 
   const s_state = state;

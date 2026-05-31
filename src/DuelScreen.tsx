@@ -357,7 +357,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     config.ruleset,
     config.overworldHP,
     config.castleMod,
-    config.anteEnabled ?? false
+    config.anteEnabled ?? false,
+    config.oppLife ?? null
   );
 
   const s = state;

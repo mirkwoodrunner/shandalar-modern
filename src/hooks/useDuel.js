@@ -26,9 +26,10 @@ import { duelReducer, buildDuelState } from '../engine/DuelCore.js';
 - @param {number}    [overworldHP] - Player's HP from overworld (or undefined = use ruleset default)
 - @param {object}    [castleMod]   - Castle modifier if applicable
 - @param {boolean}   [anteEnabled] - Whether ante is active
+- @param {number}    [oppLife]     - Opponent starting life (overrides ruleset.startingLife)
   */
-  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false) {
-  const initialState = buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled);
+  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false, oppLife = null) {
+  const initialState = buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife);
   const [state, dispatch] = useReducer(duelReducer, initialState);
 
 // -- Action dispatchers -----------------------------------------------------

@@ -1118,4 +1118,24 @@ ACTIVE (Phase 7 — Mobile Support; compact duel screen added post-Phase 7)
 - UI: "Undo Taps" button in `ActionBar`, visible only when undo is available (`canUndoMana === true`)
 - Implementation: `UNDO_MANA_TAPS` action in `DuelCore.js`; `manaTapSnapshot` state field in `buildDuelState`
 
+## §19 — Difficulty System
+
+### §19.1 Difficulty config (`src/data/difficulties.js`)
+
+Keys: `APPRENTICE`, `MAGICIAN`, `SORCERER`, `WIZARD`. Each entry defines: `startingLife`, `tierLife[3]`, `bossBase`, `bossPerKill`, `deckSize[2]`, `colorWeights[5]`, `offColorMultiplier`, `landRatio`, `landVariance`, `landColorVariance`.
+
+### §19.2 Deck generation
+
+Pure function `generateStartingDeck(color, difficultyId, seed)` returns `string[]` of card IDs. No engine imports. Depends on `CARD_DB` from `cards.js` only.
+
+### §19.3 Life values
+
+- Player start: `difficulty.startingLife` (set in `OverworldGame.jsx`, passed as `overworldHP` to `buildDuelState`)
+- Monster: `difficulty.tierLife[tier-1]` (computed in `openEncounterPopup`, stored in `extraData.oppLife`, threaded to `buildDuelState` via `duelCfg.oppLife`)
+- Boss: `difficulty.bossBase + magesDefeated.length * difficulty.bossPerKill` (computed in `handleChallenge`)
+
+### §19.4 SYSTEMS.md reference
+
+See `docs/SYSTEMS.md` §33.
+
 # End of MECHANICS INDEX v1.2

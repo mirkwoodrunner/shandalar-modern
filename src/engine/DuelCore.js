@@ -1686,7 +1686,7 @@ function processTriggerQueue(state) {
 
 // --- DUEL STATE BUILDER -------------------------------------------------------
 
-export function buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled) {
+export function buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife) {
 const pd = shuffle(pDeckIds.map(id => makeCardInstance(id, "p")).filter(Boolean));
 const od = shuffle((ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck).map(id => makeCardInstance(id, "o")).filter(Boolean));
 const ph = pd.splice(0, ruleset.startingHandSize);
@@ -1705,7 +1705,7 @@ spellsThisTurn: 0,
 totalCardsCast: 0,
 peakDamage: 0,
 p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
-o: { life: ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
+o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
 stack: [],
 attackers: [],
 blockers: {},
