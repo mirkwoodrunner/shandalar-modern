@@ -37,3 +37,8 @@
 - [TD-001] DuelScreenMobile.tsx duplicates AI loop logic from DuelScreen.tsx.
   Sprint 7 fixed the priority window handler divergence.
   Remaining: extract shared useDuelAILoop hook. See SYSTEMS.md TD-001.
+- [TD-002] X-spell log entries omit the resolved X value (e.g. "o casts Mind Twist" with no
+  indication of X=3). Fix site: the single `dlog` at the end of the `CAST_SPELL` case in
+  `src/engine/DuelCore.js` (~line 1852). `xSpend` and `item.xVal` are both in scope.
+  Fix: append ` (X=${item.xVal})` to the log string when `xSpend > 0`.
+  No engine contract impact; log-only change.
