@@ -23,6 +23,7 @@ import { TweaksPanel } from './ui/TweaksPanel/TweaksPanel';
 import { GameOverModal } from './ui/GameOver/GameOverModal';
 import { MulliganModal } from './ui/Mulligan/MulliganModal';
 import type { CardData } from './ui/Card/types';
+import { StackDisplay } from './ui/Stack/StackDisplay';
 
 // -- New hooks -----------------------------------------------------------------
 import { useFlash } from './hooks/useFlash';
@@ -425,6 +426,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const aiRef = useRef(false);
   const prevPriorityWindow = useRef(false);
   const priorityWindowInitiator = useRef(false);
+  const prevStackLen = useRef(0);
 
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
 
@@ -474,17 +476,26 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     return () => clearTimeout(timer);
   }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reopen priority window after a stack item resolves if more items remain.
+  useEffect(() => {
+    const cur = s.stack?.length ?? 0;
+    const prev = prevStackLen.current;
+    prevStackLen.current = cur;
+    if (cur < prev && cur > 0 && !s.priorityWindow && !s.over) {
+      openPriorityWindow();
+    }
+  }, [s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // -- Keyboard shortcuts ----------------------------------------------------
   const isIdle = s.active === 'p' && !pendingActivate;
   useKeyboardShortcuts({
     onPassPriority: () => {
-      if (s.stack?.length > 0) {
-        resolveStack();
-      } else if (s.priorityWindow && s.priorityPasser !== 'p') {
+      if (s.priorityWindow && s.priorityPasser !== 'p') {
         passPriority('p');
-      } else {
+      } else if (!s.priorityWindow && (s.stack?.length ?? 0) === 0) {
         requestPhaseAdvance();
       }
+      // If priorityWindow is open and player already passed: no-op (waiting for AI)
     },
     onEndTurn: requestPhaseAdvance,
     onCancel: () => { setPendingActivate(null); selectCard(null); selectTarget(null); },
@@ -863,7 +874,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           />
 
           {/* Battlefield: opp + phase ribbon + you */}
-          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
             <Battlefield
               phase={s.phase}
               oppCards={oppBfCards}
@@ -874,6 +885,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               flashIids={flashIids}
               onCardClick={handleBfCardClick}
             />
+            {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
+            {!isMobile && s.stack.length > 0 && (
+              <StackDisplay stack={s.stack} isMobile={false} />
+            )}
           </div>
 
           {/* Player info banner */}
@@ -927,13 +942,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onUndo={undoManaTaps}
             onCast={handleCast}
             onPassPriority={() => {
-              if (s.stack?.length > 0) {
-                resolveStack();
-              } else if (s.priorityWindow && s.priorityPasser !== 'p') {
+              if (s.priorityWindow && s.priorityPasser !== 'p') {
                 passPriority('p');
-              } else {
+              } else if (!s.priorityWindow && (s.stack?.length ?? 0) === 0) {
                 requestPhaseAdvance();
               }
+              // If priorityWindow is open and player already passed: no-op (waiting for AI)
             }}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
             onEndTurn={requestPhaseAdvance}
@@ -1122,6 +1136,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         </div>
         )}
       </div>
+
+      {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
+      {isMobile && s.stack.length > 0 && (
+        <StackDisplay stack={s.stack} isMobile={true} bottomOffset={48} />
+      )}
 
       {/* -- MOBILE ACTION DRAWER -------------------------------------------- */}
       {isMobile && (

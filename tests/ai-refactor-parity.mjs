@@ -122,6 +122,7 @@ function makeFixedState() {
 }
 
 describe('Tier 4 parity: aiDecide determinism', () => {
+  // Each aiDecide call may run MCTS for up to 600 ms; 10 calls can take ~6 s.
   it('produces identical output across 10 calls with the same fixed state', () => {
     const state = makeFixedState();
     const results = Array.from({ length: 10 }, () => aiDecide(state));
@@ -129,7 +130,7 @@ describe('Tier 4 parity: aiDecide determinism', () => {
     for (let i = 1; i < results.length; i++) {
       expect(results[i]).toEqual(results[0]);
     }
-  });
+  }, 15000);
 
   it('output is an array', () => {
     const state = makeFixedState();

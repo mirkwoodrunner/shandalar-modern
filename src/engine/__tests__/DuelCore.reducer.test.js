@@ -125,7 +125,7 @@ describe('state.over guard', () => {
 // --- Channel -----------------------------------------------------------------
 
 describe('Channel', () => {
-  it('sets channelActive when channel sorcery is cast', () => {
+  it('sets channelActive when channel sorcery resolves off the stack', () => {
     const channelCard = {
       iid: 'chan-1', id: 'channel', name: 'Channel', type: 'Sorcery',
       color: 'G', cmc: 2, cost: 'GG', effect: 'channel',
@@ -136,9 +136,11 @@ describe('Channel', () => {
     const base = makeState({ pHand: [channelCard], phase: PHASE.MAIN_1, active: 'p' });
     const withMana = { ...base, p: { ...base.p, mana: { ...base.p.mana, G: 2 } } };
 
-    // Sorceries resolve immediately (not via stack) in the default ruleset
-    const result = duelReducer(withMana, { type: 'CAST_SPELL', who: 'p', iid: 'chan-1' });
+    // All spells now use the stack; effect applies on RESOLVE_STACK
+    const afterCast = duelReducer(withMana, { type: 'CAST_SPELL', who: 'p', iid: 'chan-1' });
+    expect(afterCast.stack.length).toBe(1);
 
+    const result = duelReducer(afterCast, { type: 'RESOLVE_STACK' });
     expect(result.p.channelActive).toBe(true);
   });
 

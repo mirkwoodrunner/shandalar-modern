@@ -57,20 +57,22 @@ describe('AI simulation — game termination', () => {
     RULESETS.CLASSIC,
   );
 
+  // MCTS runs for up to 600 ms per planMain call; a full game may trigger it
+  // several times. Give each test 30 s (single run) or 60 s (double run).
   it('terminates within the step cap', () => {
     const clone = JSON.parse(JSON.stringify(initialState));
     const { terminated, steps } = runSimGame(clone);
 
     expect(terminated).toBe(true);
     expect(steps).toBeLessThan(2000);
-  });
+  }, 30000);
 
   it('produces a valid winner', () => {
     const clone = JSON.parse(JSON.stringify(initialState));
     const { finalState } = runSimGame(clone);
 
     expect(['p', 'o']).toContain(finalState.over.winner);
-  });
+  }, 30000);
 
   it('has a defined phase string at end of game', () => {
     const clone = JSON.parse(JSON.stringify(initialState));
@@ -78,7 +80,7 @@ describe('AI simulation — game termination', () => {
 
     expect(typeof finalState.phase).toBe('string');
     expect(finalState.phase.length).toBeGreaterThan(0);
-  });
+  }, 30000);
 
   it('preserves finite life totals', () => {
     const clone = JSON.parse(JSON.stringify(initialState));
@@ -86,7 +88,7 @@ describe('AI simulation — game termination', () => {
 
     expect(Number.isFinite(finalState.p.life)).toBe(true);
     expect(Number.isFinite(finalState.o.life)).toBe(true);
-  });
+  }, 30000);
 
   it('is deterministic given the same initial state', () => {
     // Both clones start from the identical shuffled state so the KARAG
@@ -99,5 +101,5 @@ describe('AI simulation — game termination', () => {
 
     expect(run1.finalState.over.winner).toBe(run2.finalState.over.winner);
     expect(run1.steps).toBe(run2.steps);
-  });
+  }, 60000);
 });

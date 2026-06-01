@@ -1849,35 +1849,36 @@ case "CAST_SPELL": {
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
-  if (isPerm(c) && !isLand(c)) {
-    // Auras route through resolveEff so enchantCreature/enchantLand attaches the mod record.
-    if (c.effect === "enchantCreature" || c.effect === "enchantLand") {
-      s = resolveEff(s, item);
-      return dlog(s, `${w} casts ${c.name}.`, "play");
-    }
-    const pArr = { ...c, controller: w, tapped: false, summoningSick: !hasKw(c, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: { ...(c.etbCounters || {}) } };
-    s = { ...s, [w]: { ...s[w], bf: [...s[w].bf, pArr] } };
-    if (CARD_HANDLERS[c.name]?.onResolve) {
-      const pOnBf = s[w].bf.find(x => x.iid === c.iid) || pArr;
-      const result = CARD_HANDLERS[c.name].onResolve(s, pOnBf, item.targets || [], item.xVal);
-      if (result) s = result;
-    }
-    return dlog(s, `${w} casts ${c.name}.`, "play");
-  }
-  if (s.ruleset.stackType === "batch" || isSort(c)) {
-    s = resolveEff(s, item);
-    if (!isLand(c) && !isPerm(c)) s = { ...s, [w]: { ...s[w], gy: [...s[w].gy, { ...c }] } };
-    return dlog(s, `${w} casts ${c.name}.`, "play");
-  }
-  return dlog({ ...s, stack: [...s.stack, item] }, `${w} casts ${c.name} (stack).`, "play");
+  return dlog({ ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null }, `${w} casts ${c.name}.`, "play");
 }
 
 case "RESOLVE_STACK": {
   if (!s.stack.length) return s;
   const top = s.stack[s.stack.length - 1];
-  s = { ...s, stack: s.stack.slice(0, -1) };
+  // Close the priority window when resolving; DuelScreen stack-length watcher reopens it
+  // if more items remain.
+  s = { ...s, stack: s.stack.slice(0, -1), priorityWindow: false, priorityPasser: null };
   s = resolveEff(s, top);
-  if (!isPerm(top.card)) s = { ...s, [top.caster]: { ...s[top.caster], gy: [...s[top.caster].gy, { ...top.card }] } };
+  if (isPerm(top.card) && !isLand(top.card)) {
+    const pArr = {
+      ...top.card,
+      controller: top.caster,
+      tapped: false,
+      summoningSick: !hasKw(top.card, KEYWORDS.HASTE.id),
+      attacking: false,
+      blocking: null,
+      damage: 0,
+      counters: { ...(top.card.etbCounters || {}) },
+    };
+    s = { ...s, [top.caster]: { ...s[top.caster], bf: [...s[top.caster].bf, pArr] } };
+    if (CARD_HANDLERS[top.card.name]?.onResolve) {
+      const pOnBf = s[top.caster].bf.find(x => x.iid === top.card.iid) || pArr;
+      const result = CARD_HANDLERS[top.card.name].onResolve(s, pOnBf, top.targets || [], top.xVal);
+      if (result) s = result;
+    }
+  } else if (!isPerm(top.card)) {
+    s = { ...s, [top.caster]: { ...s[top.caster], gy: [...s[top.caster].gy, { ...top.card }] } };
+  }
   return s;
 }
 

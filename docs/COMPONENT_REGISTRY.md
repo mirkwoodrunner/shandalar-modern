@@ -53,3 +53,12 @@
 ### `DuelScreenMobile` — sandbox escape hatches
 - **File**: `src/ui/Mobile/DuelScreenMobile.tsx`
 - **Escape hatches**: `window.__duelDispatch` and `window.__duelState` are exposed (and cleaned up) via a `useEffect` gated on `config.sandbox`. Pattern mirrors `DuelScreen.tsx`. Active only when the component is mounted with `config.sandbox === true`.
+
+## StackDisplay
+Path: src/ui/Stack/StackDisplay.tsx
+Props: stack (StackEntry[]), isMobile (boolean), bottomOffset (number, default 48)
+Purpose: Renders the spell stack as a card splay. Top item fully visible with art and text.
+Lower items show title bars only (desktop: hover for text; mobile: tap to expand).
+Mobile: fixed bottom sheet above MobileActionDrawer (bottom: 48px from DuelScreen.tsx, 56px from DuelScreenMobile.tsx).
+Desktop: overlay over battlefield center column.
+data-testid: stack-display (root), stack-top-card (full top card), stack-title-bar (title bars)

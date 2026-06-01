@@ -896,8 +896,8 @@ function planEnd(state, profile) {
 
 // --- INSTANT-SPEED RESPONSE PLANNER ------------------------------------------
 // Called when AI has priority during the player's turn or in response to a
-// player spell. Only considers cards with type === 'Instant'. Counters and
-// reactive removal.
+// player spell. Evaluates counterspells against whatever the opponent just cast a spell.
+// Only considers instant-speed cards. Counters and reactive removal.
 
 function planInstantResponse(state, profile) {
   const instants = state.o.hand.filter(c => isInst(c));
@@ -1117,9 +1117,8 @@ export function aiDecide(state) {
           dcActions.push(...tapActions);
           const tgt = action.targets?.[0] || null;
           dcActions.push({ type: 'CAST_SPELL', who: 'o', iid: card.iid, tgt, xVal: action._xVal ?? null });
-          // Only emit RESOLVE_STACK for instants under stack-based ruleset.
-          // Sorceries, permanents, and batch-mode spells are already resolved by CAST_SPELL.
-          if (isInst(card) && state.ruleset?.stackType !== 'batch') {
+          // Emit RESOLVE_STACK for all spells under stack-based ruleset.
+          if (state.ruleset?.stackType !== 'batch') {
             dcActions.push({ type: 'RESOLVE_STACK' });
           }
         }
