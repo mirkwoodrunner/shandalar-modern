@@ -54,6 +54,9 @@
 - **File**: `src/ui/Mobile/DuelScreenMobile.tsx`
 - **Escape hatches**: `window.__duelDispatch` and `window.__duelState` are exposed (and cleaned up) via a `useEffect` gated on `config.sandbox`. Pattern mirrors `DuelScreen.tsx`. Active only when the component is mounted with `config.sandbox === true`.
 
+### `EnchantedCardSlot`
+| EnchantedCardSlot | src/ui/Card/EnchantedCardSlot.tsx | Wraps FieldCard with attached aura splay. 30px peek per aura, right of host. Desktop: hover tooltip. Mobile: tap-to-expand bottom sheet. Pure presentation -- reads card.enchantments[], no state mutation. |
+
 ## StackDisplay
 Path: src/ui/Stack/StackDisplay.tsx
 Props: stack (StackEntry[]), isMobile (boolean), bottomOffset (number, default 48)

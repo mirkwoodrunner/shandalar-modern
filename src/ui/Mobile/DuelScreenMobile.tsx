@@ -18,6 +18,7 @@ import { Banner } from './Banner';
 import { Row } from './Row';
 import { PipRow } from './PipRow';
 import { FieldCard } from './FieldCard';
+import { EnchantedCardSlot } from '../Card/EnchantedCardSlot';
 import { HandCard } from './HandCard';
 import { LandPip } from './LandPip';
 import { ActionBar } from './ActionBar';
@@ -408,9 +409,17 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           minHeight={76}
           bgFade="linear-gradient(180deg, rgba(40,16,8,.25), rgba(20,8,6,.3))">
           {oPerms.map((c: CardData) => (
-            <FieldCard key={c.iid} card={c} density="perm"
-              selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+            <EnchantedCardSlot
+              key={c.iid}
+              cardWidth={50}
+              cardHeight={70}
+              enchantments={(c as any).enchantments ?? []}
+              isMobile={true}
+            >
+              <FieldCard card={c} density="perm"
+                selected={selIid === c.iid}
+                onClick={() => onCardTap(c, 'bf')} />
+            </EnchantedCardSlot>
           ))}
         </Row>
 
@@ -418,9 +427,17 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           minHeight={84}
           bgFade="linear-gradient(180deg, rgba(40,16,8,.35), rgba(20,8,6,.4))">
           {oCreatures.map((c: CardData) => (
-            <FieldCard key={c.iid} card={c} density="perm"
-              selected={selIid === c.iid}
-              onClick={() => onCardTap(c, 'bf')} />
+            <EnchantedCardSlot
+              key={c.iid}
+              cardWidth={50}
+              cardHeight={70}
+              enchantments={(c as any).enchantments ?? []}
+              isMobile={true}
+            >
+              <FieldCard card={c} density="perm"
+                selected={selIid === c.iid}
+                onClick={() => onCardTap(c, 'bf')} />
+            </EnchantedCardSlot>
           ))}
         </Row>
 
@@ -432,10 +449,18 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           minHeight={96}
           bgFade="linear-gradient(180deg, rgba(20,40,10,.4), rgba(14,28,6,.45))">
           {pCreatures.map((c: CardData) => (
-            <FieldCard key={c.iid} card={c} density="creature"
-              selected={selIid === c.iid}
-              attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
-              onClick={() => handleBfCardClick(c)} />
+            <EnchantedCardSlot
+              key={c.iid}
+              cardWidth={64}
+              cardHeight={90}
+              enchantments={(c as any).enchantments ?? []}
+              isMobile={true}
+            >
+              <FieldCard card={c} density="creature"
+                selected={selIid === c.iid}
+                attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
+                onClick={() => handleBfCardClick(c)} />
+            </EnchantedCardSlot>
           ))}
         </Row>
 
@@ -443,9 +468,17 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           minHeight={76}
           bgFade="linear-gradient(180deg, rgba(20,28,12,.3), rgba(14,18,8,.4))">
           {pPerms.map((c: CardData) => (
-            <FieldCard key={c.iid} card={c} density="perm"
-              selected={selIid === c.iid}
-              onClick={() => handleBfCardClick(c)} />
+            <EnchantedCardSlot
+              key={c.iid}
+              cardWidth={50}
+              cardHeight={70}
+              enchantments={(c as any).enchantments ?? []}
+              isMobile={true}
+            >
+              <FieldCard card={c} density="perm"
+                selected={selIid === c.iid}
+                onClick={() => handleBfCardClick(c)} />
+            </EnchantedCardSlot>
           ))}
         </Row>
 

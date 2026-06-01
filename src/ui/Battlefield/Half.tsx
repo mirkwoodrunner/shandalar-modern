@@ -1,6 +1,7 @@
 import React from 'react';
 import { FieldCard } from '../Card/FieldCard';
 import { LandPip } from '../Card/LandPip';
+import { EnchantedCardSlot } from '../Card/EnchantedCardSlot';
 import type { CardData } from '../Card/types';
 
 interface HalfProps {
@@ -49,23 +50,35 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
 
   const renderCardRow = (rowCards: CardData[], allowAttacking = false) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
-      {rowCards.map(c => (
-        <div
-          key={c.iid}
-          onMouseEnter={() => onCardHover?.(c.iid)}
-          onMouseLeave={() => onCardHover?.(null)}
-        >
-          <FieldCard
-            card={c}
-            sm={isOpp}
-            selected={isSelected(c.iid)}
-            attacking={allowAttacking && attackers.includes(c.iid)}
-            tapped={c.tapped}
-            casting={flashIids?.has(c.iid)}
-            onClick={() => onCardClick?.(c)}
-          />
-        </div>
-      ))}
+      {rowCards.map(c => {
+        const cardW = isOpp ? 78 : 96;
+        const cardH = isOpp ? 109 : 134;
+        const enchantments = (c as any).enchantments ?? [];
+        return (
+          <div
+            key={c.iid}
+            onMouseEnter={() => onCardHover?.(c.iid)}
+            onMouseLeave={() => onCardHover?.(null)}
+          >
+            <EnchantedCardSlot
+              cardWidth={cardW}
+              cardHeight={cardH}
+              enchantments={enchantments}
+              isMobile={false}
+            >
+              <FieldCard
+                card={c}
+                sm={isOpp}
+                selected={isSelected(c.iid)}
+                attacking={allowAttacking && attackers.includes(c.iid)}
+                tapped={c.tapped}
+                casting={flashIids?.has(c.iid)}
+                onClick={() => onCardClick?.(c)}
+              />
+            </EnchantedCardSlot>
+          </div>
+        );
+      })}
     </div>
   );
 
