@@ -1138,4 +1138,31 @@ Pure function `generateStartingDeck(color, difficultyId, seed)` returns `string[
 
 See `docs/SYSTEMS.md` §33.
 
+---
+
+## §20 StackDisplay Mobile Collapse (UI)
+
+### Description
+`StackDisplay` on mobile (`isMobile === true`) starts collapsed. A centered pill button shows the current stack depth. Tapping the pill expands the full card splay. A collapse button inside the expanded panel returns to the pill. A `useEffect` watching `stack.length` auto-expands the panel when a new item is pushed.
+
+### SYSTEMS.md Reference
+Section 4 (Action & Stack System) — stack visibility is a UI concern; engine state is unchanged.
+
+### Implementation
+```
+src/ui/Stack/StackDisplay.tsx  — collapsed state, prevLenRef, auto-expand effect, pill render, collapse button
+e2e/sandbox.spec.ts            — tests 7F (updated), 7G (new)
+```
+
+### data-testid inventory
+| testid | state |
+|---|---|
+| `stack-display` | both collapsed (outer div) and expanded (outer div) |
+| `stack-pill` | collapsed only — inner span inside the pill div |
+| `stack-collapse-btn` | expanded mobile only — button in top-right of panel |
+| `stack-top-card` | expanded only — top card full render |
+
+### Status
+ACTIVE (Sprint 7 — mobile collapse feature)
+
 # End of MECHANICS INDEX v1.2

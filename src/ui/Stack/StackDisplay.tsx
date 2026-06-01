@@ -218,7 +218,9 @@ function TitleBar({ entry, artUrl, isMobile, expanded, onToggle }: TitleBarProps
 export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDisplayProps) {
   const [artUrls, setArtUrls] = useState<Record<string, string | null>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(true);
   const fetchedRef = useRef<Set<string>>(new Set());
+  const prevLenRef = useRef(stack.length);
 
   // Load art for each unique card name
   useEffect(() => {
@@ -232,6 +234,14 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDispla
     }
   }, [stack]);
 
+  // Auto-expand when a new item is pushed onto the stack
+  useEffect(() => {
+    if (stack.length > prevLenRef.current) {
+      setCollapsed(false);
+    }
+    prevLenRef.current = stack.length;
+  }, [stack.length]);
+
   if (!stack || stack.length === 0) return null;
 
   // Visual order: index 0 at bottom, last index at top. We render top-to-bottom visually as
@@ -239,6 +249,40 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDispla
   const ordered = [...stack].reverse();
   const topEntry = ordered[0];
   const restEntries = ordered.slice(1);
+
+  const pillStyle: React.CSSProperties = {
+    position: 'fixed',
+    bottom: bottomOffset,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 50,
+    background: 'rgba(10,8,5,0.92)',
+    border: '1px solid rgba(180,140,60,.5)',
+    borderRadius: 10,
+    padding: '5px 14px',
+    color: '#e8d880',
+    fontFamily: 'var(--font-display, serif)',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.8px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
+  };
+
+  if (isMobile && collapsed) {
+    return (
+      <div
+        data-testid="stack-display"
+        style={pillStyle}
+        onClick={() => setCollapsed(false)}
+        role="button"
+        aria-label={`Stack has ${stack.length} item${stack.length !== 1 ? 's' : ''}. Tap to expand.`}
+      >
+        <span data-testid="stack-pill">{`▸ STACK (${stack.length})`}</span>
+      </div>
+    );
+  }
 
   const panelStyle: React.CSSProperties = isMobile
     ? {
@@ -281,6 +325,27 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDispla
 
   return (
     <div data-testid="stack-display" style={panelStyle}>
+      {isMobile && (
+        <button
+          data-testid="stack-collapse-btn"
+          onClick={() => setCollapsed(true)}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 6,
+            background: 'transparent',
+            border: 'none',
+            color: '#a09060',
+            fontFamily: 'var(--font-display, serif)',
+            fontSize: 10,
+            cursor: 'pointer',
+            padding: '2px 4px',
+            letterSpacing: '0.5px',
+          }}
+        >
+          {'▾ STACK'}
+        </button>
+      )}
       {/* Top stack item — fully visible with art */}
       <TopCard
         entry={topEntry}

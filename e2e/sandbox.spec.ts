@@ -317,7 +317,46 @@ test.describe('Universal stack priority', () => {
       dispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: null, xVal: 1 });
     });
 
+    // Stack display is present (collapsed pill)
     await expect(page.locator('[data-testid="stack-display"]')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible();
+
+    // Wait for auto-expand (new item triggers expand)
+    await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 5_000 });
   });
+});
+
+// ---------------------------------------------------------------------------
+
+test('7G: Mobile -- stack pill collapses and re-expands on tap', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(sandboxWith('grizzly_bears'));
+  await waitForDuel(page);
+  await waitForMain1(page);
+  await tapAllLands(page);
+
+  // Cast a spell to put something on the stack
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    const dispatch = (window as any).__duelDispatch;
+    const card = (s.p.hand as any[]).find((c: any) => c.id === 'grizzly_bears');
+    if (!card) throw new Error('grizzly_bears not in hand');
+    dispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: null, xVal: 1 });
+  });
+
+  // Auto-expanded -- top card visible
+  await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 5_000 });
+
+  // Collapse via the collapse button
+  await page.locator('[data-testid="stack-collapse-btn"]').click();
+  await expect(page.locator('[data-testid="stack-top-card"]')).not.toBeVisible();
+  await expect(page.locator('[data-testid="stack-pill"]')).toBeVisible();
+
+  // ActionBar buttons are not obscured -- pass priority must be hittable
+  const passBtn = page.getByText('Pass Priority');
+  await expect(passBtn).toBeVisible();
+  await expect(passBtn).toBeEnabled();
+
+  // Re-expand via pill tap
+  await page.locator('[data-testid="stack-pill"]').click();
+  await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 3_000 });
 });
