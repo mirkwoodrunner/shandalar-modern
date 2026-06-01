@@ -1,0 +1,138 @@
+/* src/ui/Card/EnchantedCardSlot.module.css */
+
+.slot {
+  position: relative;
+  flex-shrink: 0;
+  /* width and height set via inline style -- depends on card size + aura count */
+}
+
+/* The peeking aura strip */
+.auraPeek {
+  position: absolute;
+  top: 0;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  transition: box-shadow var(--t-fast, 0.12s);
+}
+
+.auraPeek:hover {
+  box-shadow: 0 0 8px rgba(180, 140, 60, 0.7);
+}
+
+/* Name label rotated 90deg inside the peek strip */
+.auraName {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 2px;
+  flex: 1;
+  color: var(--ink-parchment, #e8dfc0);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  font-size: 7px;
+}
+
+/* Desktop hover tooltip */
+.tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: linear-gradient(160deg, #1e1a10, #0e0c08);
+  border: 1px solid rgba(200, 160, 60, 0.5);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-width: 180px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+}
+
+.tooltipName {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--brass, #c8a040);
+  margin-bottom: 4px;
+}
+
+.tooltipText {
+  font-family: var(--font-body, 'Crimson Text', serif);
+  font-size: 10px;
+  font-style: italic;
+  color: var(--ink-muted, #c0b090);
+  line-height: 1.4;
+}
+
+/* Mobile expanded overlay */
+.mobileOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.mobilePanel {
+  width: 100%;
+  max-width: 360px;
+  background: linear-gradient(160deg, #1e1a10, #0e0c08);
+  border-top: 1px solid rgba(200, 160, 60, 0.4);
+  border-radius: 12px 12px 0 0;
+  padding: 16px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobilePanelTitle {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 11px;
+  color: var(--ink-dim, #8a7a60);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.mobileAuraCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(200, 160, 60, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.mobileAuraCardName {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.mobileAuraCardText {
+  font-family: var(--font-body, 'Crimson Text', serif);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-muted, #c0b090);
+  line-height: 1.45;
+}
+
+.mobileDismiss {
+  align-self: center;
+  background: rgba(200, 160, 60, 0.12);
+  border: 1px solid rgba(200, 160, 60, 0.35);
+  border-radius: 4px;
+  color: var(--brass, #c8a040);
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 10px;
+  padding: 6px 20px;
+  cursor: pointer;
+  margin-top: 4px;
+}
