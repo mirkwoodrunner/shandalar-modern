@@ -19,6 +19,7 @@
 | 0.9 | Phase 6 (Engine Depth — partial) | Power Surge upkeep damage implemented (snapshot at UNTAP, damage at UPKEEP); Holy Ground Option B (landwalk suppression via hasKw state param + canBlockDuel threading); CardPreviewPanel added to DeckManager (Scryfall art crop on click-to-preview, inline flex sibling positioning) |
 | 1.0 | Phase 6 complete | Regeneration, Channel, Fastbond, Kudzu confirmed implemented in DuelCore.js; DuelScreen.tsx cutover complete (App.jsx and OverworldGame.jsx now import .tsx); dead files removed; keywords.js wired as authoritative keyword registry (KEYWORDS import added to all engine files, string literals replaced with KEYWORDS.X.id constants) |
 | 1.1 | Phase 7 (Original Feature Parity) | Food/hunger toggle; World Magic spell system (8 spells, passive + active); post-duel card-vs-clue choice; dungeons hidden until clued; enemy tier HP corrected to original values; henchman tier (HP 24–27, unbribeable); city conquest + defense + liberate; delivery quest type |
+| 1.2 | Sprint 7 (Stack UI — mobile collapse) | StackDisplay mobile collapsed/expanded toggle: starts collapsed, auto-expands on new stack item, pill tap to expand, collapse button inside panel. Tests 7F updated, 7G added. |
 
 ---
 

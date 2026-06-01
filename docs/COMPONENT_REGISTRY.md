@@ -57,11 +57,17 @@
 ### `EnchantedCardSlot`
 | EnchantedCardSlot | src/ui/Card/EnchantedCardSlot.tsx | Wraps FieldCard with attached aura splay. 30px peek per aura, right of host. Desktop: hover tooltip. Mobile: tap-to-expand bottom sheet. Pure presentation -- reads card.enchantments[], no state mutation. |
 
-## StackDisplay
-Path: src/ui/Stack/StackDisplay.tsx
-Props: stack (StackEntry[]), isMobile (boolean), bottomOffset (number, default 48)
-Purpose: Renders the spell stack as a card splay. Top item fully visible with art and text.
-Lower items show title bars only (desktop: hover for text; mobile: tap to expand).
-Mobile: fixed bottom sheet above MobileActionDrawer (bottom: 48px from DuelScreen.tsx, 56px from DuelScreenMobile.tsx).
-Desktop: overlay over battlefield center column.
-data-testid: stack-display (root), stack-top-card (full top card), stack-title-bar (title bars)
+### `StackDisplay`
+- **File**: `src/ui/Stack/StackDisplay.tsx`
+- **Props**: `stack: StackEntry[]`, `isMobile: boolean`, `bottomOffset?: number` (default 48)
+- **Mobile behavior**: Starts collapsed. Auto-expands when a new item is pushed
+  onto the stack (`stack.length` increases). Collapsed state renders a centered
+  pill (`data-testid="stack-pill"`) showing `▸ STACK (n)`. Expanded state
+  renders the full card splay with a collapse button (`data-testid="stack-collapse-btn"`).
+  Both states render `data-testid="stack-display"` on the outermost element.
+- **Desktop behavior**: No collapsed state. Renders as a centered absolute overlay
+  over the battlefield. Unchanged by this feature.
+- **bottomOffset**: px distance from viewport bottom for fixed positioning.
+  `DuelScreenMobile` passes 56 (ActionBar height). `DuelScreen` passes 48.
+  Update these if ActionBar heights change.
+- **data-testid inventory**: `stack-display` (root, both states), `stack-top-card` (full top card), `stack-title-bar` (title bars), `stack-pill` (collapsed pill span), `stack-collapse-btn` (expanded collapse button)

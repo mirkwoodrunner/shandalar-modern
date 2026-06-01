@@ -81,6 +81,7 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 | Your lands | `PipRow` | 26×26 land pips, wrap |
 | Player info | `Banner` (side="you") | Life · LIB · GY chips · mana pool |
 | Action bar | `ActionBar` | 3-state: pass/end · CAST/PLAY · Activate |
+| Stack display | `StackDisplay` | Fixed bottom sheet; starts **collapsed** (pill). Auto-expands on new stack item. Tap pill to expand, tap ▾ STACK to collapse. Never overlaps ActionBar. |
 | Hand strip | — + `HandCard` | 88×126 cards, green-tinted strip, count badge |
 | Log sheet | `LogSheet` | Portal to body; full bottom sheet (60vh); no peek strip |
 
