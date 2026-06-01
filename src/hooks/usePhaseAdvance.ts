@@ -22,6 +22,7 @@ export function usePhaseAdvance(
 ): () => void {
   return useCallback(() => {
     if (s.priorityWindow) return;
+    // Stack is non-empty: do nothing here. The priorityWindow useEffect in DuelScreen handles it.
     if (s.stack && s.stack.length > 0) return;
     if (!PRIORITY_WINDOW_PHASES.has(s.phase)) {
       advancePhase();

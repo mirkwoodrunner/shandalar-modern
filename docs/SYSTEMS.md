@@ -163,6 +163,25 @@ GameAction {
 - Resolution is deterministic and seed-based
 - No action resolves outside DuelCore
 
+## S-STACK: Universal Stack Priority
+
+All non-land spells are placed on the stack when cast. No spell resolves immediately.
+
+Stack entry shape: { id: string, card: CardDef, caster: 'p'|'o', targets: string[], xVal: number }
+Future fields (not yet active): isAbility: boolean, abilityText: string
+
+Priority loop:
+1. Spell cast -> stack.push + priorityWindow opens
+2. Both players pass priority -> RESOLVE_STACK fires (top item resolves)
+3. If stack still non-empty -> priorityWindow reopens
+4. Repeat until stack empty -> ADVANCE_PHASE
+
+During a priority window, only instants and instant-speed abilities may be cast.
+Sorcery-speed spells are blocked by the existing guard when stack.length > 0.
+
+Activated abilities: currently resolve immediately (not yet stacked). Stack entry
+shape extended fields reserved for future implementation.
+
 ### Sorcery-Speed Enforcement
 
 `CAST_SPELL` enforces casting restrictions before deducting mana. A card is considered sorcery-speed if `type !== 'Instant'` and `type !== 'Interrupt'`. For sorcery-speed cards the reducer enforces three conditions, returning the unchanged state (no-op) if any fails:
@@ -1475,4 +1494,29 @@ Boss duel life = `difficulty.bossBase + (magesDefeated.length x difficulty.bossP
 
 ---
 
-# End of SYSTEMS v1.1
+## Known Technical Debt
+
+### TD-001: Duplicated AI priority logic across DuelScreen.tsx and DuelScreenMobile.tsx
+
+DuelScreenMobile.tsx contained its own hand-rolled AI priority window handler that
+dispatched CAST_SPELL directly rather than delegating to aiDecide(). This was partially
+fixed in Sprint 7 (universal stack prompt) -- the priority window handler now delegates
+to aiDecide() in both files.
+
+However, both files still own separate copies of:
+- Priority window close useEffect
+- Stack-length watcher useEffect
+- AI loop useEffect
+
+Any future AI logic change must be applied to BOTH files. This is a fragile pattern.
+
+Recommended fix: extract these three effects into a shared hook, e.g.
+  src/hooks/useDuelAILoop.ts
+Both DuelScreen.tsx and DuelScreenMobile.tsx would import it.
+
+Priority: Medium. Risk surfaces whenever AI behavior is modified.
+Tracking: Add to Phase 8 backlog before any AI refactor work begins.
+
+---
+
+# End of SYSTEMS v1.2

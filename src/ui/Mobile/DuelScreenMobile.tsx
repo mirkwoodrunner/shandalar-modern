@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useDuel } from '../../hooks/useDuel.js';
 import { usePhaseAdvance } from '../../hooks/usePhaseAdvance';
 import { aiDecide } from '../../engine/AI.js';
-import { isLand, canPay } from '../../engine/DuelCore.js';
+import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
 
@@ -24,6 +24,7 @@ import { ActionBar } from './ActionBar';
 import type { Selection } from './ActionBar';
 import { LogSheet } from './LogSheet';
 import type { LogEntry } from './LogSheet';
+import { StackDisplay } from '../Stack/StackDisplay';
 
 import s from './styles.module.css';
 
@@ -120,6 +121,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const aiRef = useRef(false);
   const prevPriorityWindow = useRef(false);
   const priorityWindowInitiator = useRef(false);
+  const prevStackLen = useRef(0);
 
   // ── Sandbox escape hatches (mirrors DuelScreen.tsx; only active in sandbox) ──
   useEffect(() => {
@@ -163,16 +165,31 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   // ── AI priority window ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!s_state.priorityWindow) return;
-    const t = setTimeout(() => {
-      const aiInstant = s_state.o.hand.find(
-        (c: any) => (c.type === 'Instant' || c.type === 'Interrupt') && canPay(s_state.o.mana, c.cost)
-      );
-      if (aiInstant) dispatch({ type: 'CAST_SPELL', who: 'o', iid: (aiInstant as any).iid, tgt: 'p', xVal: 1 });
-      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
-    }, 0);
-    return () => clearTimeout(t);
-  }, [s_state.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!s_state.priorityWindow || s_state.priorityPasser === 'o' || s_state.over) return;
+    if (s_state.active !== 'p') {
+      // AI's own turn priority window: pass immediately.
+      const timer = setTimeout(() => {
+        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+    // Player's turn: AI evaluates via aiDecide (handles counterspells, instants, etc.)
+    const timer = setTimeout(() => {
+      const acts = aiDecide(s_state);
+      if (acts && acts.length) applyAiActions(acts);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [s_state.priorityWindow, s_state.active, s_state.priorityPasser, s_state.over]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reopen priority window after a stack item resolves if more items remain.
+  useEffect(() => {
+    const cur = s_state.stack?.length ?? 0;
+    const prev = prevStackLen.current;
+    prevStackLen.current = cur;
+    if (cur < prev && cur > 0 && !s_state.priorityWindow && !s_state.over) {
+      openPriorityWindow();
+    }
+  }, [s_state.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── AI loop ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -290,14 +307,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const handleCancel = useCallback(() => setSel(null), []);
 
   const handlePass = useCallback(() => {
-    if (s_state.stack?.length > 0) {
-      resolveStack();
-    } else if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
+    if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
       passPriority('p');
-    } else {
+    } else if (!s_state.priorityWindow && (s_state.stack?.length ?? 0) === 0) {
       requestPhaseAdvance();
     }
-  }, [s_state.stack, s_state.priorityWindow, s_state.priorityPasser, resolveStack, passPriority, requestPhaseAdvance]);
+    // If priorityWindow is open and player already passed: no-op (waiting for AI)
+  }, [s_state.stack, s_state.priorityWindow, s_state.priorityPasser, passPriority, requestPhaseAdvance]);
 
   // ── Land tap helper ────────────────────────────────────────────────────────
   const handleLandTap = useCallback((card: CardData) => {
@@ -444,6 +460,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       </div>{/* end bfScroll */}
 
       <Banner side="you" player={pData} />
+
+      {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
+      {s_state.stack?.length > 0 && (
+        <StackDisplay stack={s_state.stack} isMobile={true} bottomOffset={56} />
+      )}
 
       <ActionBar
         sel={sel}

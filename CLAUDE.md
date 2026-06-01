@@ -45,6 +45,12 @@ Do not implement behavior not defined in `docs/SYSTEMS.md`.
 - UI components are **presentation-only** — no game logic.
 - `useDuel.js` dispatches `GameAction` objects to DuelCore only — no rule resolution.
 
+### Stack Resolution (Universal)
+As of Sprint 7, all non-land spells use the stack. CAST_SPELL pushes every spell
+to s.stack and opens a priority window. RESOLVE_STACK handles ETB for permanents.
+The priority loop: cast -> window opens -> both players pass -> RESOLVE_STACK ->
+window reopens if more items remain -> repeat until stack empty -> ADVANCE_PHASE.
+
 ### Protected Files (Off-Limits Without Explicit Instruction)
 
 Do not modify these files unless the prompt explicitly names them:
