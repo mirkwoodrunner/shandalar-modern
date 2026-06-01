@@ -1849,6 +1849,9 @@ case "CAST_SPELL": {
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
+  // TODO (log gap): X-spell log entries omit the resolved X value. `xSpend` is available
+  // here and `item.xVal` carries the resolved value. Fix: append ` (X=${item.xVal})` to
+  // the log string when `xSpend > 0`. Tracked in docs/CURRENT_SPRINT.md Known Gaps.
   return dlog({ ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null }, `${w} casts ${c.name}.`, "play");
 }
 
