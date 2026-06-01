@@ -441,10 +441,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       priorityWindowInitiator.current === true
     ) {
       priorityWindowInitiator.current = false;
-      // If something landed on the stack during the priority window (e.g. AI
-      // cast an instant), resolve it before trying to advance the phase.
-      // Calling advancePhase() with a non-empty stack silently no-ops in
-      // DuelCore, leaving the game stuck with no trigger to retry.
+      // Always clear aiRef when a priority window closes -- the AI may have
+      // been paused mid-turn waiting for priority to resolve.
+      aiRef.current = false;
       if (s.stack && s.stack.length > 0) {
         resolveStack();
       } else {
@@ -517,6 +516,26 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     return () => clearTimeout(timer);
   }, [s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- AI spell priority helper ---------------------------------------------
+
+  /**
+   * Dispatches AI actions, pausing at each CAST_SPELL to open a priority window.
+   * The RESOLVE_STACK that AI.js appends after CAST_SPELL is dropped here --
+   * the priority window close effect handles resolution once both players pass.
+   */
+  function applyAiActionsWithPriority(acts: any[]) {
+    const castIdx = acts.findIndex(a => a.type === 'CAST_SPELL');
+    if (castIdx === -1) {
+      if (acts.length) applyAiActions(acts);
+      return;
+    }
+    const precast = acts.slice(0, castIdx + 1);
+    applyAiActions(precast);
+    openPriorityWindow();
+    // NOTE: RESOLVE_STACK at castIdx + 1 (if present) is intentionally dropped.
+    // Any further actions after RESOLVE_STACK are ignored in the current AI planner.
+  }
+
   // -- AI loop ---------------------------------------------------------------
   useEffect(() => {
     if (s.over) return;
@@ -543,8 +562,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     aiRef.current = true;
     const t = setTimeout(() => {
       const acts = aiDecide(s);
-      if (acts.length) applyAiActions(acts);
-      setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
+      const hasCast = acts.some(a => a.type === 'CAST_SPELL');
+      applyAiActionsWithPriority(acts);
+      // If a spell was cast, the priority window handles resolution and phase advance.
+      // aiRef is cleared when the window closes (see priority window close effect).
+      if (!hasCast) {
+        setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
+      }
     }, tweaks.aiSpeed);
     return () => clearTimeout(t);
   }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps

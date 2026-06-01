@@ -360,3 +360,108 @@ test('7G: Mobile -- stack pill collapses and re-expands on tap', async ({ page }
   await page.locator('[data-testid="stack-pill"]').click();
   await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 3_000 });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('AI spell priority window', () => {
+  test('8A: AI cast lands spell on stack; priorityWindow opens before resolution', async ({ page }) => {
+    await page.goto(sandboxWith('grizzly_bears'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Cast and resolve a creature for the AI to target with Terror.
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const dispatch = (window as any).__duelDispatch;
+      const bear = (s.p.hand as any[]).find((c: any) => c.id === 'grizzly_bears');
+      if (!bear) throw new Error('grizzly_bears not in hand');
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid, tgt: null, xVal: null });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    // Give the opponent Terror in hand with mana.
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const terror = {
+        iid: 'terror-test', id: 'terror', name: 'Terror', type: 'Instant',
+        color: 'B', cmc: 2, cost: '1B', effect: 'destroy', keywords: [],
+        tapped: false, summoningSick: false, attacking: false, blocking: null,
+        damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+      };
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: [terror], mana: { B: 1, C: 1 } });
+    });
+
+    // Advance to AI's turn by passing through to CLEANUP and back.
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    });
+
+    // Wait for priorityWindow to open (AI cast Terror).
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState();
+      return s.priorityWindow === true && s.stack?.length > 0;
+    }, { timeout: 5000 });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.priorityWindow).toBe(true);
+    expect(state.stack.length).toBe(1);
+    expect(state.stack[0].card.name).toBe('Terror');
+    // Creature must still be alive -- spell has not resolved.
+    const bearOnBf = state.p.bf.find((c: any) => c.id === 'grizzly_bears');
+    expect(bearOnBf).toBeDefined();
+  });
+
+  test('8B: Player passes priority; AI spell resolves', async ({ page }) => {
+    await page.goto(sandboxWith('grizzly_bears'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Cast a bear, resolve it.
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const dispatch = (window as any).__duelDispatch;
+      const bear = (s.p.hand as any[]).find((c: any) => c.id === 'grizzly_bears');
+      if (!bear) throw new Error('grizzly_bears not in hand');
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid, tgt: null, xVal: null });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    // Force Terror into opponent hand with mana.
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const terror = {
+        iid: 'terror-test-b', id: 'terror', name: 'Terror', type: 'Instant',
+        color: 'B', cmc: 2, cost: '1B', effect: 'destroy', keywords: [],
+        tapped: false, summoningSick: false, attacking: false, blocking: null,
+        damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
+      };
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: [terror], mana: { B: 1, C: 1 } });
+    });
+
+    // Wait for priority window with Terror on stack.
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState();
+      return s.priorityWindow === true && s.stack?.some((e: any) => e.card?.name === 'Terror');
+    }, { timeout: 5000 });
+
+    // Player passes priority.
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    });
+
+    // Wait for Terror to resolve (stack empty, bear gone).
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState();
+      return s.stack.length === 0 && !s.p.bf.some((c: any) => c.id === 'grizzly_bears');
+    }, { timeout: 5000 });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.stack.length).toBe(0);
+    expect(state.p.bf.find((c: any) => c.id === 'grizzly_bears')).toBeUndefined();
+  });
+});
