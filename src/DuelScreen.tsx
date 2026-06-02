@@ -578,7 +578,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       }
     }, tweaks.aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Ability menu selection handler (Mishra's Factory etc.) -----------------
   const handleAbilityMenuSelect = useCallback((abilityId: string) => {

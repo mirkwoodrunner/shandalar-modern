@@ -190,6 +190,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       priorityWindowInitiator.current === true
     ) {
       priorityWindowInitiator.current = false;
+      // Clear aiRef so the AI loop can re-run after the window closes (mirrors desktop).
+      aiRef.current = false;
       if (s_state.stack && s_state.stack.length > 0) resolveStack();
       else advancePhase();
     }
@@ -254,11 +256,16 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     aiRef.current = true;
     const t = setTimeout(() => {
       const acts = aiDecide(s_state);
+      const hasCast = acts.some((a: any) => a.type === 'CAST_SPELL');
       if (acts.length) applyAiActions(acts);
-      setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, AI_SPEED);
+      // When the AI casts a spell, the priority window close effect handles aiRef reset
+      // and stack resolution. Only start the inner timer for non-cast turns.
+      if (!hasCast) {
+        setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, AI_SPEED);
+      }
     }, 500 + Math.random() * 350);
     return () => clearTimeout(t);
-  }, [s_state.phase, s_state.active, s_state.turn, s_state.over, s_state.pendingChoice, s_state.pendingUpkeepChoice]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s_state.phase, s_state.active, s_state.turn, s_state.over, s_state.pendingChoice, s_state.pendingUpkeepChoice, s_state.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game over ──────────────────────────────────────────────────────────────
   useEffect(() => {
