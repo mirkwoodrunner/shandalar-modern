@@ -683,9 +683,13 @@ function planMain(state, profile, phase) {
   let chosenVirtual;
 
   if (profile.aggression >= 0.9 && primaryActions.length > 0 && altActions.length > 0) {
+    // Pass pre-simulated virtual states as nextState so scoreMoves/MCTS starts
+    // rollouts from the correct post-plan position (TD-002 fix).
+    // action field is kept as a no-op sentinel so the candidate shape is consistent
+    // with the planAttack call site; scoreMoves ignores it when nextState is present.
     const candidates = [
-      { action: { type: 'PLAN', actions: primaryActions }, label: 'primary' },
-      { action: { type: 'PLAN', actions: altActions },     label: 'alt' },
+      { action: { type: 'ADVANCE_PHASE' }, nextState: primaryVirtual, label: 'primary' },
+      { action: { type: 'ADVANCE_PHASE' }, nextState: altVirtual,     label: 'alt' },
     ];
     const best = getBestMove(virtualState, candidates, 600);
     if (best == null) {
