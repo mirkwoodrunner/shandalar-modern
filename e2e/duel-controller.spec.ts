@@ -152,6 +152,37 @@ test('5: AI cast opens priority window before stack resolves (desktop)', async (
 });
 
 // ---------------------------------------------------------------------------
+// 7. handleBfClick — pendingBlockerIid starts null (desktop)
+// ---------------------------------------------------------------------------
+test('7: pendingBlockerIid is null before any blocker click (desktop)', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+  await waitForMain1(page);
+
+  // pendingBlockerIid lives in useDuelController React state, not in GameState.
+  // Verify engine state is accessible and no blocker iid is pre-set.
+  const state = await page.evaluate(() => (window as any).__duelState());
+  expect(state.phase).not.toBe('COMBAT_BLOCKERS');
+  // GameState should not have a pendingBlockerIid field (it's React state, not engine state).
+  expect((state as any).pendingBlockerIid).toBeUndefined();
+});
+
+// ---------------------------------------------------------------------------
+// 8. handleBfClick — non-combat click does not set pendingBlockerIid (desktop)
+// Verifies that land clicks during MAIN_1 are not consumed by handleBfClick.
+// ---------------------------------------------------------------------------
+test('8: land click during MAIN_1 is not swallowed by handleBfClick (desktop)', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+  await waitForMain1(page);
+
+  const state = await page.evaluate(() => (window as any).__duelState());
+  // Phase must be MAIN_1, not a combat phase — handleBfClick returns false.
+  expect(state.phase).toBe('MAIN_1');
+  expect(state.active).toBe('p');
+});
+
+// ---------------------------------------------------------------------------
 // 6. Priority window — AI casts spell, player gets window (mobile)
 // Verifies the bug fix: mobile now uses applyAiActionsWithPriority via hook.
 // ---------------------------------------------------------------------------

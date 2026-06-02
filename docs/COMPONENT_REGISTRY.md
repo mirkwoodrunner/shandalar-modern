@@ -33,6 +33,11 @@
 - **Variants**: `'default'` | `'primary'` | `'end'` | `'ghost'` | `'muted'`
 - **`muted` variant**: dark background (`#1a1a1a → #111`), grey border (`rgba(80,80,80,.35)`), grey text (`#555555`), no shadow. Used for the Pass Priority button when the player does not hold priority.
 
+### `DuelScreen`
+- **File**: `src/DuelScreen.tsx`
+- **Purpose**: Desktop duel layout. Assembles engine state (via `useDuelController`) into the full duel UI.
+- Battlefield combat clicks (COMBAT_BLOCKERS, COMBAT_ATTACKERS) delegated to `handleBfClick` from `useDuelController`. Screen handles non-combat interactions only.
+
 ### `SandboxDebugPanel`
 - **File**: inline JSX in `src/DuelScreen.tsx`, right sidebar
 - **Render condition**: `config.sandbox === true && !isMobile` (desktop only; silent on mobile viewports ≤ 640px)
@@ -53,6 +58,7 @@
 ### `DuelScreenMobile` — sandbox escape hatches
 - **File**: `src/ui/Mobile/DuelScreenMobile.tsx`
 - **Escape hatches**: `window.__duelDispatch` and `window.__duelState` are exposed (and cleaned up) via a `useEffect` gated on `config.sandbox`. Pattern mirrors `DuelScreen.tsx`. Active only when the component is mounted with `config.sandbox === true`.
+- Battlefield combat clicks (COMBAT_BLOCKERS, COMBAT_ATTACKERS) delegated to `handleBfClick` from `useDuelController`. Screen handles non-combat interactions only.
 
 ### `EnchantedCardSlot`
 | EnchantedCardSlot | src/ui/Card/EnchantedCardSlot.tsx | Wraps FieldCard with attached aura splay. 30px peek per aura, right of host. Desktop: hover tooltip. Mobile: tap-to-expand bottom sheet. Pure presentation -- reads card.enchantments[], no state mutation. |

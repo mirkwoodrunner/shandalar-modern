@@ -292,7 +292,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const {
     state, dispatch,
     tapLand, tapArtifactMana, playLand, castSpell, resolveStack,
-    declareAttacker, declareBlocker, advancePhase, selectCard, selectTarget,
+    advancePhase, selectCard, selectTarget,
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
     resolveUpkeepChoice, openPriorityWindow, passPriority, useChannel,
     undoManaTaps, requestPhaseAdvance,
@@ -300,6 +300,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     pendingDualLand, setPendingDualLand,
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
+    handleBfClick,
   } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
 
   const s = state;
@@ -405,7 +406,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       if (isArt(card) && !card.tapped && card.activated?.effect?.startsWith('addMana')) {
         tapArtifactMana(card.iid); return;
       }
-      if (s.phase === 'COMBAT_ATTACKERS') { declareAttacker(card.iid); return; }
       if (pendingActivate) {
         const pendingAbilityId = (pendingActivate as any)._pendingAbilityId ?? null;
         activateAbility(pendingActivate.iid, card.iid, null, pendingAbilityId);
@@ -425,9 +425,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     }
 
     if (zone === 'oBf') {
-      if (s.phase === 'COMBAT_BLOCKERS' && s.selTgt) {
-        declareBlocker(s.selTgt, card.iid); selectTarget(null); return;
-      }
       if (pendingActivate) {
         const pendingAbilityId = (pendingActivate as any)._pendingAbilityId ?? null;
         activateAbility(pendingActivate.iid, card.iid, null, pendingAbilityId);
@@ -440,13 +437,18 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }, [
     s.over, s.selCard, s.selTgt, s.phase, s.p.hand, pendingActivate,
     selectCard, selectTarget, tapLand, tapArtifactMana,
-    declareAttacker, declareBlocker, activateAbility, handleActivate,
+    activateAbility, handleActivate,
   ]);
 
-  // -- Battlefield click: determine zone from which side card lives on --------
+  // -- Battlefield click: combat routing owned by useDuelController -----------
   const handleBfCardClick = useCallback((card: CardData) => {
+    // Combat routing (COMBAT_BLOCKERS, COMBAT_ATTACKERS) is owned by useDuelController.
+    const consumed = handleBfClick(card);
+    if (consumed !== false) return;
+
+    // Non-combat interactions remain screen-local.
     handleCardClick(card, oppBfIids.has(card.iid) ? 'oBf' : 'pBf');
-  }, [oppBfIids, handleCardClick]);
+  }, [handleBfClick, oppBfIids, handleCardClick]);
 
   const handleHandCardClick = useCallback((card: CardData) => {
     handleCardClick(card, 'hand');
