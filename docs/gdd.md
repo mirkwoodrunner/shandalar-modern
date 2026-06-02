@@ -20,6 +20,7 @@
 | 1.0 | Phase 6 complete | Regeneration, Channel, Fastbond, Kudzu confirmed implemented in DuelCore.js; DuelScreen.tsx cutover complete (App.jsx and OverworldGame.jsx now import .tsx); dead files removed; keywords.js wired as authoritative keyword registry (KEYWORDS import added to all engine files, string literals replaced with KEYWORDS.X.id constants) |
 | 1.1 | Phase 7 (Original Feature Parity) | Food/hunger toggle; World Magic spell system (8 spells, passive + active); post-duel card-vs-clue choice; dungeons hidden until clued; enemy tier HP corrected to original values; henchman tier (HP 24–27, unbribeable); city conquest + defense + liberate; delivery quest type |
 | 1.2 | Sprint 7 (Stack UI — mobile collapse) | StackDisplay mobile collapsed/expanded toggle: starts collapsed, auto-expands on new stack item, pill tap to expand, collapse button inside panel. Tests 7F updated, 7G added. |
+| 1.3 | Bug fix (B31) | AI stuck in MAIN_1 on mobile after casting a spell — priority window + inner-timer race condition. Fixed in `DuelScreenMobile.tsx` (close effect clears aiRef; hasCast skips inner timer; stack?.length added to AI loop deps). Desktop patched with stack?.length dep addition. |
 
 ---
 
@@ -76,6 +77,7 @@
 | B28 | Activate triggered instead of targeting on opponent creature click (mobile and desktop) | `pBf` activate checks (`activatedAbilities` / `card.activated`) fired before hand-spell-selected check; also, no ownership guard prevented player activating opponent cards via `handleActivate` | Added `handSpellSelected` guard so activate is bypassed when spell in hand is selected; added ownership check in `handleActivate` to prevent opponent card activation |
 | B29 | TargetArrow absent on mobile | `selectTarget` was never called (B28 interception prevented it); arrow had no `targetIid` to render | Fixed by B28; additionally confirmed `data-iid` on `HandCard.tsx` and `FieldCard.tsx` root elements and `TargetArrow` not inside any transformed ancestor |
 | B30 | Mobile undo button never visible | `canUndoMana` in `DuelScreenMobile.tsx` retained a stale `spellsThisTurn === 0` guard removed from the desktop version in Duel Bug Batch 1; button was suppressed any time a spell had been cast this turn | Removed `spellsThisTurn === 0` from `canUndoMana` in `DuelScreenMobile.tsx` to match desktop logic |
+| B31 | AI stuck in MAIN_1 on mobile after casting a spell | Race condition in `DuelScreenMobile.tsx`: the inner 800ms timer cleared `aiRef.current` while the priority window was still open (player had not yet passed); when the window later closed and `resolveStack()` drained the stack, no AI loop dependency had changed so the loop never re-ran. Three fixes: (1) `aiRef.current = false` added to the priority window close effect (mirrors desktop); (2) `hasCast` check skips the inner timer when AI cast a spell, delegating cleanup to the close effect; (3) `s_state.stack?.length` added to AI loop dependency array so the loop re-runs when the stack drains. Corresponding fix on desktop: `s.stack?.length` added to its AI loop dependency array to close the same theoretical gap when `hasCast=true`. |
 
 ---
 

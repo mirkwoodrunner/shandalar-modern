@@ -1019,16 +1019,33 @@ When a priority window is open and the player holds priority, selecting an Insta
 
 ## 18.10 AI Spell Cast Priority
 
+### Desktop (DuelScreen.tsx)
+
 When the AI casts a sorcery-speed spell during its main phase, `applyAiActionsWithPriority()`
-in `DuelScreen.tsx` intercepts the AI action array, dispatches tap actions and `CAST_SPELL`
-as a partial batch, then calls `openPriorityWindow()`. The `RESOLVE_STACK` that `AI.js`
-appends to the action array is dropped -- the priority window close effect handles resolution
-once both players pass.
+intercepts the AI action array, dispatches tap actions and `CAST_SPELL` as a partial batch,
+then calls `openPriorityWindow()`. The `RESOLVE_STACK` that `AI.js` appends is dropped --
+the priority window close effect handles resolution once both players pass.
+
+The `hasCast` flag prevents the inner `requestPhaseAdvance()` timer from starting when a
+spell was cast. `aiRef.current` is cleared in the priority window close effect, and
+`s.stack?.length` is included in the AI loop dependency array so the loop re-runs when
+the stack drains after `resolveStack()`.
+
+### Mobile (DuelScreenMobile.tsx)
+
+Mobile uses `applyAiActions` directly (no `applyAiActionsWithPriority` wrapper). The
+priority window is opened by DuelCore's `CAST_SPELL` handler setting `priorityWindow: true`.
+
+The same three invariants apply:
+1. `hasCast` check in the AI loop skips the inner timer when a spell was cast, avoiding
+   the race where the timer fires and clears `aiRef.current` while the window is still open.
+2. `aiRef.current = false` is set in the priority window close effect (before `resolveStack()`).
+3. `s_state.stack?.length` is in the AI loop dependency array so the loop re-runs when
+   the stack drains after `resolveStack()`.
 
 The AI's own priority handler (active !== 'p') passes immediately via 0ms setTimeout,
 so on the AI's turn the player sees the window and must click Pass Priority once for the
-spell to resolve. `aiRef.current` is cleared in the priority window close effect so the
-AI loop is not left in a blocked state after the window closes.
+spell to resolve.
 
 ---
 
