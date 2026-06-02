@@ -486,7 +486,8 @@ Thin hooks that live alongside `useDuel.js` and share its constraints (no rules 
 
 | Hook | File | Purpose |
 |------|------|---------|
-| `usePhaseAdvance` | `src/hooks/usePhaseAdvance.ts` | Encapsulates the priority-window suppression heuristic (skip window when no instant/activated ability is available). Returns a stable `requestPhaseAdvance` callback. Shared by `DuelScreen` and `DuelScreenMobile` — logic is defined once. |
+| `useDuelController` | `src/hooks/useDuelController.ts` | Shared orchestration hook for both duel screens. Owns the AI loop (including `applyAiActionsWithPriority`), three priority-window effects, sandbox escape hatch, game-over timer, and mulligan state. Both `DuelScreen` and `DuelScreenMobile` delegate all orchestration here. Accepts optional `aiSpeed` parameter (default 800ms; desktop passes `tweaks.aiSpeed`). |
+| `usePhaseAdvance` | `src/hooks/usePhaseAdvance.ts` | Encapsulates the priority-window suppression heuristic (skip window when no instant/activated ability is available). Returns a stable `requestPhaseAdvance` callback. Called internally by `useDuelController`. |
 | `useMedia` | `src/hooks/useMedia.ts` | Generic `matchMedia` wrapper with SSR guard. Returns a boolean that updates on viewport change. Used by `OverworldGame` to gate `DuelScreenMobile` at ≤ 640px. |
 | `useIsMobile` | `src/hooks/useIsMobile.js` | ResizeObserver-based breakpoint detector (≤ 768px). Used for OverworldGame layout adjustments and within DuelScreen for tablet-width tweaks. |
 
@@ -1556,14 +1557,12 @@ However, both files still own separate copies of:
 - Stack-length watcher useEffect
 - AI loop useEffect
 
-Any future AI logic change must be applied to BOTH files. This is a fragile pattern.
-
-Recommended fix: extract these three effects into a shared hook, e.g.
-  src/hooks/useDuelAILoop.ts
-Both DuelScreen.tsx and DuelScreenMobile.tsx would import it.
-
-Priority: Medium. Risk surfaces whenever AI behavior is modified.
-Tracking: Add to Phase 8 backlog before any AI refactor work begins.
+**Resolved (Sprint 8):** All three effects, plus the sandbox escape hatch, game-over timer,
+and mulligan state, have been extracted into `src/hooks/useDuelController.ts`. Both
+`DuelScreen.tsx` and `DuelScreenMobile.tsx` now delegate entirely to this hook. The mobile
+AI loop bug (calling `applyAiActions` with the full action list instead of slicing at
+`CAST_SPELL`) is fixed — `applyAiActionsWithPriority` is the single implementation inside
+the hook.
 
 ---
 

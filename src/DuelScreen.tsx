@@ -2,11 +2,9 @@
 // Assembler component for the duel UI.
 // Wires engine (useDuel / AI) to the new design system components.
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { useDuel } from './hooks/useDuel.js';
-import { aiDecide } from './engine/AI.js';
 import { isLand, isArt, canPay, isInst } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 
@@ -17,7 +15,6 @@ import { Battlefield } from './ui/Battlefield/Battlefield';
 import { Hand } from './ui/Hand/Hand';
 import { ActionBar } from './ui/ActionBar/ActionBar';
 import { DuelLog } from './ui/Log/DuelLog';
-import type { LogEntry, LogKind } from './ui/Log/DuelLog';
 import { TargetArrow } from './ui/TargetArrow/TargetArrow';
 import { TweaksPanel } from './ui/TweaksPanel/TweaksPanel';
 import { GameOverModal } from './ui/GameOver/GameOverModal';
@@ -31,7 +28,8 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { usePhaseAdvance } from './hooks/usePhaseAdvance';
+import { useDuelController, resolveDefaultTarget } from './hooks/useDuelController';
+import type { DuelConfig } from './types/duel';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
@@ -46,26 +44,6 @@ function getManaSymbol(color: string): string {
   return map[color] ?? '?';
 }
 
-function adaptLog(rawLog: unknown[]): LogEntry[] {
-  return (rawLog ?? []).map(entry => {
-    const text = typeof entry === 'string' ? entry : (entry as any)?.text ?? String(entry);
-    let kind: LogKind = 'info';
-    if (/^turn \d+/i.test(text))                             kind = 'turn';
-    else if (/phase|upkeep|draw step|main|combat|end step/i.test(text)) kind = 'phase';
-    else if (/\byou\b.*(cast|played)/i.test(text))           kind = 'play';
-    else if (/\bopp(onent)?\b.*(cast|played)/i.test(text))   kind = 'opp_play';
-    else if (/\bdamage\b/i.test(text))                       kind = 'damage';
-    else if (/\bheal|gain.*life\b/i.test(text))              kind = 'heal';
-    return { kind, text };
-  });
-}
-
-function resolveDefaultTarget(card: any, state: any): string | null {
-  const { effect } = card;
-  if (['damage3', 'damage5', 'damageX', 'psionicBlast', 'chainLightning'].includes(effect)) return 'o';
-  if (['draw3', 'gainLife3', 'gainLifeX', 'tutor', 'drawX'].includes(effect)) return state.selTgt ?? 'p';
-  return state.selTgt ?? null;
-}
 
 // -----------------------------------------------------------------------------
 // INLINE POPOVERS
@@ -218,27 +196,6 @@ function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }: {
 // TYPES
 // -----------------------------------------------------------------------------
 
-interface DuelRuleset {
-  name: string;
-  startingLife: number;
-  manaBurn?: boolean;
-  stackType?: string;
-  deathtouch?: boolean;
-  exileZone?: boolean;
-}
-
-interface DuelConfig {
-  pDeckIds: string[];
-  oppArchKey: string;
-  ruleset: DuelRuleset;
-  overworldHP?: number;
-  castleMod?: { name: string; desc: string } | null;
-  anteEnabled?: boolean;
-  context?: string;
-  sandbox?: boolean;
-  forcedHandIds?: string[];
-}
-
 interface DuelScreenProps {
   config: DuelConfig;
   onDuelEnd: (outcome: 'win' | 'lose' | 'forfeit', state: unknown) => void;
@@ -327,170 +284,41 @@ function MobileActionDrawer({ s, config, ruleFlags }: {
 // -----------------------------------------------------------------------------
 
 export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
-  // -- Engine state via useDuel bridge --------------------------------------
-  const {
-    state,
-    dispatch,
-    tapLand,
-    tapArtifactMana,
-    playLand,
-    castSpell,
-    resolveStack,
-    declareAttacker,
-    declareBlocker,
-    advancePhase,
-    selectCard,
-    selectTarget,
-    setX,
-    mulligan,
-    activateAbility,
-    chooseLotusColor,
-    applyAiActions,
-    openPriorityWindow,
-    passPriority,
-    resolveChoice,
-    resolveUpkeepChoice,
-    useChannel,
-    undoManaTaps,
-  } = useDuel(
-    config.pDeckIds,
-    config.oppArchKey,
-    config.ruleset,
-    config.overworldHP,
-    config.castleMod,
-    config.anteEnabled ?? false,
-    config.oppLife ?? null
-  );
-
-  const s = state;
-
   // -- Design hooks ----------------------------------------------------------
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
+
+  // -- Shared orchestration hook ---------------------------------------------
+  const {
+    state, dispatch,
+    tapLand, tapArtifactMana, playLand, castSpell, resolveStack,
+    declareAttacker, declareBlocker, advancePhase, selectCard, selectTarget,
+    setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
+    resolveUpkeepChoice, openPriorityWindow, passPriority, useChannel,
+    undoManaTaps, requestPhaseAdvance,
+    showMulligan, mulliganCount, handleKeep, handleMulligan,
+    showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
+    pendingDualLand, setPendingDualLand,
+    adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
+  } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
+
+  const s = state;
+
   usePersistence(s);
-
-  // -- Sandbox escape hatches (only active when config.sandbox === true) ------
-  useEffect(() => {
-    if (!config.sandbox) return;
-    (window as any).__duelDispatch = dispatch;
-    (window as any).__duelState   = () => state;
-    return () => {
-      delete (window as any).__duelDispatch;
-      delete (window as any).__duelState;
-    };
-  }, [config.sandbox, dispatch, state]);
-
-  const sandboxHandFired = useRef(false);
-
-  useEffect(() => {
-    if (!config.sandbox) return;
-    if (!config.forcedHandIds?.length) return;
-    if (sandboxHandFired.current) return;
-    sandboxHandFired.current = true;
-
-    const forcedIds = config.forcedHandIds;
-    const remaining = [...state.p.lib];
-    const iids: string[] = [];
-
-    for (const cardId of forcedIds) {
-      const idx = remaining.findIndex(c => c.id === cardId);
-      if (idx !== -1) {
-        iids.push(remaining[idx].iid);
-        remaining.splice(idx, 1);
-      }
-    }
-
-    if (iids.length) {
-      dispatch({ type: 'SANDBOX_FORCE_HAND', iids });
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMobile = useIsMobile();
 
   // -- Local UI state --------------------------------------------------------
   const [tooltip, setTooltip] = useState<{ card: any; pos: { x: number; y: number } } | null>(null);
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
-  const [showLotus, setShowLotus] = useState(false);
   const [showBop, setShowBop] = useState(false);
-  const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const [graveyardPopover, setGraveyardPopover] = useState<{
     open: boolean; player: string | null; mode: string;
   }>({ open: false, player: null, mode: 'reference' });
   const [manaChoicePopover, setManaChoicePopover] = useState<{
     open: boolean; colors: string[]; cardName: string; callback: ((c: string) => void) | null;
   }>({ open: false, colors: [], cardName: '', callback: null });
-  const mulliganDismissed = useRef(false);
-  const [showMulligan, setShowMulligan] = useState(true);
-  const [mulliganCount, setMulliganCount] = useState(0);
   const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
-  const aiRef = useRef(false);
-  const prevPriorityWindow = useRef(false);
-  const priorityWindowInitiator = useRef(false);
-  const prevStackLen = useRef(0);
-
-  const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
-
-  // -- Auto-advance phase when priority window closes (both players passed) --
-  useEffect(() => {
-    if (s.priorityWindow === true) {
-      priorityWindowInitiator.current = true;
-    }
-    if (
-      prevPriorityWindow.current === true &&
-      s.priorityWindow === false &&
-      priorityWindowInitiator.current === true
-    ) {
-      priorityWindowInitiator.current = false;
-      // Always clear aiRef when a priority window closes -- the AI may have
-      // been paused mid-turn waiting for priority to resolve.
-      aiRef.current = false;
-      if (s.stack && s.stack.length > 0) {
-        resolveStack();
-      } else {
-        advancePhase();
-      }
-    }
-    prevPriorityWindow.current = s.priorityWindow;
-  }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // -- AI priority window handler -----------------------------------------------
-  // During the player's turn: uses planInstantResponse via aiDecide (200 ms delay
-  // so the player sees the window open before the AI responds).
-  // During the AI's own turn: AI already acted in the main loop; just pass quickly.
-  // Guard on priorityPasser prevents re-firing after the AI has already passed.
-  useEffect(() => {
-    if (!s.priorityWindow || s.priorityPasser === 'o' || s.over) return;
-    if (s.active !== 'p') {
-      // AI's own turn priority window — pass immediately, no complex evaluation.
-      const timer = setTimeout(() => {
-        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-    // Player's turn — AI responds using planInstantResponse via aiDecide.
-    const timer = setTimeout(() => {
-      const acts = aiDecide(s);
-      if (acts && acts.length) applyAiActions(acts);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Open priority window whenever the stack changes size:
-  // - Stack shrinks but still has items -> reopen after partial resolution.
-  // - Stack grows from 0 -> N on AI's turn -> give player a chance to respond.
-  useEffect(() => {
-    const cur = s.stack?.length ?? 0;
-    const prev = prevStackLen.current;
-    prevStackLen.current = cur;
-    if (s.priorityWindow || s.over) return;
-    if (cur < prev && cur > 0) {
-      // A stack item resolved but more remain -- reopen so both players can respond.
-      openPriorityWindow();
-    } else if (cur > prev && prev === 0 && s.active === 'o') {
-      // AI just cast a spell onto an empty stack -- open priority window for player.
-      openPriorityWindow();
-    }
-  }, [s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Keyboard shortcuts ----------------------------------------------------
   const isIdle = s.active === 'p' && !pendingActivate;
@@ -513,72 +341,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   useEffect(() => {
     if (s.pendingBop) setShowBop(true);
   }, [s.pendingBop]);
-
-  // -- Game-over: show modal, then return to overworld -----------------------
-  useEffect(() => {
-    if (!s.over) return;
-    const timer = setTimeout(() => {
-      onDuelEnd(s.over.winner === 'p' ? 'win' : 'lose', s);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [s.over]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // -- AI spell priority helper ---------------------------------------------
-
-  /**
-   * Dispatches AI actions, pausing at each CAST_SPELL to open a priority window.
-   * The RESOLVE_STACK that AI.js appends after CAST_SPELL is dropped here --
-   * the priority window close effect handles resolution once both players pass.
-   */
-  function applyAiActionsWithPriority(acts: any[]) {
-    const castIdx = acts.findIndex(a => a.type === 'CAST_SPELL');
-    if (castIdx === -1) {
-      if (acts.length) applyAiActions(acts);
-      return;
-    }
-    const precast = acts.slice(0, castIdx + 1);
-    applyAiActions(precast);
-    openPriorityWindow();
-    // NOTE: RESOLVE_STACK at castIdx + 1 (if present) is intentionally dropped.
-    // Any further actions after RESOLVE_STACK are ignored in the current AI planner.
-  }
-
-  // -- AI loop ---------------------------------------------------------------
-  useEffect(() => {
-    if (s.over) return;
-    if (s.pendingUpkeepChoice) return;
-
-    // AI auto-resolves pendingChoice when it is the controller
-    if (s.pendingChoice && s.pendingChoice.controller === 'o') {
-      const choice = s.pendingChoice;
-      const payOption = choice.options.find((o: any) => o.id === 'pay_gggg');
-      const damageOption = choice.options.find((o: any) => o.effect?.type === 'dealDamageToController');
-      let aiCanPay = false;
-      if (payOption?.effect?.type === 'payMana') {
-        const cost = payOption.effect.cost;
-        aiCanPay = Object.entries(cost).every(([color, amount]) =>
-          (s.o.mana[color as string] || 0) >= (amount as number)
-        );
-      }
-      resolveChoice(aiCanPay && payOption ? payOption.id : (damageOption?.id || choice.options[0].id));
-      return;
-    }
-
-    if (s.active !== 'o' || aiRef.current) return;
-    if (s.phase === 'COMBAT_BLOCKERS') return;
-    aiRef.current = true;
-    const t = setTimeout(() => {
-      const acts = aiDecide(s);
-      const hasCast = acts.some(a => a.type === 'CAST_SPELL');
-      applyAiActionsWithPriority(acts);
-      // If a spell was cast, the priority window handles resolution and phase advance.
-      // aiRef is cleared when the window closes (see priority window close effect).
-      if (!hasCast) {
-        setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, tweaks.aiSpeed);
-      }
-    }, tweaks.aiSpeed);
-    return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Ability menu selection handler (Mishra's Factory etc.) -----------------
   const handleAbilityMenuSelect = useCallback((abilityId: string) => {
@@ -682,10 +444,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   ]);
 
   // -- Battlefield click: determine zone from which side card lives on --------
-  const oppBfIids = useMemo(
-    () => new Set((s.o.bf as any[]).map((c: any) => c.iid)),
-    [s.o.bf]
-  );
   const handleBfCardClick = useCallback((card: CardData) => {
     handleCardClick(card, oppBfIids.has(card.iid) ? 'oBf' : 'pBf');
   }, [oppBfIids, handleCardClick]);
@@ -706,13 +464,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }, [s, playLand, castSpell, selectCard, selectTarget]);
 
   // -- Lotus / Bop / graveyard / mana-choice handlers ------------------------
-  const handleLotusChoose = useCallback((color: string) => {
-    chooseLotusColor(color); setShowLotus(false); setPendingActivate(null);
-  }, [chooseLotusColor]);
-
-  const handleLotusCancel = useCallback(() => {
-    setShowLotus(false); setPendingActivate(null);
-  }, []);
 
   const handleBopChoose = useCallback((color: string) => {
     dispatch({ type: 'CHOOSE_BOP_COLOR', color }); setShowBop(false);
@@ -746,42 +497,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   }, []);
   const handleTipLeave = useCallback(() => setTooltip(null), []);
 
-  const handleKeep = useCallback(() => {
-    mulliganDismissed.current = true;
-    setShowMulligan(false);
-  }, []);
-  const handleMulligan = useCallback(() => {
-    mulligan(); setMulliganCount(c => c + 1);
-  }, [mulligan]);
-
-  // Re-suppress modal if dismissed ref is set (survives re-renders and orientation change)
-  useEffect(() => {
-    if (mulliganDismissed.current) setShowMulligan(false);
-  }, [s.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // -- Priority state -------------------------------------------------------
-
-  const canUndoMana: boolean =
-    s.active === 'p' &&
-    (s.stack?.length ?? 0) === 0 &&
-    s.manaTapSnapshot !== null;
-
   // -- Derived data for new components --------------------------------------
   const oppBfCards  = s.o.bf as unknown as CardData[];
   const yourBfCards = s.p.bf as unknown as CardData[];
   const yourHand    = s.p.hand as unknown as CardData[];
   const mulliganHand = s.p.hand as unknown as CardData[];
-  const adaptedLog  = useMemo(() => adaptLog(s.log ?? []), [s.log]);
-  const attackersList = useMemo<string[]>(() => {
-    if (!s.attackers) return [];
-    return s.attackers instanceof Set ? Array.from(s.attackers) : (Array.isArray(s.attackers) ? s.attackers : []);
-  }, [s.attackers]);
-  const ruleFlags = useMemo(() => [
-    { l: 'Mana Burn',  v: config.ruleset.manaBurn   as boolean | string | undefined },
-    { l: 'Stack',      v: config.ruleset.stackType  as boolean | string | undefined },
-    { l: 'Deathtouch', v: config.ruleset.deathtouch as boolean | string | undefined },
-    { l: 'Exile',      v: config.ruleset.exileZone  as boolean | string | undefined },
-  ], [config.ruleset]);
 
   // -------------------------------------------------------------------------
   // RENDER
@@ -1193,7 +913,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       )}
 
       {showLotus && (
-        <LotusColorPicker onChoose={handleLotusChoose} onCancel={handleLotusCancel} />
+        <LotusColorPicker
+          onChoose={(color: string) => { handleLotusChoose(color); setPendingActivate(null); }}
+          onCancel={() => { handleLotusCancel(); setPendingActivate(null); }}
+        />
       )}
       {showBop && (
         <BopColorPicker onChoose={handleBopChoose} onCancel={handleBopCancel} />

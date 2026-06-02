@@ -113,8 +113,9 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 
 ### Shared hooks used by DuelScreenMobile
 
-- `useDuel` — same engine store as DuelScreen (no data fork); `chooseLotusColor`, `mulligan`, `tapArtifactMana`, and `declareAttacker` also destructured
-- `usePhaseAdvance` (`src/hooks/usePhaseAdvance.ts`) — phase-advance logic shared with DuelScreen
+- `useDuelController` — owns all AI loop, priority window, mulligan, game-over, and sandbox logic. Both screens delegate entirely to this hook.
+- `useDuel` — called internally by `useDuelController`. Not imported directly by either screen.
+- `usePhaseAdvance` — called internally by `useDuelController`.
 
 ### Battlefield card interaction (`handleBfCardClick`)
 
