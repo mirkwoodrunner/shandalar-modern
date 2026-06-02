@@ -20,15 +20,122 @@ interface ActionBarProps {
   priorityWindowOpen?: boolean;
   canUndo?: boolean;
   onUndo?: () => void;
+  phase?: string;
+  targetingFor?: string | null;
+  pendingTarget?: string | null;
+  pendingBlocker?: string | null;
+  blockers?: Record<string, string>;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers }: ActionBarProps) {
   const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
   const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
 
+  if (targetingFor) {
+    const hasTarget = !!pendingTarget;
+    return (
+      <div
+        data-testid="action-bar"
+        className={s.actionBar}
+        style={{
+          gap: 5,
+          padding: '8px 8px',
+          borderTop: '1.5px solid var(--opp)88',
+          boxShadow: 'inset 0 10px 22px -10px rgba(232,84,32,.3)',
+        }}
+      >
+        <button
+          className={`${s.actionBtn} ${s.actionBtnCast}`}
+          onClick={hasTarget ? onCast : undefined}
+          disabled={!hasTarget}
+          style={{
+            background: hasTarget
+              ? 'linear-gradient(180deg, #5a2818, #2a0e0a)'
+              : 'rgba(30,20,10,.7)',
+            border: `1.5px solid ${hasTarget ? 'var(--opp)' : 'rgba(80,60,40,.4)'}`,
+            color: hasTarget ? '#ff9060' : '#664433',
+            opacity: hasTarget ? 1 : 0.65,
+            cursor: hasTarget ? 'pointer' : 'not-allowed',
+          }}
+        >
+          <span style={{ fontSize: 11 }}>{'\u{1F3AF}'}</span>
+          <span style={{ fontSize: 11, letterSpacing: 0.8 }}>
+            {hasTarget ? 'CAST' : 'SELECT TARGET'}
+          </span>
+        </button>
+        <button
+          className={s.actionBtn}
+          onClick={onCancel}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(120,90,40,.5)',
+            color: 'var(--ink-parchment)',
+            flex: 1,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  if (phase === 'COMBAT_BLOCKERS' && isPlayerTurn) {
+    const blockerCount = Object.keys(blockers ?? {}).length;
+    return (
+      <div
+        data-testid="action-bar"
+        className={s.actionBar}
+        style={{
+          gap: 5,
+          padding: '8px 8px',
+          borderTop: '1.5px solid rgba(80,120,200,.5)',
+          boxShadow: 'inset 0 10px 22px -10px rgba(80,120,200,.25)',
+        }}
+      >
+        <div
+          style={{
+            flex: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            color: 'rgba(140,180,255,.85)',
+            fontSize: 9,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 0.8,
+            textTransform: 'uppercase',
+          }}
+        >
+          <span style={{ fontSize: 10 }}>
+            {pendingBlocker ? '▶ PICK ATTACKER' : 'PICK BLOCKER'}
+          </span>
+          {blockerCount > 0 && (
+            <span style={{ color: 'rgba(120,160,255,.6)', fontSize: 8 }}>
+              {blockerCount} assigned
+            </span>
+          )}
+        </div>
+        <button
+          className={s.actionBtn}
+          onClick={onEnd}
+          style={{
+            flex: 2,
+            background: 'linear-gradient(180deg, #18283a, #0a1420)',
+            border: '1px solid rgba(80,120,200,.7)',
+            color: 'rgba(140,180,255,.9)',
+            boxShadow: '0 0 8px rgba(80,120,200,.4)',
+          }}
+        >
+          Done {'▸'}
+        </button>
+      </div>
+    );
+  }
+
   if (!sel) {
     return (
-      <div className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
+      <div data-testid="action-bar" className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
         {canUndo && (
           <button
             className={s.actionBtn}
@@ -91,6 +198,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
 
     return (
       <div
+        data-testid="action-bar"
         className={s.actionBar}
         style={{
           gap: 5,
@@ -129,7 +237,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
 
   // Battlefield selection
   return (
-    <div className={s.actionBar} style={{ borderTop: '1px solid rgba(196,160,64,.4)' }}>
+    <div data-testid="action-bar" className={s.actionBar} style={{ borderTop: '1px solid rgba(196,160,64,.4)' }}>
       <button
         className={s.actionBtn}
         onClick={onActivate}

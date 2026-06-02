@@ -647,6 +647,17 @@
 .logEntryHeal   { color: var(--log-heal); padding-left: 8px; border-left: 2px solid rgba(122,208,160,.33); }
 .logEntryInfo   { color: var(--ink-muted); padding-left: 8px; border-left: 2px solid rgba(168,152,120,.33); }
 
+/* Blocking mode: banner instruction label */
+.blockerInstruction {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(140, 180, 255, 0.7);
+  text-align: center;
+  padding: 2px 0;
+}
+
 /* ── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .actionBtnCast { animation: none !important; }

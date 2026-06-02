@@ -28,6 +28,7 @@ export function HandCard({ card, selected, playable, onClick }: HandCardProps) {
       className={s.handCard}
       onClick={onClick}
       data-iid={card.iid}
+      data-testid="hand-card"
       style={{
         width: 88,
         height: 126,

@@ -11,9 +11,13 @@ interface FieldCardProps {
   attacking?: boolean;
   density?: 'creature' | 'perm';
   onClick?: () => void;
+  isTarget?: boolean;
+  isPendingAttackerTarget?: boolean;
+  isBlockerSelected?: boolean;
+  isAssignedBlocker?: boolean;
 }
 
-export function FieldCard({ card, selected, attacking, density = 'creature', onClick }: FieldCardProps) {
+export function FieldCard({ card, selected, attacking, density = 'creature', onClick, isTarget, isPendingAttackerTarget, isBlockerSelected, isAssignedBlocker }: FieldCardProps) {
   const frame = frameOf(card);
   const isCre = card.type?.includes('Creature');
   const tapped = card.tapped;
@@ -23,11 +27,22 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
   const typeFontSize = density === 'perm' ? 5 : 5.5;
   const ptFontSize = density === 'perm' ? 8.5 : 8.5;
 
-  const borderColor = selected ? 'var(--brass)' : attacking ? 'var(--opp)' : frame.bd;
-  const boxShadow = selected
-    ? '0 0 10px rgba(255,208,96,.53), inset 0 0 12px rgba(0,0,0,.5)'
-    : attacking
-    ? '0 0 8px rgba(232,84,32,.7), inset 0 0 12px rgba(0,0,0,.5)'
+  const borderColor =
+    isTarget               ? '#ff7040'
+    : isPendingAttackerTarget ? 'rgba(80,140,255,.9)'
+    : isBlockerSelected    ? '#4080ff'
+    : isAssignedBlocker    ? 'rgba(80,140,255,.55)'
+    : selected             ? 'var(--brass)'
+    : attacking            ? 'var(--opp)'
+    : frame.bd;
+
+  const boxShadow =
+    isTarget               ? '0 0 12px rgba(255,80,32,.7), inset 0 0 12px rgba(0,0,0,.5)'
+    : isPendingAttackerTarget ? '0 0 10px rgba(80,140,255,.6), inset 0 0 10px rgba(0,0,0,.5)'
+    : isBlockerSelected    ? '0 0 12px rgba(64,128,255,.8), inset 0 0 12px rgba(0,0,0,.5)'
+    : isAssignedBlocker    ? '0 0 6px rgba(64,128,255,.4), inset 0 0 10px rgba(0,0,0,.5)'
+    : selected             ? '0 0 10px rgba(255,208,96,.53), inset 0 0 12px rgba(0,0,0,.5)'
+    : attacking            ? '0 0 8px rgba(232,84,32,.7), inset 0 0 12px rgba(0,0,0,.5)'
     : '0 2px 5px rgba(0,0,0,.7), inset 0 0 10px rgba(0,0,0,.4)';
 
   return (
