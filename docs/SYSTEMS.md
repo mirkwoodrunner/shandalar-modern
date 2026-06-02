@@ -1001,6 +1001,21 @@ When a priority window is open and the player holds priority, selecting an Insta
 | `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
 | `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |
 
+## 18.10 AI Spell Cast Priority
+
+When the AI casts a sorcery-speed spell during its main phase, `applyAiActionsWithPriority()`
+in `DuelScreen.tsx` intercepts the AI action array, dispatches tap actions and `CAST_SPELL`
+as a partial batch, then calls `openPriorityWindow()`. The `RESOLVE_STACK` that `AI.js`
+appends to the action array is dropped -- the priority window close effect handles resolution
+once both players pass.
+
+The AI's own priority handler (active !== 'p') passes immediately via 0ms setTimeout,
+so on the AI's turn the player sees the window and must click Pass Priority once for the
+spell to resolve. `aiRef.current` is cleared in the priority window close effect so the
+AI loop is not left in a blocked state after the window closes.
+
+---
+
 ## 18.9 ActionBar Turn Guard
 
 `ActionBar` receives three additional props: `isPlayerTurn` (bool), `isWaitingForAI` (bool), and `priorityWindowOpen` (bool).

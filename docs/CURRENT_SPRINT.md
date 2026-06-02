@@ -31,6 +31,7 @@
 | DuelScreen resolution loop + stack watcher | `src/DuelScreen.tsx`, `src/hooks/usePhaseAdvance.ts` | [IN PROGRESS] |
 | DuelScreenMobile AI fix + resolution loop | `src/ui/Mobile/DuelScreenMobile.tsx` | [IN PROGRESS] |
 | Stack scenario e2e tests | `e2e/sandbox.spec.ts` | [IN PROGRESS] |
+| AI spell cast opens priority window (18.10) | `src/DuelScreen.tsx`, `e2e/sandbox.spec.ts` | ✅ Done |
 
 ## Technical Debt Log
 
