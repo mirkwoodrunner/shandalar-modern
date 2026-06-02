@@ -43,6 +43,8 @@ All other systems are non-authoritative.
 - DuelCore.js (combat + turn engine)
 - AI.js (decision generation only)
 - MapGenerator.js (world grid math)
+<!-- corrected: phases.js is a first-class engine file consumed by DuelCore, AI, and cardHandlers; was missing from Layer 1 -->
+- phases.js (PHASE enum and PHASE_SEQUENCE constants; consumed by DuelCore, AI, and cardHandlers)
 
 ### Layer 2 — Rules Definition
 - rulesets.js (Classic vs Modern rule modes)
@@ -113,29 +115,42 @@ Each turn is fully deterministic and processed in order:
 
 ## 3.1 Turn Phases
 
-1. Untap Phase
+<!-- corrected: original listed 7 phases; phases.js PHASE_SEQUENCE defines 12 — combat is split into 5 sub-phases and CLEANUP is a separate final phase -->
+1. Untap Phase (`UNTAP`)
    - untap permanents (if applicable)
 
-2. Upkeep Phase
-   - Specific to task referencing the upkeep Phase
+2. Upkeep Phase (`UPKEEP`)
+   - upkeep-triggered abilities resolved; Power Surge damage applied
 
-3. Draw Phase
+3. Draw Phase (`DRAW`)
    - active player draws 1 card
 
-4. First Main Phase
+4. First Main Phase (`MAIN_1`)
    - player may play cards (via GameActions)
 
-5. Combat Phase
-   - attackers declared
-   - blockers assigned
-   - damage resolved via DuelCore
+5. Combat Begin (`COMBAT_BEGIN`)
+   - priority window; instants may be cast before attackers are named
 
-6. Second Main Phase
-   - player may play cards (via GameActions)
+6. Declare Attackers (`COMBAT_ATTACKERS`)
+   - attacking creatures declared
 
-7. End Phase
-   - cleanup effects
-   - expire temporary modifiers
+7. Declare Blockers (`COMBAT_BLOCKERS`)
+   - blocking creatures assigned
+
+8. Combat Damage (`COMBAT_DAMAGE`)
+   - damage assigned and resolved simultaneously
+
+9. Combat End (`COMBAT_END`)
+   - end-of-combat effects expire; priority window
+
+10. Second Main Phase (`MAIN_2`)
+    - player may play cards (via GameActions)
+
+11. End Phase (`END`)
+    - cleanup effects; "until end of turn" modifiers expire
+
+12. Cleanup (`CLEANUP`)
+    - discard to hand size; damage counters removed; channelActive cleared
 
 ---
 
@@ -305,6 +320,9 @@ Before the per-attacker blocking loop, `planBlock` computes `totalIncoming` (sum
 
 For each unblocked attacker the loop checks in order: favorable trade → survives → prevents lethal → skip.
 
+<!-- corrected: risky-attack MCR call site (AI.js >= 0.8) was undocumented -->
+When `profile.aggression >= 0.8` (currently KARAG at 1.0, ARZAKON at 0.8), risky attacks are evaluated via `getBestMove(state, candidateMoves, 400)` before committing. Lower-aggression profiles use a probabilistic coin-flip (`Math.random() < profile.aggression`).
+
 ## 6.6 Activated Abilities
 
 `planActivatedAbilities(state, profile)` is called from `planMain` immediately before `PASS_PRIORITY`. Currently handles:
@@ -354,6 +372,9 @@ Turn calculation is budgeted at 500ms p95 on a mid-range device. If profiling sh
 `planInstantResponse(state, profile)` is invoked by `getAIPlan` when `priorityWindow === true && active === 'p'` (the player holds priority). The hook in `DuelScreen.tsx` triggers a 200 ms delayed call to `aiDecide` when those conditions hold and the AI has not already passed (`priorityPasser !== 'o'`).
 
 ### Trigger Conditions
+
+<!-- corrected: effect lives in useDuelController.ts, not DuelScreen.tsx; extracted per TD-001 resolution -->
+The effect that triggers this response lives in `useDuelController.ts` (AI priority window effect).
 
 - `state.priorityWindow === true`
 - `state.active === 'p'` (player's turn — AI is the reactive side)
@@ -489,7 +510,12 @@ Thin hooks that live alongside `useDuel.js` and share its constraints (no rules 
 | `useDuelController` | `src/hooks/useDuelController.ts` | Shared orchestration hook for both duel screens. Owns the AI loop (including `applyAiActionsWithPriority`), three priority-window effects, sandbox escape hatch, game-over timer, and mulligan state. Both `DuelScreen` and `DuelScreenMobile` delegate all orchestration here. Accepts optional `aiSpeed` parameter (default 800ms; desktop passes `tweaks.aiSpeed`). |
 | `usePhaseAdvance` | `src/hooks/usePhaseAdvance.ts` | Encapsulates the priority-window suppression heuristic (skip window when no instant/activated ability is available). Returns a stable `requestPhaseAdvance` callback. Called internally by `useDuelController`. |
 | `useMedia` | `src/hooks/useMedia.ts` | Generic `matchMedia` wrapper with SSR guard. Returns a boolean that updates on viewport change. Used by `OverworldGame` to gate `DuelScreenMobile` at ≤ 640px. |
-| `useIsMobile` | `src/hooks/useIsMobile.js` | ResizeObserver-based breakpoint detector (≤ 768px). Used for OverworldGame layout adjustments and within DuelScreen for tablet-width tweaks. |
+<!-- corrected: file is .ts not .js; implementation uses matchMedia not ResizeObserver; breakpoint is 640px not 768px -->
+| `useIsMobile` | `src/hooks/useIsMobile.ts` | `matchMedia`-based breakpoint detector (≤ 640px). Returns `true` when viewport width ≤ 640 px; updates on resize. Used for presentation sizing only — no game logic. |
+| `useFlash` | `src/hooks/useFlash.ts` | Tracks a `Set<string>` of card iids to flash; clears after configurable duration (default 200 ms). |
+| `useKeyboardShortcuts` | `src/hooks/useKeyboardShortcuts.ts` | Binds Space (pass priority), Enter (end turn), Escape (cancel), and digit keys (quick-cast) to provided handler callbacks. No-ops when an INPUT or TEXTAREA is focused. |
+| `useTweaks` | `src/hooks/useTweaks.ts` | Manages dev-tweak values (arrow style, `aiSpeed`). `readAiSpeedParam()` parses `?aiSpeed=` from the URL; default is **400 ms** when the param is absent. |
+| `usePersistence` | `src/hooks/usePersistence.ts` | Writes the full duel GameState to `localStorage` key `shandalar:duel` on every state change (write-only; key is never read back). See OPEN DESIGN QUESTION in Section 21. |
 
 ### 11.3 UI/Overworld — Dynamic Tile Size
 
@@ -944,7 +970,8 @@ Two fields added to GameState (initialized in `buildDuelState`):
 3. `requestPhaseAdvance()` performs a smart-suppression check (see 18.4). If suppressed, it dispatches `ADVANCE_PHASE` directly.
 4. If not suppressed, it dispatches `OPEN_PRIORITY_WINDOW`. The reducer sets `priorityWindow: true, priorityPasser: null`.
 5. Each side passes via `PASS_PRIORITY({ who })`. The reducer records the first passer in `priorityPasser`. When the second distinct side passes, it sets `priorityWindow: false, priorityPasser: null`.
-6. A `useRef`-guarded `useEffect([s.priorityWindow])` in DuelScreen detects the `true -> false` transition and dispatches `ADVANCE_PHASE`.
+<!-- corrected: effect lives in useDuelController.ts, not DuelScreen directly; extracted per TD-001 resolution -->
+6. A `useRef`-guarded `useEffect([s.priorityWindow])` in `useDuelController.ts` detects the `true -> false` transition and calls `resolveStack()` (if items remain) or `advancePhase()` (if stack is empty).
 
 ## 18.3 SILENCE Suppression
 
@@ -976,8 +1003,9 @@ Both conditions must be false before the phase can advance. The `advPhase()` hel
 
 ## 18.6 AI Behavior
 
-When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow])` in
-DuelScreen evaluates the AI's options:
+<!-- corrected: effect lives in useDuelController.ts, not DuelScreen directly; extracted per TD-001 resolution -->
+When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow, s.active, s.priorityPasser, s.over])` in
+`useDuelController.ts` evaluates the AI's options:
 
 1. Search `s.o.hand` for the first card with `type === 'Instant'` and
    `canPay(s.o.mana, c.cost) === true`.
@@ -989,8 +1017,9 @@ passes immediately.
 
 ## 18.6b AI Turn — Spell Cast Priority Window
 
+<!-- corrected: stack-length watcher lives in useDuelController.ts, not DuelScreen directly; extracted per TD-001 resolution -->
 When the AI casts a spell on its own turn (`active === 'o'`), a separate
-`useEffect([s.stack?.length])` detects the stack growing from 0 → N and opens a priority
+`useEffect([s.stack?.length])` in `useDuelController.ts` detects the stack growing from 0 → N and opens a priority
 window. This gives the player a chance to respond with instants or interrupts before the
 spell resolves. The existing priority-window close → auto-advance path (`priorityWindow
 false` transition) then handles `RESOLVE_STACK` and phase advance after both players pass.
@@ -1011,16 +1040,21 @@ When a priority window is open and the player holds priority, selecting an Insta
 
 ## 18.8 System Files
 
+<!-- corrected: AI handler, auto-advance effect, and stack-length watcher extracted to useDuelController.ts per TD-001 resolution -->
 | File | Role |
 |------|------|
 | `src/engine/DuelCore.js` | State fields, reducer cases, ADVANCE_PHASE guard |
 | `src/hooks/useDuel.js` | `openPriorityWindow`, `passPriority` dispatchers |
+| `src/hooks/useDuelController.ts` | Priority window close effect, stack-length watcher, AI priority response, `applyAiActionsWithPriority`, `requestPhaseAdvance` |
 | `src/ui/ActionBar/InstantPriorityBar.tsx` | Player priority UI |
-| `src/DuelScreen.tsx` | `requestPhaseAdvance`, auto-advance effect, AI handler, render |
+| `src/DuelScreen.tsx` | Render only; delegates all orchestration to `useDuelController` |
 
 ## 18.10 AI Spell Cast Priority
 
-### Desktop (DuelScreen.tsx)
+<!-- corrected: all three AI loop effects extracted to useDuelController.ts per TD-001 resolution; neither DuelScreen.tsx nor DuelScreenMobile.tsx owns these effects directly -->
+Both desktop and mobile delegate AI spell cast priority entirely to `useDuelController.ts`. Neither `DuelScreen.tsx` nor `DuelScreenMobile.tsx` owns the AI loop, priority window close effect, or stack-length watcher directly.
+
+### Desktop path (via `useDuelController.ts`)
 
 When the AI casts a sorcery-speed spell during its main phase, `applyAiActionsWithPriority()`
 intercepts the AI action array, dispatches tap actions and `CAST_SPELL` as a partial batch,
@@ -1032,16 +1066,16 @@ spell was cast. `aiRef.current` is cleared in the priority window close effect, 
 `s.stack?.length` is included in the AI loop dependency array so the loop re-runs when
 the stack drains after `resolveStack()`.
 
-### Mobile (DuelScreenMobile.tsx)
+### Mobile path (via `useDuelController.ts`)
 
-Mobile uses `applyAiActions` directly (no `applyAiActionsWithPriority` wrapper). The
-priority window is opened by DuelCore's `CAST_SPELL` handler setting `priorityWindow: true`.
+Mobile uses the same `useDuelController.ts` hook. `applyAiActionsWithPriority` is the
+single implementation inside the hook; both screens call it identically.
 
 The same three invariants apply:
 1. `hasCast` check in the AI loop skips the inner timer when a spell was cast, avoiding
    the race where the timer fires and clears `aiRef.current` while the window is still open.
 2. `aiRef.current = false` is set in the priority window close effect (before `resolveStack()`).
-3. `s_state.stack?.length` is in the AI loop dependency array so the loop re-runs when
+3. `s.stack?.length` is in the AI loop dependency array so the loop re-runs when
    the stack drains after `resolveStack()`.
 
 The AI's own priority handler (active !== 'p') passes immediately via 0ms setTimeout,
@@ -1122,6 +1156,9 @@ turnState: {
 
 Cross-run unlockables are persisted via `localStorage`. In-run game state is not persisted.
 
+<!-- corrected: usePersistence.ts writes full duel GameState to shandalar:duel on every state change; contradicts the claim above; key is never read back -->
+> **OPEN DESIGN QUESTION:** `usePersistence.ts` writes full duel GameState to `localStorage` key `shandalar:duel` on every state change (imported in `DuelScreen.tsx` line 28). This key is never read back. Either (a) document this as an in-run crash-recovery stub and add a read path, or (b) delete `usePersistence.ts` and remove the import. Current behavior contradicts Section 21.1.
+
 ## 21.1 Scope
 
 Cross-run unlockables only. In-run state is ephemeral — closing the browser mid-run discards it.
@@ -1153,9 +1190,13 @@ All read/write operations are wrapped in `try/catch`. Failure is silent — `con
 
 ## 21.6 System File
 
+<!-- corrected: usePersistence.ts is an additional file writing duel state; undocumented -->
 | File | Role |
 |------|------|
 | `src/OverworldGame.jsx` | Read on mount (lazy initializer); write on every artifact state change |
+| `src/hooks/usePersistence.ts` | Writes full duel GameState to `shandalar:duel` on every state change (write-only). See OPEN DESIGN QUESTION above. |
+
+> **OPEN DESIGN QUESTION:** `usePersistence.ts` writes full duel GameState to `localStorage` key `shandalar:duel` on every state change (imported in `DuelScreen.tsx` line 28). This key is never read back. Either (a) document this as an in-run crash-recovery stub and add a read path, or (b) delete `usePersistence.ts` and remove the import. Current behavior contradicts Section 21.1.
 
 ---
 
@@ -1500,9 +1541,24 @@ Sandbox mode (`?duel=sandbox`) is the required entry point for all e2e tests.
 It loads `public/sandbox-decklist.txt` at runtime and is completely inert in
 normal builds -- no URL param, no sandbox behaviour.
 
+<!-- corrected: default aiSpeed is 400ms from useTweaks.ts readAiSpeedParam(), not 800ms (800ms is useDuelController's hook parameter default when caller omits the argument) -->
 The `?aiSpeed=<ms>` param overrides the initial value of `tweaks.aiSpeed`
-(defined in `useTweaks.ts`). Set to 0 in all e2e tests to eliminate AI timing
+(defined in `useTweaks.ts`). When the param is absent, `readAiSpeedParam()` returns **400 ms** (not 800 ms; 800 ms is the `useDuelController` hook-parameter default used only when the caller does not pass `tweaks.aiSpeed`). Set to 0 in all e2e tests to eliminate AI timing
 non-determinism.
+
+<!-- corrected: only e2e/sandbox.spec.ts was previously documented; additional spec files exist -->
+### E2E Spec Inventory
+
+| File | Description |
+|------|-------------|
+| `e2e/sandbox.spec.ts` | Core sandbox smoke tests |
+| `e2e/duel-controller.spec.ts` | `useDuelController` integration scenarios |
+| `e2e/enchanted-slot.spec.ts` | Enchanted-slot rendering and interaction |
+| `e2e/mobile-targeting.spec.ts` | Mobile explicit-target flow |
+| `tests/e2e/ai-mana-tracking.spec.js` | AI virtual mana tracking across multi-spell turns |
+| `tests/e2e/difficulty.spec.js` | Difficulty system (life totals, deck generation) |
+| `tests/e2e/instant-cast-priority-window.spec.js` | Instant-speed cast priority window |
+| `tests/e2e/undo-mana-taps-all-phases.spec.js` | Mana tap undo across all eligible phases |
 
 `window.__duelDispatch` and `window.__duelState` are exposed only when
 `config.sandbox === true`. They are cleaned up on unmount.
@@ -1563,6 +1619,20 @@ and mulligan state, have been extracted into `src/hooks/useDuelController.ts`. B
 AI loop bug (calling `applyAiActions` with the full action list instead of slicing at
 `CAST_SPELL`) is fixed — `applyAiActionsWithPriority` is the single implementation inside
 the hook.
+
+---
+
+### TD-002: MCTS plan selection uses unrecognized action type
+
+`planMain` in `AI.js` wraps candidate turn plans as `{ type: 'PLAN', actions }` objects
+and passes them to `getBestMove`. The `duelReducer` does not recognize the `PLAN` action
+type; rollouts from this call site always evaluate from identical states, making the MCTS
+output statistically meaningless. The selector falls back to `evaluateBoard` score
+comparison automatically when MCTS returns `null` (see Section 28.5).
+
+**Fix:** Replace `{ type: 'PLAN', actions }` with an approach that applies the plan's
+individual actions in sequence during the rollout policy, or pre-simulate each plan against
+a cloned virtual state before passing the resulting state to `getBestMove`.
 
 ---
 
