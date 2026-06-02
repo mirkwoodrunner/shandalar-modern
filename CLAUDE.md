@@ -258,6 +258,21 @@ window.__duelState()            // read current GameState snapshot
 
 ---
 
+## MCTS Candidate Shape (TD-002)
+
+scoreMoves() in MCTS.js accepts an optional `nextState` field on candidate objects:
+
+  { action: <any valid action>, nextState?: GameState, label: string }
+
+When `nextState` is present, it is used as the rollout start state directly.
+When absent, start state is derived via duelReducer(state, candidate.action).
+
+planMain() uses the nextState path (passing primaryVirtual / altVirtual).
+planAttack() uses the action path (passing DECLARE_ATTACKER / ADVANCE_PHASE).
+Never pass { type: 'PLAN' } or other unrecognized action types as candidates.
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth

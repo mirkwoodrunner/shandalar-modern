@@ -261,7 +261,13 @@ export function scoreMoves(state, candidateMoves, budgetMs = 800) {
   const minIterations = 3;
 
   const stats = candidateMoves.map(candidate => {
-    const next = duelReducer(JSON.parse(JSON.stringify(state)), candidate.action);
+    // If the caller has already pre-simulated the resulting state (e.g. planMain
+    // virtual states), use that directly. Otherwise derive it via duelReducer.
+    // This avoids the PLAN pseudo-action bug (TD-002) while keeping the planAttack
+    // call site unchanged (it passes real action types with no nextState field).
+    const next = candidate.nextState
+      ? JSON.parse(JSON.stringify(candidate.nextState))
+      : duelReducer(JSON.parse(JSON.stringify(state)), candidate.action);
     return { ...candidate, next, wins: 0, iterations: 0, winRate: 0 };
   });
 

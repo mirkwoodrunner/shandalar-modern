@@ -1622,17 +1622,18 @@ the hook.
 
 ---
 
-### TD-002: MCTS plan selection uses unrecognized action type
+### TD-002: MCTS plan selection uses unrecognized action type — RESOLVED
 
-`planMain` in `AI.js` wraps candidate turn plans as `{ type: 'PLAN', actions }` objects
-and passes them to `getBestMove`. The `duelReducer` does not recognize the `PLAN` action
-type; rollouts from this call site always evaluate from identical states, making the MCTS
-output statistically meaningless. The selector falls back to `evaluateBoard` score
-comparison automatically when MCTS returns `null` (see Section 28.5).
+**Was:** `planMain` wrapped candidate plans as `{ type: 'PLAN', actions }` objects.
+`duelReducer` does not recognize `PLAN`; rollouts evaluated from identical states;
+MCTS output was statistically meaningless for KARAG.
 
-**Fix:** Replace `{ type: 'PLAN', actions }` with an approach that applies the plan's
-individual actions in sequence during the rollout policy, or pre-simulate each plan against
-a cloned virtual state before passing the resulting state to `getBestMove`.
+**Fix (applied):** `scoreMoves` in `MCTS.js` now accepts an optional `nextState` field
+on candidate objects. When present, it is used as the rollout start state directly,
+bypassing `duelReducer`. `planMain` now passes `nextState: primaryVirtual` and
+`nextState: altVirtual` so each plan's rollout begins from the correct post-plan
+position. The `planAttack` call site is unaffected (it passes valid engine action types
+with no `nextState` field).
 
 ---
 
