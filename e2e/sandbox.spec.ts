@@ -414,6 +414,64 @@ test.describe('AI spell priority window', () => {
     expect(bearOnBf).toBeDefined();
   });
 
+  test('AI spell gives player priority window to respond', async ({ page }) => {
+    // Inject a 1W creature for the AI (Benalish Hero) and a counterspell for the player.
+    // The AI should cast on its turn; the player should see the priority window before
+    // the creature resolves.
+    await page.goto(
+      '/?duel=sandbox&cards=benalish_hero,counterspell&aiSpeed=0'
+    );
+
+    // Wait for the duel to initialise.
+    await page.waitForFunction(() => (window as any).__duelState !== undefined);
+
+    // Force the AI's hand to contain a 1W creature and give it mana.
+    // Force the player's hand to contain a counterspell and give it UU mana.
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({
+        type: 'SANDBOX_FORCE_HAND',
+        who: 'o',
+        cardIds: ['benalish_hero'],
+        mana: { W: 1, U: 0, B: 0, R: 0, G: 0, C: 0 },
+      });
+      (window as any).__duelDispatch({
+        type: 'SANDBOX_FORCE_HAND',
+        who: 'p',
+        cardIds: ['counterspell'],
+        mana: { W: 0, U: 2, B: 0, R: 0, G: 0, C: 0 },
+      });
+    });
+
+    // Advance to AI's MAIN_1 (active = 'o').
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      if (s.active !== 'o') {
+        // Force to AI turn by setting active -- sandbox only.
+        (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', who: 'o' });
+      }
+    });
+
+    // Poll until a priority window opens (AI cast and player gets priority).
+    // Timeout = 5 s. If the window never opens the test fails.
+    await page.waitForFunction(
+      () => {
+        const s = (window as any).__duelState?.();
+        return s && s.priorityWindow === true;
+      },
+      { timeout: 5000 }
+    );
+
+    // The creature must NOT be on the battlefield yet -- it hasn't resolved.
+    const oCreatureCount = await page.evaluate(() => {
+      return (window as any).__duelState().o.bf.filter((c: any) => c.id === 'benalish_hero').length;
+    });
+    expect(oCreatureCount).toBe(0);
+
+    // Stack must have exactly one item.
+    const stackLen = await page.evaluate(() => (window as any).__duelState().stack.length);
+    expect(stackLen).toBe(1);
+  });
+
   test('8B: Player passes priority; AI spell resolves', async ({ page }) => {
     await page.goto(sandboxWith('grizzly_bears'));
     await waitForDuel(page);

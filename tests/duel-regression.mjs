@@ -300,3 +300,86 @@ describe('Regression: AI_CASTS_SPELL_TURN_4 — virtualState updated after land 
     expect(spellActions.length).toBeGreaterThan(0);
   });
 });
+
+describe('Regression: AI spell priority window (PW-AI-01)', () => {
+  // PW-AI-01: When AI casts a spell on its own turn, the stack must be non-empty
+  // and a priority window must NOT have auto-resolved it before the player acts.
+  // Engine-level: verify that CAST_SPELL by 'o' puts the spell on the stack
+  // without immediately resolving it, and that OPEN_PRIORITY_WINDOW is the
+  // correct next step (not RESOLVE_STACK with no window).
+
+  it('PW-AI-01: AI CAST_SPELL lands on stack without auto-resolving', () => {
+    const creature = {
+      iid: 'hero-1',
+      id: 'benalish_hero',
+      name: 'Benalish Hero',
+      type: 'Creature',
+      color: 'W',
+      cmc: 1,
+      cost: 'W',
+      effect: null,
+      keywords: ['BANDING'],
+      tapped: false,
+      summoningSick: false,
+      attacking: false,
+      blocking: null,
+      damage: 0,
+      counters: {},
+      eotBuffs: [],
+      enchantments: [],
+      controller: 'o',
+      power: 1,
+      toughness: 1,
+    };
+    const base = makeState({
+      phase: 'MAIN_1',
+      active: 'o',
+    });
+    const withHand = {
+      ...base,
+      o: {
+        ...base.o,
+        hand: [creature],
+        mana: { W: 1, U: 0, B: 0, R: 0, G: 0, C: 0 },
+      },
+    };
+
+    // AI casts the creature -- spell goes on the stack.
+    const afterCast = duelReducer(withHand, {
+      type: 'CAST_SPELL',
+      who: 'o',
+      iid: 'hero-1',
+    });
+
+    // Stack must have the spell.
+    expect(afterCast.stack.length).toBe(1);
+    expect(afterCast.stack[0].card.iid).toBe('hero-1');
+
+    // Creature must NOT be on the battlefield yet -- it hasn't resolved.
+    expect(afterCast.o.bf.find(c => c.iid === 'hero-1')).toBeUndefined();
+
+    // Only after RESOLVE_STACK does the creature enter.
+    const afterResolve = duelReducer(afterCast, { type: 'RESOLVE_STACK' });
+    expect(afterResolve.stack.length).toBe(0);
+    expect(afterResolve.o.bf.find(c => c.iid === 'hero-1')).toBeDefined();
+  });
+
+  it('PW-AI-01b: OPEN_PRIORITY_WINDOW after AI cast blocks ADVANCE_PHASE', () => {
+    // Confirms that once a priority window is opened following the AI cast,
+    // the phase cannot advance until both players pass.
+    const base = makeState({ phase: 'MAIN_1', active: 'o' });
+    const withStack = {
+      ...base,
+      stack: [{ id: 'x1', card: { iid: 'hero-1', type: 'Creature' }, caster: 'o', targets: [], xValue: 0 }],
+    };
+
+    // Open window (as the useEffect would do).
+    const withWindow = duelReducer(withStack, { type: 'OPEN_PRIORITY_WINDOW' });
+    expect(withWindow.priorityWindow).toBe(true);
+
+    // ADVANCE_PHASE must be blocked.
+    const attempt = duelReducer(withWindow, { type: 'ADVANCE_PHASE' });
+    expect(attempt.phase).toBe('MAIN_1');
+    expect(attempt.priorityWindow).toBe(true);
+  });
+});

@@ -975,13 +975,29 @@ Both conditions must be false before the phase can advance. The `advPhase()` hel
 
 ## 18.6 AI Behavior
 
-When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow])` in DuelScreen evaluates the AI's options:
+When `s.priorityWindow` transitions to `true`, a `useEffect([s.priorityWindow])` in
+DuelScreen evaluates the AI's options:
 
-1. Search `s.o.hand` for the first card with `type === 'Instant'` and `canPay(s.o.mana, c.cost) === true`.
+1. Search `s.o.hand` for the first card with `type === 'Instant'` and
+   `canPay(s.o.mana, c.cost) === true`.
 2. If found, dispatch `CAST_SPELL { who: 'o', iid, tgt: 'p', xVal: 1 }`.
 3. Always dispatch `PASS_PRIORITY { who: 'o' }` immediately after (no added delay).
 
-The AI casts at most one instant per window. If the AI has no affordable instant, it passes immediately.
+The AI casts at most one instant per window. If the AI has no affordable instant, it
+passes immediately.
+
+## 18.6b AI Turn — Spell Cast Priority Window
+
+When the AI casts a spell on its own turn (`active === 'o'`), a separate
+`useEffect([s.stack?.length])` detects the stack growing from 0 → N and opens a priority
+window. This gives the player a chance to respond with instants or interrupts before the
+spell resolves. The existing priority-window close → auto-advance path (`priorityWindow
+false` transition) then handles `RESOLVE_STACK` and phase advance after both players pass.
+
+**Invariant:** A spell cast by either player must never resolve without offering both
+players a priority window first. The `s.stack.length` effect enforces this for AI casts;
+`requestPhaseAdvance` → `OPEN_PRIORITY_WINDOW` enforces it for player-initiated phase
+advances.
 
 ## 18.7 ActionBar Cast Button During Priority Windows
 

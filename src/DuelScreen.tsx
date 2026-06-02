@@ -475,12 +475,19 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     return () => clearTimeout(timer);
   }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reopen priority window after a stack item resolves if more items remain.
+  // Open priority window whenever the stack changes size:
+  // - Stack shrinks but still has items -> reopen after partial resolution.
+  // - Stack grows from 0 -> N on AI's turn -> give player a chance to respond.
   useEffect(() => {
     const cur = s.stack?.length ?? 0;
     const prev = prevStackLen.current;
     prevStackLen.current = cur;
-    if (cur < prev && cur > 0 && !s.priorityWindow && !s.over) {
+    if (s.priorityWindow || s.over) return;
+    if (cur < prev && cur > 0) {
+      // A stack item resolved but more remain -- reopen so both players can respond.
+      openPriorityWindow();
+    } else if (cur > prev && prev === 0 && s.active === 'o') {
+      // AI just cast a spell onto an empty stack -- open priority window for player.
       openPriorityWindow();
     }
   }, [s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps

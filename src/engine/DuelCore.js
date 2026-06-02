@@ -2125,16 +2125,36 @@ case "UPKEEP_CHOICE_RESOLVE": {
 }
 
 case 'SANDBOX_FORCE_HAND': {
-  // Sandbox-only: force specific card instances into player hand.
-  // action.iids: string[] -- iids of cards currently in p.lib to move to hand.
-  // No game rules are evaluated. Invalid iids are silently ignored.
-  const iidSet = new Set(action.iids);
-  const moved  = s.p.lib.filter(c => iidSet.has(c.iid));
-  const newLib = s.p.lib.filter(c => !iidSet.has(c.iid));
-  return {
-    ...s,
-    p: { ...s.p, hand: [...s.p.hand, ...moved], lib: newLib },
-  };
+  // Sandbox-only: inject cards into a player's hand and optionally set mana.
+  // action.who:     'p' | 'o'  (defaults to 'p')
+  // action.iids:    string[]   -- iids of cards in that player's lib to move to hand
+  // action.cards:   object[]   -- full card objects to add directly to hand
+  // action.cardIds: string[]   -- CARD_DB ids to instantiate and add to hand
+  // action.mana:    ManaPool   -- set (not add) specific mana amounts for that player
+  const who = action.who || 'p';
+  let ns = s;
+  if (action.iids && action.iids.length) {
+    const iidSet = new Set(action.iids);
+    const moved  = ns[who].lib.filter(c => iidSet.has(c.iid));
+    const newLib = ns[who].lib.filter(c => !iidSet.has(c.iid));
+    ns = { ...ns, [who]: { ...ns[who], hand: [...ns[who].hand, ...moved], lib: newLib } };
+  }
+  if (action.cards && action.cards.length) {
+    ns = { ...ns, [who]: { ...ns[who], hand: [...ns[who].hand, ...action.cards] } };
+  }
+  if (action.cardIds && action.cardIds.length) {
+    const newCards = action.cardIds.map(id => makeCardInstance(id, who)).filter(Boolean);
+    ns = { ...ns, [who]: { ...ns[who], hand: [...ns[who].hand, ...newCards] } };
+  }
+  if (action.mana) {
+    ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, ...action.mana } } };
+  }
+  return ns;
+}
+
+case 'DEBUG_SET_ACTIVE': {
+  // Sandbox-only: force the active player. Used by e2e tests to drive AI turns.
+  return { ...s, active: action.who };
 }
 
 default: return s;

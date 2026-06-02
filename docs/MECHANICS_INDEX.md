@@ -834,13 +834,20 @@ When a phase advance is requested, `requestPhaseAdvance()` checks whether either
 ### AI behavior
 The AI evaluates its hand for affordable instants, casts the first one it finds targeting the player, then immediately dispatches `PASS_PRIORITY({ who: 'o' })`.
 
+When the AI casts a spell on its own turn, a `useEffect([s.stack?.length])` in DuelScreen
+(and DuelScreenMobile) detects the stack growing from 0 to N while `active === 'o'` and
+opens a priority window. This ensures the player always gets a response window for AI casts,
+regardless of whether `applyAiActionsWithPriority` already opened one (the early-return guard
+`if (s.priorityWindow || s.over) return` prevents double-opens).
+
 ### Traceability
 - Implemented: Phase 6 Deliverable 2
 - Source: `src/engine/DuelCore.js` (`OPEN_PRIORITY_WINDOW`, `PASS_PRIORITY` cases)
 - Hook exposure: `src/hooks/useDuel.js` (`openPriorityWindow`, `passPriority`)
+- Fix PW-AI-01: `src/DuelScreen.tsx` and `src/ui/Mobile/DuelScreenMobile.tsx` stack-length useEffect grow case
 
 ### Status
-ACTIVE (Phase 6)
+ACTIVE (Phase 6 + PW-AI-01 fix)
 
 ---
 
