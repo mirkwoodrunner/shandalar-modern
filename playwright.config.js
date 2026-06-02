@@ -18,6 +18,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
+      testMatch: ['e2e/duel-controller.spec.ts'],
+    },
   ],
   webServer: {
     command: 'npm run dev',

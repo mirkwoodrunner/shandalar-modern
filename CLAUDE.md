@@ -36,6 +36,7 @@ Do not implement behavior not defined in `docs/SYSTEMS.md`.
 | `DuelCore.js` | YES | YES | YES |
 | `AI.js` | NO | YES (read-only) | NO |
 | `useDuel.js` | NO | YES (player only) | NO |
+| `useDuelController.ts` | NO | NO | NO |
 | UI components | NO | YES (via input) | NO |
 
 ### Hard Rules
@@ -44,6 +45,11 @@ Do not implement behavior not defined in `docs/SYSTEMS.md`.
 - `AI.js` is **strictly read-only** — it produces `GameAction` objects only. It never mutates state.
 - UI components are **presentation-only** — no game logic.
 - `useDuel.js` dispatches `GameAction` objects to DuelCore only — no rule resolution.
+
+`useDuelController.ts` is the shared orchestration hook for both duel screens. It owns the AI loop,
+priority window effects, mulligan state, and game-over timer. Any change to AI behaviour or priority
+handling must be made here and only here. Do not add AI or priority logic directly to
+`DuelScreen.tsx` or `DuelScreenMobile.tsx`.
 
 ### Stack Resolution (Universal)
 As of Sprint 7, all non-land spells use the stack. CAST_SPELL pushes every spell
@@ -59,6 +65,7 @@ Do not modify these files unless the prompt explicitly names them:
 - `src/engine/AI.js`
 - `src/data/cards.js`
 - `src/hooks/useDuel.js`
+- `src/hooks/useDuelController.ts`
 - `src/engine/cardHandlers.js`
 - `src/engine/phases.js`
 - State reducers
