@@ -187,6 +187,8 @@ docs/AI.md                   — AI role definitions
   AI casts. The AI loop's inner `setTimeout(() => requestPhaseAdvance())` is retained
   but is a no-op while the stack is non-empty.
 - **AI mana simulation:** The AI's virtual state tracks mana spent and produced during multi-spell planning. `evaluateAndCast` maintains a `poolAfterCast` that deducts each spell's cost after crediting tapped sources; `applyVirtualPlay` credits mana-producing spells via the card's `mana` array. If a new `addMana` spell is added to `cards.js`, its `mana` field must be a flat array of color characters (e.g. `["B","B","B"]`) for `applyVirtualPlay` to credit it correctly.
+- **Mobile targeting mode:** `needsExplicitTarget()` (module-level in `DuelScreenMobile.tsx`) gates the targeting flow. Tapping a qualifying spell sets `targetingFor` state; subsequent tap on creature/life-total sets `pendingTarget`. `Banner.onLifeClick` prop enables life-total tap targets. Cast fires via `castSpell(targetingFor, pendingTarget, xVal)`.
+- **Mobile blocker declaration:** `COMBAT_BLOCKERS` phase activates blocking mode in `handleBfCardClick`. First tap selects your creature (`pendingBlocker` state); second tap on an attacking opp creature dispatches `{ type: 'DECLARE_BLOCKER', blId, attId }`. Done button calls `requestPhaseAdvance`.
 
 ---
 

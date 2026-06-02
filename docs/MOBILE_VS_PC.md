@@ -104,6 +104,13 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 | `LogSheet.tsx` | Bottom-sheet log via `ReactDOM.createPortal` |
 | `styles.module.css` | All mobile styles; references only CSS custom properties |
 
+### Spell targeting and blocker declaration
+
+| Feature | Status |
+|---|---|
+| Spell targeting (creature/player) | Implemented: targeting mode with highlight + Cast button (`needsExplicitTarget`, `targetingFor`/`pendingTarget` state, `Banner.onLifeClick`) |
+| Blocker declaration | Implemented: two-step tap (select your creature → tap attacker), `DECLARE_BLOCKER` dispatch, Done = `requestPhaseAdvance` |
+
 ### Shared hooks used by DuelScreenMobile
 
 - `useDuel` — same engine store as DuelScreen (no data fork); `chooseLotusColor`, `mulligan`, `tapArtifactMana`, and `declareAttacker` also destructured
@@ -179,8 +186,8 @@ Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helpe
 - DuelScreenMobile: no card-preview on long-press (Phase 8)
 - DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired; clicking BOP does nothing (mirrors `addMana3Any` Lotus pattern — needs `CHOOSE_BOP_COLOR` dispatch)
 - DuelScreenMobile: `GameOverModal` not yet rendered (auto-return to overworld after 3 s works)
-- DuelScreenMobile: no blocker declaration UI — player cannot declare blockers; phase advances automatically (Phase 8)
-- DuelScreenMobile: no explicit card targeting for spells that require a creature target (enchantCreature, ping, etc.) — only default targets work
+- DuelScreenMobile: no blocker declaration UI — **RESOLVED** (Sprint 8): two-step tap (select blocker → tap attacker), Done button calls `requestPhaseAdvance`
+- DuelScreenMobile: no explicit card targeting for spells that require a creature target (enchantCreature, ping, etc.) — **RESOLVED** (Sprint 8): `needsExplicitTarget()` drives targeting mode; `pendingTarget` state; Banner `onLifeClick` for life-total targets
 - DuelScreenMobile: `addManaAny` creatures (Birds of Paradise) effectively untappable for mana until BopColorPicker is wired
 
 These gaps should be tracked as issues and addressed in a follow-up pass.

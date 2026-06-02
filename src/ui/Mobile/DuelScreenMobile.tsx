@@ -36,6 +36,35 @@ function resolveDefaultTarget(card: any, state: any): string | null {
   return state.selTgt ?? null;
 }
 
+function needsExplicitTarget(card: any): boolean {
+  const CREATURE_TARGET_EFFECTS = new Set([
+    'bounce',
+    'destroy',
+    'destroyArtifact',
+    'destroyArtOrEnch',
+    'destroyTargetLand',
+    'destroyBlack',
+    'destroyBlueOrCounter',
+    'destroyRedOrCounter',
+    'pumpCreature',
+    'enchantCreature',
+    'reanimate',
+    'howlFromBeyond',
+    'pumpPower',
+    'pumpToughness',
+    'steal',
+    'pacifism',
+    'fear',
+    'gloom',
+    'weakness',
+    'unholy_strength',
+    'regenerate',
+    'ping',
+  ]);
+  const DAMAGE_EFFECTS = new Set(['damage3', 'damage5', 'psionicBlast', 'chainLightning']);
+  return CREATURE_TARGET_EFFECTS.has(card.effect) || DAMAGE_EFFECTS.has(card.effect);
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface DuelRuleset {
@@ -114,6 +143,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [targetingFor, setTargetingFor] = useState<string | null>(null);
+  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+  const [pendingBlocker, setPendingBlocker] = useState<string | null>(null);
   const mulliganDismissed = useRef(false);
   const [showMulligan, setShowMulligan] = useState(true);
   const [mulliganCount, setMulliganCount] = useState(0);
@@ -251,11 +283,41 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   // ── Card tap handler ───────────────────────────────────────────────────────
   const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
+    const c = card as any;
+
+    if (zone === 'hand') {
+      if (targetingFor === card.iid) {
+        setTargetingFor(null);
+        setPendingTarget(null);
+        setSel(null);
+        return;
+      }
+      if (needsExplicitTarget(c) && !isLand(c)) {
+        setTargetingFor(card.iid);
+        setPendingTarget(null);
+        setSel({ iid: card.iid, zone: 'hand', card });
+      } else {
+        setTargetingFor(null);
+        setPendingTarget(null);
+        setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'hand', card });
+      }
+      return;
+    }
+
     setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone, card });
-  }, []);
+  }, [targetingFor, isLand]);
 
   // ── Action bar handlers ────────────────────────────────────────────────────
   const handleCast = useCallback(() => {
+    if (targetingFor !== null) {
+      if (!pendingTarget) return;
+      castSpell(targetingFor, pendingTarget, s_state.xVal ?? 1);
+      setTargetingFor(null);
+      setPendingTarget(null);
+      setSel(null);
+      return;
+    }
+
     if (!sel || sel.zone !== 'hand') return;
     const card = (s_state.p.hand as any[]).find((c: any) => c.iid === sel.iid);
     if (!card) return;
@@ -266,7 +328,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       castSpell(card.iid, tgt, s_state.xVal ?? 1);
     }
     setSel(null);
-  }, [sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
+  }, [targetingFor, pendingTarget, sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
 
   const handleActivate = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
@@ -277,6 +339,31 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Battlefield card click dispatcher ─────────────────────────────────────
   const handleBfCardClick = useCallback((card: CardData) => {
     const c = card as any;
+
+    // ── Targeting mode ───────────────────────────────────────────────────────
+    if (targetingFor !== null) {
+      setPendingTarget(card.iid);
+      return;
+    }
+
+    // ── Blocking mode ────────────────────────────────────────────────────────
+    if (s_state.phase === PHASE.COMBAT_BLOCKERS) {
+      const isYours = (s_state.p.bf as any[]).some((x: any) => x.iid === card.iid);
+      const isAttacker = (s_state.attackers ?? []).includes(card.iid);
+
+      if (isYours && c.type?.includes('Creature')) {
+        setPendingBlocker(prev => prev === card.iid ? null : card.iid);
+        return;
+      }
+
+      if (!isYours && isAttacker && pendingBlocker) {
+        dispatch({ type: 'DECLARE_BLOCKER', blId: pendingBlocker, attId: card.iid });
+        setPendingBlocker(null);
+        return;
+      }
+
+      return;
+    }
 
     // Declare attackers: clicking a creature during the attackers step toggles it.
     // The engine validates eligibility (not tapped, no summoning sickness without haste).
@@ -310,9 +397,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     }
     // Plain creatures / permanents with no activated ability: no action.
     // (addManaAny / Birds of Paradise is a Known Gap — BopColorPicker not yet wired.)
-  }, [s_state.phase, activateAbility, tapArtifactMana, declareAttacker]);
+  }, [s_state.phase, s_state.attackers, s_state.p.bf, targetingFor, pendingBlocker, dispatch, activateAbility, tapArtifactMana, declareAttacker]);
 
-  const handleCancel = useCallback(() => setSel(null), []);
+  const handleCancel = useCallback(() => {
+    setSel(null);
+    setTargetingFor(null);
+    setPendingTarget(null);
+    setPendingBlocker(null);
+  }, []);
 
   const handlePass = useCallback(() => {
     if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
@@ -398,7 +490,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onOpenMenu={() => {}}
       />
 
-      <Banner side="opp" player={oData} />
+      <Banner side="opp" player={oData} onLifeClick={targetingFor !== null ? () => setPendingTarget('o') : undefined} />
 
       {/* Scrollable battlefield — grows to fill remaining height between the two banners */}
       <div className={s.bfScroll}>
@@ -443,7 +535,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             >
               <FieldCard card={c} density="perm"
                 selected={selIid === c.iid}
-                onClick={() => onCardTap(c, 'bf')} />
+                isTarget={pendingTarget === c.iid}
+                isPendingAttackerTarget={
+                  s_state.phase === PHASE.COMBAT_BLOCKERS &&
+                  pendingBlocker !== null &&
+                  (s_state.attackers ?? []).includes(c.iid)
+                }
+                onClick={() => handleBfCardClick(c)} />
             </EnchantedCardSlot>
           ))}
         </Row>
@@ -466,6 +564,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
               <FieldCard card={c} density="creature"
                 selected={selIid === c.iid}
                 attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
+                isBlockerSelected={pendingBlocker === c.iid}
+                isAssignedBlocker={(s_state.p.bf as any[]).find((x: any) => x.iid === c.iid)?.blocking != null}
                 onClick={() => handleBfCardClick(c)} />
             </EnchantedCardSlot>
           ))}
@@ -499,7 +599,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       </div>{/* end bfScroll */}
 
-      <Banner side="you" player={pData} />
+      <Banner side="you" player={pData} onLifeClick={targetingFor !== null ? () => setPendingTarget('p') : undefined} />
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
       {s_state.stack?.length > 0 && (
@@ -518,6 +618,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         priorityWindowOpen={s_state.priorityWindow === true}
         canUndo={canUndoMana}
         onUndo={undoManaTaps}
+        phase={s_state.phase}
+        targetingFor={targetingFor}
+        pendingTarget={pendingTarget}
+        pendingBlocker={pendingBlocker}
+        blockers={s_state.blockers ?? {}}
       />
 
       {/* Hand strip */}

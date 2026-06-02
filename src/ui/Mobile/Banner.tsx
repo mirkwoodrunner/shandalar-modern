@@ -14,9 +14,10 @@ interface BannerPlayer {
 interface BannerProps {
   side: 'you' | 'opp';
   player: BannerPlayer;
+  onLifeClick?: () => void;
 }
 
-export function Banner({ side, player }: BannerProps) {
+export function Banner({ side, player, onLifeClick }: BannerProps) {
   const isOpp = side === 'opp';
   const accent = isOpp ? 'var(--opp)' : 'var(--you)';
 
@@ -41,6 +42,7 @@ export function Banner({ side, player }: BannerProps) {
   return (
     <div
       data-iid={isOpp ? 'player-o' : 'player-p'}
+      data-testid={isOpp ? 'banner-opp' : 'banner-you'}
       className={`${s.banner} ${isOpp ? s.bannerOpp : s.bannerYou}`}
     >
       {/* Life */}
@@ -52,12 +54,32 @@ export function Banner({ side, player }: BannerProps) {
           <span className={s.lifeWord}>Life</span>
         </div>
         <div className={s.lifeNumWrap}>
-          <span
-            className={`${s.lifeNum} ${player.life <= 5 ? s.lifePulse : ''}`}
-            style={{ color: lifeColor, textShadow: `0 0 10px ${lifeColor}55, 0 2px 3px rgba(0,0,0,.9)` }}
-          >
-            {player.life}
-          </span>
+          {onLifeClick ? (
+            <button
+              onClick={onLifeClick}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,100,60,.5)',
+                borderRadius: 3,
+                color: lifeColor,
+                cursor: 'pointer',
+                padding: '0 4px',
+                animation: 'mdTargetPulse 1.2s ease-in-out infinite',
+                textShadow: `0 0 10px ${lifeColor}55, 0 2px 3px rgba(0,0,0,.9)`,
+              }}
+              className={`${s.lifeNum} ${player.life <= 5 ? s.lifePulse : ''}`}
+              aria-label={`Target ${side === 'opp' ? 'opponent' : 'yourself'}`}
+            >
+              {player.life}
+            </button>
+          ) : (
+            <span
+              className={`${s.lifeNum} ${player.life <= 5 ? s.lifePulse : ''}`}
+              style={{ color: lifeColor, textShadow: `0 0 10px ${lifeColor}55, 0 2px 3px rgba(0,0,0,.9)` }}
+            >
+              {player.life}
+            </span>
+          )}
           <span className={s.lifeMax}>/{player.max}</span>
         </div>
         <div className={s.lifeBar}>
