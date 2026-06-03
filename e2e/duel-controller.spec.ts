@@ -178,6 +178,22 @@ test('5: AI cast opens priority window before stack resolves (desktop)', async (
     dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: [terror], mana: { B: 1, C: 1 } });
   });
 
+  // Diagnostic: capture state right after setup batch commits and before AI fires.
+  const setupDiag = await page.evaluate(() => new Promise<any>(resolve => setTimeout(() => {
+    const s = (window as any).__duelState?.();
+    if (!s) return resolve(null);
+    resolve({
+      phase: s.phase, active: s.active, landsPlayed: s.landsPlayed, turn: s.turn,
+      oMulls: s.o?.mulls, oMana: s.o?.mana,
+      pBf: s.p?.bf?.map((c: any) => c.id),
+      oBf: s.o?.bf?.map((c: any) => c.id),
+      oHand: s.o?.hand?.map((c: any) => c.id),
+      stack: s.stack?.map((i: any) => i?.card?.id),
+      priorityWindow: s.priorityWindow,
+    });
+  }, 50)));
+  console.log('[DIAG-5]', JSON.stringify(setupDiag));
+
   // Wait for the AI to cast Terror and open the priority window.
   // landsPlayed=1 blocks land play; {B:1,C:1} makes red spells uncastable (no R).
   // Terror (1B, cmc=2) is the only affordable spell, so the AI casts it first.
