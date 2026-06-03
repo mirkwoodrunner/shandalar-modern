@@ -67,7 +67,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const {
     state, dispatch,
     tapLand, tapArtifactMana, playLand, castSpell,
-    declareAttacker, activateAbility,
+    activateAbility,
     passPriority, undoManaTaps,
     requestPhaseAdvance,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
@@ -75,6 +75,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     pendingDualLand, setPendingDualLand,
     adaptedLog, canUndoMana,
     pLands, pCreatures, pPerms, oLands, oCreatures, oPerms,
+    handleBfClick, pendingBlockerIid, setPendingBlockerIid,
   } = useDuelController(config, onDuelEnd);
 
   const s_state = state;
@@ -84,7 +85,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const [logOpen, setLogOpen] = useState(false);
   const [targetingFor, setTargetingFor] = useState<string | null>(null);
   const [pendingTarget, setPendingTarget] = useState<string | null>(null);
-  const [pendingBlocker, setPendingBlocker] = useState<string | null>(null);
 
   // ── Card tap handler ───────────────────────────────────────────────────────
   const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
@@ -145,35 +145,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   const handleBfCardClick = useCallback((card: CardData) => {
     const c = card as any;
 
+    // Combat routing (blockers, attackers) is owned by useDuelController.
+    const consumed = handleBfClick(card);
+    if (consumed !== false) return;
+
     // ── Targeting mode ───────────────────────────────────────────────────────
     if (targetingFor !== null) {
       setPendingTarget(card.iid);
-      return;
-    }
-
-    // ── Blocking mode ────────────────────────────────────────────────────────
-    if (s_state.phase === PHASE.COMBAT_BLOCKERS) {
-      const isYours = (s_state.p.bf as any[]).some((x: any) => x.iid === card.iid);
-      const isAttacker = (s_state.attackers ?? []).includes(card.iid);
-
-      if (isYours && c.type?.includes('Creature')) {
-        setPendingBlocker(prev => prev === card.iid ? null : card.iid);
-        return;
-      }
-
-      if (!isYours && isAttacker && pendingBlocker) {
-        dispatch({ type: 'DECLARE_BLOCKER', blId: pendingBlocker, attId: card.iid });
-        setPendingBlocker(null);
-        return;
-      }
-
-      return;
-    }
-
-    // Declare attackers: clicking a creature during the attackers step toggles it.
-    // The engine validates eligibility (not tapped, no summoning sickness without haste).
-    if (s_state.phase === PHASE.COMBAT_ATTACKERS && c.type?.includes('Creature')) {
-      declareAttacker(card.iid);
       return;
     }
 
@@ -202,14 +180,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     }
     // Plain creatures / permanents with no activated ability: no action.
     // (addManaAny / Birds of Paradise is a Known Gap — BopColorPicker not yet wired.)
-  }, [s_state.phase, s_state.attackers, s_state.p.bf, targetingFor, pendingBlocker, dispatch, activateAbility, tapArtifactMana, declareAttacker]);
+  }, [handleBfClick, targetingFor, activateAbility, tapArtifactMana]);
 
   const handleCancel = useCallback(() => {
     setSel(null);
     setTargetingFor(null);
     setPendingTarget(null);
-    setPendingBlocker(null);
-  }, []);
+    setPendingBlockerIid(null);
+  }, [setPendingBlockerIid]);
 
   const handlePass = useCallback(() => {
     if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
@@ -338,7 +316,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
                 isTarget={pendingTarget === c.iid}
                 isPendingAttackerTarget={
                   s_state.phase === PHASE.COMBAT_BLOCKERS &&
-                  pendingBlocker !== null &&
+                  pendingBlockerIid !== null &&
                   (s_state.attackers ?? []).includes(c.iid)
                 }
                 onClick={() => handleBfCardClick(c)} />
@@ -364,7 +342,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
               <FieldCard card={c} density="creature"
                 selected={selIid === c.iid}
                 attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
-                isBlockerSelected={pendingBlocker === c.iid}
+                isBlockerSelected={pendingBlockerIid === c.iid}
                 isAssignedBlocker={(s_state.p.bf as any[]).find((x: any) => x.iid === c.iid)?.blocking != null}
                 onClick={() => handleBfCardClick(c)} />
             </EnchantedCardSlot>
@@ -421,7 +399,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         phase={s_state.phase}
         targetingFor={targetingFor}
         pendingTarget={pendingTarget}
-        pendingBlocker={pendingBlocker}
+        pendingBlocker={pendingBlockerIid}
         blockers={s_state.blockers ?? {}}
       />
 

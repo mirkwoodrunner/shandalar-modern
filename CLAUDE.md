@@ -47,8 +47,10 @@ Do not implement behavior not defined in `docs/SYSTEMS.md`.
 - `useDuel.js` dispatches `GameAction` objects to DuelCore only — no rule resolution.
 
 `useDuelController.ts` is the shared orchestration hook for both duel screens. It owns the AI loop,
-priority window effects, mulligan state, and game-over timer. Any change to AI behaviour or priority
-handling must be made here and only here. Do not add AI or priority logic directly to
+priority window effects, mulligan state, game-over timer, and battlefield click routing for combat
+phases. `handleBfClick(card)` is the canonical entry point for COMBAT_BLOCKERS and COMBAT_ATTACKERS
+interactions. Any change to AI behaviour, priority handling, or combat click behaviour must be made
+here and only here. Do not add AI, priority, or combat click logic directly to
 `DuelScreen.tsx` or `DuelScreenMobile.tsx`.
 
 ### Stack Resolution (Universal)
@@ -195,7 +197,7 @@ docs/AI.md                   — AI role definitions
   but is a no-op while the stack is non-empty.
 - **AI mana simulation:** The AI's virtual state tracks mana spent and produced during multi-spell planning. `evaluateAndCast` maintains a `poolAfterCast` that deducts each spell's cost after crediting tapped sources; `applyVirtualPlay` credits mana-producing spells via the card's `mana` array. If a new `addMana` spell is added to `cards.js`, its `mana` field must be a flat array of color characters (e.g. `["B","B","B"]`) for `applyVirtualPlay` to credit it correctly.
 - **Mobile targeting mode:** `needsExplicitTarget()` (module-level in `DuelScreenMobile.tsx`) gates the targeting flow. Tapping a qualifying spell sets `targetingFor` state; subsequent tap on creature/life-total sets `pendingTarget`. `Banner.onLifeClick` prop enables life-total tap targets. Cast fires via `castSpell(targetingFor, pendingTarget, xVal)`.
-- **Mobile blocker declaration:** `COMBAT_BLOCKERS` phase activates blocking mode in `handleBfCardClick`. First tap selects your creature (`pendingBlocker` state); second tap on an attacking opp creature dispatches `{ type: 'DECLARE_BLOCKER', blId, attId }`. Done button calls `requestPhaseAdvance`.
+- **Battlefield click routing:** `handleBfClick(card)` in `useDuelController.ts` is the single entry point for all combat-phase battlefield clicks. It owns COMBAT_BLOCKERS two-click flow (`pendingBlockerIid` state, isolated from `selTgt`) and COMBAT_ATTACKERS attacker toggle. Both `DuelScreen` and `DuelScreenMobile` call `handleBfClick` first; if it returns `false` (non-combat click), the screen component handles the interaction locally. Do not add combat click logic to either screen component.
 
 ---
 

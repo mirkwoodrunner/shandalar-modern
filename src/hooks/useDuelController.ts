@@ -95,6 +95,7 @@ export function useDuelController(
   const [mulliganCount, setMulliganCount] = useState(0);
   const [showLotus, setShowLotus] = useState(false);
   const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
+  const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
@@ -275,6 +276,60 @@ export function useDuelController(
     setShowLotus(false);
   }, []);
 
+  // ── Battlefield click routing ──────────────────────────────────────────────
+  // Single entry point for all battlefield card clicks. Both DuelScreen and
+  // DuelScreenMobile must call this instead of implementing their own routing.
+  //
+  // Routing priority (evaluated top-to-bottom):
+  //   1. COMBAT_BLOCKERS — two-click flow: first click sets pendingBlockerIid,
+  //      second click on an attacker declares the block and clears it.
+  //   2. COMBAT_ATTACKERS — player creature click toggles attacker declaration.
+  //   3. All other interactions (mana, activation, targeting) are screen-local
+  //      concerns and remain in the screen components.
+  //
+  // NOTE: pendingBlockerIid is isolated from s.selTgt. Do not use selTgt as a
+  // blocker vessel — it is reserved for spell targeting.
+  const handleBfClick = useCallback((card: any) => {
+    if (s.over) return;
+
+    if (s.phase === 'COMBAT_BLOCKERS' && s.active !== 'p') {
+      const isYours = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
+      const isAttacker = (s.attackers ?? []).includes(card.iid);
+
+      if (isYours && card.type?.includes('Creature')) {
+        // First click: select your blocker (toggle)
+        setPendingBlockerIid(prev => prev === card.iid ? null : card.iid);
+        return;
+      }
+
+      if (!isYours && isAttacker && pendingBlockerIid) {
+        // Second click: declare the block
+        declareBlocker(pendingBlockerIid, card.iid);
+        setPendingBlockerIid(null);
+        return;
+      }
+
+      // Click on non-attacker or own non-creature during blockers: no-op
+      return;
+    }
+
+    if (s.phase === 'COMBAT_ATTACKERS' && s.active === 'p' && card.type?.includes('Creature')) {
+      const isYours = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
+      if (isYours) {
+        declareAttacker(card.iid);
+        return;
+      }
+    }
+
+    // All other interactions (mana taps, ability activation, spell targeting)
+    // are delegated back to the screen component via the return value `false`,
+    // indicating the hook did not consume the click.
+    return false;
+  }, [
+    s.over, s.phase, s.active, s.p.bf, s.attackers,
+    pendingBlockerIid, declareBlocker, declareAttacker,
+  ]);
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const adaptedLog = useMemo(() => adaptLog(s.log ?? []), [s.log]);
 
@@ -353,6 +408,11 @@ export function useDuelController(
     handleLotusCancel,
     pendingDualLand,
     setPendingDualLand,
+
+    // Battlefield click routing
+    pendingBlockerIid,
+    setPendingBlockerIid,
+    handleBfClick,
 
     // Derived data
     adaptedLog: adaptedLog as any[],

@@ -517,6 +517,25 @@ Thin hooks that live alongside `useDuel.js` and share its constraints (no rules 
 | `useTweaks` | `src/hooks/useTweaks.ts` | Manages dev-tweak values (arrow style, `aiSpeed`). `readAiSpeedParam()` parses `?aiSpeed=` from the URL; default is **400 ms** when the param is absent. |
 | `usePersistence` | `src/hooks/usePersistence.ts` | Writes the full duel GameState to `localStorage` key `shandalar:duel` on every state change (write-only; key is never read back). See OPEN DESIGN QUESTION in Section 21. |
 
+#### Battlefield Click Routing
+
+`handleBfClick(card)` in `useDuelController.ts` is the single shared handler for all battlefield
+card clicks during combat phases. Both `DuelScreen` and `DuelScreenMobile` delegate to it before
+applying any screen-local logic.
+
+**Routing order:**
+
+1. **COMBAT_BLOCKERS** (`s.active !== 'p'`): two-click flow. First click on a player creature sets
+   `pendingBlockerIid`. Second click on an attacking opponent creature dispatches `DECLARE_BLOCKER`
+   and clears `pendingBlockerIid`. `pendingBlockerIid` is isolated from `s.selTgt` — do not use
+   `selTgt` as a blocker vessel.
+2. **COMBAT_ATTACKERS** (`s.active === 'p'`): click on a player creature toggles attacker
+   declaration via `declareAttacker`.
+3. **All other clicks**: `handleBfClick` returns `false`; the screen component handles the
+   interaction (mana taps, ability activation, spell targeting).
+
+Do not add combat click logic to `DuelScreen.tsx` or `DuelScreenMobile.tsx`.
+
 ### 11.3 UI/Overworld — Dynamic Tile Size
 
 `WorldMap` (`src/ui/overworld/WorldMap.jsx`) accepts an optional `tileSize` prop (default `34`). All grid template dimensions, tile element sizes, canvas dimensions, and empty-tile placeholders are derived from this prop so the grid scales uniformly.
