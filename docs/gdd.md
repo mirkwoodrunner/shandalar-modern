@@ -22,6 +22,15 @@
 | 1.2 | Sprint 7 (Stack UI — mobile collapse) | StackDisplay mobile collapsed/expanded toggle: starts collapsed, auto-expands on new stack item, pill tap to expand, collapse button inside panel. Tests 7F updated, 7G added. |
 | 1.3 | Bug fix (B31) | AI stuck in MAIN_1 on mobile after casting a spell — priority window + inner-timer race condition. Fixed in `DuelScreenMobile.tsx` (close effect clears aiRef; hasCast skips inner timer; stack?.length added to AI loop deps). Desktop patched with stack?.length dep addition. |
 
+## Unreleased
+
+### E2E Test Fixes
+- Tests 5 & 6 (`duel-controller.spec.ts`): Fixed timeout. SANDBOX_FORCE_HAND
+  appends to AI hand; red instants from RED_BURN deck caused usePhaseAdvance
+  to open an empty-stack priority window before the AI planner ran. Fix
+  dispatches CAST_SPELL directly from the AI side to test priority-window
+  plumbing without involving the AI planner. Removes [DIAG-5] blocks.
+
 ---
 
 ## Bug Fixes Log

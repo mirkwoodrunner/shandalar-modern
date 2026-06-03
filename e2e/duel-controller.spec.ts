@@ -158,56 +158,41 @@ test('5: AI cast opens priority window before stack resolves (desktop)', async (
       tapped: false, summoningSick: false, attacking: false, blocking: null,
       damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
     };
-    // Two mulligans exhaust the AI's allowance so shouldMulligan() returns
-    // false immediately (mulls >= 2 guard) when the AI loop fires.
-    dispatch({ type: 'MULLIGAN', who: 'o' });
-    dispatch({ type: 'MULLIGAN', who: 'o' });
-    // Play a Forest so landsPlayed=1. SET_PHASE_FOR_TEST does NOT reset
-    // landsPlayed, so it carries over to the AI's turn. planMain guards on
-    // `landsPlayed < 1`, preventing the AI from playing a Mountain and gaining
-    // R mana. Without R the only castable spell from {B:1,C:1} is Terror.
+
+    // 1. Play a Forest so landsPlayed=1 (prevents AI land-drop on its turn).
     dispatch({ type: 'PLAY_LAND', who: 'p', iid: forest.iid });
+    // 2. Fund the bear cast (1G).
     dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { G: 1, C: 1 } });
+    // 3. Resolve bear onto p.bf.
     dispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid, tgt: null, xVal: null });
     dispatch({ type: 'PASS_PRIORITY', who: 'p' });
     dispatch({ type: 'PASS_PRIORITY', who: 'o' });
     dispatch({ type: 'RESOLVE_STACK' });
-    // SET_PHASE_FOR_TEST clears stack/priorityWindow and sets active='o', but
-    // leaves landsPlayed=1 (set above), so the AI cannot play another land.
+    // 4. Jump to AI MAIN_1; clears stack and priorityWindow.
     dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+    // 5. Inject Terror into AI hand and fund it.
+    //    SANDBOX_FORCE_HAND appends — AI may have other cards, but we cast
+    //    Terror directly below so the planner is not involved.
     dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: [terror], mana: { B: 1, C: 1 } });
+    // 6. Cast Terror directly from the AI side. CAST_SPELL puts the card on
+    //    the stack and sets priorityWindow:true atomically. This is what
+    //    tests 5 & 6 are actually verifying — the priority-window plumbing,
+    //    not the AI planner.
+    dispatch({ type: 'CAST_SPELL', who: 'o', iid: terror.iid, tgt: bear.iid, xVal: null });
   });
 
-  // Diagnostic: capture state right after setup batch commits and before AI fires.
-  const setupDiag = await page.evaluate(() => new Promise<any>(resolve => setTimeout(() => {
-    const s = (window as any).__duelState?.();
-    if (!s) return resolve(null);
-    resolve({
-      phase: s.phase, active: s.active, landsPlayed: s.landsPlayed, turn: s.turn,
-      oMulls: s.o?.mulls, oMana: s.o?.mana,
-      pBf: s.p?.bf?.map((c: any) => c.id),
-      oBf: s.o?.bf?.map((c: any) => c.id),
-      oHand: s.o?.hand?.map((c: any) => c.id),
-      stack: s.stack?.map((i: any) => i?.card?.id),
-      priorityWindow: s.priorityWindow,
-    });
-  }, 50)));
-  console.log('[DIAG-5]', JSON.stringify(setupDiag));
 
   // Wait for the AI to cast Terror and open the priority window.
   // landsPlayed=1 blocks land play; {B:1,C:1} makes red spells uncastable (no R).
   // Terror (1B, cmc=2) is the only affordable spell, so the AI casts it first.
+  // CAST_SPELL sets priorityWindow:true and pushes Terror to the stack in the
+  // same synchronous dispatch. Wait for React to propagate.
   await page.waitForFunction(() => {
     const s = (window as any).__duelState?.();
-    if (!s) return false;
-    if (s.priorityWindow && s.priorityPasser !== 'p') {
-      const hasTerror = s.stack?.some((item: any) => item.card?.id === 'terror');
-      if (!hasTerror) {
-        (window as any).__duelDispatch({ type: 'PASS_PRIORITY', who: 'p' });
-      }
-    }
-    return s.priorityWindow === true && s.stack?.some((item: any) => item.card?.id === 'terror');
-  }, { timeout: 8_000 });
+    return s != null &&
+      s.priorityWindow === true &&
+      s.stack?.some((item: any) => item.card?.id === 'terror');
+  }, { timeout: 5_000 });
 
   const s = await page.evaluate(() => (window as any).__duelState());
   expect(s.priorityWindow).toBe(true);
@@ -313,40 +298,29 @@ test('6: AI cast opens priority window before stack resolves (mobile)', async ({
       tapped: false, summoningSick: false, attacking: false, blocking: null,
       damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o',
     };
-    // Two mulligans exhaust the AI's allowance so shouldMulligan() returns
-    // false immediately (mulls >= 2 guard) when the AI loop fires.
-    dispatch({ type: 'MULLIGAN', who: 'o' });
-    dispatch({ type: 'MULLIGAN', who: 'o' });
-    // Play a Forest so landsPlayed=1. SET_PHASE_FOR_TEST does NOT reset
-    // landsPlayed, so it carries over to the AI's turn. planMain guards on
-    // `landsPlayed < 1`, preventing the AI from playing a Mountain and gaining
-    // R mana. Without R the only castable spell from {B:1,C:1} is Terror.
+
     dispatch({ type: 'PLAY_LAND', who: 'p', iid: forest.iid });
     dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { G: 1, C: 1 } });
     dispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid, tgt: null, xVal: null });
     dispatch({ type: 'PASS_PRIORITY', who: 'p' });
     dispatch({ type: 'PASS_PRIORITY', who: 'o' });
     dispatch({ type: 'RESOLVE_STACK' });
-    // SET_PHASE_FOR_TEST clears stack/priorityWindow and sets active='o', but
-    // leaves landsPlayed=1 (set above), so the AI cannot play another land.
     dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
     dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: [terror], mana: { B: 1, C: 1 } });
+    dispatch({ type: 'CAST_SPELL', who: 'o', iid: terror.iid, tgt: bear.iid, xVal: null });
   });
 
   // Wait for the AI to cast Terror and open the priority window.
   // landsPlayed=1 blocks land play; {B:1,C:1} makes red spells uncastable (no R).
   // Terror (1B, cmc=2) is the only affordable spell, so the AI casts it first.
+  // CAST_SPELL sets priorityWindow:true and pushes Terror to the stack in the
+  // same synchronous dispatch. Wait for React to propagate.
   await page.waitForFunction(() => {
     const s = (window as any).__duelState?.();
-    if (!s) return false;
-    if (s.priorityWindow && s.priorityPasser !== 'p') {
-      const hasTerror = s.stack?.some((item: any) => item.card?.id === 'terror');
-      if (!hasTerror) {
-        (window as any).__duelDispatch({ type: 'PASS_PRIORITY', who: 'p' });
-      }
-    }
-    return s.priorityWindow === true && s.stack?.some((item: any) => item.card?.id === 'terror');
-  }, { timeout: 8_000 });
+    return s != null &&
+      s.priorityWindow === true &&
+      s.stack?.some((item: any) => item.card?.id === 'terror');
+  }, { timeout: 5_000 });
 
   const s = await page.evaluate(() => (window as any).__duelState());
   expect(s.priorityWindow).toBe(true);

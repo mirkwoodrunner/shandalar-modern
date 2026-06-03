@@ -66,6 +66,20 @@ prevents the AI from skipping past it. The comment was updated to document this 
 
 ---
 
+## E2E Test Fixes — Tests 5 & 6
+
+| Fix | File(s) Changed | Status |
+|-----|----------------|--------|
+| [x] Tests 5 & 6: AI cast opens priority window before stack resolves (desktop + mobile) | `e2e/duel-controller.spec.ts` | ✅ Done |
+
+Root cause: SANDBOX_FORCE_HAND appends to AI hand. Red instants from RED_BURN
+deck (chain_lightning, lightning_bolt) satisfy handHasInstant() even without
+R mana, so usePhaseAdvance opens an empty-stack priority window before the AI
+planner fires. Fixed by dispatching CAST_SPELL {who:'o'} directly to test
+priority-window plumbing in isolation from planner behavior.
+
+---
+
 ## Technical Debt Log
 
 - [TD-001] DuelScreenMobile.tsx duplicates AI loop logic from DuelScreen.tsx.

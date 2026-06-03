@@ -1172,4 +1172,30 @@ e2e/sandbox.spec.ts            — tests 7F (updated), 7G (new)
 ### Status
 ACTIVE (Sprint 7 — mobile collapse feature)
 
+---
+
+## E2E: Priority Window — AI Spell Cast
+
+### Description
+Tests 5 & 6 in `e2e/duel-controller.spec.ts` verify that when a spell lands
+on the stack during the AI's turn, the player receives a priority window
+before the spell resolves.
+
+### GDD Reference
+Phase 2 — Priority Window system.
+
+### SYSTEMS.md Reference
+Section 31.3 (E2E Testing Infrastructure).
+
+### Traceability
+
+| Feature | File | Mechanism |
+|---|---|---|
+| Stack push sets priorityWindow | `DuelCore.js` CAST_SPELL case | `priorityWindow: true` in returned state |
+| Priority window close resolves stack | `useDuelController.ts` priorityWindow effect | `resolveStack()` after both players pass |
+| AI direct cast in tests | `e2e/duel-controller.spec.ts` | `CAST_SPELL {who:'o'}` bypasses AI planner |
+
+### Status
+ACTIVE — covered by e2e tests 5 (desktop) and 6 (mobile)
+
 # End of MECHANICS INDEX v1.2
