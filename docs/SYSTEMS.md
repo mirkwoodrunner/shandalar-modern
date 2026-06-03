@@ -1610,6 +1610,10 @@ non-determinism.
 moves named card iids from `p.lib` into `p.hand` with no game rules evaluated.
 It lives in `DuelCore.js` `duelReducer` and is the only permitted engine touch in
 this feature set. Hand size limits are not enforced for this action.
+`SANDBOX_FORCE_HAND` appends to the target player's hand; it does not replace
+it. To test stack/priority-window behavior involving a specific AI spell,
+dispatch CAST_SPELL with `who: 'o'` directly after injecting the card rather
+than relying on the AI planner loop to select and cast it.
 
 `data-testid` attributes exist on: ActionBar buttons, Hand cards, PhaseBar pills,
 and the DuelScreen wrapper. They carry no runtime overhead.
