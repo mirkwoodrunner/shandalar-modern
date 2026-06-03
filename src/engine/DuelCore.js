@@ -2157,6 +2157,12 @@ case 'DEBUG_SET_ACTIVE': {
   return { ...s, active: action.who };
 }
 
+case 'SET_PHASE_FOR_TEST': {
+  // Also clears priorityWindow and stack so ADVANCE_PHASE is not blocked.
+  return { ...s, phase: action.phase, active: action.active ?? s.active,
+           priorityWindow: false, stack: [], priorityPasser: null };
+}
+
 default: return s;
 
 }

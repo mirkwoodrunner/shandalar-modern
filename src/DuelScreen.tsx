@@ -702,6 +702,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               }
               // If priorityWindow is open and player already passed: no-op (waiting for AI)
             }}
+            onDoneBlocking={advancePhase}
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
             onEndTurn={requestPhaseAdvance}
           />

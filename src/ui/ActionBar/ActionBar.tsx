@@ -14,6 +14,7 @@ interface ActionBarProps {
   onPassPriority?: () => void;
   onCancel?: () => void;
   onEndTurn?: () => void;
+  onDoneBlocking?: () => void;
   compact?: boolean;
   canUndo?: boolean;
   onUndo?: () => void;
@@ -30,6 +31,7 @@ export function ActionBar({
   onPassPriority,
   onCancel,
   onEndTurn,
+  onDoneBlocking,
   compact = false,
   canUndo,
   onUndo,
@@ -85,6 +87,16 @@ export function ActionBar({
       >
         {passPriorityLabel}
       </ActionButton>
+
+      {phase === 'COMBAT_BLOCKERS' && !isPlayerTurn && (
+        <ActionButton
+          variant="primary"
+          onClick={onDoneBlocking}
+          data-testid="done-blocking-button"
+        >
+          Done Blocking {'✓'}
+        </ActionButton>
+      )}
 
       <ActionButton
         variant="end"
