@@ -25,16 +25,22 @@ test('1: AI completes its turn on desktop without getting stuck', async ({ page 
 
   const turnBefore = await page.evaluate(() => (window as any).__duelState().turn);
 
-  // End player turn and wait for AI to complete its turn (turn counter increments).
+  // Jump directly to AI's MAIN_1. SET_PHASE_FOR_TEST clears stack and priority
+  // window so the AI loop fires cleanly from the new active='o' state.
   await page.evaluate(() => {
-    const dispatch = (window as any).__duelDispatch;
-    dispatch({ type: 'ADVANCE_PHASE' }); // skip to AI turn
+    (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
   });
 
+  // Auto-pass priority for the player whenever a window opens (simulating the
+  // player pressing Pass Priority), then wait for the AI to finish its turn.
   await page.waitForFunction((startTurn: number) => {
     const s = (window as any).__duelState?.();
-    return s && s.turn > startTurn && s.active === 'p';
-  }, turnBefore, { timeout: 15_000 });
+    if (!s) return false;
+    if (s.priorityWindow && s.priorityPasser !== 'p') {
+      (window as any).__duelDispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    }
+    return s.turn > startTurn && s.active === 'p';
+  }, turnBefore, { timeout: 15_000, polling: 100 });
 
   const s = await page.evaluate(() => (window as any).__duelState());
   expect(s.p.life).toBeGreaterThanOrEqual(0);
@@ -53,14 +59,20 @@ test('2: AI completes its turn on mobile without getting stuck', async ({ page }
 
   const turnBefore = await page.evaluate(() => (window as any).__duelState().turn);
 
+  // Jump directly to AI's MAIN_1 (same as desktop test).
   await page.evaluate(() => {
-    (window as any).__duelDispatch({ type: 'ADVANCE_PHASE' });
+    (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
   });
 
+  // Auto-pass priority for the player whenever a window opens.
   await page.waitForFunction((startTurn: number) => {
     const s = (window as any).__duelState?.();
-    return s && s.turn > startTurn && s.active === 'p';
-  }, turnBefore, { timeout: 15_000 });
+    if (!s) return false;
+    if (s.priorityWindow && s.priorityPasser !== 'p') {
+      (window as any).__duelDispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    }
+    return s.turn > startTurn && s.active === 'p';
+  }, turnBefore, { timeout: 15_000, polling: 100 });
 
   const s = await page.evaluate(() => (window as any).__duelState());
   expect(s.p.life).toBeGreaterThanOrEqual(0);
