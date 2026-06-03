@@ -523,3 +523,70 @@ test.describe('AI spell priority window', () => {
     expect(state.p.bf.find((c: any) => c.id === 'grizzly_bears')).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('Combat blockers', () => {
+  async function waitForPlayerMain1(page: Page) {
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s && s.phase === 'MAIN_1' && s.active === 'p';
+    }, { timeout: 20_000 });
+  }
+
+  test('BLK-01: player can declare blockers when AI attacks', async ({ page }) => {
+    await page.goto(sandboxWith('grizzly_bears,forest'));
+    await waitForDuel(page);
+    // Wait for a stable player-turn state so no pending AI timers exist.
+    await waitForPlayerMain1(page);
+
+    // Force COMBAT_BLOCKERS with AI as active player (AI attacked, player defends).
+    await page.evaluate(() => {
+      const d = (window as any).__duelDispatch;
+      if (!d) throw new Error('__duelDispatch not available');
+      d({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+
+    // Wait for the state to reflect COMBAT_BLOCKERS before proceeding.
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s && s.phase === 'COMBAT_BLOCKERS' && s.active === 'o';
+    }, { timeout: 3000 });
+
+    // Done Blocking button must be visible when player is the defender.
+    const doneBlockingBtn = page.getByTestId('done-blocking-button');
+    await expect(doneBlockingBtn).toBeVisible({ timeout: 3000 });
+
+    // Trigger the click via evaluate to bypass Playwright's stability check —
+    // the game log updates cause React re-renders that make the button
+    // "unstable" to Playwright's heuristic, but the click itself is valid.
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-testid="done-blocking-button"]') as HTMLElement | null;
+      if (!btn) throw new Error('done-blocking-button not found');
+      btn.click();
+    });
+
+    // Phase must advance past COMBAT_BLOCKERS.
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s && s.phase !== 'COMBAT_BLOCKERS';
+    }, { timeout: 3000 });
+  });
+
+  test('BLK-02: Done Blocking button absent when player is attacking', async ({ page }) => {
+    await page.goto(sandboxWith('grizzly_bears,forest'));
+    await waitForDuel(page);
+    // Wait for a stable player-turn state so no pending AI timers exist.
+    await waitForPlayerMain1(page);
+
+    // Force COMBAT_BLOCKERS with player as active player (player attacked, AI defends).
+    await page.evaluate(() => {
+      const d = (window as any).__duelDispatch;
+      if (!d) throw new Error('__duelDispatch not available');
+      d({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'p' });
+    });
+
+    // Done Blocking must NOT be visible when the player is the attacker.
+    const doneBlockingBtn = page.getByTestId('done-blocking-button');
+    await expect(doneBlockingBtn).not.toBeVisible({ timeout: 1000 });
+  });
+});

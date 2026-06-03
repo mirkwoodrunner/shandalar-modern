@@ -536,6 +536,30 @@ applying any screen-local logic.
 
 Do not add combat click logic to `DuelScreen.tsx` or `DuelScreenMobile.tsx`.
 
+### 11.2.1 Blocker Declaration Routing (post-B32)
+
+The defender (non-active player) always declares blockers. Because `s.active` is the
+attacking player's side:
+
+- **AI attacks** (`active === 'o'`): player is defender. `handleBfClick` enables the
+  two-click blocker flow (`pendingBlockerIid`). Desktop `ActionBar` shows "Done Blocking"
+  when `phase === COMBAT_BLOCKERS && !isPlayerTurn`. Mobile `ActionBar` shows its blocker
+  UI when `phase === COMBAT_BLOCKERS && !isPlayerTurn`. Clicking "Done Blocking" calls
+  `advancePhase()` directly.
+
+- **Player attacks** (`active === 'p'`): AI is defender. The AI main loop's outer guard
+  (`s.active !== 'o'`) bails, preventing any AI action during COMBAT_BLOCKERS on the
+  player's turn. The player clicks "End Turn" (enabled when `isPlayerTurn === true`) to
+  advance past blockers.
+
+The AI main loop guard in `useDuelController.ts` retains the COMBAT_BLOCKERS bail:
+```typescript
+if (s.phase === 'COMBAT_BLOCKERS') return;
+```
+This prevents the AI from calling `requestPhaseAdvance` during blocker declaration when
+`active === 'o'`. The "Done Blocking" button (not the AI loop) is the mechanism that
+advances the phase. Removing this bail would race the AI past the blocker window.
+
 ### 11.3 UI/Overworld — Dynamic Tile Size
 
 `WorldMap` (`src/ui/overworld/WorldMap.jsx`) accepts an optional `tileSize` prop (default `34`). All grid template dimensions, tile element sizes, canvas dimensions, and empty-tile placeholders are derived from this prop so the grid scales uniformly.

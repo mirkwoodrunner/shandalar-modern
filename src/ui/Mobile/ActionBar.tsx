@@ -79,7 +79,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
     );
   }
 
-  if (phase === 'COMBAT_BLOCKERS' && isPlayerTurn) {
+  if (phase === 'COMBAT_BLOCKERS' && !isPlayerTurn) {
     const blockerCount = Object.keys(blockers ?? {}).length;
     return (
       <div
