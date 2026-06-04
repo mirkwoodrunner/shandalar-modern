@@ -590,3 +590,73 @@ test.describe('Combat blockers', () => {
     await expect(doneBlockingBtn).not.toBeVisible({ timeout: 1000 });
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('TD-002: X-spell cast log', () => {
+  test('TD-002: X-spell cast log includes resolved X value', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    // Inject Mind Twist into player hand with mana support
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({
+        type: 'SANDBOX_FORCE_HAND',
+        who: 'p',
+        cards: ['mind_twist'],
+        xVal: 3,
+      });
+    });
+
+    // Tap mana and cast Mind Twist with X=3
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const lands = state.p.bf.filter((c: any) => c.type === 'Land' && !c.tapped);
+      for (const land of lands.slice(0, 4)) {
+        (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+      }
+      const mt = state.p.hand.find((c: any) => c.id === 'mind_twist');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: mt.iid, tgt: 'o', xVal: 3 });
+    });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const lastPlayLog = [...state.log].reverse().find((e: any) => {
+      const text = typeof e === 'string' ? e : e?.text ?? '';
+      return /casts Mind Twist/i.test(text);
+    });
+    expect(lastPlayLog).toBeTruthy();
+    const logText = typeof lastPlayLog === 'string' ? lastPlayLog : (lastPlayLog as any).text;
+    expect(logText).toMatch(/\(X=3\)/);
+  });
+
+  test('TD-002: non-X spell cast log has no X suffix', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({
+        type: 'SANDBOX_FORCE_HAND',
+        who: 'p',
+        cards: ['lightning_bolt'],
+      });
+    });
+
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const lands = state.p.bf.filter((c: any) => c.type === 'Land' && !c.tapped);
+      for (const land of lands.slice(0, 1)) {
+        (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+      }
+      const bolt = state.p.hand.find((c: any) => c.id === 'lightning_bolt');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bolt.iid, tgt: 'o' });
+    });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const lastPlayLog = [...state.log].reverse().find((e: any) => {
+      const text = typeof e === 'string' ? e : e?.text ?? '';
+      return /casts Lightning Bolt/i.test(text);
+    });
+    expect(lastPlayLog).toBeTruthy();
+    const logText = typeof lastPlayLog === 'string' ? lastPlayLog : (lastPlayLog as any).text;
+    expect(logText).not.toMatch(/\(X=/);
+  });
+});
