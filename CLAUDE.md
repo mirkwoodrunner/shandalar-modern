@@ -407,6 +407,11 @@ Located at `tools/card-mcp-server/`. Provides five tools for card database work:
 
 **Note:** Server reads `scryfall/shandalar-card-pool.json` at startup. If the file is missing, it fails immediately with a clear error message.
 
+**Browser artifact:** `tools/card-mcp-server/artifact/shandalar-card-tools.jsx`
+A Claude.ai artifact providing a browser UI for all five tools above. Uses the Anthropic
+API with a live Scryfall tool-use loop — no local server required. Use this for ad-hoc
+card validation, stub checking, and missing card generation directly in Claude.ai.
+
 ---
 
 ## Reference Documents
