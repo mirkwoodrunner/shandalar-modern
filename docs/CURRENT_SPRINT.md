@@ -103,12 +103,5 @@ priority-window plumbing in isolation from planner behavior.
   `needsExplicitTarget()` in `DuelScreenMobile.tsx` (and equivalent in
   `DuelScreen.tsx`), forcing the player to pick a target before casting. Requires
   TD-003 (pendingCast flow) to avoid the tap-before-targeting regression.
-- [TD-005] Land can be played while spells are on the stack. `PLAY_LAND` in
-  `DuelCore.js` has no guard for non-empty stack, non-main phase, or already-played
-  land. Fix: add guards at the top of the `PLAY_LAND` case:
-    `if (s.stack?.length > 0) return dlog(s, 'Cannot play a land while spells are on the stack.', 'rule');`
-    `if (s.active !== 'p') return s;`
-    `if (![PHASE.MAIN_1, PHASE.MAIN_2].includes(s.phase)) return dlog(s, 'Lands can only be played during your main phase.', 'rule');`
-    `if (s.turnState.landPlayed) return dlog(s, 'You have already played a land this turn.', 'rule');`
-  Exception: Fastbond enchantment bypasses the `landPlayed` guard (already in
-  scope via `s.p.bf`). No engine contract impact; pure validation guards.
+- [TD-005] ✅ FIXED — `PLAY_LAND` now rejects land plays while spells are on
+  the stack (`src/engine/DuelCore.js`). Logs a rule reminder to the duel log.
