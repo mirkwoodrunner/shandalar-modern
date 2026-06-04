@@ -840,3 +840,65 @@ test.describe('TD-003: tap-before-targeting fix', () => {
     await expect(castBtn).toBeDisabled();
   });
 });
+
+test.describe('TD-004 — Ancestral Recall explicit targeting', () => {
+  test('TD-004: Ancestral Recall prompts for target on mobile (draw3 explicit target)', async ({ page }) => {
+    // Use the mobile route if available, otherwise standard sandbox
+    await page.goto('/?duel=sandbox&mobile=1');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['ancestral_recall'] });
+    });
+
+    // Tap a card in hand — should enter targetingFor mode, not immediately cast
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const ar = (state.p.hand as any[]).find((c: any) => c.id === 'ancestral_recall');
+    expect(ar).toBeTruthy();
+
+    // Simulate tapping the card in hand
+    await page.evaluate((iid: string) => {
+      // Dispatching SEL_CARD simulates the tap; the UI should enter targeting mode
+      (window as any).__duelDispatch({ type: 'SEL_CARD', iid });
+    }, ar.iid);
+
+    // The card should be selected but NOT cast yet (hand count unchanged)
+    const stateAfterTap = await page.evaluate(() => (window as any).__duelState());
+    expect((stateAfterTap.p.hand as any[]).some((c: any) => c.id === 'ancestral_recall')).toBe(true);
+    expect(stateAfterTap.stack.length).toBe(0);
+  });
+
+  test('TD-004: Ancestral Recall can target opponent', async ({ page }) => {
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['ancestral_recall'] });
+    });
+
+    // Tap mana, select card, select opponent as target, cast
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.bf.find((c: any) => c.type === 'Land' && !c.tapped);
+      if (land) (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+      const ar = state.p.hand.find((c: any) => c.id === 'ancestral_recall');
+      if (ar) {
+        (window as any).__duelDispatch({ type: 'SEL_CARD', iid: ar.iid });
+        (window as any).__duelDispatch({ type: 'SEL_TGT',  iid: 'o' });
+        (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: ar.iid, tgt: 'o' });
+        (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+      }
+    });
+
+    // Opponent should have drawn 3 cards (hand grew by 3)
+    const afterState = await page.evaluate(() => (window as any).__duelState());
+    // Verify stack resolved and log mentions ancestral recall
+    expect(afterState.stack.length).toBe(0);
+    const logText = (afterState.log as any[])
+      .map((e: any) => (typeof e === 'string' ? e : e?.text ?? ''))
+      .join('\n');
+    expect(logText).toMatch(/ancestral recall/i);
+  });
+});

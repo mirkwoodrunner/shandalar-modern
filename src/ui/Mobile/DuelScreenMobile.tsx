@@ -53,7 +53,13 @@ function needsExplicitTarget(card: any): boolean {
     'ping',
   ]);
   const DAMAGE_EFFECTS = new Set(['damage3', 'damage5', 'psionicBlast', 'chainLightning']);
-  return CREATURE_TARGET_EFFECTS.has(card.effect) || DAMAGE_EFFECTS.has(card.effect);
+  // Player-target effects: spells that say "target player" rather than "target creature".
+  const PLAYER_TARGET_EFFECTS = new Set([
+    'draw3',   // Ancestral Recall — "target player draws three cards"
+  ]);
+  return CREATURE_TARGET_EFFECTS.has(card.effect)
+    || DAMAGE_EFFECTS.has(card.effect)
+    || PLAYER_TARGET_EFFECTS.has(card.effect);
 }
 
 interface DuelScreenMobileProps {
