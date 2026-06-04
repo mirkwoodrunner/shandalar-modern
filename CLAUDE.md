@@ -389,6 +389,26 @@ auto-detach logic, not by explicit code.
 
 ---
 
+## Card Tools MCP Server
+
+Located at `tools/card-mcp-server/`. Provides five tools for card database work:
+
+| Tool | Purpose |
+|------|---------|
+| `shandalar_card_lookup` | Oracle text + metadata for any card; pool cache first, Scryfall fallback |
+| `shandalar_audit_crossref` | All cards in a handler group (A-P) with oracle text |
+| `shandalar_stub_validator` | Cross-check cards.js stubs against pool JSON; flag drift |
+| `shandalar_rules_conflict` | Card oracle text + rulings alongside a proposed implementation |
+| `shandalar_missing_card_gen` | Generate a cards.js entry for a missing card |
+
+**Setup:** `cd tools/card-mcp-server && npm install && npm run build`
+
+**Claude Code config:** See `tools/card-mcp-server/README.md` for `.claude/settings.json` snippet.
+
+**Note:** Server reads `scryfall/shandalar-card-pool.json` at startup. If the file is missing, it fails immediately with a clear error message.
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
