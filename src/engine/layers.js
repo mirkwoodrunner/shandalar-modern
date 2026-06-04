@@ -107,6 +107,9 @@ function collectEffects(card, state) {
     if (aura.mod.protection?.length) {
       effects.push({ layer: 6, addProtection: aura.mod.protection, enterTs: enchTs });
     }
+    if (aura.mod.removeKeywords?.length) {
+      effects.push({ layer: 6, removeKeywords: aura.mod.removeKeywords, enterTs: enchTs });
+    }
     if (aura.mod.layerDef) {
       effects.push({ ...aura.mod.layerDef, enterTs: enchTs });
     }

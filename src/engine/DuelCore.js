@@ -145,6 +145,9 @@ const blProt = state ? computeCharacteristics(bl, state).protection
                      : (Array.isArray(bl.protection) ? bl.protection : bl.protection ? [bl.protection] : []);
 if (atProt.some(q => (PROT_MAP[q] || q) === bl.color)) return false;
 if (blProt.some(q => (PROT_MAP[q] || q) === at.color)) return false;
+// Invisibility: can only be blocked by Walls.
+const atInvisible = at.enchantments?.some(e => e.mod?.invisibility);
+if (atInvisible && !bl.subtype?.includes('Wall')) return false;
 if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional -- skipped if not provided).
@@ -256,6 +259,14 @@ while (changed) {
         continue;
       }
       const dyingCard = c;
+      // Creature Bond: scan enchantments BEFORE zMove strips them.
+      const tou = getTou(dyingCard, ns);
+      for (const aura of (dyingCard.enchantments ?? [])) {
+        if (aura.mod?.creatureBond && tou > 0) {
+          ns = hurt(ns, w, tou, 'Creature Bond');
+          ns = dlog(ns, `Creature Bond deals ${tou} damage to ${w}.`, 'damage');
+        }
+      }
       // Disintegrate exile override: if exileNextDeath is set, exile instead of GY.
       ns = zMove(ns, c.iid, w, w, ns.exileNextDeath ? "exile" : "gy");
       ns = dlog(ns, `${c.name} is ${ns.exileNextDeath ? "exiled" : "destroyed"}.`, "death");
@@ -630,45 +641,72 @@ case "enchantCreature": {
 // getPow/getTou/hasKw read enchantments[].mod. Cascade removal handled by zMove.
 // SYSTEMS.md S10 (Card System), S5.2 (Damage Rules)
 if (tgtC && card.mod) {
-const auraRecord = {
-iid:      card.iid,
-name:     card.name,
-mod:      card.mod,
-controller: caster,
-cardData: { ...card },
-};
-ns = { ...ns,
-[tgtC.controller]: { ...ns[tgtC.controller],
-bf: ns[tgtC.controller].bf.map(c =>
-c.iid === tgtC.iid
-? { ...c, enchantments: [...(c.enchantments || []), auraRecord] }
-: c
-),
-},
-};
-const mods = [];
-if (card.mod.power)      mods.push(`+${card.mod.power}/+0`);
-if (card.mod.toughness)  mods.push(`+0/+${card.mod.toughness}`);
-if (card.mod.keywords)   mods.push(card.mod.keywords.join(", "));
-if (card.mod.protection) mods.push(`protection from ${card.mod.protection}`);
-ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(", ") || "modified"}).`, "effect");
-// Paralyze: tap the enchanted creature on entry
-if (card.mod.paralyzed) {
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-c.iid === tgtC.iid ? { ...c, tapped: true } : c
-)}};
-}
-// Regeneration Aura: grant G: Regenerate activated ability to the host creature
-if (card.mod.regenerationAura) {
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-c.iid === tgtC.iid ? { ...c, activated: c.activated || { cost: "G", effect: "regenerate" } } : c
-)}};
-}
-// Return early — aura stays attached to the permanent, NOT sent to graveyard.
-// The caller's post-resolution GY logic uses isPerm() which returns true for
-// Enchantments, so the aura card will not be double-added. Verify this holds
-// for both the CAST_SPELL and RESOLVE_STACK handlers.
-return ns;
+  // Animate Wall: Wall-only target guard -- reject before attaching.
+  if (card.mod.enchantWallOnly && !tgtC.subtype?.includes('Wall')) {
+    return dlog(s, `${card.name} can only enchant Walls.`, 'info');
+  }
+  const auraRecord = {
+    iid:        card.iid,
+    name:       card.name,
+    mod:        { ...card.mod },
+    controller: caster,
+    cardData:   { ...card },
+    enterTs:    ns.layerClock ?? 0,
+  };
+  ns = { ...ns,
+    [tgtC.controller]: { ...ns[tgtC.controller],
+      bf: ns[tgtC.controller].bf.map(c =>
+        c.iid === tgtC.iid
+          ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] }
+          : c
+      ),
+    },
+  };
+  const mods = [];
+  if (card.mod.power)           mods.push(`+${card.mod.power}/+0`);
+  if (card.mod.toughness)       mods.push(`+0/+${card.mod.toughness}`);
+  if (card.mod.keywords)        mods.push(card.mod.keywords.join(', '));
+  if (card.mod.removeKeywords)  mods.push(`removes ${card.mod.removeKeywords.join(', ')}`);
+  if (card.mod.protection)      mods.push(`protection from ${card.mod.protection}`);
+  ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(', ') || 'modified'}).`, 'effect');
+  // Paralyze: tap the enchanted creature on entry.
+  if (card.mod.paralyzed) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, tapped: true } : c
+    )}};
+  }
+  // Regeneration Aura: grant {G}: Regenerate activated ability to the host creature.
+  if (card.mod.regenerationAura) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, activated: c.activated || { cost: 'G', effect: 'regenerate' } } : c
+    )}};
+  }
+  // Earthbind: if host has flying at attach time, deal 2 damage and gain "loses flying".
+  if (card.mod.earthbind && hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller],
+      bf: ns[tgtC.controller].bf.map(c =>
+        c.iid === tgtC.iid ? { ...c, damage: c.damage + 2 } : c
+      )
+    }};
+    ns = dlog(ns, `Earthbind deals 2 damage to ${tgtC.name}.`, 'effect');
+    // Mutate the last-attached aura record to add removeKeywords: [FLYING].
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller],
+      bf: ns[tgtC.controller].bf.map(c => {
+        if (c.iid !== tgtC.iid) return c;
+        const encs = [...c.enchantments];
+        const idx = encs.length - 1;
+        encs[idx] = { ...encs[idx], mod: { ...encs[idx].mod, removeKeywords: [KEYWORDS.FLYING.id] } };
+        return { ...c, enchantments: encs };
+      })
+    }};
+    ns = dlog(ns, `${tgtC.name} loses flying.`, 'effect');
+    ns = checkDeath(ns);
+  }
+  // Return early -- aura stays attached to the permanent, NOT sent to graveyard.
+  // The caller's post-resolution GY logic uses isPerm() which returns true for
+  // Enchantments, so the aura card will not be double-added. Verify this holds
+  // for both the CAST_SPELL and RESOLVE_STACK handlers.
+  return ns;
 }
 break;
 }
@@ -1269,6 +1307,23 @@ if (next === PHASE.COMBAT_ATTACKERS) {
   });
 }
 
+if (next === PHASE.COMBAT_END) {
+  for (const iid of (ns.turnState.venomTargets ?? [])) {
+    const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
+    if (who) {
+      const vic = ns[who].bf.find(c => c.iid === iid);
+      if (vic && !vic.regenerating) {
+        ns = zMove(ns, iid, who, who, 'gy');
+        ns = dlog(ns, `Venom destroys ${vic.name}.`, 'effect');
+        ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: iid, previousController: who } });
+      }
+    }
+  }
+  ns = { ...ns, turnState: { ...ns.turnState, venomTargets: [] } };
+  ns = processTriggerQueue(ns);
+  ns = checkDeath(ns);
+}
+
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
 for (const iid of ns.turnState.mustAttackEligible ?? []) {
@@ -1298,7 +1353,7 @@ ns = { ...ns, active: nx };
 ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
-  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [] } };
+  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [] } };
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 // Power Surge: snapshot tapped land count before untapping (SYSTEMS.md S20, Option A)
@@ -1742,7 +1797,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [] },
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
@@ -1933,10 +1988,23 @@ case "DECLARE_BLOCKER": {
     }
   }
   if (!canBlockDuel(bl, att, s[blSide].bf, s)) return s;
-  const already = s.blockers[action.blId] === action.attId;
-  const nb = { ...s.blockers };
+  // Venom: if either attacker or blocker has a Venom aura, record the other creature
+  // for destruction at COMBAT_END. Non-Wall check is per oracle.
+  let ns2 = s;
+  const attHasVenom = att.enchantments?.some(e => e.mod?.venom);
+  const blHasVenom  = bl.enchantments?.some(e => e.mod?.venom);
+  const blIsWall    = bl.subtype?.includes('Wall');
+  const attIsWall   = att.subtype?.includes('Wall');
+  if (attHasVenom && !blIsWall) {
+    ns2 = { ...ns2, turnState: { ...ns2.turnState, venomTargets: [...(ns2.turnState.venomTargets || []), bl.iid] } };
+  }
+  if (blHasVenom && !attIsWall) {
+    ns2 = { ...ns2, turnState: { ...ns2.turnState, venomTargets: [...(ns2.turnState.venomTargets || []), att.iid] } };
+  }
+  const already = ns2.blockers[action.blId] === action.attId;
+  const nb = { ...ns2.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
-  return { ...s, blockers: nb, [blSide]: { ...s[blSide], bf: s[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
+  return { ...ns2, blockers: nb, [blSide]: { ...ns2[blSide], bf: ns2[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
 }
 
 case "OPEN_PRIORITY_WINDOW":
