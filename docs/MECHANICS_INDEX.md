@@ -1198,4 +1198,30 @@ Section 31.3 (E2E Testing Infrastructure).
 ### Status
 ACTIVE — covered by e2e tests 5 (desktop) and 6 (mobile)
 
-# End of MECHANICS INDEX v1.2
+## 1.3 Layer System
+
+### Description
+Pure function module that computes a permanent's characteristics by applying
+continuous effects in CR 613 layer order (4 -> 5 -> 6 -> 7a -> 7b -> 7c -> 7d).
+
+### SYSTEMS.md Reference
+Section 18 (Layer System)
+
+### Implementation
+
+```
+src/engine/layers.js          -- computeCharacteristics, CDA_EVALUATORS
+src/engine/DuelCore.js        -- getPow, getTou, hasKw (thin wrappers)
+src/data/cards.js             -- layerDef field on CDA/lord/pump cards
+```
+
+### Key Concepts
+- `layerDef` field on permanents/auras describes their layer contribution
+- `enterTs` on permanents provides timestamp ordering within a layer
+- `layerClock` on GameState is the monotonic timestamp counter
+- `eotBuffs[]` entries may carry `layerDef` for temporary layer effects
+
+### Status
+ACTIVE
+
+# End of MECHANICS INDEX v1.3

@@ -11,6 +11,7 @@ import { CARD_DB, ARCHETYPES } from '../data/cards.js';
 import { PHASE, PHASE_SEQUENCE, SORCERY_SPEED_PHASES } from './phases.js';
 import { CARD_HANDLERS } from './cardHandlers.js';
 import KEYWORDS from '../data/keywords.js';
+import { computeCharacteristics } from './layers.js';
 
 // --- UTILITIES ----------------------------------------------------------------
 
@@ -35,33 +36,15 @@ export const isArt    = c => !!c?.type?.includes("Artifact");
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
 export function hasKw(c, kw, state = null) {
-  let found =
-    (c.keywords     || []).includes(kw) ||
-    (c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw)) ||
-    (c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw));
-  // Lord keyword layer: scan battlefield for lordEffect/globalPump permanents
-  if (!found && state && c.subtype) {
-    const COLOR_MAP = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
-    const COLOR_TARGETS = new Set(Object.keys(COLOR_MAP));
-    const allBf = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
-    for (const lord of allBf) {
-      if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
-      if (lord.iid === c.iid) continue;
-      const t = lord.targets?.toLowerCase();
-      if (!t) continue;
-      const matches = COLOR_TARGETS.has(t)
-        ? c.color === COLOR_MAP[t]
-        : c.subtype?.toLowerCase().split(' ').some(s => s === t);
-      if (matches && lord.lordKeywords?.includes(kw)) { found = true; break; }
-    }
+  if (!state) {
+    // No state: only check static card keywords (used pre-battlefield).
+    return (c.keywords     || []).includes(kw) ||
+           (c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw)) ||
+           (c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw));
   }
-  if (!found) return false;
-  // Holy Ground (Option B): suppress landwalk keywords when defending player controls Holy Ground.
-  if (state && kw.endsWith("WALK")) {
-    const defender = c.controller === "p" ? "o" : "p";
-    if (state[defender].bf.some(h => h.name === "Holy Ground")) return false;
-  }
-  return true;
+  const ch = computeCharacteristics(c, state);
+  return ch.keywords.includes(kw) ||
+         ch.protection.some(() => kw === KEYWORDS.PROTECTION.id);
 }
 
 // --- CARD INSTANTIATION -------------------------------------------------------
@@ -135,69 +118,18 @@ return state.p.bf.find(c => c.iid === iid) || state.o.bf.find(c => c.iid === iid
 }
 
 export function getPow(c, state) {
-if (state && c.staticEffect === "keldonWarlord" && c.controller) {
-  return (state[c.controller]?.bf.filter(x => isCre(x) && !x.tapped && x.iid !== c.iid).length || 0);
-}
-let p = c.power ?? 0;
-if (c.dynamic) {
-if (c.name === "Plague Rats")        p = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
-else if (c.dynamicType === "swampCount")   p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length ?? 0;
-else if (c.dynamicType === "forestCount")  p = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Forest")).length ?? 0;
-else if (c.dynamicType === "creatureCount")p = [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
-else if (c.dynamicType === "forestBonus")  p = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes("Forest")) ? 1 : 0);
-}
-const eotPow  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.power || 0), 0);
-const enchPow = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.power || 0), 0);
-let lordPow = 0;
-if (state) {
-  const COLOR_MAP_P = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
-  const COLOR_TARGETS_P = new Set(Object.keys(COLOR_MAP_P));
-  const allBf_p = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
-  for (const lord of allBf_p) {
-    if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
-    if (lord.iid === c.iid) continue;
-    const t = lord.targets?.toLowerCase();
-    if (!t) continue;
-    const matches = COLOR_TARGETS_P.has(t)
-      ? c.color === COLOR_MAP_P[t]
-      : c.subtype?.toLowerCase().split(' ').some(s => s === t);
-    if (matches) lordPow += lord.mod?.power ?? 0;
+  if (!state) {
+    // No state: fall back to base printed value (used in pre-game card display).
+    return Math.max(0, typeof c.power === 'number' ? c.power : 0);
   }
-}
-return Math.max(0, p + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotPow + enchPow + lordPow);
+  return computeCharacteristics(c, state).power;
 }
 
 export function getTou(c, state) {
-if (state && c.staticEffect === "keldonWarlord" && c.controller) {
-  return (state[c.controller]?.bf.filter(x => isCre(x) && !x.tapped && x.iid !== c.iid).length || 0);
-}
-let t = c.toughness ?? 0;
-if (c.dynamic) {
-if (c.name === "Plague Rats")        t = [...state.p.bf, ...state.o.bf].filter(x => x.name === "Plague Rats").length;
-else if (c.dynamicType === "swampCount")   t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length ?? 0;
-else if (c.dynamicType === "forestCount")  t = state[c.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes("Forest")).length ?? 0;
-else if (c.dynamicType === "creatureCount")t = [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === c.controller).length;
-else if (c.dynamicType === "forestBonus")  t = 1 + (state[c.controller]?.bf.some(x => isLand(x) && x.subtype?.includes("Forest")) ? 2 : 1);
-}
-const eotTou  = (c.eotBuffs     || []).reduce((sum, b) => sum + (b.toughness || 0), 0);
-const enchTou = (c.enchantments || []).reduce((sum, e) => sum + (e.mod?.toughness || 0), 0);
-let lordTou = 0;
-if (state) {
-  const COLOR_MAP_T = { white:'W', blue:'U', black:'B', red:'R', green:'G' };
-  const COLOR_TARGETS_T = new Set(Object.keys(COLOR_MAP_T));
-  const allBf_t = [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])];
-  for (const lord of allBf_t) {
-    if (lord.effect !== 'lordEffect' && lord.effect !== 'globalPump') continue;
-    if (lord.iid === c.iid) continue;
-    const t2 = lord.targets?.toLowerCase();
-    if (!t2) continue;
-    const matches = COLOR_TARGETS_T.has(t2)
-      ? c.color === COLOR_MAP_T[t2]
-      : c.subtype?.toLowerCase().split(' ').some(s => s === t2);
-    if (matches) lordTou += lord.mod?.toughness ?? 0;
+  if (!state) {
+    return typeof c.toughness === 'number' ? c.toughness : 0;   // No floor — display callers handle it
   }
-}
-return Math.max(0, t + (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0) + eotTou + enchTou + lordTou);
+  return computeCharacteristics(c, state).toughness;
 }
 
 export function canBlockDuel(bl, at, defBf, state = null) {
@@ -288,7 +220,10 @@ ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...au
 
 let a = { ...card, controller: tw };
 if (tz === "bf") {
-a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [] };
+// Assign a monotonic enter-timestamp for layer ordering (CR 613.7d).
+const ts = (ns.layerClock ?? 0) + 1;
+ns = { ...ns, layerClock: ts };
+a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [], enterTs: ts };
 }
 if (tz === "gy" || tz === "hand") {
 a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
@@ -1036,9 +971,11 @@ break;
 }
 case "setPT02": {
 if (tgtC && tgtC.iid !== card.iid) {
-const curPow = getPow(tgtC, ns);
-const curTou = getTou(tgtC, ns);
-ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -curPow, toughness: 2 - curTou }] } : c) } };
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+  c.iid === tgtC.iid
+    ? { ...c, eotBuffs: [...(c.eotBuffs || []), { layerDef: { layer: "7b", setPower: 0, setToughness: 2 } }] }
+    : c
+) } };
 ns = dlog(ns, `${tgtC.name} becomes 0/2 until end of turn.`, "effect");
 }
 break;
