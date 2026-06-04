@@ -32,7 +32,14 @@ export const CDA_EVALUATORS = {
   creatureCount:  (card, state) => [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === card.controller).length,
   forestBonus:    (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && x.subtype?.includes('Forest')) ? 1 : 0),
   forestBonusTou: (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && x.subtype?.includes('Forest')) ? 2 : 1),
-  keldonWarlord:  (card, state) => state[card.controller]?.bf.filter(x => isCre(x) && !x.tapped && x.iid !== card.iid).length ?? 0,
+  keldonWarlord:  (card, state) => state[card.controller]?.bf.filter(x => isCre(x) && !x.subtype?.includes('Wall')).length ?? 0,
+  forestCountLiege:   (card, state) => {
+    if (card.attacking) {
+      const opp = card.controller === 'p' ? 'o' : 'p';
+      return state[opp]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0;
+    }
+    return state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0;
+  },
 };
 
 function getTs(eff) {

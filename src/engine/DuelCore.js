@@ -704,14 +704,20 @@ if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tg
 break;
 }
 case "pumpToughness": {
+// LEGACY: direct mutation -- bypasses layers. Kept for non-activated-ability call sites.
+// All activated-ability calls now route through pumpToughnessEOT via effectOverride.
 if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, toughness: (c.toughness||0)+1 } : c) } }; }
 break;
 }
 case "pumpSelf": {
+// LEGACY: direct mutation -- bypasses layers. Kept for non-activated-ability call sites.
+// All activated-ability calls now route through pumpSelfEOT via effectOverride.
 if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+1 } : c) } }; }
 break;
 }
 case "pumpX": {
+// LEGACY: direct mutation -- bypasses layers. Kept for non-activated-ability call sites.
+// All activated-ability calls now route through pumpXEOT via effectOverride.
 if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+xVal } : c) } }; }
 break;
 }
@@ -760,7 +766,76 @@ ns = dlog(ns, `${self.name} gains flying until end of turn.`, "effect");
 }
 break;
 }
+case "pumpToughnessEOT": {
+// Granite Gargoyle {R}: +0/+1 until end of turn. Stored in eotBuffs[], purged at CLEANUP.
+const host = tgtC || ns[caster].bf.find(c => c.iid === item.card.iid);
+if (host) {
+ns = { ...ns,
+[host.controller]: { ...ns[host.controller],
+bf: ns[host.controller].bf.map(c =>
+c.iid === host.iid
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { toughness: 1 }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${host.name} gets +0/+1 until end of turn.`, "effect");
+}
+break;
+}
+case "pumpSelfEOT": {
+// Frozen Shade / Vampire Bats {B}: +1/+1 until end of turn.
+const self2 = ns[caster].bf.find(c => c.iid === item.card.iid);
+if (self2) {
+ns = { ...ns,
+[caster]: { ...ns[caster],
+bf: ns[caster].bf.map(c =>
+c.iid === self2.iid
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${self2.name} gets +1/+1 until end of turn.`, "effect");
+}
+break;
+}
+case "pumpXEOT": {
+// Berserk-style X pump until end of turn.
+const hostX = tgtC || ns[caster].bf.find(c => c.iid === item.card.iid);
+if (hostX) {
+ns = { ...ns,
+[hostX.controller]: { ...ns[hostX.controller],
+bf: ns[hostX.controller].bf.map(c =>
+c.iid === hostX.iid
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: xVal }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${hostX.name} gets +${xVal}/+0 until end of turn.`, "effect");
+}
+break;
+}
+case "grantFlyingEOT": {
+// Jump / Stone Giant: target creature gains flying until end of turn.
+if (tgtC) {
+ns = { ...ns,
+[tgtC.controller]: { ...ns[tgtC.controller],
+bf: ns[tgtC.controller].bf.map(c =>
+c.iid === tgtC.iid
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.FLYING.id] }] }
+: c
+),
+},
+};
+ns = dlog(ns, `${tgtC.name} gains flying until end of turn.`, "effect");
+}
+break;
+}
 case "grantFlying": {
+// LEGACY: direct mutation -- bypasses layers. Kept for non-activated-ability call sites.
+// All activated-ability calls now route through grantFlyingEOT via effectOverride.
 if (tgtC) {
 const kws2 = [...(tgtC.keywords||[])];
 if (!kws2.includes(KEYWORDS.FLYING.id)) kws2.push(KEYWORDS.FLYING.id);
@@ -1053,6 +1128,8 @@ return ns;
 ns = dlog(ns, "Combat damage resolving.", "combat");
 
 const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
+// Spirit Link: returns 1 when host has a Spirit Link aura (caller multiplies by damage dealt).
+const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink) ? 1 : 0;
 
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
@@ -1068,6 +1145,7 @@ if (!blockers.length) {
   if (!attGaseous) {
     ns = hurt(ns, defW, ap, att.name);
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
+    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
   }
 } else {
   let rem = ap;
@@ -1107,6 +1185,8 @@ if (!blockers.length) {
     }
     if (!blockerProtectsFromAtt && !blGaseous) rem = Math.max(0, rem - dbl);
     if (hasLifelink && !blockerProtectsFromAtt && !blGaseous) ns = hurt(ns, actrl, -dbl);
+    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -dbl);
+    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl)) ns = hurt(ns, bl.controller, -bp);
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
@@ -1985,8 +2065,12 @@ case "ACTIVATE_ABILITY": {
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
   }
   // Route activated pump/flying through EOT variants so CLEANUP expires them correctly.
-  const effectOverride = act.effect === "pumpPower"  ? "pumpPowerEOT"
-                       : act.effect === "gainFlying" ? "gainFlyingEOT"
+  const effectOverride = act.effect === "pumpPower"     ? "pumpPowerEOT"
+                       : act.effect === "pumpToughness" ? "pumpToughnessEOT"
+                       : act.effect === "pumpSelf"      ? "pumpSelfEOT"
+                       : act.effect === "pumpX"         ? "pumpXEOT"
+                       : act.effect === "gainFlying"    ? "gainFlyingEOT"
+                       : act.effect === "grantFlying"   ? "grantFlyingEOT"
                        : act.effect;
   const item = { id: makeId(), card: { ...card, effect: effectOverride, mana: act.mana }, caster: "p", targets: tgt ? [tgt] : [], xVal: 1, chosenColor };
   s = resolveEff(s, item);
