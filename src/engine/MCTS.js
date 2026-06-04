@@ -105,7 +105,7 @@ function evaluateBoard(s, who) {
 
 // --- ROLLOUT POLICIES ---------------------------------------------------------
 
-function policyMainAction(s) {
+export function policyMainAction(s) {
   const active = s.active;
   const hand = s[active].hand;
   const mana = s[active].mana;
@@ -211,7 +211,7 @@ function randomBlock(s) {
   return blockActions;
 }
 
-function stepOnce(s) {
+export function stepOnce(s) {
   const { phase } = s;
 
   if (phase === PHASE.MAIN_1 || phase === PHASE.MAIN_2) {

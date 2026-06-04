@@ -320,6 +320,19 @@ planMain() uses the nextState path (passing primaryVirtual / altVirtual).
 planAttack() uses the action path (passing DECLARE_ATTACKER / ADVANCE_PHASE).
 Never pass { type: 'PLAN' } or other unrecognized action types as candidates.
 
+## MCTS Unit Test Seam (TD-003)
+
+`stepOnce` and `policyMainAction` in `MCTS.js` are exported solely for unit testing.
+Do not call them from production code outside of MCTS.js itself.
+
+`src/engine/__tests__/mcts-rollout.test.js` holds three test groups:
+- Group A: characterization baseline for the rollout pass-fest bug (TD-003) -- the
+  rollout never taps lands so no nonzero-cost spell is castable; assertions are
+  deliberately GREEN against the *broken* behavior. Prompt 2 flips them.
+- Group B: determinism proof -- rollout returns the same winner from identical state.
+- Group C: KARAG-only gate guard -- asserts KARAG is the only profile with
+  aggression >= 0.9; protects ARZAKON/MORTIS from silent MCTS exposure after the fix.
+
 ---
 
 ## Pump / Flying Keyword -- Activated Ability Routing
