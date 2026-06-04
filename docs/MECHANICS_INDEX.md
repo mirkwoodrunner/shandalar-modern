@@ -43,6 +43,19 @@ Card-triggered event pipeline within DuelCore. Detects, enqueues, and resolves c
 
 ### Active Card Triggers
 
+#### Spirit Link (inline combat trigger)
+```
+Status: ACTIVE
+Data model: mod:{spiritLink:true} on aura card definition (not a keyword grant)
+Trigger site: Inline at three combat damage points in DuelCore.js combat resolution block.
+  - Unblocked attacker hits player: after hurt(ns, defW, ap)
+  - Attacker deals damage to blocker: after lifelink line (same guard conditions)
+  - Blocker deals damage to attacker: after blocker damage application
+Implementation note: Auras live in card.enchantments[] on the host creature, NOT as
+standalone battlefield permanents. emitEvent loop over bf cannot find them. spiritLinkGain(c)
+helper checks enchantments array inline. Does not use triggeredAbilities pipeline.
+```
+
 #### Sengir Vampire (+1/+1 counter)
 ```
 Status: ACTIVE (card-specific implementation; general registry deferred)
@@ -1220,6 +1233,15 @@ src/data/cards.js             -- layerDef field on CDA/lord/pump cards
 - `enterTs` on permanents provides timestamp ordering within a layer
 - `layerClock` on GameState is the monotonic timestamp counter
 - `eotBuffs[]` entries may carry `layerDef` for temporary layer effects
+
+### CDA Card Traceability
+
+| Card | Evaluator key | Oracle rule | Notes |
+|---|---|---|---|
+| Plague Rats | `plagueRats` | P/T = number of Plague Rats in play | Counts both players' copies |
+| Nightmare | `swampCount` | P/T = number of Swamps you control | Controller's Swamps only |
+| Gaea's Liege | `forestCountLiege` | Non-attacking: controller's Forests; Attacking: defending player's Forests | Uses `card.attacking` flag; corrected from `forestCount` (audit fix) |
+| Keldon Warlord | `keldonWarlord` | P/T = number of non-Wall creatures you control (including itself) | Wall check: `x.subtype?.includes('Wall')`; corrected from !x.tapped/self-exclusion (audit fix) |
 
 ### Status
 ACTIVE

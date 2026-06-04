@@ -322,6 +322,29 @@ Never pass { type: 'PLAN' } or other unrecognized action types as candidates.
 
 ---
 
+## Pump / Flying Keyword -- Activated Ability Routing
+All activated-ability pump and flying effects must route through eotBuffs via the
+effectOverride map in DuelCore.js. Direct mutation of card.power, card.toughness,
+or card.keywords is prohibited for activated effects.
+
+effectOverride map covers: pumpPower->pumpPowerEOT, pumpToughness->pumpToughnessEOT,
+pumpSelf->pumpSelfEOT, pumpX->pumpXEOT, gainFlying->gainFlyingEOT, grantFlying->grantFlyingEOT
+
+## Spirit Link
+Implemented as mod:{spiritLink:true} on the aura. Triggers inline at combat damage
+sites in DuelCore.js (not via triggeredAbilities pipeline -- auras are not standalone
+battlefield permanents and are not iterated by emitEvent).
+
+## Keldon Warlord
+CDA counts non-Wall creatures you control (including itself). Wall check uses
+x.subtype?.includes('Wall') in the keldonWarlord CDA_EVALUATORS entry in layers.js.
+
+## Gaea's Liege
+CDA uses forestCountLiege evaluator in layers.js. When card.attacking is true, counts
+defending player's Forests; otherwise counts controller's Forests.
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
