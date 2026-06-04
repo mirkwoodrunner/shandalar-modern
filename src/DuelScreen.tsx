@@ -28,7 +28,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
@@ -301,6 +301,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingDualLand, setPendingDualLand,
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
     handleBfClick,
+    pendingCast, setPendingCast, canCastPending,
   } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
 
   const s = state;
@@ -456,14 +457,43 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Cast / play selected card ---------------------------------------------
   const handleCast = useCallback(() => {
+    // If a pendingCast is queued and mana is now satisfied, fire it.
+    if (pendingCast) {
+      if (!canCastPending) return;
+      const card = (s.p.hand as any[]).find((c: any) => c.iid === pendingCast.cardIid);
+      if (!card) { setPendingCast(null); return; }
+      castSpell(pendingCast.cardIid, pendingCast.target, s.xVal);
+      setPendingCast(null);
+      selectCard(null);
+      selectTarget(null);
+      return;
+    }
+
     const card = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
     if (!card) return;
     if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
+
+    // For targetable spells: queue pendingCast so target survives mana taps.
+    if (needsExplicitTarget(card)) {
+      const tgt = s.selTgt ?? null;
+      if (!tgt) return; // no target selected yet — wait
+      setPendingCast({ cardIid: card.iid, target: tgt });
+      return;
+    }
+
+    // Non-targetable spells: cast immediately.
     const tgt = s.selTgt ?? resolveDefaultTarget(card, s);
-    if (card.effect === 'enchantCreature' && !tgt) return;
     castSpell(card.iid, tgt, s.xVal);
-    selectCard(null); selectTarget(null);
-  }, [s, playLand, castSpell, selectCard, selectTarget]);
+    selectCard(null);
+    selectTarget(null);
+  }, [s, pendingCast, canCastPending, playLand, castSpell, selectCard, selectTarget, setPendingCast]);
+
+  // Clear pendingCast if the player deselects the card or selects a different one.
+  useEffect(() => {
+    if (pendingCast && s.selCard !== pendingCast.cardIid) {
+      setPendingCast(null);
+    }
+  }, [s.selCard, pendingCast, setPendingCast]);
 
   // -- Lotus / Bop / graveyard / mana-choice handlers ------------------------
 
@@ -686,14 +716,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           <ActionBar
             phase={s.phase}
             compact={isMobile}
-            hasSelection={!!s.selCard}
-            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null}
+            hasSelection={!!s.selCard || !!pendingCast}
+            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === (pendingCast?.cardIid ?? s.selCard)) ?? null}
             isPlayerTurn={s.active === 'p'}
             isWaitingForAI={s.priorityWindow === true && s.priorityPasser === 'p'}
             priorityWindowOpen={s.priorityWindow === true}
             canUndo={canUndoMana}
             onUndo={undoManaTaps}
             onCast={handleCast}
+            castDisabled={!!pendingCast && !canCastPending}
             onPassPriority={() => {
               if (s.priorityWindow && s.priorityPasser !== 'p') {
                 passPriority('p');

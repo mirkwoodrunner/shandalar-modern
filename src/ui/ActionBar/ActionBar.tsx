@@ -11,6 +11,7 @@ interface ActionBarProps {
   isWaitingForAI?: boolean;
   priorityWindowOpen?: boolean;
   onCast?: () => void;
+  castDisabled?: boolean;
   onPassPriority?: () => void;
   onCancel?: () => void;
   onEndTurn?: () => void;
@@ -28,6 +29,7 @@ export function ActionBar({
   isWaitingForAI = false,
   priorityWindowOpen = false,
   onCast,
+  castDisabled = false,
   onPassPriority,
   onCancel,
   onEndTurn,
@@ -63,7 +65,7 @@ export function ActionBar({
       }} />
 
       {hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))) && (
-        <ActionButton variant="primary" onClick={onCast} data-testid="cast-button">
+        <ActionButton variant="primary" onClick={onCast} disabled={castDisabled} data-testid="cast-button">
           {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
       )}

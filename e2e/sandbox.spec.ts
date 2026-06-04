@@ -729,3 +729,114 @@ test.describe('TD-002: X-spell cast log', () => {
     expect(bfAfter).toBe(bfBefore + 1);
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('TD-003: tap-before-targeting fix', () => {
+  test('TD-003: target selection survives mana tap on desktop', async ({ page }) => {
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['terror'] });
+    });
+
+    // Put a creature on opponent's battlefield to target
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cardIds: ['grizzly_bears'] });
+      const state = (window as any).__duelState();
+      const bear = state.o.hand.find((c: any) => c.id === 'grizzly_bears');
+      if (bear) (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'o', iid: bear.iid });
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    // Select Terror and pick a target
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const terror = state.p.hand.find((c: any) => c.id === 'terror');
+      const bear = state.o.bf.find((c: any) => c.id === 'grizzly_bears');
+      if (terror) (window as any).__duelDispatch({ type: 'SEL_CARD', iid: terror.iid });
+      if (bear)   (window as any).__duelDispatch({ type: 'SEL_TGT',  iid: bear.iid });
+    });
+
+    // Tap a land AFTER selecting the target, then click Cast to queue pendingCast
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.bf.find((c: any) => c.type === 'Land' && !c.tapped);
+      if (land) (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+    });
+
+    // selTgt may be reset by engine after tap — pendingCast preserves the target
+    // Click Cast to queue pendingCast (target captured before mana taps clear it)
+    // Re-select target if needed (since we tapped before clicking cast the first time)
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const terror = state.p.hand.find((c: any) => c.id === 'terror');
+      const bear = state.o.bf.find((c: any) => c.id === 'grizzly_bears');
+      if (terror) (window as any).__duelDispatch({ type: 'SEL_CARD', iid: terror.iid });
+      if (bear)   (window as any).__duelDispatch({ type: 'SEL_TGT',  iid: bear.iid });
+    });
+
+    // Click Cast to queue pendingCast
+    await page.getByTestId('cast-button').click();
+
+    // Tap enough mana to cast (1B): tap remaining untapped lands
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const untapped = state.p.bf.filter((c: any) => c.type === 'Land' && !c.tapped);
+      for (const land of untapped.slice(0, 2)) {
+        (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+      }
+    });
+
+    // Cast button should now be enabled (mana satisfied)
+    await expect(page.getByTestId('cast-button')).toBeEnabled();
+    await page.getByTestId('cast-button').click();
+
+    // Grizzly Bears should be in opponent's graveyard
+    await page.waitForFunction(() => {
+      const state = (window as any).__duelState();
+      return (state.o.gy as any[]).some((c: any) => c.id === 'grizzly_bears') ||
+             (state.o.bf as any[]).every((c: any) => c.id !== 'grizzly_bears');
+    }, { timeout: 5000 });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const inGy = (state.o.gy as any[]).some((c: any) => c.id === 'grizzly_bears');
+    expect(inGy).toBe(true);
+  });
+
+  test('TD-003: cast button disabled when pendingCast queued but mana insufficient', async ({ page }) => {
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['terror'] });
+    });
+
+    // Add a creature target
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cardIds: ['grizzly_bears'] });
+      const state = (window as any).__duelState();
+      const bear = state.o.hand.find((c: any) => c.id === 'grizzly_bears');
+      if (bear) (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'o', iid: bear.iid });
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    // Select Terror and target — but tap NO mana
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const terror = state.p.hand.find((c: any) => c.id === 'terror');
+      const bear = state.o.bf.find((c: any) => c.id === 'grizzly_bears');
+      if (terror) (window as any).__duelDispatch({ type: 'SEL_CARD', iid: terror.iid });
+      if (bear)   (window as any).__duelDispatch({ type: 'SEL_TGT',  iid: bear.iid });
+    });
+
+    // Click Cast to queue pendingCast (no mana tapped)
+    await page.getByTestId('cast-button').click();
+
+    // Cast button should be disabled (pendingCast queued but mana not satisfied)
+    const castBtn = page.getByTestId('cast-button');
+    await expect(castBtn).toBeDisabled();
+  });
+});

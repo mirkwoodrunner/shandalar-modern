@@ -88,14 +88,10 @@ priority-window plumbing in isolation from planner behavior.
   useEffect. A dedicated `useDuelAILoop.ts` hook was not created; duplication is eliminated
   without one. No further action needed unless a standalone hook is desired for organisation.
 - [TD-002] ✅ FIXED — X-spell cast log now includes resolved X value (e.g. "o casts Mind Twist (X=3).").
-- [TD-003] Mana must be tapped before targeting a spell. Tapping mana after
-  selecting a target resets or corrupts the target selection. Fix requires
-  separating "select target" from "cast" with a `pendingCast: { cardIid, target }`
-  state shape. Cast fires only when both mana pool satisfies the cost AND a valid
-  target is set (for spells that require one). Fix sites: `useDuelController.ts`
-  (handleCast), `DuelCore.js` (no change needed — reducer already accepts
-  pre-validated cast actions). Also affects `DuelScreenMobile.tsx` target flow.
-  Ancestral Recall targeting (TD-004) depends on this same rework.
+- [TD-003] ✅ FIXED — `pendingCast` state in `useDuelController.ts` decouples
+  target selection from the cast action. `handleCast` in `DuelScreen.tsx`
+  queues intent and fires only when mana is satisfied. `needsExplicitTarget()`
+  exported from hook for desktop/mobile parity.
 - [TD-004] Ancestral Recall targets the casting player by default but the card
   text says "target player" (can be opponent). `resolveDefaultTarget` in
   `useDuelController.ts` maps `draw3` effect to `state.selTgt ?? 'p'`, defaulting

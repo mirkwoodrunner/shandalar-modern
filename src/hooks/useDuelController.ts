@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
 import { aiDecide } from '../engine/AI.js';
-import { isLand } from '../engine/DuelCore.js';
+import { isLand, canPay } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
@@ -37,6 +37,42 @@ export function resolveDefaultTarget(card: any, state: any): string | null {
   if (['damage3', 'damage5', 'damageX', 'psionicBlast', 'chainLightning'].includes(effect)) return 'o';
   if (['draw3', 'gainLife3', 'gainLifeX', 'tutor', 'drawX'].includes(effect)) return state.selTgt ?? 'p';
   return state.selTgt ?? null;
+}
+
+// Effects that require the player to pick a target before casting.
+// Keep in sync with needsExplicitTarget() in DuelScreenMobile.tsx.
+export const EXPLICIT_TARGET_EFFECTS = new Set([
+  'bounce',
+  'destroy',
+  'destroyArtifact',
+  'destroyArtOrEnch',
+  'destroyTargetLand',
+  'destroyBlack',
+  'destroyBlueOrCounter',
+  'destroyRedOrCounter',
+  'pumpCreature',
+  'enchantCreature',
+  'reanimate',
+  'howlFromBeyond',
+  'pumpPower',
+  'pumpToughness',
+  'steal',
+  'pacifism',
+  'fear',
+  'gloom',
+  'weakness',
+  'unholy_strength',
+  'regenerate',
+  'ping',
+  'damage3',
+  'damage5',
+  'psionicBlast',
+  'chainLightning',
+  'draw3',   // Ancestral Recall — "target player draws three cards"
+]);
+
+export function needsExplicitTarget(card: any): boolean {
+  return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -96,6 +132,7 @@ export function useDuelController(
   const [showLotus, setShowLotus] = useState(false);
   const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
+  const [pendingCast, setPendingCast] = useState<{ cardIid: string; target: string | null } | null>(null);
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
@@ -359,6 +396,13 @@ export function useDuelController(
     (s.stack?.length ?? 0) === 0 &&
     s.manaTapSnapshot !== null;
 
+  const canCastPending = pendingCast !== null && (() => {
+    const card = (s.p.hand as any[]).find((c: any) => c.iid === pendingCast.cardIid);
+    if (!card) return false;
+    const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+    return canPay(s.p.mana, card.cost, xSpend);
+  })();
+
   const oppBfIids = useMemo(
     () => new Set((s.o.bf as any[]).map((c: any) => c.iid)),
     [s.o.bf]
@@ -420,6 +464,11 @@ export function useDuelController(
     pendingBlockerIid,
     setPendingBlockerIid,
     handleBfClick,
+
+    // Pending cast state
+    pendingCast,
+    setPendingCast,
+    canCastPending,
 
     // Derived data
     adaptedLog: adaptedLog as any[],
