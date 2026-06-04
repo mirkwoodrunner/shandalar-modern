@@ -335,6 +335,34 @@ Implemented as mod:{spiritLink:true} on the aura. Triggers inline at combat dama
 sites in DuelCore.js (not via triggeredAbilities pipeline -- auras are not standalone
 battlefield permanents and are not iterated by emitEvent).
 
+## Aura ETB Side-Effects (enchantCreature handler)
+ETB side-effects on enchantCreature mods are handled inline in the enchantCreature
+case in DuelCore.js, after the aura is attached. Current mod flags with ETB logic:
+  paralyzed       -- taps the host on entry
+  regenerationAura -- grants {G}:regenerate activated ability to host
+  earthbind       -- if host has flying: deal 2 damage, mutate aura mod to add
+                    removeKeywords:[FLYING]
+
+## Aura Death Triggers (checkDeath)
+Aura mods that trigger on host death are scanned inline in checkDeath BEFORE zMove
+fires, while dyingCard.enchantments is still intact.
+  creatureBond    -- deal damage equal to host's toughness to its controller
+
+## Venom (end-of-combat destruction)
+Tracked via turnState.venomTargets[]. Populated in DECLARE_BLOCKER when either
+attacker or blocker has a venom aura mod. Destroyed in advPhase at COMBAT_END.
+Regeneration suppresses venom destruction (vic.regenerating check). Cleared each
+COMBAT_END regardless of whether destruction succeeded.
+
+## Invisibility (blocking restriction)
+Checked inline in canBlockDuel via enchantments[].mod.invisibility. Only Walls
+(subtype includes 'Wall') may block invisible creatures.
+
+## Animate Wall (Wall-only target restriction)
+Enforced in enchantCreature handler via mod.enchantWallOnly guard before attachment.
+Uses mod:{removeKeywords:[DEFENDER_ID], enchantWallOnly:true}. Layer 6 removeKeywords
+from aura mods is now supported by collectEffects in layers.js.
+
 ## Keldon Warlord
 CDA counts non-Wall creatures you control (including itself). Wall check uses
 x.subtype?.includes('Wall') in the keldonWarlord CDA_EVALUATORS entry in layers.js.

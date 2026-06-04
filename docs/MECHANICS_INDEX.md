@@ -1267,4 +1267,113 @@ ACTIVE (implemented this sprint)
 
 ---
 
+## 5.Y Invisibility
+
+### Description
+Aura that makes the enchanted creature unblockable except by Walls.
+
+### Cards
+invisibility
+
+### Implementation
+```
+cards.js:    effect:"enchantCreature", mod:{invisibility:true}
+DuelCore.js: canBlockDuel checks at.enchantments[].mod.invisibility; returns false
+             unless blocker subtype includes 'Wall'
+```
+
+### Status
+ACTIVE
+
+---
+
+## 5.Z Animate Wall
+
+### Description
+Aura that enchants a Wall and removes its DEFENDER keyword, allowing it to attack.
+
+### Cards
+animate_wall
+
+### Implementation
+```
+cards.js:    effect:"enchantCreature", mod:{removeKeywords:["DEFENDER"],enchantWallOnly:true}
+layers.js:   collectEffects emits Layer 6 removeKeywords from aura.mod.removeKeywords
+DuelCore.js: enchantCreature handler checks mod.enchantWallOnly before attachment;
+             rejects non-Wall targets
+```
+
+### Status
+ACTIVE
+
+---
+
+## 5.AA Earthbind
+
+### Description
+Aura that conditionally strips flying from a creature and deals 2 damage if it had flying at attach time.
+
+### Cards
+earthbind
+
+### Implementation
+```
+cards.js:    effect:"enchantCreature", mod:{earthbind:true}
+DuelCore.js: enchantCreature handler: if host has flying at attach time, deal 2 damage
+             and mutate the newly-attached aura record to add removeKeywords:[FLYING].
+             Damage checked via checkDeath. Layer engine removes FLYING via the
+             mutated aura's removeKeywords field.
+```
+
+### Status
+ACTIVE
+
+---
+
+## 5.AB Creature Bond
+
+### Description
+Aura that deals damage equal to the enchanted creature's toughness to its controller when it dies.
+
+### Cards
+creature_bond
+
+### Implementation
+```
+cards.js:    effect:"enchantCreature", mod:{creatureBond:true}
+DuelCore.js: checkDeath scans dyingCard.enchantments BEFORE zMove strips them.
+             Calls hurt(ns, w, tou, 'Creature Bond') for each creatureBond aura.
+             tou read via getTou(dyingCard, ns) at time of death.
+```
+
+### Status
+ACTIVE
+
+---
+
+## 5.AC Venom
+
+### Description
+Aura that destroys the other creature in a block at end of combat when a non-Wall creature is involved.
+
+### Cards
+venom
+
+### Implementation
+```
+cards.js:    effect:"enchantCreature", mod:{venom:true}
+DuelCore.js: DECLARE_BLOCKER: if attacker or blocker has venom aura and the other
+             creature is not a Wall, adds that creature's iid to
+             turnState.venomTargets[].
+             advPhase COMBAT_END: iterates venomTargets, calls zMove/gy on each
+             creature not flagged regenerating, then clears venomTargets.
+             turnState init: both full init and turn-change partial reset include
+             venomTargets: [].
+```
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.3

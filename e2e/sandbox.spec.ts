@@ -1076,4 +1076,87 @@ test.describe('Enchant creature auras — walkland, web, ward cycle', () => {
     expect(ward?.effect).toBe('enchantCreature');
     expect(ward?.mod?.protection).toContain('B');
   });
+
+  test('Invisibility: creature can only be blocked by Walls', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['invisibility', 'grizzly_bears'],
+      mana: { U: 2, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const inv = (state.p.hand as any[]).find((c: any) => c.name === 'Invisibility');
+    expect(inv?.effect).toBe('enchantCreature');
+    expect(inv?.mod?.invisibility).toBe(true);
+  });
+
+  test('Animate Wall: removes DEFENDER from Wall via layers', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['animate_wall', 'wall_of_stone'],
+      mana: { W: 3, R: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const aw = (state.p.hand as any[]).find((c: any) => c.name === 'Animate Wall');
+    expect(aw?.effect).toBe('enchantCreature');
+    expect(aw?.mod?.removeKeywords).toContain('DEFENDER');
+    expect(aw?.mod?.enchantWallOnly).toBe(true);
+  });
+
+  test('Earthbind: effect and data correct', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['earthbind', 'grizzly_bears'],
+      mana: { R: 1, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const eb = (state.p.hand as any[]).find((c: any) => c.name === 'Earthbind');
+    expect(eb?.effect).toBe('enchantCreature');
+    expect(eb?.mod?.earthbind).toBe(true);
+  });
+
+  test('Creature Bond: data correct', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['creature_bond', 'grizzly_bears'],
+      mana: { U: 2, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const cb = (state.p.hand as any[]).find((c: any) => c.name === 'Creature Bond');
+    expect(cb?.effect).toBe('enchantCreature');
+    expect(cb?.mod?.creatureBond).toBe(true);
+  });
+
+  test('Venom: data correct', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['venom', 'grizzly_bears'],
+      mana: { G: 4 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const v = (state.p.hand as any[]).find((c: any) => c.name === 'Venom');
+    expect(v?.effect).toBe('enchantCreature');
+    expect(v?.mod?.venom).toBe(true);
+  });
+
+  test('turnState includes venomTargets field', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(Array.isArray(state.turnState.venomTargets)).toBe(true);
+  });
 });
