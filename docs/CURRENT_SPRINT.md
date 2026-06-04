@@ -25,12 +25,12 @@
 
 | Feature | File(s) Changed | Status |
 |---------|----------------|--------|
-| Universal stack priority: all spells use stack, priority window opens on every cast | `src/engine/DuelCore.js`, `src/engine/AI.js` | [IN PROGRESS] |
+| Universal stack priority: all spells use stack, priority window opens on every cast | `src/engine/DuelCore.js`, `src/engine/AI.js` | ✅ Done |
 | StackDisplay component: visual card splay, mobile bottom sheet + desktop overlay | `src/ui/Stack/StackDisplay.tsx` | ✅ Done |
 | StackDisplay mobile collapse toggle: pill, auto-expand, collapse button | `src/ui/Stack/StackDisplay.tsx` | ✅ Done |
-| DuelScreen resolution loop + stack watcher | `src/DuelScreen.tsx`, `src/hooks/usePhaseAdvance.ts` | [IN PROGRESS] |
-| DuelScreenMobile AI fix + resolution loop | `src/ui/Mobile/DuelScreenMobile.tsx` | [IN PROGRESS] |
-| Stack scenario e2e tests | `e2e/sandbox.spec.ts` | [IN PROGRESS] |
+| DuelScreen resolution loop + stack watcher | `src/hooks/useDuelController.ts`, `src/hooks/usePhaseAdvance.ts` | ✅ Done |
+| DuelScreenMobile AI fix + resolution loop | `src/hooks/useDuelController.ts` (centralized; mobile delegates) | ✅ Done |
+| Stack scenario e2e tests | `e2e/sandbox.spec.ts` | ✅ Done |
 | AI spell cast opens priority window (18.10) | `src/DuelScreen.tsx`, `e2e/sandbox.spec.ts` | ✅ Done |
 | Fix: stack-grow useEffect opens priority window for AI casts on AI turn (PW-AI-01) | `src/DuelScreen.tsx`, `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
 | Fix B31: AI stuck in MAIN_1 on mobile after casting — close effect clears aiRef; hasCast skips inner timer; stack?.length dep added to AI loops on both platforms | `src/ui/Mobile/DuelScreenMobile.tsx`, `src/DuelScreen.tsx` | ✅ Done |
@@ -82,9 +82,11 @@ priority-window plumbing in isolation from planner behavior.
 
 ## Technical Debt Log
 
-- [TD-001] DuelScreenMobile.tsx duplicates AI loop logic from DuelScreen.tsx.
-  Sprint 7 fixed the priority window handler divergence.
-  Remaining: extract shared useDuelAILoop hook. See SYSTEMS.md TD-001.
+- [TD-001] ⚠️ EXTRACTION COMPLETE — All AI loop logic (priority-window close, stack-length
+  watcher, applyAiActionsWithPriority, AI main loop) was centralised in `useDuelController.ts`
+  (lines 139–250). Neither DuelScreen.tsx nor DuelScreenMobile.tsx contains its own AI loop
+  useEffect. A dedicated `useDuelAILoop.ts` hook was not created; duplication is eliminated
+  without one. No further action needed unless a standalone hook is desired for organisation.
 - [TD-002] ✅ FIXED — X-spell cast log now includes resolved X value (e.g. "o casts Mind Twist (X=3).").
 - [TD-003] Mana must be tapped before targeting a spell. Tapping mana after
   selecting a target resets or corrupts the target selection. Fix requires
