@@ -659,4 +659,73 @@ test.describe('TD-002: X-spell cast log', () => {
     const logText = typeof lastPlayLog === 'string' ? lastPlayLog : (lastPlayLog as any).text;
     expect(logText).not.toMatch(/\(X=/);
   });
+
+  test('TD-005: cannot play a land while a spell is on the stack', async ({ page }) => {
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    // Put a land in hand and a spell on the stack
+    await page.evaluate(() => {
+      // Force a sorcery onto the stack by casting it as opponent
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['forest'] });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cards: ['dark_ritual'] });
+      // Manually push a stack item to simulate spell-on-stack state
+      const state = (window as any).__duelState();
+      // Use SET_PHASE_FOR_TEST to ensure we're in MAIN_1
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+    });
+
+    // Cast dark_ritual as opponent to put something on the stack
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const dr = state.o.hand.find((c: any) => c.id === 'dark_ritual');
+      if (dr) (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'o', iid: dr.iid });
+    });
+
+    // Verify stack is non-empty
+    const stackLen = await page.evaluate(() => (window as any).__duelState().stack.length);
+    expect(stackLen).toBeGreaterThan(0);
+
+    // Record player's bf length before attempted land play
+    const bfBefore = await page.evaluate(() => (window as any).__duelState().p.bf.length);
+
+    // Attempt to play a land
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.hand.find((c: any) => c.id === 'forest');
+      if (land) (window as any).__duelDispatch({ type: 'PLAY_LAND', who: 'p', iid: land.iid });
+    });
+
+    // Battlefield should be unchanged — land play was rejected
+    const bfAfter = await page.evaluate(() => (window as any).__duelState().p.bf.length);
+    expect(bfAfter).toBe(bfBefore);
+
+    // Log should contain the rule message
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const logText2 = (state.log as any[])
+      .map((e: any) => (typeof e === 'string' ? e : e?.text ?? ''))
+      .join('\n');
+    expect(logText2).toMatch(/cannot play a land while spells are on the stack/i);
+  });
+
+  test('TD-005: land can be played normally when stack is empty', async ({ page }) => {
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['forest'] });
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+    });
+
+    const bfBefore = await page.evaluate(() => (window as any).__duelState().p.bf.length);
+
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.hand.find((c: any) => c.id === 'forest');
+      if (land) (window as any).__duelDispatch({ type: 'PLAY_LAND', who: 'p', iid: land.iid });
+    });
+
+    const bfAfter = await page.evaluate(() => (window as any).__duelState().p.bf.length);
+    expect(bfAfter).toBe(bfBefore + 1);
+  });
 });

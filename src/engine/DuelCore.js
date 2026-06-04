@@ -1799,6 +1799,7 @@ case "PLAY_LAND": {
   const w = action.who;
   const c = s[w].hand.find(x => x.iid === action.iid);
   const fastbondActive = s[w].bf.some(x => x.id === "fastbond");
+  if (s.stack?.length > 0) return dlog(s, 'Cannot play a land while spells are on the stack.', 'rule');
   if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || (s.landsPlayed >= 1 && !fastbondActive)) return s;
   const prevLandsPlayed = s.landsPlayed;
   const lArr = { ...c, controller: w, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
