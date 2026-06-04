@@ -1734,4 +1734,13 @@ To implement a card that modifies characteristics:
 
 ---
 
+## 19. Card Tools MCP Server (`tools/card-mcp-server/`)
+
+Local stdio MCP server for card database work. Five tools: card lookup, audit cross-reference,
+stub validation, rules conflict check, missing card generation. Uses
+`scryfall/shandalar-card-pool.json` as primary data source with Scryfall API fallback.
+Not part of the game build.
+
+---
+
 # End of SYSTEMS v1.3
