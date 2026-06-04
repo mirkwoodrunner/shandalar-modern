@@ -1684,6 +1684,21 @@ with no `nextState` field).
 
 ---
 
+### TD-003: MCTS rollout pass-fest — rollout never taps lands — OPEN
+
+The rollout policy in `MCTS.js` (`policyMainAction`) checks `canPay(s[active].mana, cost)`
+but never dispatches `TAP_LAND` before `CAST_SPELL`. Because `burnMana()` clears the mana
+pool at every phase boundary, the pool is empty when the rollout reaches any main phase.
+`canPay` returns false for all nonzero-cost cards; the rollout casts nothing and
+immediately advances the phase. Every rollout is a pass-fest of ADVANCE_PHASE actions.
+KARAG (the only profile with `aggression >= 0.9`, the MCTS gate) therefore gets near-zero
+signal from its rollouts and falls back entirely to the heuristic board scorer.
+A deterministic characterization baseline pinning this behavior lives in
+`src/engine/__tests__/mcts-rollout.test.js` (Group A). The fix — dispatching TAP_LAND
+per card cost before each CAST_SPELL in the rollout policy — is tracked for Prompt 2.
+
+---
+
 # 18. Layer System
 
 ## 18.1 Purpose
