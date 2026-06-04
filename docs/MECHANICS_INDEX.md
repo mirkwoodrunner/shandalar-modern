@@ -1246,4 +1246,25 @@ src/data/cards.js             -- layerDef field on CDA/lord/pump cards
 ### Status
 ACTIVE
 
+## 5.X Ward / Protection Auras
+
+### Description
+Auras granting protection from a color. Protection prevents blocking, targeting,
+and damage from sources of that color.
+
+### Cards
+black_ward, blue_ward, green_ward, red_ward, white_ward
+
+### Implementation
+```
+cards.js:   effect:"enchantCreature", mod:{protection:["X"]}
+layers.js:  collectEffects reads aura.mod.protection -> Layer 6 addProtection
+DuelCore.js: canBlockDuel reads computeCharacteristics().protection when state present
+```
+
+### Status
+ACTIVE (implemented this sprint)
+
+---
+
 # End of MECHANICS INDEX v1.3

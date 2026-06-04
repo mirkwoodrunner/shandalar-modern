@@ -136,14 +136,15 @@ export function canBlockDuel(bl, at, defBf, state = null) {
 if (hasKw(at, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.REACH.id)) return false;
 // Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
-if (at.protection) {
-  const prot = Array.isArray(at.protection) ? at.protection : [at.protection];
-  if (prot.some(q => (PROT_MAP[q] || q) === bl.color)) return false;
-}
-if (bl.protection) {
-  const prot = Array.isArray(bl.protection) ? bl.protection : [bl.protection];
-  if (prot.some(q => (PROT_MAP[q] || q) === at.color)) return false;
-}
+// Read protection through computeCharacteristics when state is available so that
+// aura-granted protection (e.g. Ward cycle) is correctly enforced. Fall back to
+// raw card field for callers that don't pass state.
+const atProt = state ? computeCharacteristics(at, state).protection
+                     : (Array.isArray(at.protection) ? at.protection : at.protection ? [at.protection] : []);
+const blProt = state ? computeCharacteristics(bl, state).protection
+                     : (Array.isArray(bl.protection) ? bl.protection : bl.protection ? [bl.protection] : []);
+if (atProt.some(q => (PROT_MAP[q] || q) === bl.color)) return false;
+if (blProt.some(q => (PROT_MAP[q] || q) === at.color)) return false;
 if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional -- skipped if not provided).
