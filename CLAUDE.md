@@ -80,6 +80,7 @@ window reopens if more items remain -> repeat until stack empty -> ADVANCE_PHASE
 Do not modify these files unless the prompt explicitly names them:
 
 - `src/engine/DuelCore.js`
+- `src/engine/layers.js`
 - `src/engine/AI.js`
 - `src/data/cards.js`
 - `src/hooks/useDuel.js`
@@ -226,6 +227,36 @@ functions scans the full battlefield each call -- keep this read-only.
 
 Color targets (`"white"`, `"black"`, etc.) match against `card.color` (single-letter uppercase).
 Subtype targets (`"goblin"`, etc.) match via word-split of `card.subtype.toLowerCase()`.
+
+---
+
+## Layer System
+
+`src/engine/layers.js` implements the CR 613 continuous-effect layer engine. All
+P/T, keyword, type, and color computations for permanents route through
+`computeCharacteristics(card, state)`.
+
+`getPow(c, state)`, `getTou(c, state)`, and `hasKw(c, kw, state)` in `DuelCore.js`
+are thin wrappers: when called with `state`, they delegate to `computeCharacteristics`;
+when called without `state` (legacy callers), they fall back to reading raw card fields.
+
+Key concepts:
+- **`card.layerDef`**: Static ability record on a card definition. `layer:"7a"` for CDAs
+  (Plague Rats, Nightmare, Keldon Warlord, etc.), `layer:"7b"` for absolute P/T sets.
+  `powerFn`/`toughnessFn` keys into `CDA_EVALUATORS` in `layers.js`.
+- **`card.enterTs`**: Timestamp integer assigned when a permanent enters the battlefield
+  via `zMove`. `layerClock` on GameState is the monotonic counter. Permanents cast
+  normally (via `RESOLVE_STACK`) default to `enterTs: 0` (consistent base ordering).
+- **`eotBuffs[].layerDef`**: Transient layer records added by effects (e.g. Sorceress Queen
+  stores `{ layerDef: { layer: "7b", setPower: 0, setToughness: 2 } }` -- evaluated fresh
+  each call, never baked at activation time).
+- **Holy Ground**: Implemented as a synthetic Layer 6 `removeKeywords` effect with
+  `enterTs: Number.MAX_SAFE_INTEGER` so it applies after all other Layer 6 grants.
+- **Lord effects** (`effect:"lordEffect"` / `effect:"globalPump"`): Emit Layer 7c delta
+  records and Layer 6 keyword grants via `collectEffects` in `layers.js`.
+
+Do not add P/T mutation to `resolveEff` for cards with `layerDef`. Do not call
+`getPow`/`getTou`/`hasKw` with a stale snapshot -- always pass the live state object.
 
 ---
 

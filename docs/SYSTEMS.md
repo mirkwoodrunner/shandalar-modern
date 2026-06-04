@@ -1684,4 +1684,54 @@ with no `nextState` field).
 
 ---
 
-# End of SYSTEMS v1.2
+# 18. Layer System
+
+## 18.1 Purpose
+
+`src/engine/layers.js` is the single authority for computing a permanent's
+characteristics. It applies continuous effects in CR 613 layer order.
+`getPow`, `getTou`, and `hasKw` in DuelCore.js are thin wrappers that call
+`computeCharacteristics(card, state)`.
+
+## 18.2 Layer Order
+
+| Layer | What it changes |
+|-------|----------------|
+| 4 | Card types and subtypes |
+| 5 | Color |
+| 6 | Keywords and protection (add/remove) |
+| 7a | CDA power/toughness (e.g. Plague Rats, Keldon Warlord) |
+| 7b | Set power/toughness to a specific value (e.g. Sorceress Queen) |
+| 7c | Modify power/toughness by delta (counters, auras, lord effects, eotBuffs) |
+| 7d | Switch power and toughness |
+
+## 18.3 Timestamp
+
+Permanents receive an `enterTs` integer when they enter the battlefield via `zMove`.
+`layerClock` on GameState is a monotonic counter that provides this value.
+Within each layer, effects are applied in ascending `enterTs` order.
+Permanents that enter via `RESOLVE_STACK` receive `enterTs: undefined`, which
+defaults to 0 in the layer engine.
+
+## 18.4 Adding New Layer Effects
+
+To implement a card that modifies characteristics:
+
+1. For static aura effects: add `layerDef` to the `mod` object in the aura's
+   card definition in `cards.js`.
+2. For static enchantment/permanent effects: add `layerDef` directly to the
+   card definition.
+3. For temporary effects from spell resolution: push a `{ layerDef: {...} }`
+   entry to the target permanent's `eotBuffs` in the DuelCore action handler.
+4. The `computeCharacteristics` function picks up all three sources automatically.
+
+## 18.5 Constraints
+
+- `layers.js` is a pure module: no GameState mutation, no side effects.
+- `layers.js` imports `isLand`, `isCre` from `DuelCore.js` (circular import, safe).
+- `DuelCore.js` imports `computeCharacteristics` from `layers.js`.
+- No other file imports from `layers.js` directly; go through `getPow`/`getTou`/`hasKw`.
+
+---
+
+# End of SYSTEMS v1.3
