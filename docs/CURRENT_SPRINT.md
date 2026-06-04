@@ -92,12 +92,8 @@ priority-window plumbing in isolation from planner behavior.
   target selection from the cast action. `handleCast` in `DuelScreen.tsx`
   queues intent and fires only when mana is satisfied. `needsExplicitTarget()`
   exported from hook for desktop/mobile parity.
-- [TD-004] Ancestral Recall targets the casting player by default but the card
-  text says "target player" (can be opponent). `resolveDefaultTarget` in
-  `useDuelController.ts` maps `draw3` effect to `state.selTgt ?? 'p'`, defaulting
-  to self. Fix: add `draw3` to the explicit-target effects list in
-  `needsExplicitTarget()` in `DuelScreenMobile.tsx` (and equivalent in
-  `DuelScreen.tsx`), forcing the player to pick a target before casting. Requires
-  TD-003 (pendingCast flow) to avoid the tap-before-targeting regression.
+- [TD-004] ✅ FIXED — `draw3` added to `EXPLICIT_TARGET_EFFECTS` (desktop)
+  and `needsExplicitTarget()` (mobile). Ancestral Recall now forces target
+  selection before casting on both platforms.
 - [TD-005] ✅ FIXED — `PLAY_LAND` now rejects land plays while spells are on
   the stack (`src/engine/DuelCore.js`). Logs a rule reminder to the duel log.
