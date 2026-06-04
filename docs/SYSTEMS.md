@@ -1478,7 +1478,8 @@ Used for candidate move evaluation when the AI has multiple plausible actions.
 - Budget enforcement: UCB1 bandit allocator — each candidate is seeded with 3 rollouts before UCB1 selects the most promising candidate for each remaining iteration within the time budget. Exploration constant C = sqrt(2).
 
 ## 28.5 Known Limitations
-- Mana tap gap: CAST_SPELL reads from the mana pool (s[w].mana), which burnMana() clears at every phase boundary. policyMainAction never dispatches TAP_LAND, so canPay() always returns false for nonzero-cost cards in rollouts. Rollout main phases effectively never cast spells. A future pass should pre-tap lands matching card cost before each CAST_SPELL in the rollout policy.
+- Rollout fidelity is intentionally capped (TD-003 resolved): one cast per main phase (no multi-cast loop), tgt:null (untargeted), immediate RESOLVE_STACK (no in-rollout opponent responses). Multi-cast looping is a future fidelity upgrade.
+- Exact-cost tapping via computeTaps uses produces[0] only; dual lands are treated as their first color. Fine for current land pool.
 - planMain MCTS call (AI.js:603) passes { type: 'PLAN' } actions not recognized by duelReducer; both candidates evaluate from identical states. That call site's MCTS output is statistically meaningless (deferred fix, not in MCTS.js scope).
 
 ---
@@ -1684,18 +1685,16 @@ with no `nextState` field).
 
 ---
 
-### TD-003: MCTS rollout pass-fest — rollout never taps lands — OPEN
+### TD-003: MCTS rollout pass-fest — rollout never taps lands — RESOLVED
 
-The rollout policy in `MCTS.js` (`policyMainAction`) checks `canPay(s[active].mana, cost)`
-but never dispatches `TAP_LAND` before `CAST_SPELL`. Because `burnMana()` clears the mana
-pool at every phase boundary, the pool is empty when the rollout reaches any main phase.
-`canPay` returns false for all nonzero-cost cards; the rollout casts nothing and
-immediately advances the phase. Every rollout is a pass-fest of ADVANCE_PHASE actions.
-KARAG (the only profile with `aggression >= 0.9`, the MCTS gate) therefore gets near-zero
-signal from its rollouts and falls back entirely to the heuristic board scorer.
-A deterministic characterization baseline pinning this behavior lives in
-`src/engine/__tests__/mcts-rollout.test.js` (Group A). The fix — dispatching TAP_LAND
-per card cost before each CAST_SPELL in the rollout policy — is tracked for Prompt 2.
+`policyMainAction` now builds `available` mana (pool + untapped-land production) to
+correctly filter castable spells. `stepOnce` calls `computeTaps()` to dispatch exact-cost
+`TAP_LAND` actions before each `CAST_SPELL`, then drains the stack with `RESOLVE_STACK`.
+
+**Residual note (not a bug):** Rollout fidelity is intentionally capped for speed:
+one cast per main phase (no multi-cast loop), `tgt: null` (untargeted), immediate
+`RESOLVE_STACK` (no in-rollout opponent responses). Multi-cast looping is a future
+fidelity upgrade, not a bug fix.
 
 ---
 

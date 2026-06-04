@@ -31,16 +31,18 @@
  * layer. duelReducer's default case (return s) silently ignores PLAY_CARD.
  * Conclusion: policyMainAction correctly continues using CAST_SPELL.
  *
- * A3 — MANA TAP GAP (CRITICAL)
- * -----------------------------
+ * A3 — MANA TAP GAP (FIXED — TD-003)
+ * -------------------------------------
  * CAST_SPELL reads from s[w].mana (the mana pool) and does NOT auto-tap lands.
  * burnMana() (called in advPhase at every phase boundary) clears the mana pool
  * regardless of ruleset.manaBurn.
- * Neither randomMainAction nor policyMainAction dispatches TAP_LAND before CAST_SPELL.
- * Result: the mana pool is empty at rollout main-phase time; canPay() returns false for
- * all nonzero-cost cards; rollouts never cast spells. Every rollout is a pass-fest.
- * Fix requires dispatching TAP_LAND per card cost before each CAST_SPELL in rollout
- * policy — deferred to a future engine-aware rollout pass (touches tap logic).
+ * FIX: policyMainAction now builds `available` mana = pool + untapped-land production
+ * to correctly filter castable spells. stepOnce calls computeTaps() to dispatch exact-
+ * cost TAP_LAND actions before each CAST_SPELL, then drains the stack via RESOLVE_STACK.
+ * Speed tradeoff: one cast per main phase (no multi-cast loop), tgt:null (no targeted-
+ * spell fidelity in rollout), immediate RESOLVE_STACK (no in-rollout opponent responses).
+ * Exact-cost tapping is required: burnMana fires at every phase boundary; over-tapping
+ * would burn the active player in live games (manaBurn off in unit tests -- invisible).
  *
  * A4 — PRIORITY WINDOW INTERACTION
  * ----------------------------------
@@ -63,7 +65,7 @@
 import {
   duelReducer,
   isLand, isCre, isInst,
-  getBF, canPay, getPow, getTou, canBlockDuel,
+  getBF, canPay, parseMana, getPow, getTou, canBlockDuel,
 } from './DuelCore.js';
 import { PHASE } from './phases.js';
 
@@ -108,7 +110,6 @@ function evaluateBoard(s, who) {
 export function policyMainAction(s) {
   const active = s.active;
   const hand = s[active].hand;
-  const mana = s[active].mana;
 
   if (s.landsPlayed < 1) {
     const land = hand.find(isLand);
@@ -117,9 +118,18 @@ export function policyMainAction(s) {
 
   const stackEmpty = !s.stack || s.stack.length === 0;
 
+  // Build available mana: pool + what untapped lands could produce.
+  const available = { ...s[active].mana };
+  for (const c of s[active].bf) {
+    if (isLand(c) && !c.tapped) {
+      const color = c.produces[0];
+      available[color] = (available[color] || 0) + 1;
+    }
+  }
+
   const castable = hand.filter(c => {
     if (isLand(c)) return false;
-    if (!canPay(mana, c.cost)) return false;
+    if (!canPay(available, c.cost)) return false;
     if (!isInst(c) && !stackEmpty) return false;
     return true;
   });
@@ -211,12 +221,57 @@ function randomBlock(s) {
   return blockActions;
 }
 
+// Returns ordered TAP_LAND actions to pay card.cost exactly, or null if impossible.
+function computeTaps(card, s, who) {
+  const r = parseMana(card.cost);
+  const untapped = s[who].bf.filter(c => isLand(c) && !c.tapped);
+  const used = new Set();
+  const taps = [];
+
+  for (const color of ['W', 'U', 'B', 'R', 'G', 'C']) {
+    for (let i = 0; i < r[color]; i++) {
+      const land = untapped.find(l => !used.has(l.iid) && l.produces[0] === color);
+      if (!land) return null;
+      taps.push({ type: 'TAP_LAND', who, iid: land.iid, mana: color });
+      used.add(land.iid);
+    }
+  }
+
+  for (let i = 0; i < r.generic; i++) {
+    const land = untapped.find(l => !used.has(l.iid));
+    if (!land) return null;
+    taps.push({ type: 'TAP_LAND', who, iid: land.iid, mana: land.produces[0] });
+    used.add(land.iid);
+  }
+
+  return taps;
+}
+
 export function stepOnce(s) {
   const { phase } = s;
 
   if (phase === PHASE.MAIN_1 || phase === PHASE.MAIN_2) {
-    const action = policyMainAction(s);
-    if (action) s = duelReducer(s, action);
+    const decision = policyMainAction(s);
+    if (!decision) return duelReducer(s, { type: 'ADVANCE_PHASE' });
+
+    if (decision.type === 'PLAY_LAND') {
+      s = duelReducer(s, decision);
+      return duelReducer(s, { type: 'ADVANCE_PHASE' });
+    }
+
+    // decision.type === 'CAST_SPELL'
+    const card = s[s.active].hand.find(c => c.iid === decision.iid);
+    const taps = card ? computeTaps(card, s, s.active) : null;
+    // Safety: policyMainAction filter should prevent this, but guard anyway.
+    if (!taps) return duelReducer(s, { type: 'ADVANCE_PHASE' });
+
+    for (const t of taps) s = duelReducer(s, t);
+    s = duelReducer(s, decision);
+
+    let guard = 0;
+    while ((s.stack?.length ?? 0) > 0 && guard++ < 16) {
+      s = duelReducer(s, { type: 'RESOLVE_STACK' });
+    }
     return duelReducer(s, { type: 'ADVANCE_PHASE' });
   }
 
