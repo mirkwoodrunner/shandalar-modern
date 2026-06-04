@@ -133,6 +133,8 @@ export function getTou(c, state) {
 }
 
 export function canBlockDuel(bl, at, defBf, state = null) {
+// MTG rule 509.1a: blocking creatures must be untapped.
+if (bl.tapped) return false;
 if (hasKw(at, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.REACH.id)) return false;
 // Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };

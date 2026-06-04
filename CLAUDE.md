@@ -440,6 +440,16 @@ card validation, stub checking, and missing card generation directly in Claude.a
 
 ---
 
+## Bug Fixes
+
+### Fix: Tapped creatures cannot block (rule 509.1a)
+- `canBlockDuel` in `DuelCore.js` now returns `false` immediately when `bl.tapped` is true.
+- This is the first guard in the function, before any keyword checks.
+- AI.js already pre-filtered tapped creatures; this fix closes the gap for player-declared blocks.
+- Regression test: `src/engine/__tests__/blocking.test.js`
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
