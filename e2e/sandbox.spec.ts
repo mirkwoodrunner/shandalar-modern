@@ -1013,3 +1013,67 @@ test.describe('Layers audit fixes', () => {
     // If no eotBuffs (activation not fired due to mana), test passes as no-op
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('Enchant creature auras — walkland, web, ward cycle', () => {
+  test('Fishliver Oil grants islandwalk via layers', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['fishliver_oil', 'grizzly_bears'],
+      mana: { U: 2, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const oil = (state.p.hand as any[]).find((c: any) => c.id === 'fishliver_oil');
+    expect(oil?.effect).toBe('enchantCreature');
+    expect(oil?.mod?.keywords).toContain('ISLANDWALK');
+  });
+
+  test('Burrowing grants mountainwalk via layers', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['burrowing', 'grizzly_bears'],
+      mana: { R: 1, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const burrowing = (state.p.hand as any[]).find((c: any) => c.id === 'burrowing');
+    expect(burrowing?.effect).toBe('enchantCreature');
+    expect(burrowing?.mod?.keywords).toContain('MOUNTAINWALK');
+  });
+
+  test('Web grants +0/+2 and reach via layers', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['web', 'grizzly_bears'],
+      mana: { G: 3 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const web = (state.p.hand as any[]).find((c: any) => c.id === 'web');
+    expect(web?.effect).toBe('enchantCreature');
+    expect(web?.mod?.toughness).toBe(2);
+    expect(web?.mod?.keywords).toContain('REACH');
+  });
+
+  test('Ward grants protection visible to canBlockDuel', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      player: 'p',
+      cardIds: ['black_ward', 'grizzly_bears'],
+      mana: { W: 1, G: 2 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const ward = (state.p.hand as any[]).find((c: any) => c.id === 'black_ward');
+    expect(ward?.effect).toBe('enchantCreature');
+    expect(ward?.mod?.protection).toContain('B');
+  });
+});

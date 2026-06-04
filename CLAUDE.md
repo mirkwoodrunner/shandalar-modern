@@ -345,6 +345,22 @@ defending player's Forests; otherwise counts controller's Forests.
 
 ---
 
+## Protection Enforcement
+Protection on permanents is read through computeCharacteristics() in canBlockDuel
+when state is available. Do NOT read card.protection directly in blocking validation --
+aura-granted protection (Ward cycle, etc.) only exists in the layers output.
+
+Protection color values use single-char keys: B, U, G, R, W, C.
+Aura protection is declared as mod:{protection:["X"]} in cards.js.
+collectEffects() in layers.js picks this up via aura.mod.protection and routes
+it to Layer 6 addProtection.
+
+Ward self-exemption clause: aura detachment on protection gain is not implemented.
+The "this effect doesn't remove this Aura" clause is satisfied by the absence of
+auto-detach logic, not by explicit code.
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
