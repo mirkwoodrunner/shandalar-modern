@@ -19,13 +19,29 @@ Card effects use an event/listener system — not hard-coded if/else chains.
 
 In order of authority:
 
-1. `docs/SYSTEMS.md` — mechanical specifications (authoritative)
+1. `docs/SYSTEMS.md` — mechanical specifications for this codebase (authoritative).
+   Defines which rules are implemented, simplified, or deliberately omitted.
+   Do not implement behavior not defined in `docs/SYSTEMS.md`.
+
 2. Codebase implementation
+
 3. `docs/CURRENT_SPRINT.md` — active work scope
+
 4. `docs/gdd.md` — design intent (non-binding)
 
 If any conflict exists between these sources, `docs/SYSTEMS.md` wins.
-Do not implement behavior not defined in `docs/SYSTEMS.md`.
+
+## Magic: The Gathering Rules Reference
+
+The file `docs/MagicCompRules*.pdf` contains the official Magic: The Gathering
+Comprehensive Rules. The filename begins with "MagicCompRules" followed by a date
+stamp; the exact name may change as new versions are released. Always locate it by
+glob pattern, not hardcoded name.
+
+This PDF is the reference for understanding how MTG rules work. When a rules question
+arises during implementation, consult the relevant section before deciding on an
+approach. It is not an authority on what this codebase implements — that is
+`docs/SYSTEMS.md`. SYSTEMS.md simplifications and omissions are intentional.
 
 ---
 
