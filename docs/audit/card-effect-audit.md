@@ -1,5 +1,5 @@
 # Card Effect Implementation Audit
-> Last updated: 2026-06-05  
+> Last updated: 2026-06-04  
 > Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`, `docs/AUDIT_REPORT.md`  
 > Re-run: execute the four node scripts in `card-stub-audit.md` prompt file
 
