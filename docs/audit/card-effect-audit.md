@@ -1,5 +1,5 @@
 # Card Effect Implementation Audit
-> Last updated: 2026-06-04  
+> Last updated: 2026-06-04 (Group P oracle-verified)  
 > Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`, `docs/AUDIT_REPORT.md`  
 > Re-run: execute the four node scripts in `card-stub-audit.md` prompt file
 
@@ -211,7 +211,6 @@ Triggered abilities based on combat events, death, end-of-turn, or upkeep.
 | `book_of_rass` | {2}: draw a card, lose 1 life |
 | `fountain_of_youth` | {2}: gain 1 life |
 | `alabaster_potion` | {X}{W}: gain X life |
-| `piety` | gain 2 life for each attacking creature |
 | `martyrs_of_korlis` | sacrifice: gain life equal to damage you've taken this turn |
 | `blood_lust` | target creature gets +4/-4 until end of turn |
 | `living_artifact` | whenever you gain life, put charge counters; {1}: remove a counter, gain 1 life |
@@ -437,7 +436,7 @@ These have unique effects but map to a single short handler. Suitable for batch 
 | `syphon_soul` | Deals 2 damage to each other player; you gain life equal to the damage dealt this way | Confirmed correct |
 | `bone_flute` | **{2}, {T}**: all creatures get -1/-0 until end of turn | **Fixed activation cost {2}{T}, not an X spell** |
 | `backfire` | Enchant creature; whenever enchanted creature deals damage to you, it deals that much damage to itself | Confirmed correct |
-| `immolation` | Enchant creature; enchanted creature gets +2/+2; when enchanted creature dies, it deals 4 damage to you | Confirmed correct |
+| `immolation` | Enchant creature; enchanted creature gets +2/-2 | Static +2/-2 aura only -- no death trigger |
 | `spirit_shackle` | Enchant creature; whenever enchanted creature becomes tapped, put a -0/-2 counter on it | **Trigger is "becomes tapped", not "attacks"; effect is a -0/-2 counter, not 2 damage** |
 | `unstable_mutation` | Enchant creature; enchanted creature gets +3/+3; at the beginning of the upkeep of enchanted creature's controller, put a -1/-1 counter on that creature | Confirmed correct |
 | `blood_lust` | Target creature gets +4/-4 until end of turn; if this would reduce toughness below 1, toughness becomes 1 instead | Confirmed correct |
@@ -445,33 +444,32 @@ These have unique effects but map to a single short handler. Suitable for batch 
 | `aspect_of_wolf` | Enchanted creature gets +X/+Y, where X is half the number of Forests you control rounded down, and Y is half rounded up | **Power and toughness bonuses differ when forest count is odd** |
 | `atog` | Sacrifice an artifact: this creature gets +2/+2 until end of turn | Confirmed correct |
 | `jandors_saddlebags` | {3}: untap target creature | Confirmed correct |
-| `jandors_ring` | {4}: draw a card | Confirmed correct |
+| `jandors_ring` | {2}, {T}, Discard the last card you drew this turn: Draw a card | Conditional loot -- requires discarding last drawn card; not a simple draw |
 | `flying_carpet` | {2}, {T}: target creature gains flying until end of turn | Confirmed correct |
 | `aladdins_ring` | {8}, {T}: this creature deals 4 damage to any target | Confirmed correct |
 | `arena` | {1}: two target creatures fight | Confirmed correct |
-| `ebony_horse` | {3}, {T}: untap target attacking creature; remove it from combat | Confirmed correct |
+| `ebony_horse` | {2}, {T}: Untap target attacking creature you control. Prevent all combat damage that would be dealt to and dealt by that creature this turn | Cost is {2} not {3}; also prevents all combat damage to/from that creature |
 | `war_barge` | {3}: target creature gains islandwalk until end of turn | Confirmed correct |
 | `oasis` | {T}: prevent 1 damage to target creature | Confirmed correct |
 | `jade_statue` | {2}: this permanent becomes a 3/6 Golem artifact creature until end of turn | Confirmed correct |
 | `helm_of_chatzuk` | {1}, {T}: target creature gains banding until end of turn | Confirmed correct |
 | `mightstone` | Creatures you control get +1/+0 | Static continuous; confirmed correct |
-| `amulet_of_kroog` | {2}: gain 1 life | Confirmed correct |
+| `amulet_of_kroog` | {2}, {T}: Prevent the next 1 damage that would be dealt to any target this turn | Damage prevention, not life gain; requires tapping |
 | `staff_of_zegon` | {2}, {T}: target creature gets -1/-0 until end of turn | Confirmed correct |
 | `divine_transformation` | Enchanted creature gets +3/+3 | Static aura pump; confirmed correct |
 | `consecrate_land` | Enchanted land is indestructible and can't have other enchantments attached to it | Confirmed correct |
 | `lifetap` | Whenever an opponent taps a Forest, you gain 1 life | Confirmed correct |
 | `psionic_entity` | {T}: this creature deals 2 damage to any target; this creature deals 3 damage to itself | Confirmed correct |
-| `murk_dwellers` | Whenever this creature attacks and isn't blocked, creatures defending player controls don't untap during that player's next untap step | Confirmed correct |
-| `jade_monolith` | {1}: the next damage that would be dealt to you this turn is dealt to target creature instead | Confirmed correct |
+| `murk_dwellers` | Whenever this creature attacks and isn't blocked, it gets +2/+0 until end of combat | Self-pump when unblocked |
+| `jade_monolith` | {1}: The next time a source of your choice would deal damage to target creature this turn, that source deals that damage to you instead | Redirect is FROM creature TO you, not from you to creature |
 | `ivory_guardians` | Protection from red; if an opponent controls a red permanent, this creature gets +1/+1 | Confirmed correct |
-| `amrou_kithkin` | Can't be blocked by creatures with power 2 or greater | Confirmed correct |
+| `amrou_kithkin` | Can't be blocked by creatures with power 3 or greater | Off-by-one: threshold is 3, not 2 |
 | `elves_of_deep_shadow` | {T}: add {B}; you lose 1 life | Confirmed correct |
 | `bog_rats` | Can't be blocked by Walls | Confirmed correct |
-| `uncle_istvan` | Protection from creatures | Confirmed correct |
-| `giant_badger` | Regenerate; during combat, prevent all damage dealt to this creature | Confirmed correct |
-| `leviathan` | Trample, islandwalk; at the beginning of your upkeep, sacrifice two Islands or this creature doesn't untap during your next untap step | Confirmed correct |
+| `uncle_istvan` | Prevent all damage that would be dealt to this creature by creatures | Damage prevention, NOT the protection keyword -- can still be targeted/enchanted/blocked |
+| `giant_badger` | Whenever this creature blocks, it gets +2/+2 until end of turn | No regenerate; no damage prevention |
+| `leviathan` | Trample; enters tapped, doesn't untap during your untap step; at upkeep you may sacrifice two Islands to untap it; can't attack unless you sacrifice two Islands when attackers are declared | Three separate restrictions; no islandwalk |
 | `shield_wall` | Walls you control get +0/+3 until end of turn | Confirmed correct |
-| `piety` | Gain 2 life for each attacking creature | Confirmed correct |
 
 ---
 

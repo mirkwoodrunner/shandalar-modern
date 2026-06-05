@@ -1757,4 +1757,53 @@ Not part of the game build.
 
 ---
 
-# End of SYSTEMS v1.3
+---
+
+## 20. Group P Card Handlers (2026-06-04)
+
+~60 Group P cards wired. Effect strings in cards.js map to resolveEff cases in DuelCore.js.
+
+### New resolveEff cases
+- `pumpAttackersEOT` — Morale: attacking creatures +1/+1 until EOT
+- `debuffNonwhiteEOT` — Holy Light: nonwhite creatures -1/-1 until EOT
+- `destroyAllArtifacts` — Shatterstorm: all artifacts to graveyard
+- `inferno6` — Inferno: 6 damage to all creatures and players
+- `damageAttackers1` — Sandstorm: 1 damage to each attacker
+- `jovialEvil` — deals 2*opponent_white_creatures to target opponent
+- `destroyAllBlack` — Cleanse: all black creatures to graveyard
+- `ashesToAshes` — exile 2 nonartifact creatures; caster loses 5 life
+- `stormSeeker` — deals damage equal to target's hand size
+- `destroyForests` — Acid Rain: all Forests to graveyard
+- `typhoon` — deals opponent's island count as damage
+- `bloodLust` — +4/-X where toughness floors at 1
+- `detonate` — destroy artifact with mv=X; deal X to its controller
+- `pumpWallsEOT` — Shield Wall: caster's Walls +0/+3 until EOT
+- `mightstoneAttackPump` — log-only; Mightstone is a continuous static effect
+- `energyTap` — tap creature, add colorless equal to its mv
+- `gainFirstStrikeEOT` — Emerald Dragonfly: gain first strike until EOT
+- `removeFlying` — Radjan Spirit: target loses flying until EOT (via layerDef eotBuff)
+- `destroyBlueCreature` — Spinal Villain: destroy target blue creature
+- `damage4Any` — Aladdin's Ring: 4 damage to any target
+- `untapTarget` — Jandor's Saddlebags: untap target creature
+- `psionicEntity` — 2 to any target; 3 to itself
+- `globalDebuffPower1EOT` — Bone Flute: all creatures -1/-0 until EOT
+- `debuffTargetPower1EOT` — Staff of Zegon: target creature -1/-0 until EOT
+- `preventDamage1Any` / `preventDamage1Creature` — Amulet/Oasis: prevention shield
+- `ebonyHorse` — untap attacker, remove from combat, set ebonyHorsed flag
+- `fightTargets` — Arena: two creatures deal power damage to each other
+- `warBarge` — target gains islandwalk EOT; marks warBargeTargeted
+- `jadeStatue` — artifact becomes 3/6 Golem until EOC
+- `grantBandingEOT` — Helm of Chatzuk: target gains banding until EOT
+- `addManaWithSelfDamage` — Elves of Deep Shadow: add {B}, take 1 damage
+
+### New creature fields
+- `cantAttackTurn` — turn number through which the creature cannot attack (Wall of Dust)
+- `ebonyHorsed` — flag set when a creature is removed from combat by Ebony Horse
+- `warBargeTargeted` — tracks which War Barge artifact granted islandwalk
+
+### Deferred (higher complexity)
+- `jandors_ring` — requires tracking the last-drawn card identity
+- `leviathan` — enters-tapped + no-untap + upkeep sacrifice + attack sacrifice cost
+- `jade_monolith` — damage redirect from creature to player
+
+# End of SYSTEMS v1.4

@@ -1,5 +1,27 @@
 # Current Sprint
 
+## Group P Card Implementation (2026-06-04)
+
+### Deliverables
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| Audit corrections (12 oracle errors) | `docs/audit/card-effect-audit.md` | [x] Done |
+| Wire ~60 Group P stubs | `src/data/cards.js` | [x] Done |
+| 30+ new resolveEff cases | `src/engine/DuelCore.js` | [x] Done |
+| cantAttackTurn guard (Wall of Dust) | `src/engine/DuelCore.js` | [x] Done |
+| Combat triggers: Wall of Dust, Giant Badger, Murk Dwellers | `src/engine/DuelCore.js` | [x] Done |
+| hasKw removeKeywords eotBuff support | `src/engine/DuelCore.js` | [x] Done |
+| needsExplicitTarget additions | `src/ui/Mobile/DuelScreenMobile.tsx` | [x] Done |
+| Group P Playwright tests | `e2e/sandbox.spec.ts` | [x] Done |
+
+### Deferred
+- `jandors_ring` — requires last-drawn-card tracking; higher complexity group
+- `leviathan` — three-restriction upkeep + attack cost; higher complexity group
+- `jade_monolith` — damage redirect layer; higher complexity group
+
+---
+
 ## Phase 8 — Difficulty System
 
 ### Deliverables

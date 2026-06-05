@@ -38,6 +38,8 @@ export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
 export function hasKw(c, kw, state = null) {
   if (!state) {
     // No state: only check static card keywords (used pre-battlefield).
+    const removedByEot = (c.eotBuffs || []).flatMap(b => b.removeKeywords || []);
+    if (removedByEot.includes(kw)) return false;
     return (c.keywords     || []).includes(kw) ||
            (c.eotBuffs     || []).some(b => (b.keywords || []).includes(kw)) ||
            (c.enchantments || []).some(e => (e.mod?.keywords || []).includes(kw));
@@ -934,6 +936,341 @@ ns = { ...ns, fogActive: true };
 ns = dlog(ns, `${card.name} ? combat damage prevented this turn.`, "effect");
 break;
 }
+// --- GROUP P NEW CASES -------------------------------------------------------
+case "pumpAttackersEOT": {
+for (const w of ['p', 'o']) {
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+    c.attacking
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] }
+      : c
+  ) } };
+}
+ns = dlog(ns, `${card.name}: attacking creatures get +1/+1 until end of turn.`, 'effect');
+break;
+}
+case "debuffNonwhiteEOT": {
+for (const w of ['p', 'o']) {
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+    isCre(c) && c.color !== 'W'
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -1, toughness: -1 }] }
+      : c
+  ) } };
+}
+ns = checkDeath(ns);
+ns = dlog(ns, `${card.name}: nonwhite creatures get -1/-1 until end of turn.`, 'effect');
+break;
+}
+case "destroyAllArtifacts": {
+for (const w of ['p', 'o']) {
+  const arts = [...ns[w].bf.filter(isArt)];
+  for (const a of arts) {
+    ns = zMove(ns, a.iid, w, w, 'gy');
+  }
+}
+ns = dlog(ns, `${card.name}: all artifacts destroyed.`, 'effect');
+break;
+}
+case "inferno6": {
+for (const w of ['p', 'o']) {
+  ns = hurt(ns, w, 6, card.name);
+  const cresSnap = ns[w].bf.filter(isCre).map(c => c.iid);
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+    cresSnap.includes(c.iid) ? { ...c, damage: c.damage + 6 } : c
+  ) } };
+}
+ns = checkDeath(ns);
+ns = dlog(ns, `${card.name}: 6 damage to each creature and each player.`, 'effect');
+break;
+}
+case "damageAttackers1": {
+for (const id of (ns.attackers || [])) {
+  for (const w of ['p', 'o']) {
+    const c = ns[w].bf.find(x => x.iid === id);
+    if (c) {
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
+        x.iid === id ? { ...x, damage: x.damage + 1 } : x
+      ) } };
+    }
+  }
+}
+ns = checkDeath(ns);
+ns = dlog(ns, `${card.name}: 1 damage to each attacking creature.`, 'effect');
+break;
+}
+case "jovialEvil": {
+const victim = tgt === 'p' || tgt === 'o' ? tgt : opp;
+const whiteCount = ns[victim].bf.filter(c => isCre(c) && c.color === 'W').length;
+const dmg = whiteCount * 2;
+if (dmg > 0) ns = hurt(ns, victim, dmg, card.name);
+ns = dlog(ns, `${card.name}: deals ${dmg} damage to ${victim} (${whiteCount} white creatures x 2).`, 'effect');
+break;
+}
+case "destroyAllBlack": {
+for (const w of ['p', 'o']) {
+  const blacks = [...ns[w].bf.filter(c => isCre(c) && c.color === 'B')];
+  for (const c of blacks) ns = zMove(ns, c.iid, w, w, 'gy');
+}
+ns = dlog(ns, `${card.name}: all black creatures destroyed.`, 'effect');
+break;
+}
+case "ashesToAshes": {
+const targets = (item.targets || []).slice(0, 2);
+for (const tid of targets) {
+  for (const w of ['p', 'o']) {
+    const c = ns[w].bf.find(x => x.iid === tid);
+    if (c && !isArt(c)) {
+      ns = { ...ns, [w]: { ...ns[w], exile: [...(ns[w].exile || []), c],
+        bf: ns[w].bf.filter(x => x.iid !== tid) } };
+    }
+  }
+}
+ns = hurt(ns, caster, 5, card.name);
+ns = dlog(ns, `${card.name}: exiled ${targets.length} creature(s); ${caster} loses 5 life.`, 'effect');
+break;
+}
+case "stormSeeker": {
+const victim = tgt === 'p' || tgt === 'o' ? tgt : opp;
+const handSize = ns[victim].hand.length;
+if (handSize > 0) ns = hurt(ns, victim, handSize, card.name);
+ns = dlog(ns, `${card.name}: deals ${handSize} damage to ${victim}.`, 'effect');
+break;
+}
+case "destroyForests": {
+for (const w of ['p', 'o']) {
+  const forests = [...ns[w].bf.filter(c => isLand(c) && c.subtype?.toLowerCase().includes('forest'))];
+  for (const f of forests) ns = zMove(ns, f.iid, w, w, 'gy');
+}
+ns = dlog(ns, `${card.name}: all Forests destroyed.`, 'effect');
+break;
+}
+case "typhoon": {
+const oppSide = caster === 'p' ? 'o' : 'p';
+const islandCount = ns[oppSide].bf.filter(c => isLand(c) && c.subtype?.toLowerCase().includes('island')).length;
+if (islandCount > 0) ns = hurt(ns, oppSide, islandCount, card.name);
+ns = dlog(ns, `${card.name}: ${islandCount} damage to ${oppSide} (${islandCount} islands).`, 'effect');
+break;
+}
+case "bloodLust": {
+if (tgtC) {
+  const curTou = (tgtC.toughness || 0) + (tgtC.counters?.P1P1 || 0) - (tgtC.counters?.M1M1 || 0);
+  const touDelta = curTou <= 5 ? -(curTou - 1) : -4;
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 4, toughness: touDelta }] }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gets +4/${touDelta} until end of turn.`, 'effect');
+}
+break;
+}
+case "detonate": {
+if (tgtC && isArt(tgtC) && (tgtC.cmc || 0) === (item.xVal || 0)) {
+  const xDmg = tgtC.cmc || 0;
+  const victim = tgtC.controller;
+  ns = zMove(ns, tgtC.iid, victim, victim, 'gy');
+  if (xDmg > 0) ns = hurt(ns, victim, xDmg, card.name);
+  ns = dlog(ns, `${card.name}: destroyed ${tgtC.name}; dealt ${xDmg} damage to ${victim}.`, 'effect');
+}
+break;
+}
+case "pumpWallsEOT": {
+ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+  c.subtype?.includes('Wall')
+    ? { ...c, eotBuffs: [...(c.eotBuffs || []), { toughness: 3 }] }
+    : c
+) } };
+ns = dlog(ns, `${card.name}: your Walls get +0/+3 until end of turn.`, 'effect');
+break;
+}
+case "mightstoneAttackPump": {
+ns = dlog(ns, `${card.name} (Mightstone): attacking creatures get +1/+0.`, 'effect');
+break;
+}
+case "energyTap": {
+if (tgtC && !tgtC.tapped) {
+  const mv = tgtC.cmc || 0;
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller],
+    bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c),
+    mana: { ...ns[tgtC.controller].mana, C: (ns[tgtC.controller].mana.C || 0) + mv }
+  } };
+  ns = dlog(ns, `${card.name}: tapped ${tgtC.name}; added ${mv} colorless mana.`, 'mana');
+}
+break;
+}
+case "gainFirstStrikeEOT": {
+const self = ns[caster].bf.find(c => c.iid === item.card.iid);
+if (self && !hasKw(self, KEYWORDS.FIRST_STRIKE.id)) {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === self.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.FIRST_STRIKE.id] }] }
+      : c
+  ) } };
+  ns = dlog(ns, `${self.name} gains first strike until end of turn.`, 'effect');
+}
+break;
+}
+case "removeFlying": {
+if (tgtC && hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { layerDef: { layer: '6', removeKeywords: [KEYWORDS.FLYING.id] } }] }
+      : c
+  ) } };
+  ns = dlog(ns, `${tgtC.name} loses flying until end of turn.`, 'effect');
+}
+break;
+}
+case "destroyBlueCreature": {
+if (tgtC && isCre(tgtC) && tgtC.color === 'U') {
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, 'gy');
+  ns = dlog(ns, `${card.name}: destroyed ${tgtC.name}.`, 'effect');
+}
+break;
+}
+case "damage4Any": {
+if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 4, card.name);
+else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, damage: c.damage + 4 } : c
+  ) } };
+  ns = checkDeath(ns);
+}
+ns = dlog(ns, `${card.name}: 4 damage.`, 'effect');
+break;
+}
+case "untapTarget": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, tapped: false } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: untapped ${tgtC.name}.`, 'effect');
+}
+break;
+}
+case "psionicEntity": {
+if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 2, card.name);
+else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, damage: c.damage + 2 } : c
+  ) } };
+  ns = checkDeath(ns);
+}
+const pEntity = ns[caster].bf.find(c => c.name === 'Psionic Entity');
+if (pEntity) {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.name === 'Psionic Entity' ? { ...c, damage: c.damage + 3 } : c
+  ) } };
+  ns = checkDeath(ns);
+}
+ns = dlog(ns, `Psionic Entity: 2 damage to target; 3 damage to itself.`, 'effect');
+break;
+}
+case "globalDebuffPower1EOT": {
+for (const w of ['p', 'o']) {
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+    isCre(c) ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -1 }] } : c
+  ) } };
+}
+ns = dlog(ns, `${card.name}: all creatures get -1/-0 until end of turn.`, 'effect');
+break;
+}
+case "debuffTargetPower1EOT": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -1 }] }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gets -1/-0 until end of turn.`, 'effect');
+}
+break;
+}
+case "preventDamage1Any":
+case "preventDamage1Creature": {
+if (tgt === 'p' || tgt === 'o') {
+  ns = { ...ns, [tgt]: { ...ns[tgt], damageShield: (ns[tgt].damageShield || 0) + 1 } };
+  ns = dlog(ns, `${card.name}: prevented 1 damage to ${tgt}.`, 'effect');
+} else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + 1 } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} has 1 damage prevented.`, 'effect');
+}
+break;
+}
+case "ebonyHorse": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, tapped: false, attacking: false, ebonyHorsed: true } : c
+  ) } };
+  ns = { ...ns, attackers: ns.attackers.filter(id => id !== tgtC.iid) };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} untapped and removed from combat.`, 'effect');
+}
+break;
+}
+case "fightTargets": {
+const [f1id, f2id] = (item.targets || []);
+let f1, f2, f1Side, f2Side;
+for (const w of ['p', 'o']) {
+  const c1 = ns[w].bf.find(c => c.iid === f1id);
+  const c2 = ns[w].bf.find(c => c.iid === f2id);
+  if (c1) { f1 = c1; f1Side = w; }
+  if (c2) { f2 = c2; f2Side = w; }
+}
+if (f1 && f2) {
+  const p1 = getPow(f1, ns), p2 = getPow(f2, ns);
+  ns = { ...ns, [f1Side]: { ...ns[f1Side], bf: ns[f1Side].bf.map(c =>
+    c.iid === f1id ? { ...c, damage: c.damage + p2 } : c) } };
+  ns = { ...ns, [f2Side]: { ...ns[f2Side], bf: ns[f2Side].bf.map(c =>
+    c.iid === f2id ? { ...c, damage: c.damage + p1 } : c) } };
+  ns = checkDeath(ns);
+  ns = dlog(ns, `${card.name}: ${f1.name} and ${f2.name} fight.`, 'effect');
+}
+break;
+}
+case "warBarge": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c,
+          eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.ISLANDWALK.id] }],
+          warBargeTargeted: card.iid
+        }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gains islandwalk until end of turn.`, 'effect');
+}
+break;
+}
+case "jadeStatue": {
+ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+  c.iid === item.card.iid
+    ? { ...c, type: 'Artifact Creature', subtype: 'Golem', power: 3, toughness: 6, isAnimatedArtifact: true, eotRevert: true }
+    : c
+) } };
+ns = dlog(ns, `Jade Statue becomes a 3/6 Golem until end of combat.`, 'effect');
+break;
+}
+case "grantBandingEOT": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.BANDING.id] }] }
+      : c
+  ) } };
+  ns = dlog(ns, `${tgtC.name} gains banding until end of turn.`, 'effect');
+}
+break;
+}
+case "addManaWithSelfDamage": {
+const manaColor = item.card.mana || 'B';
+const selfDmg = item.card.selfDamage || (item.card.mod?.selfDamage) || 1;
+ns = { ...ns, [caster]: { ...ns[caster], mana: { ...ns[caster].mana, [manaColor]: (ns[caster].mana[manaColor] || 0) + 1 } } };
+ns = hurt(ns, caster, selfDmg, card.name);
+ns = dlog(ns, `${card.name}: added {${manaColor}}; ${caster} takes ${selfDmg} damage.`, 'mana');
+break;
+}
+// --- END GROUP P CASES -------------------------------------------------------
 case "balance": {
   const minLands = Math.min(ns.p.bf.filter(isLand).length, ns.o.bf.filter(isLand).length);
   const minCres  = Math.min(ns.p.bf.filter(isCre).length,  ns.o.bf.filter(isCre).length);
@@ -1235,6 +1572,49 @@ if (!blockers.length) {
 
 }
 
+// Wall of Dust: whenever it blocks, blocked creature can't attack next turn.
+for (const w of ['p', 'o']) {
+  for (const c of ns[w].bf) {
+    if (c.name === 'Wall of Dust' && c.blocking) {
+      const blockedId = c.blocking;
+      for (const bw of ['p', 'o']) {
+        const blocked = ns[bw].bf.find(x => x.iid === blockedId);
+        if (blocked) {
+          ns = { ...ns, [bw]: { ...ns[bw], bf: ns[bw].bf.map(x =>
+            x.iid === blockedId ? { ...x, cantAttackTurn: ns.turn + 1 } : x
+          ) } };
+          ns = dlog(ns, `Wall of Dust: ${blocked.name} can't attack next turn.`, 'effect');
+        }
+      }
+    }
+  }
+}
+// Giant Badger: whenever it blocks, gets +2/+2 until end of turn.
+for (const w of ['p', 'o']) {
+  for (const c of ns[w].bf) {
+    if (c.name === 'Giant Badger' && c.blocking) {
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
+        x.iid === c.iid
+          ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: 2, toughness: 2 }] }
+          : x
+      ) } };
+    }
+  }
+}
+// Murk Dwellers: gets +2/+0 when attacks and isn't blocked.
+for (const attId of ns.attackers) {
+  const isBlocked = Object.values(ns.blockers || {}).flat().includes(attId);
+  if (!isBlocked) {
+    for (const w of ['p', 'o']) {
+      const c = ns[w].bf.find(x => x.iid === attId && x.name === 'Murk Dwellers');
+      if (c) {
+        ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
+          x.iid === attId ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: 2 }] } : x
+        ) } };
+      }
+    }
+  }
+}
 ns = checkDeath(ns);
 ns = { ...ns, attackers:[], blockers:{} };
 for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => ({ ...c, attacking:false, blocking:null })) } };
@@ -1964,6 +2344,7 @@ case "DECLARE_ATTACKER": {
   const side = s.active;
   const c = s[side].bf.find(x => x.iid === action.iid);
   if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, KEYWORDS.HASTE.id, s))) return s;
+  if (c.cantAttackTurn && c.cantAttackTurn >= s.turn) return dlog(s, `${c.name} can't attack this turn (Wall of Dust effect).`, 'rule');
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
