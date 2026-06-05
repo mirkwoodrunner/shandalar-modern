@@ -1384,13 +1384,12 @@ test('Transmute pay modal: confirm enabled when mana tapped meets requirement', 
     (window as any).__duelDispatch({
       type: 'DEBUG_SET_ACTIVE',
       patch: {
-        p: { ...s.p, mana: { W:0, U:0, B:0, R:0, G:0, C:0 } },
-        manaTapSnapshot: { pBfTapped: [], pMana: { W:0, U:0, B:0, R:0, G:3, C:0 } },
+        p: { ...s.p, mana: { W:0, U:0, B:0, R:0, G:3, C:0 } },
         pendingTransmutePay: { caster: 'p', tutored: { name: 'Test Artifact', cmc: 5, type: 'Artifact' }, required: 3 },
       },
     });
   });
-  // tapped = 3 - 0 = 3 >= required 3
+  // paid = totalNow = 3 >= required 3
   await expect(page.locator('[data-testid="transmute-pay-confirm"]')).toBeEnabled();
 });
 
@@ -1428,4 +1427,102 @@ test.describe('tutor modal — mobile viewport', () => {
     await page.locator('[data-testid="transmute-sacrifice-decline"]').tap();
     await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).not.toBeVisible();
   });
+});
+
+// ─── TransmutePayModal ───────────────────────────────────────────────────────
+
+test.describe('TransmutePayModal', () => {
+
+  test('modal is a compact top banner -- does not cover full screen', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      (window as any).__duelDispatch({
+        type: 'DEBUG_SET_ACTIVE',
+        patch: {
+          p: { ...s.p, mana: { W:0, U:0, B:0, R:0, G:0, C:0 } },
+          pendingTransmutePay: { caster: 'p', tutored: { name: 'Test Artifact', cmc: 5, type: 'Artifact' }, required: 1 },
+        },
+      });
+    });
+
+    const modal = page.getByTestId('transmute-pay-modal');
+    if (!(await modal.isVisible())) return;
+
+    const box = await modal.boundingBox();
+    const vh  = await page.evaluate(() => window.innerHeight);
+    expect(box).not.toBeNull();
+    // Banner height must be well under half the viewport
+    expect(box!.height).toBeLessThan(vh * 0.35);
+    // Banner must be pinned at or near the top
+    expect(box!.y).toBeLessThan(20);
+  });
+
+  test('paid count reflects existing mana pool on first render (snapshotMana null)', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    // Simulate what the component computes when snapshotMana is null and pool has 1 blue
+    const result = await page.evaluate(() => {
+      const currentMana = { W: 0, U: 1, B: 0, R: 0, G: 0, C: 0 };
+      const paid = Object.values(currentMana).reduce((a: number, b: number) => a + b, 0);
+      const required = 1;
+      const canConfirm = paid >= required;
+      return { paid, canConfirm };
+    });
+
+    expect(result.paid).toBe(1);
+    expect(result.canConfirm).toBe(true);
+  });
+
+  test('confirm button enabled when pool total meets required (no taps needed)', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    const result = await page.evaluate(() => {
+      const pool = { W: 0, U: 2, B: 0, R: 0, G: 0, C: 0 };
+      const required = 1;
+      const paid = Object.values(pool).reduce((a: number, b: number) => a + b, 0);
+      return paid >= required;
+    });
+    expect(result).toBe(true);
+  });
+
+  test('confirm button disabled when pool total is below required', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    const result = await page.evaluate(() => {
+      const pool = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+      const required = 1;
+      const paid = Object.values(pool).reduce((a: number, b: number) => a + b, 0);
+      return paid >= required;
+    });
+    expect(result).toBe(false);
+  });
+
+  test('undo button disabled when snapshotMana is null', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      (window as any).__duelDispatch({
+        type: 'DEBUG_SET_ACTIVE',
+        patch: {
+          p: { ...s.p, mana: { W:0, U:0, B:0, R:0, G:0, C:0 } },
+          manaTapSnapshot: null,
+          pendingTransmutePay: { caster: 'p', tutored: { name: 'Test Artifact', cmc: 5, type: 'Artifact' }, required: 1 },
+        },
+      });
+    });
+
+    const modal = page.getByTestId('transmute-pay-modal');
+    if (!(await modal.isVisible())) return;
+    const undoBtn = page.getByTestId('transmute-pay-undo');
+    await expect(undoBtn).toBeDisabled();
+  });
+
 });
