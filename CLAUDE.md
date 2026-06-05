@@ -43,6 +43,8 @@ arises during implementation, consult the relevant section before deciding on an
 approach. It is not an authority on what this codebase implements — that is
 `docs/SYSTEMS.md`. SYSTEMS.md simplifications and omissions are intentional.
 
+For rules verification during planning, see `docs/LVL5_MTG_JUDGE.md`.
+
 ---
 
 ## Engine Architecture — Mandatory Boundaries
@@ -455,4 +457,5 @@ card validation, stub checking, and missing card generation directly in Claude.a
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
 - [`docs/AI.md`](docs/AI.md) -- full AI role definitions
 - [`docs/ENGINE_CONTRACT_SPEC.md`](docs/ENGINE_CONTRACT_SPEC.md) -- system contracts
+- [`docs/LVL5_MTG_JUDGE.md`](docs/LVL5_MTG_JUDGE.md) -- rules arbiter protocol
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) -- contribution guidelines
