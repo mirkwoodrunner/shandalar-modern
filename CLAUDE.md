@@ -536,6 +536,9 @@ pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
 - `canConfirm = paid >= required`. Aligns with engine check -- no divergence possible.
 - `snapshotMana` is still passed and used to gate the Undo Tap button (non-null means taps exist to undo). It is no longer used for the paid/available calculation.
 
+Permanents entering via CHOOSE_TUTOR_TRANSMUTE or CONFIRM_TRANSMUTE_PAY use
+`summoningSick: !hasKw(card, 'HASTE')` -- do NOT hardcode false.
+
 ---
 
 ## Reference Documents

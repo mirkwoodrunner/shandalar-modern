@@ -1525,4 +1525,38 @@ test.describe('TransmutePayModal', () => {
     await expect(undoBtn).toBeDisabled();
   });
 
+  test('Transmute Artifact: tutored artifact creature has summoning sickness', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      const jugState = (window as any).__duelState();
+      const jugg = jugState.p.lib.find((c: any) => c.id === 'juggernaut')
+        || { iid: 'jugg-test', id: 'juggernaut', name: 'Juggernaut', type: 'Artifact Creature',
+             cmc: 5, keywords: [], power: 5, toughness: 3 };
+      (window as any).__duelDispatch({
+        type: 'DEBUG_SET_ACTIVE',
+        patch: {
+          pendingTutor: {
+            caster: 'p',
+            shuffledLib: [jugg],
+            _transmuteMode: true,
+            _sacrificedCmc: 6,
+          },
+        },
+      });
+    });
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'CHOOSE_TUTOR_TRANSMUTE', iid: 'jugg-test' });
+    });
+
+    const sick = await page.evaluate(() => {
+      const bf = (window as any).__duelState().p.bf;
+      const j = bf.find((c: any) => c.id === 'juggernaut');
+      return j?.summoningSick;
+    });
+    expect(sick).toBe(true);
+  });
+
 });
