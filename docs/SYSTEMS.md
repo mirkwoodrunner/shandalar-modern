@@ -1847,4 +1847,146 @@ If chosen artifact CMC <= sacrificed CMC: ETBs for free (no pay step).
 ### New Action Types
 `CHOOSE_TUTOR`, `DECLINE_TUTOR`, `CHOOSE_TUTOR_TRANSMUTE`, `CONFIRM_TRANSMUTE_SACRIFICE`, `DECLINE_TRANSMUTE_SACRIFICE`, `CONFIRM_TRANSMUTE_PAY`, `DECLINE_TRANSMUTE_PAY`
 
+---
+
+## Continuous Effects and Aura Mechanics (Migrated from CLAUDE.md)
+
+> **Skip log:** `Layer System` skipped -- `# 18. Layer System` already exists in SYSTEMS.md.
+> **Skip log:** `Protection Enforcement` skipped -- `## 17.6 Protection Enforcement (Combat Integration)` already exists in SYSTEMS.md.
+
+### Lord Effect Pattern
+
+Cards with `effect:"lordEffect"` or `effect:"globalPump"` are NOT resolved via `resolveEff`.
+They are continuous static abilities read by `getPow`, `getTou`, and `hasKw` at compute time.
+Do not add mutations for these effects in `resolveEff`. The lord layer in these three
+functions scans the full battlefield each call -- keep this read-only.
+
+Color targets (`"white"`, `"black"`, etc.) match against `card.color` (single-letter uppercase).
+Subtype targets (`"goblin"`, etc.) match via word-split of `card.subtype.toLowerCase()`.
+
+---
+
+### Pump / Flying Keyword -- Activated Ability Routing
+
+All activated-ability pump and flying effects must route through eotBuffs via the
+effectOverride map in DuelCore.js. Direct mutation of card.power, card.toughness,
+or card.keywords is prohibited for activated effects.
+
+effectOverride map covers: pumpPower->pumpPowerEOT, pumpToughness->pumpToughnessEOT,
+pumpSelf->pumpSelfEOT, pumpX->pumpXEOT, gainFlying->gainFlyingEOT, grantFlying->grantFlyingEOT
+
+---
+
+### Spirit Link
+
+Implemented as mod:{spiritLink:true} on the aura. Triggers inline at combat damage
+sites in DuelCore.js (not via triggeredAbilities pipeline -- auras are not standalone
+battlefield permanents and are not iterated by emitEvent).
+
+---
+
+### Aura ETB Side-Effects (enchantCreature handler)
+
+ETB side-effects on enchantCreature mods are handled inline in the enchantCreature
+case in DuelCore.js, after the aura is attached. Current mod flags with ETB logic:
+  paralyzed       -- taps the host on entry
+  regenerationAura -- grants {G}:regenerate activated ability to host
+  earthbind       -- if host has flying: deal 2 damage, mutate aura mod to add
+                    removeKeywords:[FLYING]
+
+---
+
+### Aura Death Triggers (checkDeath)
+
+Aura mods that trigger on host death are scanned inline in checkDeath BEFORE zMove
+fires, while dyingCard.enchantments is still intact.
+  creatureBond    -- deal damage equal to host's toughness to its controller
+
+---
+
+### Venom (end-of-combat destruction)
+
+Tracked via turnState.venomTargets[]. Populated in DECLARE_BLOCKER when either
+attacker or blocker has a venom aura mod. Destroyed in advPhase at COMBAT_END.
+Regeneration suppresses venom destruction (vic.regenerating check). Cleared each
+COMBAT_END regardless of whether destruction succeeded.
+
+---
+
+### Invisibility (blocking restriction)
+
+Checked inline in canBlockDuel via enchantments[].mod.invisibility. Only Walls
+(subtype includes 'Wall') may block invisible creatures.
+
+---
+
+### Animate Wall (Wall-only target restriction)
+
+Enforced in enchantCreature handler via mod.enchantWallOnly guard before attachment.
+Uses mod:{removeKeywords:[DEFENDER_ID], enchantWallOnly:true}. Layer 6 removeKeywords
+from aura mods is now supported by collectEffects in layers.js.
+
+---
+
+### Keldon Warlord
+
+CDA counts non-Wall creatures you control (including itself). Wall check uses
+x.subtype?.includes('Wall') in the keldonWarlord CDA_EVALUATORS entry in layers.js.
+
+---
+
+### Gaea's Liege
+
+CDA uses forestCountLiege evaluator in layers.js. When card.attacking is true, counts
+defending player's Forests; otherwise counts controller's Forests.
+
+---
+
+## Tutor Framework (Migrated from CLAUDE.md)
+
+Cards with `effect:"tutor"` trigger `pendingTutor` on resolution.
+Optional card data fields (default if absent):
+- `tutorFilter`: `'any'|'artifact'|'creature'|'instant'|'sorcery'|'enchantment'|'land'`
+- `tutorDestination`: `'hand'|'top'`  (`'top'`: reshuffle remaining, chosen goes to `lib[0]`)
+- `tutorReveal`: `boolean`  (`true` = opponent sees card name in log; use for type-restricted tutors)
+
+Player resolves via `TutorModal` (search+filter+sort UI matching DeckManager visual language).
+AI auto-resolves via `scoreLibCard()` in `useDuelController.ts`.
+Transmute Artifact: three-step flow -- `pendingTransmuteSacrifice` -> `pendingTutor(_transmuteMode)` -> `pendingTransmutePay`.
+"Decline to Find" is always available; logs `"caster declines to find a card."`.
+
+### State fields (tutor/transmute)
+
+```
+pendingTutor: null | {
+  caster: 'p'|'o', filter: TutorFilter, destination: 'hand'|'top',
+  reveal: boolean, shuffledLib: Card[],
+  _transmuteMode: boolean, _sacrificedCmc: number
+}
+pendingTransmuteSacrifice: null | { caster: 'p'|'o' }
+pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
+```
+
+### Action types (tutor/transmute)
+
+| Action | Payload | Description |
+|--------|---------|-------------|
+| `CHOOSE_TUTOR` | `{ iid }` | Player picks card from library |
+| `DECLINE_TUTOR` | `{}` | Player declines to find; library stays shuffled; logged |
+| `CHOOSE_TUTOR_TRANSMUTE` | `{ iid }` | Player picks artifact during Transmute search |
+| `CONFIRM_TRANSMUTE_SACRIFICE` | `{ iid }` | Player selects artifact to sacrifice |
+| `DECLINE_TRANSMUTE_SACRIFICE` | `{}` | Player declines; spell fizzles; logged |
+| `CONFIRM_TRANSMUTE_PAY` | `{}` | Player pays mana difference; drains pool; artifact ETBs |
+| `DECLINE_TRANSMUTE_PAY` | `{}` | Player declines payment; mana restored; tutored card -> GY |
+
+### TransmutePayModal display
+
+- Layout: compact `position: fixed; top: 0; left: 0; right: 0` banner. No full-screen overlay -- battlefield remains tappable behind it.
+- Paid counter: shows `totalNow` (sum of all mana currently in pool). Pre-existing pool mana counts toward payment, matching the engine's `CONFIRM_TRANSMUTE_PAY` validation (`totalMana >= required`).
+- `canConfirm = paid >= required`. Aligns with engine check -- no divergence possible.
+- `snapshotMana` is still passed and used to gate the Undo Tap button (non-null means taps exist to undo). It is no longer used for the paid/available calculation.
+
+Permanents entering via CHOOSE_TUTOR_TRANSMUTE or CONFIRM_TRANSMUTE_PAY use
+`summoningSick: !hasKw(card, 'HASTE')` -- do NOT hardcode false.
+
 # End of SYSTEMS v1.5
