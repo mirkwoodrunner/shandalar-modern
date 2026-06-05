@@ -149,6 +149,17 @@ export const CARD_HANDLERS = {
       return addLog(ns, `Rock Hydra enters with ${xVal || 0} +1/+1 counters.`, 'effect');
     },
   },
+
+  'Transmute Artifact': {
+    onResolve(state, card, _targets) {
+      const caster = card.controller ?? 'p';
+      const arts = state[caster].bf.filter(c => !!c.type?.includes('Artifact'));
+      if (!arts.length) {
+        return addLog(state, 'Transmute Artifact fizzles — no artifact to sacrifice.', 'effect');
+      }
+      return { ...state, pendingTransmuteSacrifice: { caster } };
+    },
+  },
 };
 
 export default CARD_HANDLERS;

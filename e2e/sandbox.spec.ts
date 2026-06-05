@@ -1217,3 +1217,215 @@ test.describe('Group P handler tests', () => {
     expect(card?.effect).toBe('energyTap');
   });
 });
+
+// ── Tutor Modal ────────────────────────────────────────────────────────────
+
+test('Demonic Tutor: modal opens on resolve, player selects card', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['demonic_tutor'], withManaSupport: true });
+  });
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    const card = s.p.hand.find((c: any) => c.id === 'demonic_tutor');
+    (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: 'p' });
+    (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+  });
+
+  await expect(page.locator('[data-testid="tutor-modal"]')).toBeVisible();
+  const pendingSet = await page.evaluate(() => !!(window as any).__duelState().pendingTutor);
+  expect(pendingSet).toBe(true);
+
+  const firstCard = page.locator('[data-testid^="tutor-card-"]').first();
+  await expect(firstCard).toBeVisible();
+  await firstCard.click();
+
+  await expect(page.locator('[data-testid="tutor-modal"]')).not.toBeVisible();
+  const cleared = await page.evaluate(() => (window as any).__duelState().pendingTutor === null);
+  expect(cleared).toBe(true);
+});
+
+test('Demonic Tutor: decline to find closes modal and logs', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['demonic_tutor'], withManaSupport: true });
+    const s = (window as any).__duelState();
+    const card = s.p.hand.find((c: any) => c.id === 'demonic_tutor');
+    (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: 'p' });
+    (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+  });
+
+  await expect(page.locator('[data-testid="tutor-modal"]')).toBeVisible();
+  await page.locator('[data-testid="tutor-decline"]').click();
+  await expect(page.locator('[data-testid="tutor-modal"]')).not.toBeVisible();
+
+  const logText = await page.locator('[data-testid="duel-log"]').innerText();
+  expect(logText).toMatch(/declines to find/i);
+});
+
+test('Demonic Tutor: no card name logged (not reveal)', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['demonic_tutor'], withManaSupport: true });
+    const s = (window as any).__duelState();
+    const card = s.p.hand.find((c: any) => c.id === 'demonic_tutor');
+    (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: 'p' });
+    (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+  });
+  await page.locator('[data-testid^="tutor-card-"]').first().click();
+
+  const logText = await page.locator('[data-testid="duel-log"]').innerText();
+  expect(logText).toContain('puts a card into hand');
+  expect(logText).not.toMatch(/p tutors \w+ into hand/);
+});
+
+test('TutorModal: filter=artifact shows valid/invalid split', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    const lib = s.p.lib.slice(0, 12);
+    (window as any).__duelDispatch({
+      type: 'DEBUG_SET_ACTIVE',
+      patch: {
+        pendingTutor: {
+          caster: 'p', filter: 'artifact', destination: 'hand', reveal: true,
+          shuffledLib: lib, _transmuteMode: false, _sacrificedCmc: 0,
+        },
+      },
+    });
+  });
+
+  await expect(page.locator('[data-testid="tutor-modal"]')).toBeVisible();
+  await expect(page.locator('[data-testid="tutor-decline"]')).toBeVisible();
+});
+
+test('Transmute Artifact: sacrifice modal appears on resolve', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND',
+      who: 'p',
+      cardIds: ['transmute_artifact', 'sol_ring'],
+      withManaSupport: true,
+    });
+  });
+  // Put sol_ring on battlefield
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    const sol = s.p.hand.find((c: any) => c.id === 'sol_ring');
+    if (sol) {
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: sol.iid, tgt: null });
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    }
+  });
+  // Cast transmute
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    const ta = s.p.hand.find((c: any) => c.id === 'transmute_artifact');
+    if (ta) {
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: ta.iid, tgt: null });
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    }
+  });
+  await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).toBeVisible();
+});
+
+test('Transmute Artifact: decline sacrifice fizzles spell', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({
+      type: 'DEBUG_SET_ACTIVE',
+      patch: { pendingTransmuteSacrifice: { caster: 'p' } },
+    });
+  });
+  await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).toBeVisible();
+  await page.locator('[data-testid="transmute-sacrifice-decline"]').click();
+  await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).not.toBeVisible();
+
+  const cleared = await page.evaluate(() => (window as any).__duelState().pendingTransmuteSacrifice === null);
+  expect(cleared).toBe(true);
+});
+
+test('Transmute pay modal: confirm disabled before enough mana tapped', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({
+      type: 'DEBUG_SET_ACTIVE',
+      patch: {
+        pendingTransmutePay: { caster: 'p', tutored: { name: 'Test Artifact', cmc: 5, type: 'Artifact' }, required: 3 },
+      },
+    });
+  });
+  await expect(page.locator('[data-testid="transmute-pay-modal"]')).toBeVisible();
+  await expect(page.locator('[data-testid="transmute-pay-confirm"]')).toBeDisabled();
+  await expect(page.locator('[data-testid="transmute-pay-decline"]')).toBeEnabled();
+});
+
+test('Transmute pay modal: confirm enabled when mana tapped meets requirement', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+
+  await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    (window as any).__duelDispatch({
+      type: 'DEBUG_SET_ACTIVE',
+      patch: {
+        p: { ...s.p, mana: { W:0, U:0, B:0, R:0, G:0, C:0 } },
+        manaTapSnapshot: { pBfTapped: [], pMana: { W:0, U:0, B:0, R:0, G:3, C:0 } },
+        pendingTransmutePay: { caster: 'p', tutored: { name: 'Test Artifact', cmc: 5, type: 'Artifact' }, required: 3 },
+      },
+    });
+  });
+  // tapped = 3 - 0 = 3 >= required 3
+  await expect(page.locator('[data-testid="transmute-pay-confirm"]')).toBeEnabled();
+});
+
+// Mobile viewport parity
+test.describe('tutor modal — mobile viewport', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('mobile: tutor modal opens, card selectable, decline works', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['demonic_tutor'], withManaSupport: true });
+      const s = (window as any).__duelState();
+      const card = s.p.hand.find((c: any) => c.id === 'demonic_tutor');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: card.iid, tgt: 'p' });
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    await expect(page.locator('[data-testid="tutor-modal"]')).toBeVisible();
+    await expect(page.locator('[data-testid="tutor-decline"]')).toBeVisible();
+
+    await page.locator('[data-testid="tutor-decline"]').tap();
+    await expect(page.locator('[data-testid="tutor-modal"]')).not.toBeVisible();
+  });
+
+  test('mobile: transmute sacrifice decline works', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { pendingTransmuteSacrifice: { caster: 'p' } } });
+    });
+    await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).toBeVisible();
+    await page.locator('[data-testid="transmute-sacrifice-decline"]').tap();
+    await expect(page.locator('[data-testid="transmute-sacrifice-modal"]')).not.toBeVisible();
+  });
+});

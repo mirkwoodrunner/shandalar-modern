@@ -529,13 +529,23 @@ ns = dlog(ns, `${card.name} adds 1${item.chosenColor}.`, "mana");
 break;
 }
 case "tutor": {
-const nl = ns[caster].lib.filter(c => !isLand(c));
-if (nl.length) {
-const f = nl[Math.floor(Math.random() * nl.length)];
-ns = zMove(ns, f.iid, caster, caster, "hand");
-ns = { ...ns, [caster]: { ...ns[caster], lib: shuffle(ns[caster].lib) } };
-ns = dlog(ns, `${card.name} ? found ${f.name}.`, "effect");
-}
+const lib = ns[caster].lib;
+if (!lib.length) break;
+const shuttered = shuffle([...lib]);
+ns = {
+  ...ns,
+  [caster]: { ...ns[caster], lib: shuttered },
+  pendingTutor: {
+    caster,
+    filter: card.tutorFilter ?? 'any',
+    destination: card.tutorDestination ?? 'hand',
+    reveal: card.tutorReveal ?? false,
+    shuffledLib: shuttered,
+    _transmuteMode: false,
+    _sacrificedCmc: 0,
+  },
+};
+ns = dlog(ns, `${card.name} resolves — searching library.`, 'effect');
 break;
 }
 case "discardX": {
@@ -2186,6 +2196,9 @@ pendingUpkeepChoice: null,
 priorityWindow: false,
 priorityPasser: null,
 manaTapSnapshot: null,
+pendingTutor: null,
+pendingTransmuteSacrifice: null,
+pendingTransmutePay: null,
 };
 }
 
@@ -2552,6 +2565,196 @@ case "CHOOSE_BOP_COLOR": {
 
 case "SET_PENDING_BOP": return { ...s, pendingBop: true };
 
+case "CHOOSE_TUTOR": {
+  const pt = s.pendingTutor;
+  if (!pt) return s;
+  const { caster, destination, reveal, shuffledLib } = pt;
+  const chosen = shuffledLib.find(c => c.iid === action.iid);
+  if (!chosen) return s;
+  const remaining = shuffledLib.filter(c => c.iid !== action.iid);
+
+  let ns = { ...s, pendingTutor: null };
+
+  if (destination === 'hand') {
+    ns = {
+      ...ns,
+      [caster]: {
+        ...ns[caster],
+        lib: remaining,
+        hand: [...ns[caster].hand, { ...chosen, controller: caster }],
+      },
+    };
+    const logMsg = reveal
+      ? `${caster} tutors ${chosen.name} into hand.`
+      : `${caster} searches their library and puts a card into hand.`;
+    ns = dlog(ns, logMsg, 'effect');
+  } else {
+    const reshuffled = shuffle([...remaining]);
+    ns = {
+      ...ns,
+      [caster]: {
+        ...ns[caster],
+        lib: [{ ...chosen, controller: caster }, ...reshuffled],
+      },
+    };
+    const logMsg = reveal
+      ? `${caster} tutors ${chosen.name} to top of library.`
+      : `${caster} searches their library and places a card on top.`;
+    ns = dlog(ns, logMsg, 'effect');
+  }
+  return ns;
+}
+
+case "DECLINE_TUTOR": {
+  if (!s.pendingTutor) return s;
+  const caster = s.pendingTutor.caster;
+  let ns = { ...s, pendingTutor: null };
+  ns = dlog(ns, `${caster} declines to find a card.`, 'effect');
+  return ns;
+}
+
+case "CONFIRM_TRANSMUTE_SACRIFICE": {
+  const pts = s.pendingTransmuteSacrifice;
+  if (!pts) return s;
+  const { caster } = pts;
+  const art = s[caster].bf.find(c => c.iid === action.iid);
+  if (!art) return s;
+
+  let ns = zMove(s, art.iid, caster, caster, 'gy');
+  const sacrificedCmc = art.cmc ?? 0;
+  const shuttered = shuffle([...ns[caster].lib]);
+
+  ns = {
+    ...ns,
+    [caster]: { ...ns[caster], lib: shuttered },
+    pendingTransmuteSacrifice: null,
+    pendingTutor: {
+      caster,
+      filter: 'artifact',
+      destination: 'hand',
+      reveal: true,
+      shuffledLib: shuttered,
+      _transmuteMode: true,
+      _sacrificedCmc: sacrificedCmc,
+    },
+  };
+  ns = dlog(ns, `${art.name} (CMC ${sacrificedCmc}) is sacrificed. Searching library for an artifact.`, 'effect');
+  return ns;
+}
+
+case "DECLINE_TRANSMUTE_SACRIFICE": {
+  if (!s.pendingTransmuteSacrifice) return s;
+  let ns = { ...s, pendingTransmuteSacrifice: null };
+  ns = dlog(ns, 'Transmute Artifact fizzles — no artifact sacrificed.', 'effect');
+  return ns;
+}
+
+case "CHOOSE_TUTOR_TRANSMUTE": {
+  const pt = s.pendingTutor;
+  if (!pt || !pt._transmuteMode) return s;
+  const { caster, shuffledLib, _sacrificedCmc } = pt;
+  const chosen = shuffledLib.find(c => c.iid === action.iid);
+  if (!chosen) return s;
+  const remaining = shuffledLib.filter(c => c.iid !== action.iid);
+  const chosenCmc = chosen.cmc ?? 0;
+  const diff = chosenCmc - (_sacrificedCmc ?? 0);
+
+  let ns = {
+    ...s,
+    pendingTutor: null,
+    [caster]: { ...s[caster], lib: remaining },
+  };
+  ns = dlog(ns, `${chosen.name} (CMC ${chosenCmc}) found via Transmute Artifact.`, 'effect');
+
+  if (diff <= 0) {
+    const pArr = {
+      ...chosen,
+      controller: caster,
+      tapped: false,
+      summoningSick: false,
+      attacking: false,
+      blocking: null,
+      damage: 0,
+      counters: { ...(chosen.etbCounters || {}) },
+    };
+    ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
+    ns = dlog(ns, `${chosen.name} enters the battlefield (no additional payment required).`, 'effect');
+    return ns;
+  }
+
+  ns = {
+    ...ns,
+    pendingTransmutePay: { caster, tutored: chosen, required: diff },
+  };
+  ns = dlog(ns, `${diff} additional mana required to put ${chosen.name} onto the battlefield.`, 'effect');
+  return ns;
+}
+
+case "CONFIRM_TRANSMUTE_PAY": {
+  const ptp = s.pendingTransmutePay;
+  if (!ptp) return s;
+  const { caster, tutored, required } = ptp;
+  const pool = s[caster].mana;
+  const totalMana = Object.values(pool).reduce((a, b) => a + b, 0);
+  if (totalMana < required) return s;
+
+  const drainedPool = { ...pool };
+  let toDrain = required;
+  for (const c of ['C', 'G', 'R', 'B', 'U', 'W']) {
+    const take = Math.min(drainedPool[c] ?? 0, toDrain);
+    drainedPool[c] = (drainedPool[c] ?? 0) - take;
+    toDrain -= take;
+    if (toDrain === 0) break;
+  }
+
+  const pArr = {
+    ...tutored,
+    controller: caster,
+    tapped: false,
+    summoningSick: false,
+    attacking: false,
+    blocking: null,
+    damage: 0,
+    counters: { ...(tutored.etbCounters || {}) },
+  };
+  let ns = {
+    ...s,
+    [caster]: {
+      ...s[caster],
+      mana: drainedPool,
+      bf: [...s[caster].bf, pArr],
+    },
+    pendingTransmutePay: null,
+    manaTapSnapshot: null,
+  };
+  ns = dlog(ns, `${tutored.name} enters the battlefield. (${required} mana paid.)`, 'effect');
+  return ns;
+}
+
+case "DECLINE_TRANSMUTE_PAY": {
+  const ptp = s.pendingTransmutePay;
+  if (!ptp) return s;
+  const { caster, tutored } = ptp;
+
+  let ns = s;
+  if (ns.manaTapSnapshot) {
+    const snap = ns.manaTapSnapshot;
+    const restoredBf = ns[caster].bf.map(c => {
+      const e = snap.pBfTapped.find(x => x.iid === c.iid);
+      return e ? { ...c, tapped: e.tapped } : c;
+    });
+    ns = { ...ns, [caster]: { ...ns[caster], bf: restoredBf, mana: { ...snap.pMana } }, manaTapSnapshot: null };
+  }
+
+  ns = {
+    ...ns,
+    [caster]: { ...ns[caster], gy: [...ns[caster].gy, { ...tutored, controller: caster }] },
+    pendingTransmutePay: null,
+  };
+  ns = dlog(ns, `${tutored.name} is put into the graveyard.`, 'effect');
+  return ns;
+}
+
 case "USE_CHANNEL": {
   const w = action.who;
   if (!s[w]?.channelActive) return s;
@@ -2598,11 +2801,12 @@ case "UPKEEP_CHOICE_RESOLVE": {
 
 case 'SANDBOX_FORCE_HAND': {
   // Sandbox-only: inject cards into a player's hand and optionally set mana.
-  // action.who:     'p' | 'o'  (defaults to 'p')
-  // action.iids:    string[]   -- iids of cards in that player's lib to move to hand
-  // action.cards:   object[]   -- full card objects to add directly to hand
-  // action.cardIds: string[]   -- CARD_DB ids to instantiate and add to hand
-  // action.mana:    ManaPool   -- set (not add) specific mana amounts for that player
+  // action.who:          'p' | 'o'  (defaults to 'p')
+  // action.iids:         string[]   -- iids of cards in that player's lib to move to hand
+  // action.cards:        object[]   -- full card objects to add directly to hand
+  // action.cardIds:      string[]   -- CARD_DB ids to instantiate and add to hand
+  // action.mana:         ManaPool   -- set (not add) specific mana amounts for that player
+  // action.withManaSupport: boolean -- auto-add 5 of each color to cover injected cards
   const who = action.who || 'p';
   let ns = s;
   if (action.iids && action.iids.length) {
@@ -2621,12 +2825,19 @@ case 'SANDBOX_FORCE_HAND': {
   if (action.mana) {
     ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, ...action.mana } } };
   }
+  if (action.withManaSupport) {
+    ns = { ...ns, [who]: { ...ns[who], mana: { W:5, U:5, B:5, R:5, G:5, C:5 } } };
+  }
   return ns;
 }
 
 case 'DEBUG_SET_ACTIVE': {
-  // Sandbox-only: force the active player. Used by e2e tests to drive AI turns.
-  return { ...s, active: action.who };
+  // Sandbox-only: force arbitrary state patches. Used by e2e tests.
+  // action.who   -- sets active player (legacy, still supported)
+  // action.patch -- spread into state (new; used by tutor/transmute tests)
+  if (action.patch) return { ...s, ...action.patch };
+  if (action.who) return { ...s, active: action.who };
+  return s;
 }
 
 case 'SET_PHASE_FOR_TEST': {

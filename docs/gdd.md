@@ -22,6 +22,7 @@
 | 1.2 | Sprint 7 (Stack UI — mobile collapse) | StackDisplay mobile collapsed/expanded toggle: starts collapsed, auto-expands on new stack item, pill tap to expand, collapse button inside panel. Tests 7F updated, 7G added. |
 | 1.3 | Bug fix (B31) | AI stuck in MAIN_1 on mobile after casting a spell — priority window + inner-timer race condition. Fixed in `DuelScreenMobile.tsx` (close effect clears aiRef; hasCast skips inner timer; stack?.length added to AI loop deps). Desktop patched with stack?.length dep addition. |
 | 1.4 | Group P card batch | ~60 Group P stubs wired in cards.js. 30+ new resolveEff cases in DuelCore.js. Oracle corrections to card-effect-audit.md (12 errors fixed). Wall of Dust cantAttackTurn trigger. Giant Badger and Murk Dwellers combat triggers. hasKw removeKeywords eotBuff support. Mobile needsExplicitTarget extended. |
+| 1.5 | Tutor Modal System + Transmute Artifact | Interactive library search modal (TutorModal) replaces random pick for effect:"tutor". Three-step Transmute Artifact flow (sacrifice → search → pay). AI auto-resolution via scoreLibCard(). Desktop + mobile parity. 10 Playwright tests. |
 
 ## Unreleased
 

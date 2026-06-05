@@ -31,6 +31,11 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { useDuelController, resolveDefaultTarget, needsExplicitTarget } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
+// -- Tutor / Transmute modals --------------------------------------------------
+import { TutorModal } from './ui/duel/TutorModal';
+import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
+import { TransmutePayModal } from './ui/duel/TransmutePayModal';
+
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
@@ -296,6 +301,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
     resolveUpkeepChoice, openPriorityWindow, passPriority, useChannel,
     undoManaTaps, requestPhaseAdvance,
+    chooseTutor, declineTutor, chooseTutorTransmute,
+    confirmTransmuteSacrifice, declineTransmuteSacrifice,
+    confirmTransmutePay, declineTransmutePay,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     pendingDualLand, setPendingDualLand,
@@ -1001,6 +1009,42 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           pendingChoice={s.pendingChoice}
           allBf={[...s.p.bf, ...s.o.bf]}
           onResolve={resolveChoice}
+        />
+      )}
+
+      {s.pendingTutor && s.pendingTutor.caster === 'p' && (
+        <TutorModal
+          library={s.pendingTutor.shuffledLib}
+          filter={s.pendingTutor.filter}
+          onChoose={(iid: string) => {
+            if (s.pendingTutor?._transmuteMode) {
+              chooseTutorTransmute(iid);
+            } else {
+              chooseTutor(iid);
+            }
+          }}
+          onDecline={declineTutor}
+          titleOverride={s.pendingTutor._transmuteMode ? 'Transmute Artifact — Choose an Artifact' : undefined}
+        />
+      )}
+
+      {s.pendingTransmuteSacrifice && s.pendingTransmuteSacrifice.caster === 'p' && (
+        <TransmuteSacrificeModal
+          artifacts={(s.p.bf as any[]).filter((c: any) => c.type?.includes('Artifact'))}
+          onConfirm={(iid: string) => confirmTransmuteSacrifice(iid)}
+          onDecline={declineTransmuteSacrifice}
+        />
+      )}
+
+      {s.pendingTransmutePay && s.pendingTransmutePay.caster === 'p' && (
+        <TransmutePayModal
+          required={s.pendingTransmutePay.required}
+          tutoredCard={s.pendingTransmutePay.tutored}
+          currentMana={s.p.mana}
+          snapshotMana={s.manaTapSnapshot?.pMana ?? null}
+          onConfirm={confirmTransmutePay}
+          onUndo={undoManaTaps}
+          onDecline={declineTransmutePay}
         />
       )}
     </div>

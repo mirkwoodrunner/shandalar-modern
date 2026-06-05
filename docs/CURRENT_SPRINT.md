@@ -1,5 +1,27 @@
 # Current Sprint
 
+## Tutor Modal System + Transmute Artifact (2026-06-05)
+
+### Deliverables
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| pendingTutor state + case "tutor": modal flow | `src/engine/DuelCore.js` | [x] Done |
+| 7 new action cases (CHOOSE_TUTOR, DECLINE_TUTOR, etc.) | `src/engine/DuelCore.js` | [x] Done |
+| Transmute Artifact onResolve handler | `src/engine/cardHandlers.js` | [x] Done |
+| transmute_artifact effect field update | `src/data/cards.js` | [x] Done |
+| 7 new dispatchers | `src/hooks/useDuel.js` | [x] Done |
+| AI tutor/transmute resolution + scoreLibCard | `src/hooks/useDuelController.ts` | [x] Done |
+| TutorModal component | `src/ui/duel/TutorModal.tsx` | [x] Done |
+| TransmuteSacrificeModal component | `src/ui/duel/TransmuteSacrificeModal.tsx` | [x] Done |
+| TransmutePayModal component | `src/ui/duel/TransmutePayModal.tsx` | [x] Done |
+| DuelScreen modal wiring | `src/DuelScreen.tsx` | [x] Done |
+| DuelScreenMobile modal wiring (parity) | `src/ui/Mobile/DuelScreenMobile.tsx` | [x] Done |
+| Playwright tests | `e2e/sandbox.spec.ts` | [x] Done |
+| Documentation | `CLAUDE.md`, `docs/SYSTEMS.md`, `docs/CURRENT_SPRINT.md`, `docs/MECHANICS_INDEX.md` | [x] Done |
+
+---
+
 ## Group P Card Implementation (2026-06-04)
 
 ### Deliverables

@@ -77,3 +77,26 @@
   `DuelScreenMobile` passes 56 (ActionBar height). `DuelScreen` passes 48.
   Update these if ActionBar heights change.
 - **data-testid inventory**: `stack-display` (root, both states), `stack-top-card` (full top card), `stack-title-bar` (title bars), `stack-pill` (collapsed pill span), `stack-collapse-btn` (expanded collapse button)
+
+---
+
+## TutorModal (`src/ui/duel/TutorModal.tsx`)
+
+Shared library-search modal used by Demonic Tutor and the search step of Transmute Artifact. Renders when `s.pendingTutor.caster === 'p'`. Filtered by `pendingTutor.filter` (any/artifact/creature/etc). Search input, color filter (hidden for non-'any' filters), sort (CMC/Name/Type). Valid cards selectable above divider; invalid grayed below. "Decline to Find" always present in footer. Used by both DuelScreen.tsx and DuelScreenMobile.tsx.
+
+Key props: `library` (shuffledLib array), `filter`, `onChoose(iid)`, `onDecline()`, `titleOverride?`.
+data-testid: `tutor-modal` (root), `tutor-card-<id>` (valid card rows), `tutor-decline` (decline button).
+
+## TransmuteSacrificeModal (`src/ui/duel/TransmuteSacrificeModal.tsx`)
+
+Modal for the first step of Transmute Artifact: player selects which artifact on their battlefield to sacrifice, or declines. Renders when `s.pendingTransmuteSacrifice.caster === 'p'`.
+
+Key props: `artifacts` (filtered bf), `onConfirm(iid)`, `onDecline()`.
+data-testid: `transmute-sacrifice-modal` (root), `transmute-sacrifice-<id>` (artifact rows), `transmute-sacrifice-decline` (decline button).
+
+## TransmutePayModal (`src/ui/duel/TransmutePayModal.tsx`)
+
+Modal for the third step of Transmute Artifact: player taps mana to pay the CMC difference between chosen and sacrificed artifact. Shows running tapped/required counter. Confirm enabled when `tapped >= required`. Renders when `s.pendingTransmutePay.caster === 'p'`.
+
+Key props: `required`, `tutoredCard`, `currentMana`, `snapshotMana`, `onConfirm()`, `onUndo()`, `onDecline()`.
+data-testid: `transmute-pay-modal` (root), `transmute-pay-confirm`, `transmute-pay-undo`, `transmute-pay-decline`.
