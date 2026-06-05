@@ -1,5 +1,17 @@
 # Current Sprint
 
+## AI Summoning Sickness Tap Fix (2026-06-05)
+
+### Deliverables
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| Fix AI summoning sickness tap bypass (computeAvailableMana, buildTapActions, planActivatedAbilities) | `src/engine/AI.js` | [x] Done |
+| Regression tests | `src/engine/__tests__/AI.summoningSick.tap.test.js` | [x] Done |
+| Documentation | `CLAUDE.md`, `docs/CURRENT_SPRINT.md` | [x] Done |
+
+---
+
 ## Tutor Modal System + Transmute Artifact (2026-06-05)
 
 ### Deliverables

@@ -474,6 +474,11 @@ card validation, stub checking, and missing card generation directly in Claude.a
 - AI.js already pre-filtered tapped creatures; this fix closes the gap for player-declared blocks.
 - Regression test: `src/engine/__tests__/blocking.test.js`
 
+### Fix: AI taps summoning-sick mana dorks for mana (B-SS1)
+- `computeAvailableMana` and `buildTapActions` filtered non-land activated-mana sources with `!c.tapped` only; `planActivatedAbilities` also lacked the check.
+- Added `!c.summoningSick` / `c.summoningSick` guard to all three sites in `AI.js`.
+- Regression test: `src/engine/__tests__/AI.summoningSick.tap.test.js`
+
 ---
 
 ## Group P -- Oracle-verified batch (2026-06-04)
