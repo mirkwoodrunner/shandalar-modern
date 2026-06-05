@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|Create",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-edit-engine-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-edit-screen-controller-redirect.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Create",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-dual-screen-parity.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-documentation-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-encoding-hygiene.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
