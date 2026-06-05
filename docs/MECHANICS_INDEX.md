@@ -1376,4 +1376,46 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.3
+---
+
+## GROUP P BATCH (2026-06-04)
+
+### pumpAttackersEOT
+Morale: attacking creatures get +1/+1 until end of turn.
+```
+cards.js:    effect:"pumpAttackersEOT"
+DuelCore.js: resolveEff case "pumpAttackersEOT" -- iterates both sides' bf,
+             appends {power:1,toughness:1} to eotBuffs of all attacking creatures.
+```
+### Status: ACTIVE
+
+---
+
+### cantAttackTurn
+Wall of Dust on-block trigger: blocked creature can't attack on its controller's next turn.
+```
+cards.js:    effect:null, onBlock:"banBlockedAttacker"
+DuelCore.js: resolveCombat -- Wall of Dust checks c.blocking after damage, sets
+             blocked.cantAttackTurn = ns.turn + 1.
+             DECLARE_ATTACKER -- guard: if c.cantAttackTurn >= s.turn, reject.
+```
+### Status: ACTIVE
+
+---
+
+### Group P resolveEff batch
+New cases: debuffNonwhiteEOT, destroyAllArtifacts, inferno6, damageAttackers1,
+jovialEvil, destroyAllBlack, ashesToAshes, stormSeeker, destroyForests, typhoon,
+bloodLust, detonate, pumpWallsEOT, mightstoneAttackPump, energyTap,
+gainFirstStrikeEOT, removeFlying, destroyBlueCreature, damage4Any, untapTarget,
+psionicEntity, globalDebuffPower1EOT, debuffTargetPower1EOT, preventDamage1Any,
+preventDamage1Creature, ebonyHorse, fightTargets, warBarge, jadeStatue,
+grantBandingEOT, addManaWithSelfDamage.
+```
+DuelCore.js: resolveEff switch, after case "fog"
+```
+### Status: ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.4

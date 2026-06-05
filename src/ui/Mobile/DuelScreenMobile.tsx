@@ -51,15 +51,29 @@ function needsExplicitTarget(card: any): boolean {
     'unholy_strength',
     'regenerate',
     'ping',
+    'destroyBlueCreature',
+    'removeFlying',
+    'untapTarget',
+    'debuffTargetPower1EOT',
+    'ebonyHorse',
+    'warBarge',
+    'jadeStatue',
   ]);
   const DAMAGE_EFFECTS = new Set(['damage3', 'damage5', 'psionicBlast', 'chainLightning']);
   // Player-target effects: spells that say "target player" rather than "target creature".
   const PLAYER_TARGET_EFFECTS = new Set([
-    'draw3',   // Ancestral Recall — "target player draws three cards"
+    'draw3',   // Ancestral Recall -- "target player draws three cards"
+    'stormSeeker',
+    'jovialEvil',
+    'damage4Any',
   ]);
+  const TWO_CREATURE_TARGET_EFFECTS = new Set(['fightTargets']);
   return CREATURE_TARGET_EFFECTS.has(card.effect)
     || DAMAGE_EFFECTS.has(card.effect)
-    || PLAYER_TARGET_EFFECTS.has(card.effect);
+    || PLAYER_TARGET_EFFECTS.has(card.effect)
+    || TWO_CREATURE_TARGET_EFFECTS.has(card.effect)
+    || (card.activated && CREATURE_TARGET_EFFECTS.has(card.activated?.effect))
+    || (card.activated && PLAYER_TARGET_EFFECTS.has(card.activated?.effect));
 }
 
 interface DuelScreenMobileProps {

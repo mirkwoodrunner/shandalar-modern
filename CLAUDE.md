@@ -476,6 +476,18 @@ card validation, stub checking, and missing card generation directly in Claude.a
 
 ---
 
+## Group P -- Oracle-verified batch (2026-06-04)
+~60 Group P stubs wired in cards.js. New resolveEff cases added to DuelCore.js.
+Key patterns added: pumpAttackersEOT, debuffNonwhiteEOT, destroyAllArtifacts, inferno6,
+damageAttackers1, jovialEvil, destroyAllBlack, ashesToAshes, stormSeeker, destroyForests,
+typhoon, bloodLust, detonate, pumpWallsEOT, energyTap, gainFirstStrikeEOT, removeFlying,
+destroyBlueCreature, damage4Any, untapTarget, psionicEntity, globalDebuffPower1EOT,
+debuffTargetPower1EOT, preventDamage1Any, ebonyHorse, fightTargets, warBarge, jadeStatue,
+grantBandingEOT, addManaWithSelfDamage. Per-creature cantAttackTurn field added for Wall of Dust.
+Deferred to higher group: jandors_ring, leviathan, jade_monolith.
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth

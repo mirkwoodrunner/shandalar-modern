@@ -21,6 +21,7 @@
 | 1.1 | Phase 7 (Original Feature Parity) | Food/hunger toggle; World Magic spell system (8 spells, passive + active); post-duel card-vs-clue choice; dungeons hidden until clued; enemy tier HP corrected to original values; henchman tier (HP 24–27, unbribeable); city conquest + defense + liberate; delivery quest type |
 | 1.2 | Sprint 7 (Stack UI — mobile collapse) | StackDisplay mobile collapsed/expanded toggle: starts collapsed, auto-expands on new stack item, pill tap to expand, collapse button inside panel. Tests 7F updated, 7G added. |
 | 1.3 | Bug fix (B31) | AI stuck in MAIN_1 on mobile after casting a spell — priority window + inner-timer race condition. Fixed in `DuelScreenMobile.tsx` (close effect clears aiRef; hasCast skips inner timer; stack?.length added to AI loop deps). Desktop patched with stack?.length dep addition. |
+| 1.4 | Group P card batch | ~60 Group P stubs wired in cards.js. 30+ new resolveEff cases in DuelCore.js. Oracle corrections to card-effect-audit.md (12 errors fixed). Wall of Dust cantAttackTurn trigger. Giant Badger and Murk Dwellers combat triggers. hasKw removeKeywords eotBuff support. Mobile needsExplicitTarget extended. |
 
 ## Unreleased
 

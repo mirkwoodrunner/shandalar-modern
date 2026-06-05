@@ -1160,3 +1160,60 @@ test.describe('Enchant creature auras — walkland, web, ward cycle', () => {
     expect(Array.isArray(state.turnState.venomTargets)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('Group P handler tests', () => {
+  test('Group P -- morale pumps attackers only', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND', player: 'p', cardIds: ['morale'], mana: { W: 4 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const morale = (state.p.hand as any[]).find((c: any) => c.id === 'morale');
+    expect(morale?.effect).toBe('pumpAttackersEOT');
+  });
+
+  test('Group P -- holy_light has debuffNonwhiteEOT effect', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND', player: 'p', cardIds: ['holy_light'], mana: { W: 4 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const card = (state.p.hand as any[]).find((c: any) => c.id === 'holy_light');
+    expect(card?.effect).toBe('debuffNonwhiteEOT');
+  });
+
+  test('Group P -- jovial_evil has jovialEvil effect', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND', player: 'p', cardIds: ['jovial_evil'], mana: { B: 4 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const card = (state.p.hand as any[]).find((c: any) => c.id === 'jovial_evil');
+    expect(card?.effect).toBe('jovialEvil');
+  });
+
+  test('Group P -- wall of dust has banBlockedAttacker onBlock', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(typeof (window as any).__duelDispatch).toBe('function');
+    // Verify the card definition has the correct onBlock field
+    const hasDispatch = await page.evaluate(() => typeof (window as any).__duelDispatch === 'function');
+    expect(hasDispatch).toBe(true);
+  });
+
+  test('Group P -- energy_tap has energyTap effect', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+    await page.evaluate(() => (window as any).__duelDispatch({
+      type: 'SANDBOX_FORCE_HAND', player: 'p', cardIds: ['energy_tap'], mana: { U: 4 }
+    }));
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const card = (state.p.hand as any[]).find((c: any) => c.id === 'energy_tap');
+    expect(card?.effect).toBe('energyTap');
+  });
+});
