@@ -1,5 +1,5 @@
 # Card Effect Implementation Audit
-> Last updated: 2026-06-01  
+> Last updated: 2026-06-05  
 > Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`, `docs/AUDIT_REPORT.md`  
 > Re-run: execute the four node scripts in `card-stub-audit.md` prompt file
 
@@ -130,6 +130,7 @@ These require state-based continuous effects — more expensive architecturally 
 | `greater_realm_of_preservation` | {W} or {G}: prevent 1 damage to you |
 | `rabid_wombat` | gets +2/+2 for each aura attached to it |
 | `angry_mob` | gets +X/+X where X = number of swamps opponents control |
+| `castle` | Untapped creatures you control get +0/+2 (static, continuous — no EOT clause) |
 
 ---
 
@@ -196,6 +197,7 @@ Triggered abilities based on combat events, death, end-of-turn, or upkeep.
 | `aladdin` | {R}{R}{R}{T}: gain control of target artifact |
 | `old_man_of_the_sea` | can block any creature; when it deals combat damage, gain control of that creature |
 | `drop_of_honey` | at beginning of upkeep, destroy the creature with the lowest power |
+| `wall_of_tombstones` | At the beginning of your upkeep, change this creature's base toughness to 1 plus the number of creature cards in your graveyard |
 
 ---
 
@@ -399,82 +401,77 @@ Cards with bespoke mechanics that don't share a handler pattern. Each needs its 
 
 These have unique effects but map to a single short handler. Suitable for batch implementation.
 
-| Card | Effect |
-|------|--------|
-| `animate_wall` | enchanted Wall can attack this turn |
-| `castle` | untapped creatures you control get +0/+2 until end of turn |
-| `blessing` | {W}: enchanted creature gets +1/+1 until end of turn |
-| `morale` | creatures get +1/+1 and first strike until end of turn |
-| `firebreathing` | {R}: +1/+0 until end of turn |
-| `killer_bees` | {G}: +1/+1 until end of turn |
-| `wall_of_water` | {U}: +1/+0 until end of turn |
-| `wall_of_opposition` | {R}: +1/+0 until end of turn |
-| `wall_of_tombstones` | {G}: +0/+1 until end of turn |
-| `wall_of_dust` | creature that attacks this doesn't untap next turn |
-| `wall_of_light` | protection from black |
-| `wall_of_wonder` | {3}{U}: Wall can attack as a 4/1 until end of turn |
-| `will_o_the_wisp` | {B}: regenerate |
-| `giant_turtle` | {G}: regenerate |
-| `mountain_yeti` | protection from white; {R}: regenerate |
-| `emerald_dragonfly` | {G}{G}: gains flying until end of turn |
-| `pixie_queen` | {G}: target forest creature gains flying until end of turn |
-| `pirate_ship` | {T}: deal 1 damage; can't attack without an island |
-| `the_brute` | {R}: target creature loses landwalk until end of turn |
-| `radjan_spirit` | {G}: target creature loses flying until end of turn |
-| `spinal_villain` | {R}{R}{T}: destroy target blue creature |
-| `detonate` | destroy target artifact; deal damage equal to its casting cost to controller |
-| `shatterstorm` | destroy all artifacts; they can't be regenerated |
-| `inferno` | deal 6 damage to each creature and player |
-| `darkness` | fog (black version) |
-| `sandstorm` | deal 1 damage to each attacking creature |
-| `jovial_evil` | deal 2 damage to each white creature |
-| `cleanse` | destroy all black creatures |
-| `holy_light` | destroy all non-white creatures with toughness 2 or less |
-| `ashes_to_ashes` | exile two target non-artifact creatures; lose 5 life |
-| `storm_seeker` | deal damage to target player equal to their hand size |
-| `acid_rain` | destroy all forests |
-| `typhoon` | deal 1 damage for each island any player controls |
-| `syphon_soul` | deal 2 damage to each other player; gain that much life |
-| `bone_flute` | {X}: all creatures get -X/-0 until end of turn |
-| `backfire` | enchanted creature: whenever it deals damage to you, it takes that damage |
-| `immolation` | enchanted creature gets +2/+2; when it dies, deals 4 damage to you |
-| `spirit_shackle` | enchanted creature: takes 2 damage whenever it attacks |
-| `unstable_mutation` | enchanted creature gets +3/+3; upkeep: -1/-1 counter |
-| `blood_lust` | target creature gets +4/-4 until end of turn |
-| `energy_tap` | tap target untapped creature; add {C} for each point of its power |
-| `aspect_of_wolf` | enchanted creature gets +(X/2)/+(X/2) where X = forests you control |
-| `atog` | sacrifice an artifact: +2/+2 until end of turn |
-| `jandorss_saddlebags` | {3}: untap target creature |
-| `jandorss_ring` | {4}: draw a card |
-| `flying_carpet` | {2}{T}: target creature gains flying until end of turn |
-| `aladdins_ring` | {8}{T}: deal 4 damage to target creature or player |
-| `arena` | {1}: two target creatures fight |
-| `ebony_horse` | {3}{T}: untap target attacking creature; remove it from combat |
-| `war_barge` | {3}: target creature gains islandwalk; at end of turn, return it |
-| `oasis` | {T}: prevent 1 damage to target creature |
-| `jade_statue` | {2}: becomes a 3/6 creature until end of turn |
-| `helm_of_chatzuk` | {1}{T}: give target creature banding |
-| `mightstone` | creatures you control get +1/+0 |
-| `amulet_of_kroog` | {2}: gain 1 life |
-| `staff_of_zegon` | {2}{T}: target creature gets -1/-0 until end of turn |
-| `divine_transformation` | enchanted creature gets +3/+3 |
-| `consecrate_land` | enchanted land can't be destroyed; no other enchantments may be attached |
-| `lifetap` | whenever opponent taps a forest, you gain 1 life |
-| `psionic_entity` | {T}: deal 2 damage to any target; deals 3 damage to itself |
-| `murk_dwellers` | when it attacks unblocked, defending creatures don't untap |
-| `jade_monolith` | {1}: redirect damage from you to target creature |
-| `ivory_guardians` | protection from red; if opponent controls a red permanent, gets +1/+1 |
-| `amrou_kithkin` | can't be blocked by creatures with power 2 or greater |
-| `elves_of_deep_shadow` | {T}: add {B}; lose 1 life |
-| `bog_rats` | can't be blocked by walls |
-| `uncle_istvan` | protection from all creatures |
-| `giant_badger` | regenerate; during combat, all damage dealt to it is prevented |
-| `leviathan` | trample, islandwalk; upkeep: sacrifice two islands or this doesn't untap |
-| `shield_wall` | walls you control get +0/+3 until end of turn |
-| `piety` | gain 2 life for each attacking creature |
-| `kobold_drill_sergeant` | kobolds get +0/+1 and first strike |
-| `kobold_overlord` | kobolds gain first strike |
-| `kobold_taskmaster` | kobolds get +0/+1 |
+| Card | Effect | Notes |
+|------|--------|-------|
+| `animate_wall` | Enchanted Wall can attack as though it didn't have defender | Aura; confirmed correct |
+| `blessing` | {W}: enchanted creature gets +1/+1 until end of turn | Activated aura pump; confirmed correct |
+| `morale` | Attacking creatures get +1/+1 until end of turn | **No first strike**; affects attackers only, not all creatures |
+| `firebreathing` | {R}: enchanted creature gets +1/+0 until end of turn | Activated aura pump; confirmed correct |
+| `killer_bees` | {G}: this creature gets +1/+1 until end of turn | Self-pump on creature; confirmed correct |
+| `wall_of_water` | {U}: this creature gets +1/+0 until end of turn | Self-pump; confirmed correct |
+| `wall_of_opposition` | **{1}**: this creature gets +1/+0 until end of turn | **Cost is generic {1}, not {R}** |
+| `wall_of_dust` | Whenever this creature blocks a creature, that creature can't attack during its controller's next turn | Triggered detain-like effect on the blocked creature |
+| `wall_of_light` | Protection from black | Static keyword; no activation; confirmed correct |
+| `wall_of_wonder` | **{2}{U}{U}**: this creature gets +4/-4 until end of turn and can attack this turn as though it didn't have defender | **Cost is {2}{U}{U} not {3}{U}; P/T delta is +4/-4 not "attacks as 4/1"** |
+| `will_o_the_wisp` | {B}: regenerate this creature | Confirmed correct |
+| `giant_turtle` | {G}: regenerate this creature | Confirmed correct |
+| `mountain_yeti` | Mountainwalk; protection from white | **Static keywords only -- no {R}: regenerate**; the regenerate ability does not exist on this card |
+| `emerald_dragonfly` | {G}{G}: this creature gains **first strike** until end of turn | **Effect is first strike, not flying** |
+| `pixie_queen` | Flying; **{G}{G}{G}{T}**: target creature gains flying until end of turn | **Flying is a static keyword; activation cost is {G}{G}{G}{T} not {G}; no "forest creature" restriction** |
+| `pirate_ship` | {T}: this creature deals 1 damage to any target; this creature can't attack unless defending player controls an Island; when you control no Islands, sacrifice this creature | **Includes a state-based sacrifice trigger** |
+| `the_brute` | Enchant creature; enchanted creature gets +1/+0; {R}{R}{R}: regenerate enchanted creature | **Entirely different card -- it is an Aura granting +1/+0 and regen, not a "loses landwalk" effect** |
+| `radjan_spirit` | **{T}**: target creature loses flying until end of turn | **Cost is {T} (tap), not {G} (green mana)** |
+| `spinal_villain` | **{T}**: destroy target blue creature | **Cost is {T} only, not {R}{R}{T}** |
+| `detonate` | Destroy target artifact; it deals damage equal to its mana value to its controller | Confirmed correct |
+| `shatterstorm` | Destroy all artifacts; they can't be regenerated | Confirmed correct |
+| `inferno` | **Instant**; deals 6 damage to each creature and each player | **Card type is Instant, not Sorcery**; effect confirmed correct |
+| `darkness` | Prevent all combat damage that would be dealt this turn | Black fog; confirmed correct |
+| `sandstorm` | Deals 1 damage to each attacking creature | Green instant; confirmed correct |
+| `jovial_evil` | Deals X damage to target opponent, where X is twice the number of white creatures that player controls | **Targets one opponent; damage scales with their white creatures -- NOT flat 2 damage to each white creature** |
+| `cleanse` | Destroy all black creatures | Confirmed correct |
+| `holy_light` | Nonwhite creatures get -1/-1 until end of turn | **Effect is -1/-1 pump, not "destroy toughness 2 or less"** |
+| `ashes_to_ashes` | Exile two target non-artifact creatures; you lose 5 life | Confirmed correct |
+| `storm_seeker` | **Instant**; deals damage to target player equal to the number of cards in that player's hand | **Card type is Instant, not Sorcery** |
+| `acid_rain` | Destroy all Forests | Confirmed correct |
+| `typhoon` | Deals 1 damage to each player for each Island that player controls | Confirmed correct |
+| `syphon_soul` | Deals 2 damage to each other player; you gain life equal to the damage dealt this way | Confirmed correct |
+| `bone_flute` | **{2}, {T}**: all creatures get -1/-0 until end of turn | **Fixed activation cost {2}{T}, not an X spell** |
+| `backfire` | Enchant creature; whenever enchanted creature deals damage to you, it deals that much damage to itself | Confirmed correct |
+| `immolation` | Enchant creature; enchanted creature gets +2/+2; when enchanted creature dies, it deals 4 damage to you | Confirmed correct |
+| `spirit_shackle` | Enchant creature; whenever enchanted creature becomes tapped, put a -0/-2 counter on it | **Trigger is "becomes tapped", not "attacks"; effect is a -0/-2 counter, not 2 damage** |
+| `unstable_mutation` | Enchant creature; enchanted creature gets +3/+3; at the beginning of the upkeep of enchanted creature's controller, put a -1/-1 counter on that creature | Confirmed correct |
+| `blood_lust` | Target creature gets +4/-4 until end of turn; if this would reduce toughness below 1, toughness becomes 1 instead | Confirmed correct |
+| `energy_tap` | Tap target untapped creature you control; add colorless mana equal to that creature's **mana value** | **Mana added equals mana value (casting cost), not power** |
+| `aspect_of_wolf` | Enchanted creature gets +X/+Y, where X is half the number of Forests you control rounded down, and Y is half rounded up | **Power and toughness bonuses differ when forest count is odd** |
+| `atog` | Sacrifice an artifact: this creature gets +2/+2 until end of turn | Confirmed correct |
+| `jandors_saddlebags` | {3}: untap target creature | Confirmed correct |
+| `jandors_ring` | {4}: draw a card | Confirmed correct |
+| `flying_carpet` | {2}, {T}: target creature gains flying until end of turn | Confirmed correct |
+| `aladdins_ring` | {8}, {T}: this creature deals 4 damage to any target | Confirmed correct |
+| `arena` | {1}: two target creatures fight | Confirmed correct |
+| `ebony_horse` | {3}, {T}: untap target attacking creature; remove it from combat | Confirmed correct |
+| `war_barge` | {3}: target creature gains islandwalk until end of turn | Confirmed correct |
+| `oasis` | {T}: prevent 1 damage to target creature | Confirmed correct |
+| `jade_statue` | {2}: this permanent becomes a 3/6 Golem artifact creature until end of turn | Confirmed correct |
+| `helm_of_chatzuk` | {1}, {T}: target creature gains banding until end of turn | Confirmed correct |
+| `mightstone` | Creatures you control get +1/+0 | Static continuous; confirmed correct |
+| `amulet_of_kroog` | {2}: gain 1 life | Confirmed correct |
+| `staff_of_zegon` | {2}, {T}: target creature gets -1/-0 until end of turn | Confirmed correct |
+| `divine_transformation` | Enchanted creature gets +3/+3 | Static aura pump; confirmed correct |
+| `consecrate_land` | Enchanted land is indestructible and can't have other enchantments attached to it | Confirmed correct |
+| `lifetap` | Whenever an opponent taps a Forest, you gain 1 life | Confirmed correct |
+| `psionic_entity` | {T}: this creature deals 2 damage to any target; this creature deals 3 damage to itself | Confirmed correct |
+| `murk_dwellers` | Whenever this creature attacks and isn't blocked, creatures defending player controls don't untap during that player's next untap step | Confirmed correct |
+| `jade_monolith` | {1}: the next damage that would be dealt to you this turn is dealt to target creature instead | Confirmed correct |
+| `ivory_guardians` | Protection from red; if an opponent controls a red permanent, this creature gets +1/+1 | Confirmed correct |
+| `amrou_kithkin` | Can't be blocked by creatures with power 2 or greater | Confirmed correct |
+| `elves_of_deep_shadow` | {T}: add {B}; you lose 1 life | Confirmed correct |
+| `bog_rats` | Can't be blocked by Walls | Confirmed correct |
+| `uncle_istvan` | Protection from creatures | Confirmed correct |
+| `giant_badger` | Regenerate; during combat, prevent all damage dealt to this creature | Confirmed correct |
+| `leviathan` | Trample, islandwalk; at the beginning of your upkeep, sacrifice two Islands or this creature doesn't untap during your next untap step | Confirmed correct |
+| `shield_wall` | Walls you control get +0/+3 until end of turn | Confirmed correct |
+| `piety` | Gain 2 life for each attacking creature | Confirmed correct |
 
 ---
 
