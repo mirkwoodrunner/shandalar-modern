@@ -29,6 +29,8 @@ In order of authority:
 
 4. `docs/gdd.md` — design intent (non-binding)
 
+5. `docs/DECISIONS.md` — closed architectural decisions (non-binding on new work)
+
 If any conflict exists between these sources, `docs/SYSTEMS.md` wins.
 
 ## Magic: The Gathering Rules Reference
@@ -114,6 +116,28 @@ Never use `Math.random()` in gameplay logic. All randomness routes through the s
 ### Encoding Hygiene
 Do not introduce smart quotes (`""`), em-dashes (`—`), or any non-ASCII characters
 into `.js` or `.jsx` files.
+
+## CLAUDE.md Scope Policy
+
+CLAUDE.md contains only agent operating rules and session-start constraints.
+It is not a feature spec, implementation log, or decision archive.
+
+**What belongs here:**
+- Mandatory constraints on agent behavior (boundaries, anti-patterns, encoding rules)
+- File scope and protection rules
+- Hook behavior and override protocols
+- Testing infrastructure and escape hatches
+- Cross-references to authoritative docs
+
+**What does not belong here:**
+- Mechanical specs for individual cards or systems -> `docs/SYSTEMS.md`
+- Closed architectural decisions -> `docs/DECISIONS.md`
+- Completed feature summaries or batch notes -> `docs/CURRENT_SPRINT.md`
+- Bug fix records -> `docs/MECHANICS_INDEX.md`
+
+**Trim rule:** When a feature merges, any CLAUDE.md entry for it is replaced with a
+one-line cross-reference to the doc where the spec now lives. The prompt that closes
+a feature is responsible for this migration -- not a future cleanup pass.
 
 ### Claude Code Hooks
 
@@ -222,70 +246,6 @@ docs/AI.md                   — AI role definitions
 
 ---
 
-## Confirmed Architectural Decisions (Do Not Revisit)
-
-- **Power Surge upkeep:** snapshot tapped-land count into `turnState.powerSurgeUntappedCount`
-  during UNTAP; consume at UPKEEP. (Option A)
-- **Holy Ground:** `hasKw()` suppresses landwalk keywords when the defending player controls
-  Holy Ground. (Option B)
-- **Priority window phases:** `PRIORITY_WINDOW_PHASES` whitelist = `Set(['MAIN_1', 'MAIN_2', 'END'])`
-- **Enemy grace period:** `GRACE_MOVE_THRESHOLD = 3` in `EnemyAI.js`
-- **Mulligan latch:** `mulliganDismissed` ref prevents modal reappearing on orientation change
-- **Lord effect pattern:** Cards with `effect:"lordEffect"` or `effect:"globalPump"` are continuous static abilities, NOT resolved via `resolveEff`. Bonuses are computed by `getPow`, `getTou`, and `hasKw` at read time by scanning the battlefield.
-- **Mana tap undo snapshot:** Created on first `TAP_LAND`/`TAP_ART_MANA` when `stack.length === 0` (not `spellsThisTurn === 0`). Resets after stack drains to zero, enabling undo for post-resolution taps.
-- **AI-turn spell priority:** `useEffect([s.stack?.length])` in both DuelScreen files
-  opens a priority window when the stack grows (prev === 0, cur > 0) while
-  `active === 'o'`. This is the hook that gives the player a response window after the
-  AI casts. The AI loop's inner `setTimeout(() => requestPhaseAdvance())` is retained
-  but is a no-op while the stack is non-empty.
-- **AI mana simulation:** The AI's virtual state tracks mana spent and produced during multi-spell planning. `evaluateAndCast` maintains a `poolAfterCast` that deducts each spell's cost after crediting tapped sources; `applyVirtualPlay` credits mana-producing spells via the card's `mana` array. If a new `addMana` spell is added to `cards.js`, its `mana` field must be a flat array of color characters (e.g. `["B","B","B"]`) for `applyVirtualPlay` to credit it correctly.
-- **Mobile targeting mode:** `needsExplicitTarget()` (module-level in `DuelScreenMobile.tsx`) gates the targeting flow. Tapping a qualifying spell sets `targetingFor` state; subsequent tap on creature/life-total sets `pendingTarget`. `Banner.onLifeClick` prop enables life-total tap targets. Cast fires via `castSpell(targetingFor, pendingTarget, xVal)`.
-- **Battlefield click routing:** `handleBfClick(card)` in `useDuelController.ts` is the single entry point for all combat-phase battlefield clicks. It owns COMBAT_BLOCKERS two-click flow (`pendingBlockerIid` state, isolated from `selTgt`) and COMBAT_ATTACKERS attacker toggle. Both `DuelScreen` and `DuelScreenMobile` call `handleBfClick` first; if it returns `false` (non-combat click), the screen component handles the interaction locally. Do not add combat click logic to either screen component.
-
----
-
-## Lord Effect Pattern
-
-Cards with `effect:"lordEffect"` or `effect:"globalPump"` are NOT resolved via `resolveEff`.
-They are continuous static abilities read by `getPow`, `getTou`, and `hasKw` at compute time.
-Do not add mutations for these effects in `resolveEff`. The lord layer in these three
-functions scans the full battlefield each call -- keep this read-only.
-
-Color targets (`"white"`, `"black"`, etc.) match against `card.color` (single-letter uppercase).
-Subtype targets (`"goblin"`, etc.) match via word-split of `card.subtype.toLowerCase()`.
-
----
-
-## Layer System
-
-`src/engine/layers.js` implements the CR 613 continuous-effect layer engine. All
-P/T, keyword, type, and color computations for permanents route through
-`computeCharacteristics(card, state)`.
-
-`getPow(c, state)`, `getTou(c, state)`, and `hasKw(c, kw, state)` in `DuelCore.js`
-are thin wrappers: when called with `state`, they delegate to `computeCharacteristics`;
-when called without `state` (legacy callers), they fall back to reading raw card fields.
-
-Key concepts:
-- **`card.layerDef`**: Static ability record on a card definition. `layer:"7a"` for CDAs
-  (Plague Rats, Nightmare, Keldon Warlord, etc.), `layer:"7b"` for absolute P/T sets.
-  `powerFn`/`toughnessFn` keys into `CDA_EVALUATORS` in `layers.js`.
-- **`card.enterTs`**: Timestamp integer assigned when a permanent enters the battlefield
-  via `zMove`. `layerClock` on GameState is the monotonic counter. Permanents cast
-  normally (via `RESOLVE_STACK`) default to `enterTs: 0` (consistent base ordering).
-- **`eotBuffs[].layerDef`**: Transient layer records added by effects (e.g. Sorceress Queen
-  stores `{ layerDef: { layer: "7b", setPower: 0, setToughness: 2 } }` -- evaluated fresh
-  each call, never baked at activation time).
-- **Holy Ground**: Implemented as a synthetic Layer 6 `removeKeywords` effect with
-  `enterTs: Number.MAX_SAFE_INTEGER` so it applies after all other Layer 6 grants.
-- **Lord effects** (`effect:"lordEffect"` / `effect:"globalPump"`): Emit Layer 7c delta
-  records and Layer 6 keyword grants via `collectEffects` in `layers.js`.
-
-Do not add P/T mutation to `resolveEff` for cards with `layerDef`. Do not call
-`getPow`/`getTou`/`hasKw` with a stale snapshot -- always pass the live state object.
-
----
-
 ## Testing
 
 ### Unit tests (Vitest)
@@ -333,114 +293,6 @@ window.__duelState()            // read current GameState snapshot
 
 ---
 
-## MCTS Candidate Shape (TD-002)
-
-scoreMoves() in MCTS.js accepts an optional `nextState` field on candidate objects:
-
-  { action: <any valid action>, nextState?: GameState, label: string }
-
-When `nextState` is present, it is used as the rollout start state directly.
-When absent, start state is derived via duelReducer(state, candidate.action).
-
-planMain() uses the nextState path (passing primaryVirtual / altVirtual).
-planAttack() uses the action path (passing DECLARE_ATTACKER / ADVANCE_PHASE).
-Never pass { type: 'PLAN' } or other unrecognized action types as candidates.
-
-## MCTS Unit Test Seam (TD-003 — RESOLVED)
-
-`stepOnce` and `policyMainAction` in `MCTS.js` are exported solely for unit testing.
-Do not call them from production code outside of MCTS.js itself.
-
-`src/engine/__tests__/mcts-rollout.test.js` holds three test groups:
-- Group A: post-fix assertions -- rollout taps exact cost and casts one spell per main
-  phase, then resolves the stack. Life assertion guards against mana-burn regression.
-- Group B: determinism proof -- rollout returns the same winner from identical state.
-- Group C: KARAG-only gate guard -- asserts KARAG is the only profile with
-  aggression >= 0.9; protects ARZAKON/MORTIS from silent MCTS exposure after the fix.
-
-### Rollout behavior (post-TD-003 fix)
-
-Rollouts now tap exact cost and cast one spell per main phase, then resolve the stack.
-Deliberate speed tradeoffs:
-- **One cast per main phase** — no multi-cast loop (future fidelity upgrade).
-- **`tgt: null`** — no targeted-spell fidelity in rollout (targeted removal/burn may no-op).
-- **Immediate `RESOLVE_STACK`** — no in-rollout opponent responses.
-- **`computeTaps` uses `produces[0]`** — dual lands treated as their first color only.
-
-Exact-cost tapping is required for mana-burn safety: `burnMana` fires at every phase
-boundary; over-tapping would burn KARAG in live games. The factory ruleset has `manaBurn`
-off, so a "tap all lands" refactor would pass unit tests while burning KARAG in real games.
-The Group A life assertion (`next.o.life === 20`) is the primary regression guard for this.
-
----
-
-## Pump / Flying Keyword -- Activated Ability Routing
-All activated-ability pump and flying effects must route through eotBuffs via the
-effectOverride map in DuelCore.js. Direct mutation of card.power, card.toughness,
-or card.keywords is prohibited for activated effects.
-
-effectOverride map covers: pumpPower->pumpPowerEOT, pumpToughness->pumpToughnessEOT,
-pumpSelf->pumpSelfEOT, pumpX->pumpXEOT, gainFlying->gainFlyingEOT, grantFlying->grantFlyingEOT
-
-## Spirit Link
-Implemented as mod:{spiritLink:true} on the aura. Triggers inline at combat damage
-sites in DuelCore.js (not via triggeredAbilities pipeline -- auras are not standalone
-battlefield permanents and are not iterated by emitEvent).
-
-## Aura ETB Side-Effects (enchantCreature handler)
-ETB side-effects on enchantCreature mods are handled inline in the enchantCreature
-case in DuelCore.js, after the aura is attached. Current mod flags with ETB logic:
-  paralyzed       -- taps the host on entry
-  regenerationAura -- grants {G}:regenerate activated ability to host
-  earthbind       -- if host has flying: deal 2 damage, mutate aura mod to add
-                    removeKeywords:[FLYING]
-
-## Aura Death Triggers (checkDeath)
-Aura mods that trigger on host death are scanned inline in checkDeath BEFORE zMove
-fires, while dyingCard.enchantments is still intact.
-  creatureBond    -- deal damage equal to host's toughness to its controller
-
-## Venom (end-of-combat destruction)
-Tracked via turnState.venomTargets[]. Populated in DECLARE_BLOCKER when either
-attacker or blocker has a venom aura mod. Destroyed in advPhase at COMBAT_END.
-Regeneration suppresses venom destruction (vic.regenerating check). Cleared each
-COMBAT_END regardless of whether destruction succeeded.
-
-## Invisibility (blocking restriction)
-Checked inline in canBlockDuel via enchantments[].mod.invisibility. Only Walls
-(subtype includes 'Wall') may block invisible creatures.
-
-## Animate Wall (Wall-only target restriction)
-Enforced in enchantCreature handler via mod.enchantWallOnly guard before attachment.
-Uses mod:{removeKeywords:[DEFENDER_ID], enchantWallOnly:true}. Layer 6 removeKeywords
-from aura mods is now supported by collectEffects in layers.js.
-
-## Keldon Warlord
-CDA counts non-Wall creatures you control (including itself). Wall check uses
-x.subtype?.includes('Wall') in the keldonWarlord CDA_EVALUATORS entry in layers.js.
-
-## Gaea's Liege
-CDA uses forestCountLiege evaluator in layers.js. When card.attacking is true, counts
-defending player's Forests; otherwise counts controller's Forests.
-
----
-
-## Protection Enforcement
-Protection on permanents is read through computeCharacteristics() in canBlockDuel
-when state is available. Do NOT read card.protection directly in blocking validation --
-aura-granted protection (Ward cycle, etc.) only exists in the layers output.
-
-Protection color values use single-char keys: B, U, G, R, W, C.
-Aura protection is declared as mod:{protection:["X"]} in cards.js.
-collectEffects() in layers.js picks this up via aura.mod.protection and routes
-it to Layer 6 addProtection.
-
-Ward self-exemption clause: aura detachment on protection gain is not implemented.
-The "this effect doesn't remove this Aura" clause is satisfied by the absence of
-auto-detach logic, not by explicit code.
-
----
-
 ## Card Tools MCP Server
 
 Located at `tools/card-mcp-server/`. Provides five tools for card database work:
@@ -466,81 +318,6 @@ card validation, stub checking, and missing card generation directly in Claude.a
 
 ---
 
-## Bug Fixes
-
-### Fix: Tapped creatures cannot block (rule 509.1a)
-- `canBlockDuel` in `DuelCore.js` now returns `false` immediately when `bl.tapped` is true.
-- This is the first guard in the function, before any keyword checks.
-- AI.js already pre-filtered tapped creatures; this fix closes the gap for player-declared blocks.
-- Regression test: `src/engine/__tests__/blocking.test.js`
-
-### Fix: AI taps summoning-sick mana dorks for mana (B-SS1)
-- `computeAvailableMana` and `buildTapActions` filtered non-land activated-mana sources with `!c.tapped` only; `planActivatedAbilities` also lacked the check.
-- Added `!c.summoningSick` / `c.summoningSick` guard to all three sites in `AI.js`.
-- Regression test: `src/engine/__tests__/AI.summoningSick.tap.test.js`
-
----
-
-## Group P -- Oracle-verified batch (2026-06-04)
-~60 Group P stubs wired in cards.js. New resolveEff cases added to DuelCore.js.
-Key patterns added: pumpAttackersEOT, debuffNonwhiteEOT, destroyAllArtifacts, inferno6,
-damageAttackers1, jovialEvil, destroyAllBlack, ashesToAshes, stormSeeker, destroyForests,
-typhoon, bloodLust, detonate, pumpWallsEOT, energyTap, gainFirstStrikeEOT, removeFlying,
-destroyBlueCreature, damage4Any, untapTarget, psionicEntity, globalDebuffPower1EOT,
-debuffTargetPower1EOT, preventDamage1Any, ebonyHorse, fightTargets, warBarge, jadeStatue,
-grantBandingEOT, addManaWithSelfDamage. Per-creature cantAttackTurn field added for Wall of Dust.
-Deferred to higher group: jandors_ring, leviathan, jade_monolith.
-
----
-
-## Tutor Framework
-
-Cards with `effect:"tutor"` trigger `pendingTutor` on resolution.
-Optional card data fields (default if absent):
-- `tutorFilter`: `'any'|'artifact'|'creature'|'instant'|'sorcery'|'enchantment'|'land'`
-- `tutorDestination`: `'hand'|'top'`  (`'top'`: reshuffle remaining, chosen goes to `lib[0]`)
-- `tutorReveal`: `boolean`  (`true` = opponent sees card name in log; use for type-restricted tutors)
-
-Player resolves via `TutorModal` (search+filter+sort UI matching DeckManager visual language).
-AI auto-resolves via `scoreLibCard()` in `useDuelController.ts`.
-Transmute Artifact: three-step flow -- `pendingTransmuteSacrifice` -> `pendingTutor(_transmuteMode)` -> `pendingTransmutePay`.
-"Decline to Find" is always available; logs `"caster declines to find a card."`.
-
-### State fields (tutor/transmute)
-
-```
-pendingTutor: null | {
-  caster: 'p'|'o', filter: TutorFilter, destination: 'hand'|'top',
-  reveal: boolean, shuffledLib: Card[],
-  _transmuteMode: boolean, _sacrificedCmc: number
-}
-pendingTransmuteSacrifice: null | { caster: 'p'|'o' }
-pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
-```
-
-### Action types (tutor/transmute)
-
-| Action | Payload | Description |
-|--------|---------|-------------|
-| `CHOOSE_TUTOR` | `{ iid }` | Player picks card from library |
-| `DECLINE_TUTOR` | `{}` | Player declines to find; library stays shuffled; logged |
-| `CHOOSE_TUTOR_TRANSMUTE` | `{ iid }` | Player picks artifact during Transmute search |
-| `CONFIRM_TRANSMUTE_SACRIFICE` | `{ iid }` | Player selects artifact to sacrifice |
-| `DECLINE_TRANSMUTE_SACRIFICE` | `{}` | Player declines; spell fizzles; logged |
-| `CONFIRM_TRANSMUTE_PAY` | `{}` | Player pays mana difference; drains pool; artifact ETBs |
-| `DECLINE_TRANSMUTE_PAY` | `{}` | Player declines payment; mana restored; tutored card -> GY |
-
-### TransmutePayModal display
-- Layout: compact `position: fixed; top: 0; left: 0; right: 0` banner. No full-screen overlay -- battlefield remains tappable behind it.
-- Paid counter: shows `totalNow` (sum of all mana currently in pool). Pre-existing pool mana counts toward payment, matching the engine's `CONFIRM_TRANSMUTE_PAY` validation (`totalMana >= required`).
-- `canConfirm = paid >= required`. Aligns with engine check -- no divergence possible.
-- `snapshotMana` is still passed and used to gate the Undo Tap button (non-null means taps exist to undo). It is no longer used for the paid/available calculation.
-
-Permanents entering via CHOOSE_TUTOR_TRANSMUTE or CONFIRM_TRANSMUTE_PAY use
-`summoningSick: !hasKw(card, 'HASTE')` -- do NOT hardcode false.
-
----
-
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth
@@ -548,3 +325,14 @@ Permanents entering via CHOOSE_TUTOR_TRANSMUTE or CONFIRM_TRANSMUTE_PAY use
 - [`docs/ENGINE_CONTRACT_SPEC.md`](docs/ENGINE_CONTRACT_SPEC.md) -- system contracts
 - [`docs/LVL5_MTG_JUDGE.md`](docs/LVL5_MTG_JUDGE.md) -- rules arbiter protocol
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) -- contribution guidelines
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) -- closed architectural decisions
+
+See [docs/DECISIONS.md](docs/DECISIONS.md) for confirmed architectural decisions and MCTS design records.
+
+See [docs/SYSTEMS.md](docs/SYSTEMS.md) -- Continuous Effects and Aura Mechanics for layer system, aura patterns, lord effects, protection, pump routing, and individual card mechanic specs.
+
+See [docs/SYSTEMS.md](docs/SYSTEMS.md) -- Tutor Framework.
+
+See [docs/CURRENT_SPRINT.md](docs/CURRENT_SPRINT.md) -- Completed Work Archive.
+
+See [docs/MECHANICS_INDEX.md](docs/MECHANICS_INDEX.md) -- Bug Fix Log.
