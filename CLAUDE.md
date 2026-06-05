@@ -488,6 +488,45 @@ Deferred to higher group: jandors_ring, leviathan, jade_monolith.
 
 ---
 
+## Tutor Framework
+
+Cards with `effect:"tutor"` trigger `pendingTutor` on resolution.
+Optional card data fields (default if absent):
+- `tutorFilter`: `'any'|'artifact'|'creature'|'instant'|'sorcery'|'enchantment'|'land'`
+- `tutorDestination`: `'hand'|'top'`  (`'top'`: reshuffle remaining, chosen goes to `lib[0]`)
+- `tutorReveal`: `boolean`  (`true` = opponent sees card name in log; use for type-restricted tutors)
+
+Player resolves via `TutorModal` (search+filter+sort UI matching DeckManager visual language).
+AI auto-resolves via `scoreLibCard()` in `useDuelController.ts`.
+Transmute Artifact: three-step flow -- `pendingTransmuteSacrifice` -> `pendingTutor(_transmuteMode)` -> `pendingTransmutePay`.
+"Decline to Find" is always available; logs `"caster declines to find a card."`.
+
+### State fields (tutor/transmute)
+
+```
+pendingTutor: null | {
+  caster: 'p'|'o', filter: TutorFilter, destination: 'hand'|'top',
+  reveal: boolean, shuffledLib: Card[],
+  _transmuteMode: boolean, _sacrificedCmc: number
+}
+pendingTransmuteSacrifice: null | { caster: 'p'|'o' }
+pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
+```
+
+### Action types (tutor/transmute)
+
+| Action | Payload | Description |
+|--------|---------|-------------|
+| `CHOOSE_TUTOR` | `{ iid }` | Player picks card from library |
+| `DECLINE_TUTOR` | `{}` | Player declines to find; library stays shuffled; logged |
+| `CHOOSE_TUTOR_TRANSMUTE` | `{ iid }` | Player picks artifact during Transmute search |
+| `CONFIRM_TRANSMUTE_SACRIFICE` | `{ iid }` | Player selects artifact to sacrifice |
+| `DECLINE_TRANSMUTE_SACRIFICE` | `{}` | Player declines; spell fizzles; logged |
+| `CONFIRM_TRANSMUTE_PAY` | `{}` | Player pays mana difference; drains pool; artifact ETBs |
+| `DECLINE_TRANSMUTE_PAY` | `{}` | Player declines payment; mana restored; tutored card -> GY |
+
+---
+
 ## Reference Documents
 
 - [`docs/SYSTEMS.md`](docs/SYSTEMS.md) -- mechanical truth

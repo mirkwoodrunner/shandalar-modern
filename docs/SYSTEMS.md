@@ -1806,4 +1806,45 @@ Not part of the game build.
 - `leviathan` — enters-tapped + no-untap + upkeep sacrifice + attack sacrifice cost
 - `jade_monolith` — damage redirect from creature to player
 
-# End of SYSTEMS v1.4
+---
+
+## 21. Tutor Modal System + Transmute Artifact (2026-06-05)
+
+### Tutor Effects
+
+`resolveEff case "tutor":` immediately shuffles the library and sets `pendingTutor` (never picks randomly).
+
+Player resolution: `TutorModal` (DeckManager visual language). Valid choices selectable; invalid grayed below divider.
+- Search input, color filter buttons (hidden when filter is not 'any'), sort by CMC/Name/Type.
+- "Decline to Find" always present in footer.
+- Valid cards above divider (selectable, onClick dispatches CHOOSE_TUTOR or CHOOSE_TUTOR_TRANSMUTE).
+- Invalid cards below divider (grayed, not clickable).
+
+AI resolution: `scoreLibCard()` picker in `useDuelController.ts`. Declines if no valid choices exist.
+
+`destination='top'`: remaining library reshuffled after choice; chosen card placed at `lib[0]`.
+`reveal=true`: card name appears in log (opponent-visible). Use for type/color/CMC-restricted tutors only.
+
+### Transmute Artifact
+
+Three-step interactive flow:
+1. **pendingTransmuteSacrifice**: Player chooses which artifact to sacrifice (`TransmuteSacrificeModal`). Decline fizzles spell.
+2. **pendingTutor** (_transmuteMode=true): Player searches library for any artifact (`TutorModal` with filter='artifact'). Decline puts spell to graveyard.
+3. **pendingTransmutePay** (if chosen artifact CMC > sacrificed CMC): Player taps mana for difference (`TransmutePayModal`). Confirm ETBs artifact; Decline puts chosen card to graveyard. Mana snapshot restored on decline.
+
+If chosen artifact CMC <= sacrificed CMC: ETBs for free (no pay step).
+
+### New UI Components
+- `src/ui/duel/TutorModal.tsx` -- library search modal
+- `src/ui/duel/TransmuteSacrificeModal.tsx` -- artifact sacrifice selection
+- `src/ui/duel/TransmutePayModal.tsx` -- mana payment tracking
+
+### New State Fields
+- `pendingTutor: null | { caster, filter, destination, reveal, shuffledLib, _transmuteMode, _sacrificedCmc }`
+- `pendingTransmuteSacrifice: null | { caster }`
+- `pendingTransmutePay: null | { caster, tutored, required }`
+
+### New Action Types
+`CHOOSE_TUTOR`, `DECLINE_TUTOR`, `CHOOSE_TUTOR_TRANSMUTE`, `CONFIRM_TRANSMUTE_SACRIFICE`, `DECLINE_TRANSMUTE_SACRIFICE`, `CONFIRM_TRANSMUTE_PAY`, `DECLINE_TRANSMUTE_PAY`
+
+# End of SYSTEMS v1.5

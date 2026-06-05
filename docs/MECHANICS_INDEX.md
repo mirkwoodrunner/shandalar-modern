@@ -1418,4 +1418,41 @@ DuelCore.js: resolveEff switch, after case "fog"
 
 ---
 
-# End of MECHANICS INDEX v1.4
+---
+
+## Mechanic: Tutor Modal System (2026-06-05)
+
+### What it does
+Interactive library search for cards with `effect:"tutor"`. Replaces the old random-pick behavior. Player sees full library filtered by type/color with search and sort. AI uses `scoreLibCard()` heuristic.
+
+### Implementation
+```
+DuelCore.js: resolveEff case "tutor": → sets pendingTutor (shuffled lib)
+DuelCore.js: CHOOSE_TUTOR, DECLINE_TUTOR → resolve or dismiss tutor
+useDuelController.ts: AI pendingTutor block, scoreLibCard() helper
+src/ui/duel/TutorModal.tsx: player-facing search UI
+```
+
+### Status: ACTIVE
+
+---
+
+## Mechanic: Transmute Artifact (2026-06-05)
+
+### What it does
+Three-step modal flow: sacrifice artifact → search for artifact → pay mana difference (if any) → ETB. Uses pendingTutor with _transmuteMode flag for the search step.
+
+### Implementation
+```
+cardHandlers.js: "Transmute Artifact" onResolve → sets pendingTransmuteSacrifice
+DuelCore.js: CONFIRM_TRANSMUTE_SACRIFICE, DECLINE_TRANSMUTE_SACRIFICE, CHOOSE_TUTOR_TRANSMUTE
+DuelCore.js: CONFIRM_TRANSMUTE_PAY, DECLINE_TRANSMUTE_PAY
+src/ui/duel/TransmuteSacrificeModal.tsx: sacrifice selection UI
+src/ui/duel/TransmutePayModal.tsx: mana payment UI
+```
+
+### Status: ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.5

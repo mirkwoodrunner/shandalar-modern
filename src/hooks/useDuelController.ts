@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
 import { aiDecide } from '../engine/AI.js';
-import { isLand, canPay } from '../engine/DuelCore.js';
+import { isLand, isArt, canPay } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
@@ -75,6 +75,22 @@ export function needsExplicitTarget(card: any): boolean {
   return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
 }
 
+function scoreLibCard(card: any, _state: any): number {
+  if (card.type?.includes('Creature')) {
+    const pow = typeof card.power === 'number' ? card.power : 0;
+    const tou = typeof card.toughness === 'number' ? card.toughness : 0;
+    return (pow + tou) * 0.15 + (card.cmc ? 1 / card.cmc : 0) * 0.1;
+  }
+  if (card.effect === 'counter')  return 0.85;
+  if (card.effect === 'destroy' || card.effect === 'destroyArtifact') return 0.80;
+  if (card.effect === 'tutor')    return 0.75;
+  if (card.effect === 'draw3' || card.effect === 'draw1') return 0.65;
+  if (card.effect === 'damage5')  return 0.70;
+  if (card.effect === 'damage3')  return 0.55;
+  if (card.type?.includes('Artifact')) return Math.min(1.0, (card.cmc ?? 0) * 0.12);
+  return 0.40;
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useDuelController(
@@ -106,6 +122,13 @@ export function useDuelController(
     resolveUpkeepChoice,
     useChannel,
     undoManaTaps,
+    chooseTutor,
+    declineTutor,
+    chooseTutorTransmute,
+    confirmTransmuteSacrifice,
+    declineTransmuteSacrifice,
+    confirmTransmutePay,
+    declineTransmutePay,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -263,6 +286,73 @@ export function useDuelController(
       return;
     }
 
+    // AI resolves tutor search
+    if (s.pendingTutor && s.pendingTutor.caster === 'o') {
+      const pt = s.pendingTutor;
+      const FILTER_FN: Record<string, (c: any) => boolean> = {
+        any:         () => true,
+        artifact:    (c: any) => isArt(c),
+        creature:    (c: any) => !!c.type?.includes('Creature'),
+        instant:     (c: any) => c.type === 'Instant',
+        sorcery:     (c: any) => c.type === 'Sorcery',
+        enchantment: (c: any) => !!c.type?.startsWith('Enchantment'),
+        land:        (c: any) => c.type === 'Land',
+      };
+      const fn = FILTER_FN[pt.filter] ?? (() => true);
+      const valid = pt.shuffledLib.filter(fn);
+
+      if (!valid.length) {
+        declineTutor();
+        return;
+      }
+      const best = valid.reduce((a: any, b: any) =>
+        scoreLibCard(b, s) > scoreLibCard(a, s) ? b : a
+      );
+      if (pt._transmuteMode) {
+        chooseTutorTransmute(best.iid);
+      } else {
+        chooseTutor(best.iid);
+      }
+      return;
+    }
+
+    // AI resolves Transmute sacrifice choice
+    if (s.pendingTransmuteSacrifice && s.pendingTransmuteSacrifice.caster === 'o') {
+      const arts = s.o.bf.filter((c: any) => isArt(c));
+      const libArts = s.o.lib.filter((c: any) => isArt(c));
+      if (!arts.length || !libArts.length) {
+        declineTransmuteSacrifice();
+        return;
+      }
+      const targetCard = libArts.reduce((a: any, b: any) =>
+        scoreLibCard(b, s) > scoreLibCard(a, s) ? b : a
+      );
+      const victim = arts.reduce((a: any, b: any) =>
+        scoreLibCard(a, s) <= scoreLibCard(b, s) ? a : b
+      );
+      const diff = (targetCard.cmc ?? 0) - (victim.cmc ?? 0);
+      const pool = s.o.mana;
+      const totalMana = Object.values(pool).reduce((a: number, b: any) => a + (b as number), 0);
+      if (diff > 0 && totalMana < diff) {
+        declineTransmuteSacrifice();
+        return;
+      }
+      confirmTransmuteSacrifice(victim.iid);
+      return;
+    }
+
+    // AI resolves Transmute payment
+    if (s.pendingTransmutePay && s.pendingTransmutePay.caster === 'o') {
+      const pool = s.o.mana;
+      const totalMana = Object.values(pool).reduce((a: number, b: any) => a + (b as number), 0);
+      if (totalMana >= s.pendingTransmutePay.required) {
+        confirmTransmutePay();
+      } else {
+        declineTransmutePay();
+      }
+      return;
+    }
+
     if (s.active !== 'o' || aiRef.current) return;
     // Bail during COMBAT_BLOCKERS so the AI doesn't skip past blocker
     // declaration. When the AI is attacking (active='o'), the player declares
@@ -284,7 +374,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -442,6 +532,13 @@ export function useDuelController(
     passPriority,
     useChannel,
     undoManaTaps,
+    chooseTutor,
+    declineTutor,
+    chooseTutorTransmute,
+    confirmTransmuteSacrifice,
+    declineTransmuteSacrifice,
+    confirmTransmutePay,
+    declineTransmutePay,
 
     // Phase advance
     requestPhaseAdvance,

@@ -103,6 +103,27 @@ dispatch({ type: "USE_CHANNEL", who: "p" }), []);
 const undoManaTaps = useCallback(() =>
 dispatch({ type: "UNDO_MANA_TAPS" }), []);
 
+const chooseTutor = useCallback((iid) =>
+dispatch({ type: 'CHOOSE_TUTOR', iid }), []);
+
+const declineTutor = useCallback(() =>
+dispatch({ type: 'DECLINE_TUTOR' }), []);
+
+const chooseTutorTransmute = useCallback((iid) =>
+dispatch({ type: 'CHOOSE_TUTOR_TRANSMUTE', iid }), []);
+
+const confirmTransmuteSacrifice = useCallback((iid) =>
+dispatch({ type: 'CONFIRM_TRANSMUTE_SACRIFICE', iid }), []);
+
+const declineTransmuteSacrifice = useCallback(() =>
+dispatch({ type: 'DECLINE_TRANSMUTE_SACRIFICE' }), []);
+
+const confirmTransmutePay = useCallback(() =>
+dispatch({ type: 'CONFIRM_TRANSMUTE_PAY' }), []);
+
+const declineTransmutePay = useCallback(() =>
+dispatch({ type: 'DECLINE_TRANSMUTE_PAY' }), []);
+
 return {
 state,
 dispatch,
@@ -129,6 +150,13 @@ openPriorityWindow,
 passPriority,
 useChannel,
 undoManaTaps,
+chooseTutor,
+declineTutor,
+chooseTutorTransmute,
+confirmTransmuteSacrifice,
+declineTransmuteSacrifice,
+confirmTransmutePay,
+declineTransmutePay,
 };
 }
 
