@@ -125,7 +125,7 @@ function computeAvailableMana(state) {
       const color = c.produces?.[0] || 'C';
       pool[color] = (pool[color] || 0) + 1;
     }
-    if (!isLand(c) && !c.tapped && c.activated?.effect?.startsWith('addMana')) {
+    if (!isLand(c) && !c.tapped && !c.summoningSick && c.activated?.effect?.startsWith('addMana')) {
       const ms = c.activated.mana || 'C';
       for (const ch of ms) {
         if ('WUBRGC'.includes(ch)) pool[ch] = (pool[ch] || 0) + 1;
@@ -153,7 +153,7 @@ function buildTapActions(state, cost) {
   };
 
   // Tap artifact mana sources first
-  for (const c of state.o.bf.filter(x => !isLand(x) && !x.tapped && x.activated?.effect?.startsWith('addMana'))) {
+  for (const c of state.o.bf.filter(x => !isLand(x) && !x.tapped && !x.summoningSick && x.activated?.effect?.startsWith('addMana'))) {
     if (vCanPay()) break;
     tapActions.push({ type: 'TAP_ART_MANA', who: 'o', iid: c.iid });
     const ms = c.activated.mana || 'C';
@@ -188,7 +188,7 @@ function planActivatedAbilities(state, profile) {
   const actions = [];
 
   for (const c of state.o.bf) {
-    if (c.tapped) continue;
+    if (c.tapped || c.summoningSick) continue;
 
     // Triskelion-style ping: spend a +1/+1 counter to deal 1 damage.
     if (c.activated?.effect === 'triskelionPing' && (c.counters?.P1P1 || 0) > 0) {
