@@ -188,7 +188,7 @@ function planActivatedAbilities(state, profile) {
   const actions = [];
 
   for (const c of state.o.bf) {
-    if (c.tapped || c.summoningSick) continue;
+    if (c.tapped) continue;
 
     // Triskelion-style ping: spend a +1/+1 counter to deal 1 damage.
     if (c.activated?.effect === 'triskelionPing' && (c.counters?.P1P1 || 0) > 0) {

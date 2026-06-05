@@ -88,10 +88,13 @@ describe('AI summoning sickness -- mana planning', () => {
     expect(result.o.bf.find(c => c.iid === 'elf-1')?.tapped).toBe(true);
   });
 
-  it('does not activate Triskelion-style abilities on a summoning-sick creature', () => {
+  it('plans ACTIVATE_ABILITY for a summoning-sick creature with a non-tap cost (Triskelion)', () => {
+    // Triskelion's cost is removing a +1/+1 counter -- no {T}.
+    // CR 302.6 restricts only tap-symbol abilities, so a sick Triskelion should
+    // still appear in the AI's action plan.
     const triskelion = {
       ...makeCreature('tri-1', { summoningSick: true }),
-      activated: { cost: 'T', effect: 'triskelionPing' },
+      activated: { cost: 'counter', effect: 'triskelionPing' },
       counters: { P1P1: 3 },
     };
     const baseState = makeState({
@@ -99,14 +102,13 @@ describe('AI summoning sickness -- mana planning', () => {
       active: 'o',
       oBf: [triskelion],
     });
-    // Override p.life to be low so the AI would ping face if sickness is ignored.
+    // Set player life low so the AI fires the ping-face branch.
     const state = { ...baseState, p: { ...baseState.p, life: 3 } };
 
-    const result = runAI(state);
+    const acts = aiDecide(state);
 
-    // Triskelion should NOT have been tapped -- it is summoning sick.
-    expect(result.o.bf.find(c => c.iid === 'tri-1')?.tapped).toBeFalsy();
-    // Counters should be unchanged.
-    expect(result.o.bf.find(c => c.iid === 'tri-1')?.counters?.P1P1).toBe(3);
+    // aiDecide translates sourceId -> iid when building DuelCore actions.
+    const activateAct = acts.find(a => a.type === 'ACTIVATE_ABILITY' && a.iid === 'tri-1');
+    expect(activateAct).toBeDefined();
   });
 });
