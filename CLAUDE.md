@@ -530,6 +530,12 @@ pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
 | `CONFIRM_TRANSMUTE_PAY` | `{}` | Player pays mana difference; drains pool; artifact ETBs |
 | `DECLINE_TRANSMUTE_PAY` | `{}` | Player declines payment; mana restored; tutored card -> GY |
 
+### TransmutePayModal display
+- Layout: compact `position: fixed; top: 0; left: 0; right: 0` banner. No full-screen overlay -- battlefield remains tappable behind it.
+- Paid counter: shows `totalNow` (sum of all mana currently in pool). Pre-existing pool mana counts toward payment, matching the engine's `CONFIRM_TRANSMUTE_PAY` validation (`totalMana >= required`).
+- `canConfirm = paid >= required`. Aligns with engine check -- no divergence possible.
+- `snapshotMana` is still passed and used to gate the Undo Tap button (non-null means taps exist to undo). It is no longer used for the paid/available calculation.
+
 ---
 
 ## Reference Documents
