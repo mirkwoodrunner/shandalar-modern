@@ -115,6 +115,30 @@ Never use `Math.random()` in gameplay logic. All randomness routes through the s
 Do not introduce smart quotes (`""`), em-dashes (`—`), or any non-ASCII characters
 into `.js` or `.jsx` files.
 
+### Claude Code Hooks
+
+Five hooks enforce project rules automatically. They live in `.claude/hooks/` and are
+registered in `.claude/settings.json`. All hooks are shell scripts; make them executable
+with `chmod +x .claude/hooks/*.sh`.
+
+| Hook | Type | Fires on | Behaviour |
+|---|---|---|---|
+| `pre-edit-engine-guard.sh` | PreToolUse | Edit/Write/Create | Blocks writes to protected engine/data files. To override, include `ENGINE FILE EDIT APPROVED` (case-insensitive) in the prompt. Hard block (exit 2). |
+| `pre-edit-screen-controller-redirect.sh` | PreToolUse | Edit/Write/Create | Warns when controller-scope logic (AI loop, priority window, phase dispatch) is detected in `DuelScreen.tsx` or `DuelScreenMobile.tsx`. Non-blocking -- a confirmation prompt. |
+| `post-edit-dual-screen-parity.sh` | PostToolUse | Edit/Write/Create | After edits to either screen file, diffs their `useDuelController` import lists and emits a parity checklist on divergence. Non-blocking. |
+| `post-edit-documentation-gate.sh` | PostToolUse | Edit/Write/Create | After any `src/` edit, checks git working tree for doc file changes. Prints the documentation checklist if none are found. Non-blocking. |
+| `post-edit-encoding-hygiene.sh` | PostToolUse | Edit/Write/Create | After any JS/TS file edit, scans for raw emoji, smart quotes, and em/en-dashes. Prints offending lines with line numbers. Non-blocking. |
+
+**Engine guard opt-in:** When a prompt legitimately requires editing a protected file,
+include the phrase `ENGINE FILE EDIT APPROVED` anywhere in the prompt text. The hook
+reads prompt context from `$CLAUDE_PROMPT` / `$CLAUDE_TASK` / `$CLAUDE_SYSTEM`.
+
+**Hook failure:** If a hook script errors internally, Claude Code logs the error and
+continues -- hooks are advisory infrastructure, not a hard dependency of the build.
+
+**Adding hooks:** Register new scripts in `.claude/settings.json` under the appropriate
+`PreToolUse` or `PostToolUse` array. Use the `matcher` field to scope by tool name.
+
 ### Mobile/Desktop Isolation
 All mobile UI changes must be scoped behind `isMobile` guards or `@media` rules.
 Mobile changes must not impact the desktop experience. Desktop changes must not break mobile.
