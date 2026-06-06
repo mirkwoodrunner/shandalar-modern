@@ -89,12 +89,14 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
               s === 'DUNGEON' ? 'ow-plaque-dungeon' : '',
               s === 'CASTLE'  ? 'ow-plaque-castle'  : '',
               s === 'CASTLE' && castleDefeated ? 'ow-plaque-castle-defeated' : '',
+              s === 'RUIN'    ? 'ow-plaque-ruin'    : '',
             ].join(' ').trim()}
             style={plaqueStyle}
           >
             {s === 'TOWN'    && '\u{1F3D8}'}
             {s === 'DUNGEON' && '⚔'}
             {s === 'CASTLE'  && (castleDefeated ? '\u{1F3DA}' : '\u{1F3F0}')}
+            {s === 'RUIN'    && '\u{1F3DB}'}
           </div>
 
           {s === 'TOWN' && tile.townData?.name && (
@@ -302,6 +304,14 @@ const OW_STYLES = `
   box-shadow:
     0 0 0 1.5px rgba(80,70,55,.60),
     0 0 0 2px rgba(0,0,0,.70);
+}
+
+.ow-plaque-ruin {
+  background: radial-gradient(circle at 35% 30%, #2a2520, #0f0d0b 75%);
+  box-shadow:
+    0 0 0 1.5px rgba(140,120,90,.55),
+    0 0 0 3px rgba(0,0,0,.65),
+    0 1px 3px rgba(0,0,0,.80);
 }
 
 .ow-label {
@@ -546,7 +556,7 @@ border:"1px solid rgba(200,160,60,.2)", fontSize:10, color:"#8a7050",
 fontFamily:"'Cinzel',serif",
 }}>
 <div style={{ marginBottom:4, fontSize:9, color:"#6a5030", letterSpacing:1 }}>LEGEND</div>
-{[['\u{1F9D9}','You'],['\u{1F3D8}','Town'],['⚔','Dungeon'],['\u{1F3F0}','Castle']].map(([ic, lb]) => (
+{[['\u{1F9D9}','You'],['\u{1F3D8}','Town'],['⚔','Dungeon'],['\u{1F3F0}','Castle'],['\u{1F3DB}','Ruins']].map(([ic, lb]) => (
 <div key={lb} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
 <span style={{ fontSize:12 }}>{ic}</span>{lb}
 </div>

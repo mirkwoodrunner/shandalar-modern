@@ -931,4 +931,106 @@ return (
 );
 }
 
-export default { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen };
+// --- RUIN MODAL ---------------------------------------------------------------
+
+export function RuinModal({ ruin, onClose, onLoot, onGuardianFight }) {
+  const MODAL_BG = {
+    position: 'fixed', inset: 0,
+    background: 'rgba(0,0,0,.82)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 300,
+    fontFamily: "'Cinzel',serif",
+  };
+  const PANEL = {
+    width: 380, maxWidth: '94vw',
+    background: 'linear-gradient(160deg,#1a1610,#0e0c08)',
+    border: '2px solid rgba(140,120,90,.45)',
+    borderRadius: 10,
+    padding: '28px 28px 24px',
+    boxShadow: '0 0 50px rgba(0,0,0,.9)',
+  };
+  const TITLE = {
+    fontSize: 20, color: '#c0a878',
+    fontFamily: "'Cinzel Decorative',serif",
+    marginBottom: 6, letterSpacing: 1,
+  };
+  const SUBTITLE = {
+    fontSize: 11, color: '#7a6848',
+    marginBottom: 18, letterSpacing: 1,
+    textTransform: 'uppercase',
+  };
+  const BODY = {
+    fontSize: 13, color: '#b09870',
+    fontFamily: "'Crimson Text',serif",
+    lineHeight: 1.6, marginBottom: 22,
+  };
+  const BTN_PRIMARY = {
+    background: 'linear-gradient(135deg,#2a2010,#3a2e18)',
+    border: '1.5px solid rgba(160,130,80,.55)',
+    color: '#d0b068', padding: '10px 22px',
+    borderRadius: 5, cursor: 'pointer',
+    fontSize: 12, fontFamily: "'Cinzel',serif",
+    letterSpacing: 1, marginRight: 10,
+  };
+  const BTN_SECONDARY = {
+    background: 'transparent',
+    border: '1px solid rgba(120,100,70,.3)',
+    color: '#7a6040', padding: '10px 22px',
+    borderRadius: 5, cursor: 'pointer',
+    fontSize: 12, fontFamily: "'Cinzel',serif",
+    letterSpacing: 1,
+  };
+
+  if (ruin.looted) {
+    return (
+      <div style={MODAL_BG}>
+        <div style={PANEL}>
+          <div style={TITLE}>{ruin.name}</div>
+          <div style={SUBTITLE}>Ancient Ruins</div>
+          <div style={BODY}>
+            These ruins have been picked clean. Dust and silence remain.
+          </div>
+          <button style={BTN_SECONDARY} onClick={onClose}>Leave</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (ruin.hasGuardian) {
+    return (
+      <div style={MODAL_BG}>
+        <div style={PANEL}>
+          <div style={TITLE}>{ruin.name}</div>
+          <div style={SUBTITLE}>Ancient Ruins &mdash; Guardian Present</div>
+          <div style={BODY}>
+            A fearsome guardian lurks among the crumbling stones, defending whatever
+            treasures lie within. You must defeat it before claiming any reward.
+          </div>
+          <button style={BTN_PRIMARY} onClick={onGuardianFight}>
+            {'⚔'} Engage the Guardian
+          </button>
+          <button style={BTN_SECONDARY} onClick={onClose}>Flee</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={MODAL_BG}>
+      <div style={PANEL}>
+        <div style={TITLE}>{ruin.name}</div>
+        <div style={SUBTITLE}>Ancient Ruins</div>
+        <div style={BODY}>
+          Crumbled stone and overgrown archways stretch before you. Something of
+          value may yet lie undisturbed beneath the rubble.
+        </div>
+        <button style={BTN_PRIMARY} onClick={onLoot}>
+          {'\u{1F3DB}'} Search the Ruins
+        </button>
+        <button style={BTN_SECONDARY} onClick={onClose}>Leave</button>
+      </div>
+    </div>
+  );
+}
+
+export default { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen, RuinModal };
