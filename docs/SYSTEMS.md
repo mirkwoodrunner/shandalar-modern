@@ -92,6 +92,9 @@ PlayerState {
 }
 ```
 
+> `exile` — Always exists as a mechanical zone. `ruleset.exileZone` is a
+> UI display flag only and does not gate exile as a destination.
+
 ---
 
 ## 2.3 ManaPool
