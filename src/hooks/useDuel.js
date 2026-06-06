@@ -78,6 +78,9 @@ dispatch({ type: "ACTIVATE_ABILITY", iid, tgt, chosenColor, abilityId }), []);
 const chooseLotusColor = useCallback((color) =>
 dispatch({ type: "CHOOSE_LOTUS_COLOR", color }), []);
 
+const cancelLotus = useCallback(() =>
+dispatch({ type: "CANCEL_LOTUS" }), []);
+
 const setPendingLotus = useCallback(() =>
 dispatch({ type: "SET_PENDING_LOTUS" }), []);
 
@@ -142,6 +145,7 @@ setX,
 mulligan,
 activateAbility,
 chooseLotusColor,
+cancelLotus,
 setPendingLotus,
 applyAiActions,
 resolveChoice,

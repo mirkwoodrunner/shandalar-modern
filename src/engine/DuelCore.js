@@ -2248,6 +2248,7 @@ case "TAP_ART_MANA": {
 }
 
 case "UNDO_MANA_TAPS": {
+  if (s.pendingLotus) return s; // cancel path owns rollback while picker is open
   const snap = s.manaTapSnapshot;
   if (!snap) return s;
   const restoredBf = s.p.bf.map(c => {
@@ -2529,13 +2530,21 @@ case "ACTIVATE_ABILITY": {
     return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
   }
   // Black Lotus: tap, set pendingLotus + pendingLotusIid, UI shows LotusColorPicker.
+  // Sacrifice is deferred to CHOOSE_LOTUS_COLOR so Cancel can restore untapped state.
   if (act.effect === "addMana3Any") {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
-    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingLotus: true, pendingLotusIid: action.iid };
-    if (act.cost?.includes('sac')) {
-      s = zMove(s, action.iid, 'p', 'p', 'gy');
-    }
-    return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
+    const snapshot = s.manaTapSnapshot ?? {
+      pBfTapped: s.p.bf.map(c => ({ iid: c.iid, tapped: c.tapped })),
+      pMana: { ...s.p.mana },
+    };
+    s = {
+      ...s,
+      p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) },
+      pendingLotus: true,
+      pendingLotusIid: action.iid,
+      manaTapSnapshot: snapshot,
+    };
+    return dlog(s, `${card.name} tapped -- choose a color.`, "mana");
   }
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
@@ -2555,10 +2564,27 @@ case "ACTIVATE_ABILITY": {
 }
 
 case "CHOOSE_LOTUS_COLOR": {
+  if (!s.pendingLotusIid) return s;
   const mp = { ...s.p.mana };
   mp[action.color] = (mp[action.color] || 0) + 3;
-  const ns = { ...s, p: { ...s.p, mana: mp }, pendingLotus: false, pendingLotusIid: null };
+  let ns = { ...s, p: { ...s.p, mana: mp }, pendingLotus: false, pendingLotusIid: null, manaTapSnapshot: null };
+  ns = zMove(ns, s.pendingLotusIid, 'p', 'p', 'gy');
   return dlog(ns, `Black Lotus adds 3${action.color}.`, "mana");
+}
+
+case "CANCEL_LOTUS": {
+  if (!s.pendingLotus || !s.pendingLotusIid) return s;
+  const ns = {
+    ...s,
+    p: {
+      ...s.p,
+      bf: s.p.bf.map(c => c.iid === s.pendingLotusIid ? { ...c, tapped: false } : c),
+    },
+    pendingLotus: false,
+    pendingLotusIid: null,
+    manaTapSnapshot: null,
+  };
+  return dlog(ns, "Black Lotus activation cancelled.", "info");
 }
 
 case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true, pendingLotusIid: action.iid };

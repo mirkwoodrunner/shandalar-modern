@@ -1,5 +1,22 @@
 # Current Sprint
 
+## Black Lotus Cancel and Undo Fix (2026-06-06)
+
+### Deliverables
+
+| Feature | File(s) Changed | Status |
+|---------|----------------|--------|
+| Defer sacrifice to CHOOSE_LOTUS_COLOR; remove zMove from ACTIVATE_ABILITY addMana3Any | `src/engine/DuelCore.js` | [x] Done |
+| Add CANCEL_LOTUS action: untaps card, clears pendingLotus, no sacrifice | `src/engine/DuelCore.js` | [x] Done |
+| manaTapSnapshot created in addMana3Any tap so undo button appears | `src/engine/DuelCore.js` | [x] Done |
+| UNDO_MANA_TAPS guards against pendingLotus === true | `src/engine/DuelCore.js` | [x] Done |
+| cancelLotus dispatcher | `src/hooks/useDuel.js` | [x] Done |
+| handleLotusCancel dispatches CANCEL_LOTUS before closing modal | `src/hooks/useDuelController.ts` | [x] Done |
+| Playwright tests (T1,T3-T5 desktop; M1-M2 mobile) | `tests/e2e/lotus-cancel-undo.spec.js` | [x] Done |
+| Documentation | `docs/SYSTEMS.md`, `docs/CURRENT_SPRINT.md`, `docs/MECHANICS_INDEX.md` | [x] Done |
+
+---
+
 ## AI Summoning Sickness Tap Fix (2026-06-05)
 
 ### Deliverables
