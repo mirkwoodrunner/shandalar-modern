@@ -496,6 +496,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     selectTarget(null);
   }, [s, pendingCast, canCastPending, playLand, castSpell, selectCard, selectTarget, setPendingCast]);
 
+  // True when a player-targeted spell (e.g. Ancestral Recall / draw3) is selected in hand.
+  // Activates clickable life totals on both Banners so the player can pick a target.
+  const playerTargetingActive =
+    !!s.selCard &&
+    (() => {
+      const card = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+      return card ? needsExplicitTarget(card) && !isLand(card) : false;
+    })();
+
   // Clear pendingCast if the player deselects the card or selects a different one.
   useEffect(() => {
     if (pendingCast && s.selCard !== pendingCast.cardIid) {
@@ -662,6 +671,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               gy: s.o.gy.length,
             }}
             onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
+            onLifeClick={playerTargetingActive ? () => selectTarget('o') : undefined}
           />
 
           {/* Battlefield: opp + phase ribbon + you */}
@@ -695,6 +705,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               gy: s.p.gy.length,
             }}
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
+            onLifeClick={playerTargetingActive ? () => selectTarget('p') : undefined}
           />
 
           {/* Channel mana button */}

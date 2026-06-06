@@ -168,6 +168,18 @@ All mobile UI changes must be scoped behind `isMobile` guards or `@media` rules.
 Mobile changes must not impact the desktop experience. Desktop changes must not break mobile.
 The `useIsMobile` hook lives at `src/hooks/useIsMobile.ts` (640px breakpoint).
 
+### Player Targeting (draw3 / Ancestral Recall)
+
+When `needsExplicitTarget(card)` is true for a player-targeted effect (draw3),
+`DuelScreen.tsx` passes `onLifeClick` to both Banner components so the opponent
+and player life totals become click targets. The prop is only set when
+`playerTargetingActive` is true (a player-target spell is selected in hand).
+
+`src/ui/Mobile/DuelScreenMobile.tsx` uses `targetingFor` / `pendingTarget` local
+state for the same purpose. Do not merge these paths.
+
+See `docs/MOBILE_VS_PC.md` for the full targeting table.
+
 ### Emoji in JSX
 Emoji in JSX must use Unicode escape expressions to survive rewrites without corruption.
 Example: `{'\u{1F480}'}` not the raw emoji character.

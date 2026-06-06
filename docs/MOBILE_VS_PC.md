@@ -149,6 +149,15 @@ Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helpe
 | `draw3`, `gainLife3`, `gainLifeX`, `tutor`, `drawX` | `state.selTgt ?? 'p'` |
 | All others | `state.selTgt ?? null` |
 
+### Player-target effects (draw3 / Ancestral Recall)
+
+| Mechanism | Desktop (`DuelScreen.tsx`) | Mobile (`DuelScreenMobile.tsx`) |
+|---|---|---|
+| How targeting activates | `playerTargetingActive` computed from `s.selCard` + `needsExplicitTarget()` | `targetingFor` / `pendingTarget` local state set on card tap |
+| Life total affordance | `onLifeClick` passed to desktop `Banner`; renders a `<button aria-label="Target ...">` with `mdTargetPulse` animation wrapping `LifeTotal` | `onLifeClick` on mobile `Banner`; renders a pulsing `<button>` showing the life number |
+| Target dispatch | `selectTarget('o')` or `selectTarget('p')` via `useDuelController` | `selectTarget('o')` or `selectTarget('p')` via `useDuelController` |
+| `handleCast` guard | `if (needsExplicitTarget(card)) { const tgt = s.selTgt ?? null; if (!tgt) return; ... }` | Same guard |
+
 ---
 
 ## OverworldGame (`src/OverworldGame.jsx`)
