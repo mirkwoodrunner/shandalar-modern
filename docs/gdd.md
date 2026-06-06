@@ -137,7 +137,7 @@ START RUN
   └─ Enter procedurally generated Shandalar world map (seeded RNG)
 
 OVERWORLD LOOP
-  ├─ Move wizard token across 32×22 square tile map (BFS pathfinding)
+  ├─ Move wizard token across 64×40 square tile map (BFS pathfinding)
   ├─ Encounter: Monster / Town / Dungeon / Mage Castle / Mana Link Event
   │     └─ Encounters trigger a full DUEL via Phase 2 engine
   ├─ Win duel → gain cards, gold, dungeon clues, gems
@@ -159,12 +159,19 @@ LOSE CONDITIONS:
 ### 3.1 The Overworld Map *(Phase 1 — Complete)*
 
 **Structure:**
-- Procedurally generated **32×22** square tile grid per run *(corrected from 32×20)*
+- Procedurally generated **64×40** square tile grid per run *(enlarged from 32×22 in Sprint 8)*
 - Seeded RNG: mulberry32 algorithm — deterministic, reproducible worlds
 - Terrain types: Plains, Forest, Swamp, Mountain, Island, Water (impassable border region)
-- 8–10 towns per run, named from a 20-name Shandalar lore pool
-- 6–8 dungeons per run, hidden until a sage reveals them
+- 18–22 towns per run, named from a 20-name Shandalar lore pool
+- 14–16 dungeons per run, hidden until a sage reveals them
 - 5 mage castles, each placed in a distinct quadrant to ensure geographic spread
+- 10–14 ruins per run, always visible from generation (no clue required)
+
+**Ruins (10–14 per run):**
+- Scattered ancient structures visible from map generation (no clue required)
+- 33% chance of a tier-2 guardian creature fight on first entry (no ante)
+- Loot on clear: one card (weighted common/uncommon/rare 3:2:1) + 5–15g
+- Once looted, marked as picked clean — re-enterable but no second reward
 - BFS pathfinding for click-to-move; one step executed per click
 - Viewport scrolling (4 directional buttons + Center-on-player) with zoom toggle (1× / 0.8× / 0.6×); mobile devices initialize at 0.6× zoom centered on the player position.
 
@@ -797,7 +804,7 @@ DungeonGenerator   procedural room+corridor layout; seeded RNG; entity placement
 ## 8. Build Phases
 
 ### Phase 1 — Overworld ✅ Complete
-Procedural 32×22 map · BFS pathfinding · fog of war · town modal (5 tabs) · dungeon modal · castle modal · encounter system · mana link events · deck manager · HUD · victory/defeat overlays · title screen
+Procedural 64×40 map · BFS pathfinding · fog of war · town modal (5 tabs) · dungeon modal · castle modal · ruin modal · encounter system · mana link events · deck manager · HUD · victory/defeat overlays · title screen
 
 ### Phase 2 — Duel Engine ✅ Complete
 Ruleset abstraction (3 rulesets) · 6-zone card system · full turn/phase sequence · mana system with burn · 79-card local DB · 17-keyword registry · full combat pipeline · 27 effect handlers (5 stubs) · strategy-aware AI (4 profiles, 6 archetypes) · card tooltip · phase tracker · live mana pool · game log · mulligan (mobile-responsive: 2-row portrait layout, compressed landscape layout) · standalone setup screen

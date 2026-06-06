@@ -180,6 +180,14 @@ World Map, Duel Engine, and Card Database logic must remain strictly separated.
 State transitions between systems (e.g., overworld → duel) must be explicitly defined.
 Do not blur these boundaries.
 
+### Overworld Structure Types
+
+Map size: `MAP_W = 64`, `MAP_H = 40`. Structure counts per run: towns 18-22, dungeons 14-16, castles 5, ruins 10-14.
+
+RUIN structure: `tile.ruinData = { name, looted, hasGuardian }`. Always visible (no `clued` gate).
+Guardian fight uses `context 'ruin_guardian'`; `handleDuelEnd` re-opens ruin modal on win via `setActiveTile` + `setModal('ruin')`.
+Loot draw uses weighted pool: common×3, uncommon×2, rare×1. No dungeon screen — single modal interaction only.
+
 ---
 
 ## Documentation — Required on Every Feature Prompt

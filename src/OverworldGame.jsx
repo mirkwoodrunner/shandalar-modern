@@ -25,7 +25,7 @@ import { spriteForMonster } from './ui/overworld/Sprite.jsx';
 
 // -- UI ------------------------------------------------------------------------
 import { WorldMap, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert } from './ui/overworld/WorldMap.jsx';
-import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen } from './ui/overworld/EncounterModal.jsx';
+import { TownModal, DungeonModal, CastleModal, DeckManager, ScoreScreen, RuinModal } from './ui/overworld/EncounterModal.jsx';
 import PreDuelPopup from './ui/overworld/PreDuelPopup.jsx';
 import PostDuelChoiceModal from './ui/overworld/PostDuelChoiceModal.jsx';
 import WorldMagicPanel from './ui/overworld/WorldMagicPanel.jsx';
@@ -157,7 +157,7 @@ const MAGE_ARCHKEY = {
 // -----------------------------------------------------------------------------
 // HELPER: seed ~40 enemies across the map at generation time
 // -----------------------------------------------------------------------------
-function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId) {
+function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId, mapW, mapH) {
   const candidates = [];
   tiles.forEach(row => row.forEach(t => {
     if (t.terrain === TERRAIN.WATER) return;
@@ -176,7 +176,7 @@ function spawnInitialEnemies(tiles, TERRAIN, MONSTER_TABLE, mkId) {
 
   return spawns.map(t => {
     const mList = MONSTER_TABLE[t.terrain.id] || MONSTER_TABLE.PLAINS;
-    const cx = 16, cy = 11; // MAP_W/2, MAP_H/2
+    const cx = Math.floor(mapW / 2), cy = Math.floor(mapH / 2);
     const dist = Math.abs(t.x - cx) + Math.abs(t.y - cy);
     const tier = dist < 10 ? 1 : dist < 20 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(3, 2 + (Math.random() > 0.7 ? 1 : 0));
     const monster = mList[Math.min(tier - 1, mList.length - 1)];
@@ -371,7 +371,7 @@ const graceMovesRef = useRef(0);
 const duelKeyRef = useRef(0);
 
 // -- Canvas / animation ---------------------------------------------------
-const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId));
+const [enemies, setEnemies]   = useState(() => spawnInitialEnemies(initTiles, TERRAIN, MONSTER_TABLE, mkId, MAP_W, MAP_H));
 const enemyTickRef  = useRef(0);
 const animFrameRef  = useRef(null);
 const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
@@ -729,6 +729,11 @@ if (t.structure) {
     setModal('castle');
     return;
   }
+  if (t.structure === 'RUIN') {
+    addLog(`You approach ${t.ruinData.name}.`, 'event');
+    setModal('ruin');
+    return;
+  }
 }
 
 // Entity encounter — player stepped onto an enemy tile
@@ -1081,6 +1086,23 @@ if (ctx === 'arzakon') {
   }
 }
 
+// -- Ruin guardian -------------------------------------------------------
+if (ctx === 'ruin_guardian') {
+  setPlayer(p => ({ ...p, hp: Math.max(1, finalHP) }));
+  if (won) {
+    const ruinTile = duelCfg.ruinTile;
+    if (ruinTile) {
+      const t = tiles[ruinTile.y]?.[ruinTile.x];
+      if (t) {
+        setActiveTile(t);
+        setModal('ruin');
+      }
+    }
+  } else {
+    addLog(`The guardian drives you back from the ruins.`, 'danger');
+  }
+}
+
 // Clear duel state and reset grace period on overworld re-entry
 graceMovesRef.current = 0;
 setDuelCfg(null);
@@ -1276,6 +1298,53 @@ const handleLearnWorldMagic = useCallback(() => {
 }, [player.gold, worldMagics, addLog]);
 
 // -------------------------------------------------------------------------
+// RUIN HANDLERS
+// -------------------------------------------------------------------------
+
+const handleRuinLoot = useCallback(() => {
+  if (!activeTile?.ruinData || activeTile.ruinData.looted) return;
+
+  const pool = CARD_DB.filter(c => !isLand(c));
+  const weighted = pool.flatMap(c =>
+    c.rarity === 'R' ? [c] : c.rarity === 'U' ? [c, c] : [c, c, c]
+  );
+  const reward = weighted[Math.floor(Math.random() * weighted.length)];
+  const gold = 5 + Math.floor(Math.random() * 11);
+
+  setBinder(b => [...b, { ...reward, iid: mkId() }]);
+  setPlayer(p => ({ ...p, gold: p.gold + gold }));
+
+  setTiles(prev => {
+    const next = prev.map(r => [...r]);
+    const t = next[activeTile.y][activeTile.x];
+    next[activeTile.y][activeTile.x] = {
+      ...t,
+      ruinData: { ...t.ruinData, looted: true },
+    };
+    return next;
+  });
+
+  addLog(`Found ${reward.name} and ${gold}g in the ruins.`, 'success');
+  setModal(null);
+}, [activeTile, addLog]); // eslint-disable-line react-hooks/exhaustive-deps
+
+const handleRuinGuardianFight = useCallback(() => {
+  if (!activeTile?.ruinData) return;
+  const terrain = tiles[activeTile.y]?.[activeTile.x]?.terrain?.id || 'PLAINS';
+  const mList = MONSTER_TABLE[terrain] || MONSTER_TABLE.PLAINS;
+  const guardian = mList[Math.min(1, mList.length - 1)];
+  setModal(null);
+  openEncounterPopup(
+    guardian.archKey,
+    player.hp,
+    'ruin_guardian',
+    null,
+    { ruinTile: { x: activeTile.x, y: activeTile.y } },
+    { monsterName: `${activeTile.ruinData.name} Guardian`, tier: 2 }
+  );
+}, [activeTile, tiles, player.hp, openEncounterPopup]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// -------------------------------------------------------------------------
 // DUNGEON ENTER
 // -------------------------------------------------------------------------
 
@@ -1451,8 +1520,8 @@ addLog(`Moved ${card.name} to binder.`, 'info');
 
 const handleScroll = useCallback((dir) => {
 setViewOfs(v => ({
-x: Math.max(0, Math.min(32 - 1, v.x + (dir === 'left' ? -3 : dir === 'right' ? 3 : 0))),
-y: Math.max(0, Math.min(22 - 1, v.y + (dir === 'up' ? -3 : dir === 'down' ? 3 : 0))),
+x: Math.max(0, Math.min(MAP_W - 1, v.x + (dir === 'left' ? -3 : dir === 'right' ? 3 : 0))),
+y: Math.max(0, Math.min(MAP_H - 1, v.y + (dir === 'up' ? -3 : dir === 'down' ? 3 : 0))),
 }));
 }, []);
 
@@ -1927,6 +1996,7 @@ fontFamily: "'Crimson Text', serif",
                 {t.structure === 'TOWN'   ? t.townData?.name :
                  t.structure === 'CASTLE' ? `${t.castleData?.mage}'s stronghold` :
                  t.structure === 'DUNGEON'? t.dungeonData?.name :
+                 t.structure === 'RUIN'   ? t.ruinData?.name :
                  t.terrain.label}
               </div>
               <div style={{ fontSize: 10, color: '#6a5020', marginTop: 3 }}>
@@ -2094,6 +2164,15 @@ fontFamily: "'Crimson Text', serif",
       castleData={activeTile.castleData}
       onClose={() => setModal(null)}
       onChallenge={handleChallenge}
+    />
+  )}
+
+  {modal === 'ruin' && activeTile?.ruinData && (
+    <RuinModal
+      ruin={activeTile.ruinData}
+      onClose={() => setModal(null)}
+      onLoot={handleRuinLoot}
+      onGuardianFight={handleRuinGuardianFight}
     />
   )}
 

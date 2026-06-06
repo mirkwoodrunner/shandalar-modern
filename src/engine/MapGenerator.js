@@ -9,8 +9,8 @@
 
 // --- CONSTANTS ----------------------------------------------------------------
 
-export const MAP_W = 32;
-export const MAP_H = 22;
+export const MAP_W = 64;
+export const MAP_H = 40;
 
 export const TERRAIN = {
 PLAINS:   { id:"PLAINS",   color:"#b5c87a", label:"Plains",   icon:"🌾",  moveC:1,  mana:"W" },
@@ -178,6 +178,13 @@ const DUNGEON_POOL = [
 "Forgotten Catacombs","The Spiral Descent","Lair of the Wyrm","The Iron Labyrinth",
 ];
 
+const RUIN_POOL = [
+  "Crumbled Watchtower", "Sunken Shrine", "Forsaken Outpost",
+  "The Broken Arch", "Shattered Sanctum", "Overgrown Citadel",
+  "Collapsed Vault", "The Rusted Gate", "Ancient Foundations",
+  "Weathered Obelisk", "The Fallen Keep", "Dusty Reliquary",
+];
+
 const GUILD_QUESTS = [
 { id:"q1", title:"Purge the Risen",  desc:"Defeat undead creatures in the nearby swamp.",        rewardId:"swords",       rewardType:"card", rewardGold:0  },
 { id:"q2", title:"Recover the Tome", desc:"Retrieve the lost tome from a dungeon.",              rewardId:null,           rewardType:"gold", rewardGold:60 },
@@ -273,6 +280,7 @@ const v = rng();
     townData: null,
     dungeonData: null,
     castleData: null,
+    ruinData: null,
     encChance: 0.11 + dist * 0.14,
   };
 }
@@ -298,9 +306,9 @@ if (ok) return { x, y };
 return null;
 };
 
-// -- Towns (8?10) ---------------------------------------------------------
+// -- Towns (18-22) --------------------------------------------------------
 const townNames = [...TOWN_POOL].sort(() => rng() - 0.5);
-const townCount = 8 + Math.floor(rng() * 3);
+const townCount = 18 + Math.floor(rng() * 5);
 for (let i = 0; i < townCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 3);
 if (!p) continue;
@@ -354,9 +362,9 @@ for (let i = 0; i < townTiles.length; i++) {
   }
 }
 
-// -- Dungeons (6?8) -------------------------------------------------------
+// -- Dungeons (14-16) -----------------------------------------------------
 const dungeonNames = [...DUNGEON_POOL].sort(() => rng() - 0.5);
-const dungeonCount = 6 + Math.floor(rng() * 3);
+const dungeonCount = 14 + Math.floor(rng() * 3);
 for (let i = 0; i < dungeonCount; i++) {
 const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 4);
 if (!p) continue;
@@ -372,6 +380,21 @@ domColor: COLORS[Math.floor(rng() * 5)],
 loot: [], // populated by caller with rare cards
 clued: false, // hidden until a sage or post-duel clue reveals it
 };
+}
+
+// -- Ruins (10-14) --------------------------------------------------------
+const ruinNames = [...RUIN_POOL].sort(() => rng() - 0.5);
+const ruinCount = 10 + Math.floor(rng() * 5);
+for (let i = 0; i < ruinCount; i++) {
+  const p = spot(2, MAP_W - 2, 2, MAP_H - 2, 3);
+  if (!p) continue;
+  claim(p.x, p.y);
+  tiles[p.y][p.x].structure = 'RUIN';
+  tiles[p.y][p.x].ruinData = {
+    name: ruinNames[i] || `Ruin${i}`,
+    looted: false,
+    hasGuardian: rng() < 0.33,
+  };
 }
 
 // -- Mage Castles (5 ? one per quadrant + center) --------------------------
