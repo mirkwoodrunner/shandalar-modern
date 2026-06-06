@@ -1,5 +1,11 @@
 # Current Sprint
 
+## Bug Fixes (2026-06-06)
+
+- Fix: `viewOfs` now initializes to `{ x: startX, y: startY }` so the map centers on the player at game start instead of defaulting to tile (0,0). (`src/OverworldGame.jsx`)
+
+---
+
 ## Black Lotus Cancel and Undo Fix (2026-06-06)
 
 ### Deliverables
