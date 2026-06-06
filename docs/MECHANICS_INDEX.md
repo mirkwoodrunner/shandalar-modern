@@ -1474,4 +1474,14 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 - Added `!c.summoningSick` / `c.summoningSick` guard to all three sites in `AI.js`.
 - Regression test: `src/engine/__tests__/AI.summoningSick.tap.test.js`
 
+### Fix: Black Lotus cancel sacrifices card before color pick (BL-CANCEL-1)
+
+- `ACTIVATE_ABILITY` `addMana3Any` branch called `zMove` immediately, sacrificing Lotus before the color picker opened. Cancel had no way to restore it.
+- Fix: removed `zMove` from `ACTIVATE_ABILITY`; sacrifice moved into `CHOOSE_LOTUS_COLOR` (after player confirms a color).
+- New `CANCEL_LOTUS` action untaps the card and clears `pendingLotus`/`pendingLotusIid` with no mana added and no sacrifice.
+- `UNDO_MANA_TAPS` now returns `s` unchanged when `pendingLotus === true`; cancel path owns rollback while picker is open.
+- `manaTapSnapshot` now taken during `addMana3Any` tap so the undo button appears after Lotus activation.
+- `handleLotusCancel` in `useDuelController.ts` dispatches `CANCEL_LOTUS` before closing the modal.
+- Playwright tests: `tests/e2e/lotus-cancel-undo.spec.js` (T1, T3-T5 desktop; M1-M2 mobile).
+
 # End of MECHANICS INDEX v1.5

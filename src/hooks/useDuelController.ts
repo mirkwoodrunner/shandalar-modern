@@ -115,6 +115,7 @@ export function useDuelController(
     mulligan,
     activateAbility,
     chooseLotusColor,
+    cancelLotus,
     applyAiActions,
     openPriorityWindow,
     passPriority,
@@ -407,8 +408,9 @@ export function useDuelController(
   }, [chooseLotusColor]);
 
   const handleLotusCancel = useCallback(() => {
+    cancelLotus();
     setShowLotus(false);
-  }, []);
+  }, [cancelLotus]);
 
   // ── Battlefield click routing ──────────────────────────────────────────────
   // Single entry point for all battlefield card clicks. Both DuelScreen and
@@ -525,6 +527,7 @@ export function useDuelController(
     mulligan,
     activateAbility,
     chooseLotusColor,
+    cancelLotus,
     applyAiActions,
     resolveChoice,
     resolveUpkeepChoice,

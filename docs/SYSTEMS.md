@@ -1521,9 +1521,20 @@ Snapshot of player battlefield tap states and mana pool taken immediately before
 ## 30.3 Snapshot Lifecycle
 
 - Taken on the first `TAP_LAND` or `TAP_ART_MANA` action by the player when `stack.length === 0` (stack must be empty; replaces the old `spellsThisTurn === 0` guard)
-- Cleared by: `CAST_SPELL`, `ADVANCE_PHASE`, `CLEANUP` phase entry, or `UNDO_MANA_TAPS`
+- Also taken by `ACTIVATE_ABILITY` `addMana3Any` (Black Lotus) at tap time, before the color picker opens
+- Cleared by: `CAST_SPELL`, `ADVANCE_PHASE`, `CLEANUP` phase entry, `UNDO_MANA_TAPS`, `CHOOSE_LOTUS_COLOR`, or `CANCEL_LOTUS`
 - A new snapshot is taken after any spell resolves and drains the stack to zero, enabling undo for subsequent taps
 - AI taps (`action.who === 'o'`) never create or affect the snapshot
+- `UNDO_MANA_TAPS` is blocked (returns state unchanged) when `pendingLotus === true`; `CANCEL_LOTUS` owns rollback in that window
+
+## 30.4 Black Lotus Activation Flow
+
+| Action | Effect on Lotus | Effect on manaTapSnapshot |
+|---|---|---|
+| `ACTIVATE_ABILITY` (addMana3Any) | Taps card; sets `pendingLotus`, `pendingLotusIid` | Created (if null) |
+| `CHOOSE_LOTUS_COLOR` | Sacrifices via zMove; clears `pendingLotus` | Cleared (set to null) |
+| `CANCEL_LOTUS` | Untaps card; clears `pendingLotus` | Cleared (set to null) |
+| `UNDO_MANA_TAPS` | Blocked while `pendingLotus === true` | Unchanged |
 
 ---
 
