@@ -33,24 +33,51 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
     : 'linear-gradient(90deg, rgba(20,40,10,.5), rgba(14,28,6,.3), rgba(20,40,10,.5))';
 
   return (
-    <div style={{
-      flexShrink: 0,
-      padding: (isMobile || compact) ? '4px 8px' : '8px 14px',
-      background: bg,
-      borderTop: `1px solid ${borderColor}`,
-      borderBottom: `1px solid ${borderColor}`,
-      display: 'flex',
-      alignItems: 'center',
-      gap: (isMobile || compact) ? 8 : 16,
-    }}>
-      <LifeTotal
-        life={player.life}
-        max={player.max}
-        label={isOpp ? 'Opponent' : 'You'}
-        side={side}
-        anim={player.lifeAnim}
-        onClick={onLifeClick}
-      />
+    <div
+      data-testid={isOpp ? 'banner-opp' : 'banner-you'}
+      style={{
+        flexShrink: 0,
+        padding: (isMobile || compact) ? '4px 8px' : '8px 14px',
+        background: bg,
+        borderTop: `1px solid ${borderColor}`,
+        borderBottom: `1px solid ${borderColor}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: (isMobile || compact) ? 8 : 16,
+      }}
+    >
+      {onLifeClick ? (
+        <button
+          onClick={onLifeClick}
+          title={`Target ${isOpp ? 'opponent' : 'yourself'}`}
+          aria-label={`Target ${isOpp ? 'opponent' : 'yourself'}`}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,100,60,.5)',
+            borderRadius: 3,
+            cursor: 'pointer',
+            padding: 0,
+            animation: 'mdTargetPulse 1.2s ease-in-out infinite',
+          }}
+        >
+          <LifeTotal
+            life={player.life}
+            max={player.max}
+            label={isOpp ? 'Opponent' : 'You'}
+            side={side}
+            anim={player.lifeAnim}
+          />
+        </button>
+      ) : (
+        <LifeTotal
+          life={player.life}
+          max={player.max}
+          label={isOpp ? 'Opponent' : 'You'}
+          side={side}
+          anim={player.lifeAnim}
+          onClick={onLifeClick}
+        />
+      )}
       <ZoneCount label="Library" count={player.lib} glyph="📚" />
       <ZoneCount label="Graveyard" count={player.gy} glyph="⚰" onClick={onGraveyardClick} />
 

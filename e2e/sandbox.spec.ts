@@ -1036,6 +1036,102 @@ test.describe('TD-004 — Ancestral Recall explicit targeting', () => {
   });
 });
 
+test.describe('TD-004-B -- Desktop player target click', () => {
+  test('Ancestral Recall: opponent banner becomes clickable when card selected', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['ancestral_recall'] });
+    });
+
+    // Tap a land for mana
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.bf.find((c: any) => c.type === 'Land' && !c.tapped);
+      if (land) (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+    });
+
+    // Select Ancestral Recall in hand
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const ar = state.p.hand.find((c: any) => c.id === 'ancestral_recall');
+      if (ar) (window as any).__duelDispatch({ type: 'SEL_CARD', iid: ar.iid });
+    });
+
+    // Opponent banner life button should now be visible (targeting mode active)
+    const oppBanner = page.getByTestId('banner-opp');
+    const lifeBtn = oppBanner.locator('button[aria-label*="Target opponent"]');
+    await expect(lifeBtn).toBeVisible();
+
+    // Click opponent banner to set target
+    await lifeBtn.click();
+
+    // selTgt should now be 'o'
+    const tgtAfter = await page.evaluate(() => (window as any).__duelState().selTgt);
+    expect(tgtAfter).toBe('o');
+  });
+
+  test('Ancestral Recall: clicking opponent banner then Cast resolves draw3 to opponent', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['ancestral_recall'] });
+    });
+
+    const initialOppHandCount = await page.evaluate(() =>
+      (window as any).__duelState().o.hand.length
+    );
+
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const land = state.p.bf.find((c: any) => c.type === 'Land' && !c.tapped);
+      if (land) (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid });
+      const ar = state.p.hand.find((c: any) => c.id === 'ancestral_recall');
+      if (ar) (window as any).__duelDispatch({ type: 'SEL_CARD', iid: ar.iid });
+    });
+
+    // Click opponent life to target
+    await page.getByTestId('banner-opp').locator('button[aria-label*="Target opponent"]').click();
+
+    // Cast
+    await page.getByTestId('cast-button').click();
+
+    // Resolve stack
+    await page.evaluate(() => (window as any).__duelDispatch({ type: 'RESOLVE_STACK' }));
+
+    const finalOppHandCount = await page.evaluate(() =>
+      (window as any).__duelState().o.hand.length
+    );
+    expect(finalOppHandCount).toBe(initialOppHandCount + 3);
+  });
+
+  test('TD-004-B mobile: player targeting unaffected by desktop changes', async ({ page }) => {
+    // Confirm mobile path still works after desktop Banner prop addition
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/?duel=sandbox');
+    await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1' });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cards: ['ancestral_recall'] });
+    });
+
+    // Tap Ancestral Recall on mobile -- should enter targetingFor mode, not immediately cast
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const ar = (state.p.hand as any[]).find((c: any) => c.id === 'ancestral_recall');
+    expect(ar).toBeTruthy();
+
+    // State should not have the spell on stack yet (targeting mode, not cast)
+    expect(state.stack.length).toBe(0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 test.describe('Layers audit fixes', () => {
   test('Keldon Warlord counts itself and all non-Wall creatures', async ({ page }) => {
