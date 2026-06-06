@@ -346,7 +346,7 @@ const [log, setLog]             = useState(() => {
 });
 
 // -- Viewport -------------------------------------------------------------
-const [viewOfs, setViewOfs]   = useState({ x: 0, y: 0 });
+const [viewOfs, setViewOfs]   = useState({ x: startX, y: startY });
 const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth <= 768;
 
 // -- Mobile layout --------------------------------------------------------
