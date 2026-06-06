@@ -310,6 +310,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
     handleBfClick,
     pendingCast, setPendingCast, canCastPending,
+    pendingActivate, setPendingActivate,
+    activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
   } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
 
   const s = state;
@@ -320,7 +322,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Local UI state --------------------------------------------------------
   const [tooltip, setTooltip] = useState<{ card: any; pos: { x: number; y: number } } | null>(null);
-  const [pendingActivate, setPendingActivate] = useState<any | null>(null);
   const [showBop, setShowBop] = useState(false);
   const [graveyardPopover, setGraveyardPopover] = useState<{
     open: boolean; player: string | null; mode: string;
@@ -376,23 +377,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     activateAbility(card.iid, null, null, abilityId);
   }, [abilityMenu, activateAbility, tapLand, selectCard]);
 
-  // -- Activated ability handler (defined before handleCardClick) ------------
-  const handleActivate = useCallback((card: any) => {
-    // Never allow player to activate opponent-controlled cards.
-    const playerOwns = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
-    if (!playerOwns) return;
-
-    // Cards with activatedAbilities array use the AbilityMenu popover.
-    if (card.activatedAbilities) { setAbilityMenu({ card }); return; }
-    if (!card.activated) return;
-    const { effect } = card.activated;
-    if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
-    if (effect === 'addMana3Any') { activateAbility(card.iid, null); setShowLotus(true); setPendingActivate(card); return; }
-    if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower'].includes(effect)) {
-      setPendingActivate(card); selectCard(card.iid); return;
-    }
-    activateAbility(card.iid, null);
-  }, [activateAbility, selectCard, s.p.bf]);
+  // handleActivate is now provided by useDuelController.
 
   // -- Card click dispatcher -------------------------------------------------
   const handleCardClick = useCallback((card: any, zone: string) => {
@@ -426,7 +411,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         ? (s.p.hand as any[]).some((c: any) => c.iid === s.selCard)
         : false;
       if (!handSpellSelected) {
-        if ((card as any).activatedAbilities) { handleActivate(card); return; }
+        if ((card as any).activatedAbilities) { setAbilityMenu({ card }); return; }
         if (card.activated) { handleActivate(card); return; }
       }
       selectTarget(card.iid);
@@ -496,14 +481,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     selectTarget(null);
   }, [s, pendingCast, canCastPending, playLand, castSpell, selectCard, selectTarget, setPendingCast]);
 
-  // True when a player-targeted spell (e.g. Ancestral Recall / draw3) is selected in hand.
+  // True when a player-targeted spell or ping-type ability is active.
   // Activates clickable life totals on both Banners so the player can pick a target.
   const playerTargetingActive =
-    !!s.selCard &&
-    (() => {
+    (!!s.selCard && (() => {
       const card = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
       return card ? needsExplicitTarget(card) && !isLand(card) : false;
-    })();
+    })()) ||
+    activateCanTargetPlayer;
 
   // Clear pendingCast if the player deselects the card or selects a different one.
   useEffect(() => {
@@ -671,7 +656,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               gy: s.o.gy.length,
             }}
             onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
-            onLifeClick={playerTargetingActive ? () => selectTarget('o') : undefined}
+            onLifeClick={
+              playerTargetingActive
+                ? () => activateCanTargetPlayer ? handleActivateWithPlayerTarget('o') : selectTarget('o')
+                : undefined
+            }
           />
 
           {/* Battlefield: opp + phase ribbon + you */}
@@ -705,7 +694,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               gy: s.p.gy.length,
             }}
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
-            onLifeClick={playerTargetingActive ? () => selectTarget('p') : undefined}
+            onLifeClick={
+              playerTargetingActive
+                ? () => activateCanTargetPlayer ? handleActivateWithPlayerTarget('p') : selectTarget('p')
+                : undefined
+            }
           />
 
           {/* Channel mana button */}

@@ -17,7 +17,7 @@
 import { ARCHETYPES } from '../data/cards.js';
 import KEYWORDS from '../data/keywords.js';
 import {
-  isLand, isCre, isInst, isSort,
+  isLand, isCre, isInst, isSort, isArt,
   getBF, getPow, getTou, canBlockDuel,
   canPay, parseMana,
 } from './DuelCore.js';
@@ -340,7 +340,20 @@ function selectTarget(card, state, profile, xVal = null) {
   const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
     'destroyArtifact','destroyArtOrEnch'].includes(card.effect);
   if (isRemoval) {
-    const threats = state.p.bf.filter(isCre);
+    let threats = state.p.bf.filter(isCre);
+
+    // Respect card restrictions so the AI never selects an illegal target.
+    if (card.restriction === 'nonArtifactNonBlack') {
+      threats = threats.filter(t => t.color !== 'B' && !isArt(t));
+    } else if (card.restriction === 'nonBlack') {
+      threats = threats.filter(t => t.color !== 'B');
+    }
+
+    // destroyTapped: only tapped creatures are legal targets.
+    if (card.effect === 'destroyTapped') {
+      threats = threats.filter(t => t.tapped);
+    }
+
     if (!threats.length) return null;
     const target = threats.reduce((a, b) =>
       scoreThreat(a, state) >= scoreThreat(b, state) ? a : b
@@ -483,6 +496,18 @@ function evaluateAndCast(playable, spellTargets, virtualState, profile) {
     ...nextVirtual,
     o: { ...nextVirtual.o, mana: poolAfterCast },
   };
+
+  // Gate mana-producing spells: only cast if at least one additional spell
+  // becomes affordable in the post-cast virtual state.
+  if (card.effect === 'addMana') {
+    const postCastPlayable = selectPlayableCards(nextVirtual, 'MAIN');
+    const hasFollowUp = postCastPlayable.some(p => {
+      if (p.card.effect === 'addMana') return false;
+      const { affordable } = buildTapActions(nextVirtual, p.effectiveCost);
+      return affordable;
+    });
+    if (!hasFollowUp) return null;
+  }
 
   return {
     actions: [{

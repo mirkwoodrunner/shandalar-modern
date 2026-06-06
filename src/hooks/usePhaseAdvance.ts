@@ -3,6 +3,15 @@ import { PHASE } from '../engine/phases.js';
 
 const PRIORITY_WINDOW_PHASES = new Set([PHASE.MAIN_1, PHASE.MAIN_2, PHASE.END]);
 
+// Phases where the priority window also opens for non-mana activated abilities.
+const ABILITY_PRIORITY_PHASES = new Set([
+  PHASE.MAIN_1,
+  PHASE.MAIN_2,
+  PHASE.END,
+  PHASE.COMBAT_ATTACKERS,
+  PHASE.COMBAT_BLOCKERS,
+]);
+
 function handHasInstant(hand: any[]): boolean {
   return hand.some((c: any) => c.type === 'Instant' || c.type === 'Interrupt');
 }
@@ -24,15 +33,23 @@ export function usePhaseAdvance(
     if (s.priorityWindow) return;
     // Stack is non-empty: do nothing here. The priorityWindow useEffect in DuelScreen handles it.
     if (s.stack && s.stack.length > 0) return;
-    if (!PRIORITY_WINDOW_PHASES.has(s.phase)) {
+
+    const inSpellPriorityPhase = PRIORITY_WINDOW_PHASES.has(s.phase);
+    const inAbilityPriorityPhase = ABILITY_PRIORITY_PHASES.has(s.phase);
+
+    if (!inAbilityPriorityPhase) {
       advancePhase();
       return;
     }
-    const anyOptions =
-      handHasInstant(s.p.hand) ||
-      handHasInstant(s.o.hand) ||
-      bfHasActivated(s.p.bf) ||
-      bfHasActivated(s.o.bf);
+
+    const hasInstants = handHasInstant(s.p.hand) || handHasInstant(s.o.hand);
+    const hasActivated = bfHasActivated(s.p.bf) || bfHasActivated(s.o.bf);
+
+    // In non-spell phases (combat), only open window if there are activated abilities.
+    const anyOptions = inSpellPriorityPhase
+      ? (hasInstants || hasActivated)
+      : hasActivated;
+
     if (anyOptions) {
       openPriorityWindow();
     } else {

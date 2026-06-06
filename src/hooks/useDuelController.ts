@@ -157,6 +157,7 @@ export function useDuelController(
   const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
   const [pendingCast, setPendingCast] = useState<{ cardIid: string; target: string | null } | null>(null);
+  const [pendingActivate, setPendingActivate] = useState<any | null>(null);
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
@@ -466,6 +467,34 @@ export function useDuelController(
     pendingBlockerIid, declareBlocker, declareAttacker,
   ]);
 
+  // ── Activated ability helpers ──────────────────────────────────────────────
+
+  // Effects that target any target (creature or player).
+  const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set(['ping', 'damage1', 'damage2', 'damage3']);
+
+  const activateCanTargetPlayer: boolean =
+    pendingActivate != null &&
+    PLAYER_TARGETABLE_ABILITY_EFFECTS.has(pendingActivate.activated?.effect);
+
+  const handleActivateWithPlayerTarget = useCallback((playerKey: 'p' | 'o') => {
+    if (!pendingActivate) return;
+    activateAbility(pendingActivate.iid, playerKey);
+    setPendingActivate(null);
+    selectCard(null);
+  }, [pendingActivate, activateAbility, selectCard]);
+
+  const handleActivate = useCallback((card: any) => {
+    if (!card.activated) return;
+    const { effect } = card.activated;
+    if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
+    if (effect === 'addMana3Any') { activateAbility(card.iid, null); setShowLotus(true); setPendingActivate(card); return; }
+    if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3'].includes(effect)) {
+      setPendingActivate(card); selectCard(card.iid); return;
+    }
+    activateAbility(card.iid, null);
+    setPendingActivate(null);
+  }, [activateAbility, selectCard, setShowLotus]);
+
   // ── Derived data ───────────────────────────────────────────────────────────
   const adaptedLog = useMemo(() => adaptLog(s.log ?? []), [s.log]);
 
@@ -569,6 +598,13 @@ export function useDuelController(
     pendingCast,
     setPendingCast,
     canCastPending,
+
+    // Activated ability state and handlers
+    pendingActivate,
+    setPendingActivate,
+    activateCanTargetPlayer,
+    handleActivate,
+    handleActivateWithPlayerTarget,
 
     // Derived data
     adaptedLog: adaptedLog as any[],

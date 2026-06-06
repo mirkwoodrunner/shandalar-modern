@@ -102,6 +102,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     adaptedLog, canUndoMana,
     pLands, pCreatures, pPerms, oLands, oCreatures, oPerms,
     handleBfClick, pendingBlockerIid, setPendingBlockerIid,
+    pendingActivate, setPendingActivate,
+    activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
   } = useDuelController(config, onDuelEnd);
 
   const s_state = state;
@@ -161,11 +163,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     setSel(null);
   }, [targetingFor, pendingTarget, sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
 
-  const handleActivate = useCallback(() => {
+  const handleActivateBf = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
-    activateAbility(sel.iid, null);
+    handleActivate(sel.card);
     setSel(null);
-  }, [sel, activateAbility]);
+  }, [sel, handleActivate]);
 
   // ── Battlefield card click dispatcher ─────────────────────────────────────
   const handleBfCardClick = useCallback((card: CardData) => {
@@ -330,7 +332,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onOpenMenu={() => {}}
       />
 
-      <Banner side="opp" player={oData} onLifeClick={targetingFor !== null ? () => setPendingTarget('o') : undefined} />
+      <Banner side="opp" player={oData} onLifeClick={
+        targetingFor !== null
+          ? () => setPendingTarget('o')
+          : activateCanTargetPlayer
+            ? () => handleActivateWithPlayerTarget('o')
+            : undefined
+      } />
 
       {/* Scrollable battlefield — grows to fill remaining height between the two banners */}
       <div className={s.bfScroll}>
@@ -439,7 +447,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       </div>{/* end bfScroll */}
 
-      <Banner side="you" player={pData} onLifeClick={targetingFor !== null ? () => setPendingTarget('p') : undefined} />
+      <Banner side="you" player={pData} onLifeClick={
+        targetingFor !== null
+          ? () => setPendingTarget('p')
+          : activateCanTargetPlayer
+            ? () => handleActivateWithPlayerTarget('p')
+            : undefined
+      } />
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
       {s_state.stack?.length > 0 && (
@@ -449,7 +463,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       <ActionBar
         sel={sel}
         onCast={handleCast}
-        onActivate={handleActivate}
+        onActivate={handleActivateBf}
         onCancel={handleCancel}
         onPass={handlePass}
         onEnd={requestPhaseAdvance}
