@@ -210,19 +210,38 @@ Loot draw uses weighted pool: common×3, uncommon×2, rare×1. No dungeon screen
 
 ---
 
-## Documentation — Required on Every Feature Prompt
+## Documentation — Tiered Update Policy
 
-Update the following docs when completing any feature or fix:
+Not every change requires updating every doc. Use the trigger conditions below.
+Updating a doc when its trigger condition is not met is as wrong as skipping it when it is.
 
-| Doc | What to update |
+### Tier 1 — Update only on structural/architectural changes
+
+| Doc | Update when... |
 |---|---|
-| `docs/gdd.md` | Add changelog entry; update phase completion status |
-| `docs/SYSTEMS.md` | Add or update the relevant system section |
-| `docs/CURRENT_SPRINT.md` | Mark deliverables complete; update "Up Next" |
-| `docs/MECHANICS_INDEX.md` | Add traceability entry for new mechanics |
-| `docs/COMPONENT_REGISTRY.md` | Update if new components are added or changed |
+| `CLAUDE.md` | Agent operating rules change, protected file list changes, or architectural boundaries are formally revised. **Never** update for card implementations, bug fixes, or UI work. |
+| `docs/SYSTEMS.md` | A new mechanical system is added, or an existing system's behavior is formally changed. Not for individual card implementations or bug fixes. |
+| `docs/ENGINE_CONTRACT_SPEC.md` | System boundary contracts between DuelCore, AI, or UI layers change. |
 
-Skipping documentation updates is a failure condition — not optional.
+### Tier 2 — Update on most feature work
+
+| Doc | Update when... |
+|---|---|
+| `docs/MECHANICS_INDEX.md` | Any new mechanic, card effect handler, or card group is implemented. Add a traceability entry. |
+| `docs/CURRENT_SPRINT.md` | A sprint deliverable is completed or the "Up Next" list changes. |
+
+### Tier 3 — Update only for structural changes
+
+| Doc | Update when... |
+|---|---|
+| `docs/gdd.md` | A phase completes or design intent formally changes. Routine card work does not warrant a changelog entry. |
+| `docs/COMPONENT_REGISTRY.md` | A new component is added, renamed, or removed. |
+
+### Quick Reference for Card Implementation Prompts
+
+Card implementation prompts (handler groups, stub fills, missing card entries) should typically
+update **only** `docs/MECHANICS_INDEX.md` and `docs/CURRENT_SPRINT.md`. No other docs unless
+a trigger condition above is explicitly met.
 
 ---
 
