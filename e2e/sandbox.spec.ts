@@ -731,6 +731,139 @@ test.describe('TD-002: X-spell cast log', () => {
 });
 
 // ---------------------------------------------------------------------------
+test.describe('TD-006: spell cast log includes target', () => {
+  test('TD-006a: cast targeting opponent player logs "targeting Opponent"', async ({ page }) => {
+    // Inject lightning_bolt via URL so it is in hand at game init (synchronous)
+    await page.goto(sandboxWith('lightning_bolt'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Set full mana pool so canPay passes without tapping individual lands
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', withManaSupport: true });
+    });
+    await page.waitForFunction(() => ((window as any).__duelState?.()?.p?.mana?.R ?? 0) >= 5);
+
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const bolt = state.p.hand.find((c: any) => c.id === 'lightning_bolt');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bolt.iid, tgt: 'o' });
+    });
+
+    await page.waitForFunction(() =>
+      (window as any).__duelState?.()?.log?.some((e: any) => {
+        const text = typeof e === 'string' ? e : e?.text ?? '';
+        return /casts Lightning Bolt/i.test(text);
+      })
+    );
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const entry = [...state.log].reverse().find((e: any) => {
+      const text = typeof e === 'string' ? e : e?.text ?? '';
+      return /casts Lightning Bolt/i.test(text);
+    });
+    expect(entry).toBeTruthy();
+    const logText = typeof entry === 'string' ? entry : (entry as any).text;
+    expect(logText).toMatch(/targeting Opponent/i);
+  });
+
+  test('TD-006b: cast targeting a creature logs the creature name', async ({ page }) => {
+    // Inject grizzly_bears + terror via URL; lands for their costs are auto-added
+    await page.goto(sandboxWith('grizzly_bears,terror'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Give player full mana so both spells can be cast without tapping specific lands
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', withManaSupport: true });
+    });
+    await page.waitForFunction(() => ((window as any).__duelState?.()?.p?.mana?.G ?? 0) >= 5);
+
+    // Cast Grizzly Bears to put it on the battlefield
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const bear = state.p.hand.find((c: any) => c.id === 'grizzly_bears');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid });
+    });
+
+    // Resolve the stack so the bear lands on the battlefield
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    // Wait until the bear is on the battlefield, then capture its iid
+    await page.waitForFunction(() =>
+      (window as any).__duelState?.()?.p?.bf?.some((c: any) => c.id === 'grizzly_bears')
+    );
+    const bearIid = await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      return state.p.bf.find((c: any) => c.id === 'grizzly_bears')?.iid ?? null;
+    });
+    expect(bearIid).toBeTruthy();
+
+    // Replenish mana and cast Terror targeting the bear
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', withManaSupport: true });
+    });
+    await page.waitForFunction(() => ((window as any).__duelState?.()?.p?.mana?.B ?? 0) >= 5);
+
+    await page.evaluate((tgtIid: string) => {
+      const state = (window as any).__duelState();
+      const terror = state.p.hand.find((c: any) => c.id === 'terror');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: terror.iid, tgt: tgtIid });
+    }, bearIid as string);
+
+    await page.waitForFunction(() =>
+      (window as any).__duelState?.()?.log?.some((e: any) => {
+        const text = typeof e === 'string' ? e : e?.text ?? '';
+        return /casts Terror/i.test(text);
+      })
+    );
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const entry = [...state.log].reverse().find((e: any) => {
+      const text = typeof e === 'string' ? e : e?.text ?? '';
+      return /casts Terror/i.test(text);
+    });
+    expect(entry).toBeTruthy();
+    const logText = typeof entry === 'string' ? entry : (entry as any).text;
+    expect(logText).toMatch(/targeting Grizzly Bears/i);
+  });
+
+  test('TD-006c: untargeted spell cast log has no "targeting" suffix', async ({ page }) => {
+    await page.goto(sandboxWith('dark_ritual'));
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', withManaSupport: true });
+    });
+    await page.waitForFunction(() => ((window as any).__duelState?.()?.p?.mana?.B ?? 0) >= 5);
+
+    await page.evaluate(() => {
+      const state = (window as any).__duelState();
+      const dr = state.p.hand.find((c: any) => c.id === 'dark_ritual');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: dr.iid });
+    });
+
+    await page.waitForFunction(() =>
+      (window as any).__duelState?.()?.log?.some((e: any) => {
+        const text = typeof e === 'string' ? e : e?.text ?? '';
+        return /casts Dark Ritual/i.test(text);
+      })
+    );
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    const entry = [...state.log].reverse().find((e: any) => {
+      const text = typeof e === 'string' ? e : e?.text ?? '';
+      return /casts Dark Ritual/i.test(text);
+    });
+    expect(entry).toBeTruthy();
+    const logText = typeof entry === 'string' ? entry : (entry as any).text;
+    expect(logText).not.toMatch(/targeting/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
 test.describe('TD-003: tap-before-targeting fix', () => {
   test('TD-003: target selection survives mana tap on desktop', async ({ page }) => {
     await page.goto('/?duel=sandbox');

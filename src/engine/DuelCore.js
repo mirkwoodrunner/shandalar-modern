@@ -2319,7 +2319,19 @@ case "CAST_SPELL": {
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
   const xSuffix = xSpend > 0 ? ` (X=${xSpend})` : '';
-  return dlog({ ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null }, `${w} casts ${c.name}${xSuffix}.`, "play");
+  const tgtLabel = (() => {
+    const t = action.tgt;
+    if (!t) return '';
+    if (t === 'p' || t === 'player' || t === 'player-p') return ' targeting Player';
+    if (t === 'o' || t === 'opponent' || t === 'player-o') return ' targeting Opponent';
+    const tgtCard = s.p.bf.find(x => x.iid === t) || s.o.bf.find(x => x.iid === t);
+    return tgtCard ? ` targeting ${tgtCard.name}` : '';
+  })();
+  return dlog(
+    { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null },
+    `${w} casts ${c.name}${xSuffix}${tgtLabel}.`,
+    "play"
+  );
 }
 
 case "RESOLVE_STACK": {
