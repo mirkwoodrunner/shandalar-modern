@@ -33,8 +33,8 @@ function matchesFilter(card: any, filter: TutorFilter): boolean {
   return true;
 }
 
-function TutorCardRow({ card, onClick, disabled }: {
-  card: any; onClick?: () => void; disabled: boolean;
+function TutorCardRow({ card, onClick, disabled, isSelected }: {
+  card: any; onClick?: () => void; disabled: boolean; isSelected?: boolean;
 }) {
   const colorAccent = CCOLOR[card.color ?? ''] ?? '#888';
   const rarityColor = card.rarity === 'R' ? '#f0c040' : card.rarity === 'U' ? '#88b8d0' : '#707070';
@@ -48,12 +48,14 @@ function TutorCardRow({ card, onClick, disabled }: {
         padding: '7px 12px',
         gap: 8,
         borderBottom: '1px solid rgba(180,160,60,.08)',
+        borderLeft: isSelected ? '3px solid #c0a030' : '3px solid transparent',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.32 : 1,
+        background: isSelected ? 'rgba(200,160,40,.12)' : 'transparent',
         transition: 'background 0.1s',
       }}
       onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLElement).style.background = 'rgba(200,160,40,.10)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isSelected ? 'rgba(200,160,40,.12)' : 'transparent'; }}
     >
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: rarityColor, flexShrink: 0 }} />
       <div style={{ width: 8, height: 8, borderRadius: '50%', background: colorAccent, flexShrink: 0 }} />
@@ -107,6 +109,7 @@ export function TutorModal({ library, filter, onChoose, onDecline, titleOverride
   const [search, setSearch]       = useState('');
   const [colorFilt, setColorFilt] = useState('ALL');
   const [sortBy, setSortBy]       = useState<'cmc' | 'name' | 'type'>('cmc');
+  const [pendingIid, setPendingIid] = useState<string | null>(null);
 
   const { valid, invalid } = useMemo(() => {
     const applySearch = (cards: any[]) => {
@@ -268,7 +271,13 @@ export function TutorModal({ library, filter, onChoose, onDecline, titleOverride
               </div>
             )}
             {valid.map(card => (
-              <TutorCardRow key={card.iid} card={card} onClick={() => onChoose(card.iid)} disabled={false} />
+              <TutorCardRow
+                key={card.iid}
+                card={card}
+                onClick={() => setPendingIid(prev => prev === card.iid ? null : card.iid)}
+                disabled={false}
+                isSelected={pendingIid === card.iid}
+              />
             ))}
 
             {invalid.length > 0 && (
@@ -302,8 +311,29 @@ export function TutorModal({ library, filter, onChoose, onDecline, titleOverride
             flexShrink: 0,
           }}>
             <span style={{ fontSize: 9, color: '#3a2810', fontStyle: 'italic' }}>
-              Click a card to put it into hand
+              {pendingIid
+                ? `Selected: ${library.find(c => c.iid === pendingIid)?.name ?? '—'}`
+                : 'Select a card, then click Take'}
             </span>
+            {pendingIid && (
+              <button
+                data-testid="tutor-confirm"
+                onClick={() => onChoose(pendingIid)}
+                style={{
+                  background: 'rgba(160,120,20,.7)',
+                  border: '1px solid rgba(200,160,40,.7)',
+                  color: '#f0d060',
+                  borderRadius: 5,
+                  padding: '5px 18px',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontFamily: "'Cinzel',serif",
+                  fontWeight: 700,
+                }}
+              >
+                Take
+              </button>
+            )}
             <button
               data-testid="tutor-decline"
               onClick={onDecline}

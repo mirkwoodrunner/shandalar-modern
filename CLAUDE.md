@@ -180,6 +180,14 @@ state for the same purpose. Do not merge these paths.
 
 See `docs/MOBILE_VS_PC.md` for the full targeting table.
 
+### TutorModal (`src/ui/duel/TutorModal.tsx`)
+- Two-step selection: click selects a card (highlights it), a "Take" button commits the choice.
+- `data-testid="tutor-confirm"` on the Take button; only rendered when a card is pending.
+- `data-testid="tutor-decline"` on Decline button — unchanged behavior.
+- `data-testid="tutor-card-{card.id}"` on each valid (non-disabled) card row — unchanged.
+- Applies to both Demonic Tutor (filter: 'any') and Transmute Artifact (filter: 'artifact').
+- No engine changes. No DuelScreen or DuelScreenMobile changes.
+
 ### Emoji in JSX
 Emoji in JSX must use Unicode escape expressions to survive rewrites without corruption.
 Example: `{'\u{1F480}'}` not the raw emoji character.
