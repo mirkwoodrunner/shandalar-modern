@@ -262,7 +262,7 @@ src/hooks/useIsMobile.ts     — 640px breakpoint mobile detection hook
 src/utils/scryfallArt.js     — Scryfall art fetch/cache pipeline
 src/utils/useCardArt.js      — React hook for card art
 src/OverworldGame.jsx        — overworld game loop
-src/DuelScreen.jsx           — active duel screen (jsx; .tsx cutover pending)
+src/DuelScreen.tsx           — active duel screen (design-system component tree)
 tests/scenarios/                        — scenario-based regression tests (one file per bug/feature)
 tests/scenarios/_template.test.js       — copy this to start a new scenario
 src/engine/__tests__/_factory.js        — shared test factories; import from here, do not duplicate
