@@ -1484,4 +1484,71 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 - `handleLotusCancel` in `useDuelController.ts` dispatches `CANCEL_LOTUS` before closing the modal.
 - Playwright tests: `tests/e2e/lotus-cancel-undo.spec.js` (T1, T3-T5 desktop; M1-M2 mobile).
 
+---
+
+# 17. PRIORITY WINDOW SYSTEM
+
+---
+
+## 17.1 Priority Window
+
+### Description
+Interactive pause layer that opens after a spell is cast onto the stack, giving
+both players the opportunity to respond with instants before the stack resolves.
+The window closes when both players pass priority in succession. Restricted to
+interactive phases (MAIN_1, MAIN_2, END) via a `PRIORITY_WINDOW_PHASES` whitelist.
+
+### SYSTEMS.md Reference
+- Section 18 (Priority Window)
+- Section 18.10 (AI priority behavior)
+
+### Implementation
+```
+/src/engine/DuelCore.js
+-- OPEN_PRIORITY_WINDOW action: sets s.priorityWindow = true, s.priorityPasser = null
+-- PASS_PRIORITY action: records passer; resolves stack when both players have passed
+-- ADVANCE_PHASE guard: blocked while s.priorityWindow === true
+-- Stack grow 0->N while active === 'o': triggers window open
+
+/src/hooks/useDuelController.ts
+-- Priority window close effect (lines 139-158)
+-- AI priority response effect (lines 164-177)
+-- Stack-length watcher (lines 182-192)
+-- applyAiActionsWithPriority() (lines 198-207)
+
+/src/ui/ActionBar/InstantPriorityBar.tsx
+-- Player-facing "Pass Priority" / "Waiting..." UI element
+```
+
+### State Fields
+```
+s.priorityWindow: boolean        -- true while window is open
+s.priorityPasser: 'p' | 'o' | null -- who has already passed; null = neither
+```
+
+### Resolution Flow
+```
+CAST_SPELL -> stack grows -> priorityWindow opens
+-> player sees InstantPriorityBar
+-> player passes (PASS_PRIORITY 'p') OR AI passes (PASS_PRIORITY 'o')
+-> when both have passed -> RESOLVE_STACK fires -> window closes
+-> if stack still non-empty -> window reopens
+-> when stack empty -> ADVANCE_PHASE unblocked
+```
+
+### PRIORITY_WINDOW_PHASES Whitelist
+```
+MAIN_1, MAIN_2, END
+```
+Auto-opening is suppressed outside these phases to prevent spurious windows
+during COMBAT_ATTACKERS, COMBAT_BLOCKERS, etc.
+
+### AI Behavior (SYSTEMS.md §18.10)
+AI passes priority immediately unless it has an instant-speed response available.
+AI response is evaluated by `AI.js` planPriority(); result dispatched via
+`applyAiActionsWithPriority()` in `useDuelController.ts`.
+
+### Status
+ACTIVE (Phase 6 Sprint 7)
+
 # End of MECHANICS INDEX v1.5
