@@ -3,16 +3,51 @@
 # Format: Card Name x<quantity>
 # Card names must match exactly (case-insensitive).
 
-Flying Men x4
-Black Lotus x4
-Mox Sapphire x4
-Time Walk x4
-Timetwister x4
-Ancestral Recall x4
-Mahamoti Djinn x4
-Underground Sea x4
-Demonic Tutor x4
-Mox Jet x4
-Transmute Artifact x4
-Juggernaut x4
-Sol Ring x4
+# Sandbox — Activated Ability Stress Test
+# Covers: ping, pumpSelf, pumpPower, pumpToughness, regenerate,
+#         addMana, destroyTapped, gainFlying, triskelionPing, untapLand
+
+# --- Ping ---
+Prodigal Sorcerer x2
+Witch Hunter x2
+
+# --- pumpSelf (pay mana to grow) ---
+Frozen Shade x2
+Vampire Bats x2
+
+# --- pumpPower / pumpToughness ---
+Shivan Dragon x1
+Dragon Whelp x1
+Granite Gargoyle x1
+
+# --- Regenerate ---
+Drudge Skeletons x2
+Uthden Troll x1
+Wall of Bone x1
+
+# --- addMana (mana dork) ---
+Llanowar Elves x2
+Birds of Paradise x1
+
+# --- destroyTapped ---
+Royal Assassin x2
+Merfolk Assassin x1
+
+# --- gainFlying ---
+Goblin Balloon Brigade x2
+
+# --- triskelionPing ---
+Triskelion x1
+
+# --- untapLand ---
+Ley Druid x1
+
+# --- Mana base (mixed to support B/R/G/U) ---
+Volcanic Island x2
+Bayou x2
+Underground Sea x2
+Badlands x2
+Tropical Island x2
+Mox Jet x3
+Mox Ruby x3
+Mox Emerald x3
