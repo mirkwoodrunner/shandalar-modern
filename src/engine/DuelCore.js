@@ -425,7 +425,7 @@ break;
 case "exileCreature": {
 if (tgtC) {
 const lf = getPow(tgtC, ns);
-ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, ns.ruleset.exileZone ? "exile" : "gy");
+ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "exile");
 ns = hurt(ns, tgtC.controller, -lf, "Swords to Plowshares");
 ns = dlog(ns, `${card.name} exiles ${tgtC.name}.`, "effect");
 }
