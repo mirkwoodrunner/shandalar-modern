@@ -154,3 +154,6 @@ priority-window plumbing in isolation from planner behavior.
   selection before casting on both platforms.
 - [TD-005] ✅ FIXED — `PLAY_LAND` now rejects land plays while spells are on
   the stack (`src/engine/DuelCore.js`). Logs a rule reminder to the duel log.
+- [TD-006] ✅ FIXED — Spell cast log now includes target label
+  (e.g. "p casts Lightning Bolt targeting Opponent.",
+  "o casts Terror targeting Grizzly Bears.").
