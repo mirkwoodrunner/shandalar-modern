@@ -2342,7 +2342,7 @@ case "RESOLVE_STACK": {
   // if more items remain.
   s = { ...s, stack: s.stack.slice(0, -1), priorityWindow: false, priorityPasser: null };
   s = resolveEff(s, top);
-  if (isPerm(top.card) && !isLand(top.card)) {
+  if (isPerm(top.card) && !isLand(top.card) && !top.isAbility) {
     const pArr = {
       ...top.card,
       controller: top.caster,
@@ -2359,7 +2359,7 @@ case "RESOLVE_STACK": {
       const result = CARD_HANDLERS[top.card.name].onResolve(s, pOnBf, top.targets || [], top.xVal);
       if (result) s = result;
     }
-  } else if (!isPerm(top.card)) {
+  } else if (!isPerm(top.card) && !top.isAbility) {
     s = { ...s, [top.caster]: { ...s[top.caster], gy: [...s[top.caster].gy, { ...top.card }] } };
   }
   return s;
@@ -2370,6 +2370,7 @@ case "DECLARE_ATTACKER": {
   const side = s.active;
   const c = s[side].bf.find(x => x.iid === action.iid);
   if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, KEYWORDS.HASTE.id, s))) return s;
+  if (hasKw(c, KEYWORDS.DEFENDER.id, s)) return dlog(s, `${c.name} has defender and cannot attack.`, "rule");
   if (c.cantAttackTurn && c.cantAttackTurn >= s.turn) return dlog(s, `${c.name} can't attack this turn (Wall of Dust effect).`, 'rule');
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
@@ -2546,11 +2547,33 @@ case "ACTIVATE_ABILITY": {
     };
     return dlog(s, `${card.name} tapped -- choose a color.`, "mana");
   }
+  // Mana abilities resolve immediately without using the stack (rule 605.3b).
+  if (act.effect === "addMana") {
+    if (act.cost.includes("T")) {
+      if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+      s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+    }
+    const manaItem = { id: makeId(), card: { ...card }, caster: "p", targets: [], xVal: 1, chosenColor };
+    s = resolveEff(s, manaItem);
+    return dlog(s, `${card.name} adds mana.`, "mana");
+  }
+
+  // ── Non-mana activated abilities: pay cost, push to stack, open priority window ──
+
+  // 1. Tap cost
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
   }
-  // Route activated pump/flying through EOT variants so CLEANUP expires them correctly.
+
+  // 2. Mana cost — strip 'T' and commas, parse remainder
+  const manaPart = act.cost.replace(/T/g, "").replace(/,/g, "").trim();
+  if (manaPart) {
+    if (!canPay(s.p.mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+    s = { ...s, p: { ...s.p, mana: payMana(s.p.mana, manaPart) } };
+  }
+
+  // 3. Route EOT variants so CLEANUP expires them correctly.
   const effectOverride = act.effect === "pumpPower"     ? "pumpPowerEOT"
                        : act.effect === "pumpToughness" ? "pumpToughnessEOT"
                        : act.effect === "pumpSelf"      ? "pumpSelfEOT"
@@ -2558,9 +2581,19 @@ case "ACTIVATE_ABILITY": {
                        : act.effect === "gainFlying"    ? "gainFlyingEOT"
                        : act.effect === "grantFlying"   ? "grantFlyingEOT"
                        : act.effect;
-  const item = { id: makeId(), card: { ...card, effect: effectOverride, mana: act.mana }, caster: "p", targets: tgt ? [tgt] : [], xVal: 1, chosenColor };
-  s = resolveEff(s, item);
-  return dlog(s, `${card.name} ability: ${act.effect}.`, "effect");
+
+  // 4. Push to stack and open priority window (same pattern as CAST_SPELL).
+  const abilityItem = {
+    id: makeId(),
+    card: { ...card, effect: effectOverride, mana: act.mana },
+    caster: "p",
+    targets: tgt ? [tgt] : [],
+    xVal: 1,
+    chosenColor,
+    isAbility: true,
+  };
+  s = { ...s, stack: [...s.stack, abilityItem], priorityWindow: true, priorityPasser: null };
+  return dlog(s, `${card.name}: activated ${act.effect}.`, "effect");
 }
 
 case "CHOOSE_LOTUS_COLOR": {

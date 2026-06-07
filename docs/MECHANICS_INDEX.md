@@ -1474,6 +1474,17 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 - Added `!c.summoningSick` / `c.summoningSick` guard to all three sites in `AI.js`.
 - Regression test: `src/engine/__tests__/AI.summoningSick.tap.test.js`
 
+### Fix: ACTIVATE_ABILITY stack + mana cost (ACT-STACK-1)
+
+| System | Mechanic | Description |
+|---|---|---|
+| `DECLARE_ATTACKER` | DEFENDER keyword | Creatures with DEFENDER were not blocked from being declared as attackers. Guard added to `DuelCore.js` `DECLARE_ATTACKER` case. |
+| Terror (AI) | restriction filter | AI `selectTarget` ignored `card.restriction`, allowing Terror to target black/artifact creatures. `restriction='nonArtifactNonBlack'` and `'nonBlack'` now filtered in `selectTarget` `isRemoval` branch. `destroyTapped` also restricted to tapped targets only. |
+| Dark Ritual (AI) | follow-up gate | AI cast Dark Ritual without a castable follow-up. `evaluateAndCast` now checks post-cast virtual state for at least one affordable non-mana spell before emitting `PLAY_CARD` for `addMana` effects. |
+| `ACTIVATE_ABILITY` | stack + mana cost | Non-mana activated abilities now push to `s.stack` with `isAbility:true` and open `priorityWindow`. Mana cost (non-tap portion) is now parsed and paid via `canPay`/`payMana` at activation time. `RESOLVE_STACK` guards `isAbility` to prevent ability items entering battlefield or graveyard. |
+| Goblin Balloon Brigade | combat-phase activation | Priority window now opens during `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` when non-mana activated abilities exist on the battlefield, enabling instant-speed use. |
+| Prodigal Sorcerer / Royal Assassin | player targeting | `pendingActivate` ping-type abilities now enable Banner `onLifeClick` on both desktop and mobile, firing `ACTIVATE_ABILITY` with `'o'`/`'p'` as target. `pendingActivate` state moved to `useDuelController.ts`. |
+
 ### Fix: Black Lotus cancel sacrifices card before color pick (BL-CANCEL-1)
 
 - `ACTIVATE_ABILITY` `addMana3Any` branch called `zMove` immediately, sacrificing Lotus before the color picker opened. Cancel had no way to restore it.

@@ -328,6 +328,24 @@ When `profile.aggression >= 0.8` (currently KARAG at 1.0, ARZAKON at 0.8), risky
 
 ## 6.6 Activated Abilities
 
+### Activated Ability Timing and Stack
+
+Non-mana activated abilities (all `activated` fields except `addMana`, `addManaAny`, `addMana3Any`)
+push to the stack and open the priority window exactly like spells. Cost payment (tap + mana)
+happens at activation time. Resolution occurs when both players pass priority.
+
+Mana abilities (`addMana*`) continue to resolve immediately without using the stack, per MTG rules
+(rule 605.3b).
+
+Activated abilities may be used whenever the player has priority. The priority window opens during
+`COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` phases when the player has non-mana activated abilities on
+the battlefield, in addition to the existing `MAIN_1`, `MAIN_2`, and `END` phases.
+
+Stack items representing resolved abilities carry `isAbility: true`. `RESOLVE_STACK` must not
+attempt to place them onto the battlefield or into the graveyard.
+
+### AI Activated Ability Planning
+
 `planActivatedAbilities(state, profile)` is called from `planMain` immediately before `PASS_PRIORITY`. Currently handles:
 
 - **Triskelion-style ping** (`activated.effect === 'triskelionPing'`): spends a `P1P1` counter to kill the highest-threat creature with exactly 1 remaining toughness. If no creature can be one-shot, fires at the opponent's face only when their life is ≤ 5.
