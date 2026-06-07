@@ -1,5 +1,13 @@
 # Current Sprint
 
+## Overworld Plaque Visibility (2026-06-07)
+
+- [x] Improved town/ruin/dungeon plaque icon visibility: bumped base font-size 12->14px,
+      added drop-shadow filter to lift emoji off dark background, strengthened ring opacity
+      and added outer glow for dungeon/ruin, added ow-plaque-town modifier class with amber ring.
+
+---
+
 ## Overworld Mobile Refactor (2026-06-07)
 
 - [x] Overworld mobile layout refactor -- useOverworldController extracted;
