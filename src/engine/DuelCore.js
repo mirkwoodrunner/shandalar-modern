@@ -637,10 +637,11 @@ ns = dlog(ns, `${caster} takes an extra turn!`, "effect");
 break;
 }
 case "regrowth": {
-if (ns[caster].gy.length) {
-const top = ns[caster].gy[ns[caster].gy.length - 1];
-ns = zMove(ns, top.iid, caster, caster, "hand");
-ns = dlog(ns, `Regrowth returns ${top.name}.`, "effect");
+const gyTgt = tgt ? ns[caster].gy.find(c => c.iid === tgt) : null;
+const gyCard = gyTgt || (ns[caster].gy.length ? ns[caster].gy[ns[caster].gy.length - 1] : null);
+if (gyCard) {
+ns = zMove(ns, gyCard.iid, caster, caster, "hand");
+ns = dlog(ns, `Regrowth returns ${gyCard.name}.`, "effect");
 }
 break;
 }
@@ -2403,7 +2404,8 @@ case "CAST_SPELL": {
     if (!t) return '';
     if (t === 'p' || t === 'player' || t === 'player-p') return ' targeting Player';
     if (t === 'o' || t === 'opponent' || t === 'player-o') return ' targeting Opponent';
-    const tgtCard = s.p.bf.find(x => x.iid === t) || s.o.bf.find(x => x.iid === t);
+    const tgtCard = s.p.bf.find(x => x.iid === t) || s.o.bf.find(x => x.iid === t)
+                 || s.p.gy.find(x => x.iid === t) || s.o.gy.find(x => x.iid === t);
     if (tgtCard) return ` targeting ${tgtCard.name}`;
     const stackItem = s.stack.find(i => i.id === t);
     if (stackItem) return ` targeting ${stackItem.card?.name ?? 'stack spell'}`;
