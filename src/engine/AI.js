@@ -419,8 +419,15 @@ function selectTarget(card, state, profile, xVal = null) {
     return [];
   }
 
+  // Regrowth returns any card from the caster's own graveyard — no player/creature target.
+  // Bail if graveyard is empty (nothing to recover).
+  if (card.effect === 'regrowth') {
+    if (!state.o.gy.length) return null;
+    return [];
+  }
+
   const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
-    'gainLife2','gainLife6','tutor','regrowth'].includes(card.effect);
+    'gainLife2','gainLife6','tutor'].includes(card.effect);
   const targetsOpp = ['damage3','damage5','damageX','psionicBlast','chainLightning',
     'damage1','damage2','ping'].includes(card.effect);
   const tgt = targetsSelf ? 'o' : targetsOpp ? 'p' : null;
