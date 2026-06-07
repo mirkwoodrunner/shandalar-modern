@@ -2636,7 +2636,7 @@ case "ACTIVATE_ABILITY": {
       if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
       s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
     }
-    const manaItem = { id: makeId(), card: { ...card }, caster: "p", targets: [], xVal: 1, chosenColor };
+    const manaItem = { id: makeId(), card: { ...card, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
     s = resolveEff(s, manaItem);
     return dlog(s, `${card.name} adds mana.`, "mana");
   }
@@ -2998,6 +2998,18 @@ case 'SET_PHASE_FOR_TEST': {
   // Also clears priorityWindow and stack so ADVANCE_PHASE is not blocked.
   return { ...s, phase: action.phase, active: action.active ?? s.active,
            priorityWindow: false, stack: [], priorityPasser: null };
+}
+
+case 'DEBUG_PATCH_CARD': {
+  // Sandbox/dev-only: patch arbitrary fields onto a card on the battlefield.
+  if (process.env.NODE_ENV !== 'development' && !import.meta.env?.DEV) return s;
+  const { iid, patch } = action;
+  for (const who of ['p', 'o']) {
+    if (s[who].bf.some(c => c.iid === iid)) {
+      return { ...s, [who]: { ...s[who], bf: s[who].bf.map(c => c.iid === iid ? { ...c, ...patch } : c) } };
+    }
+  }
+  return s;
 }
 
 default: return s;

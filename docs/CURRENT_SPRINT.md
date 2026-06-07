@@ -1,5 +1,19 @@
 # Current Sprint
 
+## Duel Engine Bug Fixes (2026-06-07)
+
+### Deliverables
+
+| Fix | Root Cause | File(s) Changed |
+|-----|-----------|-----------------|
+| Mana dork (Llanowar Elves etc.) adds correct colored mana | `manaItem` in ACTIVATE_ABILITY spread `{ ...card }` without promoting `activated.mana` to top-level `mana`; `resolveEff` read `card.mana` as `undefined` and defaulted to colorless | `src/engine/DuelCore.js` |
+| Ley Druid untaps player-chosen land | `untapLand` absent from `handleActivate`'s pending-activate set; first land in bf array was always chosen instead | `src/hooks/useDuelController.ts` |
+| AI no longer casts Berserk during main phase | `BEFORE_COMBAT_DAMAGE_PHASES` included `MAIN_1` and `COMBAT_BEGIN`; narrowed to `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` only | `src/engine/AI.js` |
+
+**Tests:** BF-01, BF-02, BF-03 in `e2e/sandbox.spec.ts`
+
+---
+
 ## Overworld Plaque Visibility (2026-06-07)
 
 - [x] Improved town/ruin/dungeon plaque icon visibility: bumped base font-size 12->14px,

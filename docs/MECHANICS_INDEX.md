@@ -1495,6 +1495,13 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 | Goblin Balloon Brigade | combat-phase activation | Priority window now opens during `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` when non-mana activated abilities exist on the battlefield, enabling instant-speed use. |
 | Prodigal Sorcerer / Royal Assassin | player targeting | `pendingActivate` ping-type abilities now enable Banner `onLifeClick` on both desktop and mobile, firing `ACTIVATE_ABILITY` with `'o'`/`'p'` as target. `pendingActivate` state moved to `useDuelController.ts`. |
 
+### Activated Mana Abilities (creature sources)
+
+Cards with `activated: { cost: "T", effect: "addMana", mana: "<color>" }` route through
+`ACTIVATE_ABILITY` -> `resolveEff`. The `manaItem` passed to `resolveEff` must explicitly
+set `mana: act.mana` at the top level -- spreading `{ ...card }` is insufficient because
+`mana` is nested under `activated` on creature cards, not at the card root.
+
 ### Fix: Black Lotus cancel sacrifices card before color pick (BL-CANCEL-1)
 
 - `ACTIVATE_ABILITY` `addMana3Any` branch called `zMove` immediately, sacrificing Lotus before the color picker opened. Cancel had no way to restore it.
