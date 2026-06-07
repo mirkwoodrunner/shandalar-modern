@@ -2,9 +2,10 @@
 // Headless AI-vs-AI simulation tests.
 // Detects infinite loops, illegal terminal states, and non-determinism.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { duelReducer, buildDuelState } from '../DuelCore.js';
 import { aiDecide } from '../AI.js';
+import { setMCTSIterCap } from '../MCTS.js';
 // NOTE: getAIPlan (re-exported for reference) returns high-level AITurnPlan actions
 // (PLAY_CARD, ATTACK, BLOCK) that duelReducer does not handle natively. aiDecide()
 // wraps getAIPlan() and translates its output to DuelCore-native actions
@@ -48,6 +49,11 @@ function runSimGame(initialState, maxSteps = 2000) {
 // --- Tests -------------------------------------------------------------------
 
 describe('AI simulation — game termination', () => {
+  // Fix MCTS to a deterministic iteration count so tests are not sensitive to
+  // wall-clock variance between runs. Production uses the time-budget path.
+  beforeAll(() => setMCTSIterCap(20));
+  afterAll(() => setMCTSIterCap(null));
+
   // Build a single canonical state once. BOSS_RED uses the KARAG AI profile
   // (aggression 1.0, greedySpells 1.0) which makes every decision deterministic:
   // it always attacks with all eligible creatures and always casts affordable spells.

@@ -309,6 +309,9 @@ export function rollout(state, depthLimit = 20) {
   return s.over?.winner ?? (oScore >= pScore ? 'o' : 'p');
 }
 
+let _testIterCap = null;
+export function setMCTSIterCap(n) { _testIterCap = n; }
+
 export function scoreMoves(state, candidateMoves, budgetMs = 800) {
   if (!candidateMoves.length) return [];
 
@@ -334,8 +337,10 @@ export function scoreMoves(state, candidateMoves, budgetMs = 800) {
     entry.winRate = entry.wins / entry.iterations;
   }
 
+  const iterBudget = _testIterCap !== null ? _testIterCap : Infinity;
+  let extraIter = 0;
   const start = Date.now();
-  while (Date.now() - start < budgetMs) {
+  while (extraIter < iterBudget && Date.now() - start < budgetMs) {
     const totalN = stats.reduce((sum, e) => sum + e.iterations, 0);
 
     const best = stats.reduce((best, e) => {
@@ -347,6 +352,7 @@ export function scoreMoves(state, candidateMoves, budgetMs = 800) {
     if (rollout(best.next) === 'o') best.wins++;
     best.iterations++;
     best.winRate = best.wins / best.iterations;
+    extraIter++;
   }
 
   return stats
