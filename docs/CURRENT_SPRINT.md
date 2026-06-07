@@ -1,5 +1,18 @@
 # Current Sprint
 
+## Bug Fixes: Blocker UI Clarity + AI Chump Blocking (2026-06-07)
+
+| Fix | File(s) Changed |
+|-----|----------------|
+| Battlefield/Half: `pendingBlockerIid` and `blockers` props for visual feedback | `src/ui/Battlefield/Battlefield.tsx`, `src/ui/Battlefield/Half.tsx` |
+| Desktop DuelScreen: wire `pendingBlockerIid` and `s.blockers` through to Battlefield | `src/DuelScreen.tsx` |
+| ActionBar: `blockerHint` prop with contextual text during player blocker declaration | `src/ui/ActionBar/ActionBar.tsx` |
+| AI `planBlock`: chump fallback for attackers with power >= threshold | `src/engine/AI.js` |
+
+**Tests:** BLK-03, BLK-04 in `e2e/sandbox.spec.ts`
+
+---
+
 ## Bug Fixes: P/T Display, Triskelion Targeting, Counterspell Stack (2026-06-07)
 
 | Fix | File(s) Changed |

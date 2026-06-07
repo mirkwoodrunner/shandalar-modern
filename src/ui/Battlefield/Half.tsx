@@ -11,6 +11,8 @@ interface HalfProps {
   selTgt: string | null;
   attackers: string[];
   flashIids?: Set<string>;
+  pendingBlockerIid?: string | null;
+  blockers?: Record<string, string>;
   onCardClick?: (card: CardData) => void;
   onCardHover?: (iid: string | null) => void;
 }
@@ -24,7 +26,7 @@ const ROW_LABEL: React.CSSProperties = {
   textTransform: 'uppercase' as const,
 };
 
-export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCardClick, onCardHover }: HalfProps) {
+export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendingBlockerIid, blockers, onCardClick, onCardHover }: HalfProps) {
   const isOpp = side === 'opp';
   // isLand: matches 'Land', 'Basic Land', 'Land — Forest', etc.
   const isLandCard = (c: CardData): boolean =>
@@ -46,7 +48,17 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
   const landBorderColor = isOpp ? 'rgba(120,90,40,.15)' : 'rgba(80,140,40,.2)';
   const landLabel = isOpp ? `LANDS (${lands.length})` : `YOUR LANDS (${lands.length})`;
 
-  const isSelected = (iid: string) => selCard === iid || selTgt === iid;
+  const isSelected = (iid: string) => {
+    if (pendingBlockerIid && isOpp) {
+      return attackers.includes(iid);
+    }
+    return selCard === iid || selTgt === iid;
+  };
+
+  // Iids being blocked: values in the blockers map (attacker iids)
+  const blockedAttackerIids = blockers ? new Set(Object.values(blockers)) : new Set<string>();
+  // Iids commited as blockers: keys in the blockers map
+  const committedBlockerIids = blockers ? new Set(Object.keys(blockers)) : new Set<string>();
 
   const renderCardRow = (rowCards: CardData[], allowAttacking = false) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignContent: 'flex-start' }}>
@@ -54,9 +66,13 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
         const cardW = isOpp ? 78 : 96;
         const cardH = isOpp ? 109 : 134;
         const enchantments = (c as any).enchantments ?? [];
+        const isPendingBlocker = !isOpp && c.iid === pendingBlockerIid;
+        const isCommittedBlocker = !isOpp && committedBlockerIids.has(c.iid);
+        const isBlockedAttacker = isOpp && blockedAttackerIids.has(c.iid);
         return (
           <div
             key={c.iid}
+            style={{ position: 'relative' }}
             onMouseEnter={() => onCardHover?.(c.iid)}
             onMouseLeave={() => onCardHover?.(null)}
           >
@@ -66,16 +82,29 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, onCar
               enchantments={enchantments}
               isMobile={false}
             >
-              <FieldCard
-                card={c}
-                sm={isOpp}
-                selected={isSelected(c.iid)}
-                attacking={allowAttacking && attackers.includes(c.iid)}
-                tapped={c.tapped}
-                casting={flashIids?.has(c.iid)}
-                onClick={() => onCardClick?.(c)}
-              />
+              <div style={isPendingBlocker ? { outline: '2px solid #4de8d0', borderRadius: 4 } : isCommittedBlocker ? { outline: '2px solid rgba(77,232,208,.45)', borderRadius: 4 } : undefined}>
+                <FieldCard
+                  card={c}
+                  sm={isOpp}
+                  selected={isSelected(c.iid)}
+                  attacking={allowAttacking && attackers.includes(c.iid)}
+                  tapped={c.tapped}
+                  casting={flashIids?.has(c.iid)}
+                  onClick={() => onCardClick?.(c)}
+                />
+              </div>
             </EnchantedCardSlot>
+            {isBlockedAttacker && (
+              <div style={{
+                position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
+                background: 'rgba(77,232,208,.85)', color: '#000',
+                fontSize: 7, fontWeight: 700, fontFamily: 'var(--font-display)',
+                letterSpacing: 1, padding: '1px 4px', borderRadius: 2,
+                pointerEvents: 'none', whiteSpace: 'nowrap',
+              }}>
+                BLOCKED
+              </div>
+            )}
           </div>
         );
       })}
