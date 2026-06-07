@@ -29,6 +29,7 @@ const SPRITE_CSS = `
   padding-bottom: 2px;
   z-index: 5;
   pointer-events: none;
+  filter: drop-shadow(2px 4px 3px rgba(0,0,0,0.55));
 }
 
 /* Frame — the bounding box that sizes the sprite */

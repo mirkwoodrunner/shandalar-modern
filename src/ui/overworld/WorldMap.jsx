@@ -33,7 +33,26 @@ const TERRAIN_BG = {
 
 // --- SINGLE TILE -------------------------------------------------------------
 
-export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, onClick }) {
+// Deterministic tile variant — coord hash, no Math.random()
+// Returns a CSS class string. Mountain and no-transform always return ''.
+const VARIANT_TRANSFORMS = {
+  PLAINS:   ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
+  FOREST:   ['', 'tile-icon-v1'],
+  SWAMP:    ['', 'tile-icon-v1'],
+  MOUNTAIN: [''],
+  ISLAND:   ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
+  WATER:    ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
+};
+
+function getTileVariantClass(terrainId, x, y) {
+  const variants = VARIANT_TRANSFORMS[terrainId] ?? [''];
+  if (variants.length === 1) return '';
+  const h = (x * 374761393 + y * 668265263) | 0;
+  const idx = Math.abs((h ^ (h >> 13)) * 1274126177 | 0) % variants.length;
+  return variants[idx];
+}
+
+export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -41,7 +60,7 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
     return (
       <div
         className="ow-tile ow-fog"
-        style={{ width: tileSize, height: tileSize }}
+        style={{ width: tileSize, height: tileSize, zIndex: rowIndex }}
         onClick={() => onClick(tile)}
       />
     );
@@ -62,7 +81,7 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
   return (
     <div
       className={`ow-tile ${terrainClass} ${fogEdgeClass}`}
-      style={{ background: tileBg, width: tileSize, height: tileSize }}
+      style={{ background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex }}
       onClick={() => onClick(tile)}
     >
       {/* Mana link corruption overlay */}
@@ -130,7 +149,12 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 14, opacity: 0.30, pointerEvents: 'none', zIndex: 1,
         }}>
-          {t.icon}
+          <span
+            className={getTileVariantClass(t.id, tile.x, tile.y)}
+            style={{ display: 'inline-block', lineHeight: 1 }}
+          >
+            {t.icon}
+          </span>
         </div>
       )}
 
@@ -167,8 +191,14 @@ const OW_STYLES = `
   width: 34px;
   height: 34px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
+}
+
+.ow-grid-wrapper {
+  overflow: hidden;
+  position: relative;
+  display: inline-block;
 }
 
 .ow-tile::before {
@@ -221,6 +251,21 @@ const OW_STYLES = `
   );
 }
 
+/* Tile icon transform variants — applied via coord hash, never Math.random() */
+.tile-icon-v1 { transform: scaleX(-1); }
+.tile-icon-v2 { transform: rotate(90deg); }
+.tile-icon-v3 { transform: rotate(180deg); }
+.tile-icon-v4 { transform: rotate(270deg); }
+.tile-icon-v5 { transform: scaleX(-1) rotate(90deg); }
+
+/* Biome-matched tile borders — replaces hard grid edges */
+.ow-plains   { box-shadow: inset 0 0 0 0.5px rgba(80,55,15,.25); }
+.ow-forest   { box-shadow: inset 0 0 0 0.5px rgba(10,25,8,.35); }
+.ow-swamp    { box-shadow: inset 0 0 0 0.5px rgba(47,79,79,.30); }
+.ow-mountain { box-shadow: inset 0 0 0 0.5px rgba(105,105,105,.25); }
+.ow-island   { box-shadow: inset 0 0 0 0.5px rgba(30,100,180,.25); }
+.ow-water    { box-shadow: inset 0 0 0 0.5px rgba(20,60,120,.20); }
+
 .ow-island::before {
   background: repeating-linear-gradient(
     90deg,
@@ -254,6 +299,8 @@ const OW_STYLES = `
 
 .ow-fog-edge {
   box-shadow: inset 0 0 18px 3px rgba(0,0,0,.70);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
 }
 
 .ow-mana {
@@ -429,7 +476,9 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
       <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', flexShrink: 0 }}>
       <div style={{ position: 'relative', display: 'inline-block' }}>
         {/* Terrain grid — unchanged */}
-        <div style={{
+        <div
+          className="ow-grid-wrapper"
+          style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${viewW}, ${tileSize}px)`,
           gridTemplateRows:    `repeat(${viewH}, ${tileSize}px)`,
@@ -467,6 +516,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                   enemy={enemyByTile[`${x},${y}`] ?? null}
                   isFogEdge={isFogEdge}
                   tileSize={tileSize}
+                  rowIndex={vy}
                   onClick={onTileClick}
                 />
               );
