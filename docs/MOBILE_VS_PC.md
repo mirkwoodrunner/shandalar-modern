@@ -127,7 +127,8 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 | `activated.effect === 'addMana3Any'` AND not tapped | `activateAbility` + show `LotusColorPicker` |
 | `activated.effect === 'addMana'` AND not tapped | `tapArtifactMana(iid)` — direct tap, no Activate button |
 | Card has non-mana `activated` ability OR `activatedAbilities` array | Toggle selection → Activate button in ActionBar |
-| All other cases (plain creatures, `addManaAny`/BOP) | No action (BOP is a Known Gap) |
+| `activated.effect === 'addManaAny'` AND not tapped | `activateAbility` + show `BopColorPicker` (via `state.pendingBop` flag) |
+| All other cases (plain creatures) | No action |
 
 ### Modals in DuelScreenMobile
 
@@ -135,6 +136,7 @@ A fully separate component tree. Rendered by `OverworldGame` when `useMedia('(ma
 |-------|---------|-----------|
 | Mulligan | On mount (`showMulligan = true`) | `MulliganModal` from `src/ui/Mulligan/` |
 | Black Lotus color pick | `handleBfCardClick` detects `addMana3Any` effect | `LotusColorPicker` from `TargetingOverlay.jsx` |
+| BOP color pick | `handleBfCardClick` detects `addManaAny` effect | `BopColorPicker` from `TargetingOverlay.jsx` |
 | Dual land color pick | `handleLandTap` detects `produces.length > 1` | `DualLandColorPicker` from `TargetingOverlay.jsx` |
 
 All three modals use `position: fixed; z-index: 600` and are sourced from the same components as `DuelScreen`.
@@ -194,10 +196,9 @@ Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helpe
 - No pinch-to-zoom on the overworld canvas
 - DuelScreenMobile: no targeting arrows (TargetArrow overlay — Phase 8)
 - DuelScreenMobile: no card-preview on long-press (Phase 8)
-- DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired; clicking BOP does nothing (mirrors `addMana3Any` Lotus pattern — needs `CHOOSE_BOP_COLOR` dispatch)
 - DuelScreenMobile: `GameOverModal` not yet rendered (auto-return to overworld after 3 s works)
 - DuelScreenMobile: no blocker declaration UI — **RESOLVED** (Sprint 8): two-step tap (select blocker → tap attacker), Done button calls `requestPhaseAdvance`
 - DuelScreenMobile: no explicit card targeting for spells that require a creature target (enchantCreature, ping, etc.) — **RESOLVED** (Sprint 8): `needsExplicitTarget()` drives targeting mode; `pendingTarget` state; Banner `onLifeClick` for life-total targets
-- DuelScreenMobile: `addManaAny` creatures (Birds of Paradise) effectively untappable for mana until BopColorPicker is wired
+- DuelScreenMobile: BopColorPicker (Birds of Paradise) not yet wired — **RESOLVED**: `handleBfCardClick` detects `addManaAny`, dispatches `ACTIVATE_ABILITY`; `BopColorPicker` shown via `state.pendingBop` flag in `useDuelController`
 
 These gaps should be tracked as issues and addressed in a follow-up pass.

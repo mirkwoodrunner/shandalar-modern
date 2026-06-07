@@ -307,6 +307,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     pendingDualLand, setPendingDualLand,
+    showBop, handleBopChoose, handleBopCancel,
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
     handleBfClick,
     pendingCast, setPendingCast, canCastPending,
@@ -323,7 +324,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Local UI state --------------------------------------------------------
   const [tooltip, setTooltip] = useState<{ card: any; pos: { x: number; y: number } } | null>(null);
-  const [showBop, setShowBop] = useState(false);
   const [graveyardPopover, setGraveyardPopover] = useState<{
     open: boolean; player: string | null; mode: string;
   }>({ open: false, player: null, mode: 'reference' });
@@ -348,11 +348,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     onQuickCast: (idx: number) => { const c = s.p.hand[idx]; if (c) selectCard(c.iid); },
     isIdle,
   });
-
-  // -- Sync BopColorPicker with engine flag ----------------------------------
-  useEffect(() => {
-    if (s.pendingBop) setShowBop(true);
-  }, [s.pendingBop]);
 
   // -- Ability menu selection handler (Mishra's Factory etc.) -----------------
   const handleAbilityMenuSelect = useCallback((abilityId: string) => {
@@ -501,15 +496,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     }
   }, [s.selCard, pendingCast, setPendingCast, pendingMode, setPendingMode]);
 
-  // -- Lotus / Bop / graveyard / mana-choice handlers ------------------------
-
-  const handleBopChoose = useCallback((color: string) => {
-    dispatch({ type: 'CHOOSE_BOP_COLOR', color }); setShowBop(false);
-  }, [dispatch]);
-
-  const handleBopCancel = useCallback(() => {
-    dispatch({ type: 'CHOOSE_BOP_COLOR', color: 'G' }); setShowBop(false);
-  }, [dispatch]);
+  // -- Graveyard / mana-choice handlers --------------------------------------
 
   const openGraveyardPopover = (player: string, mode = 'reference') =>
     setGraveyardPopover({ open: true, player, mode });

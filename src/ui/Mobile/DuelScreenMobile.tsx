@@ -6,11 +6,11 @@ import { useState, useCallback } from 'react';
 import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, resolveDefaultTarget, isBebRebEffect, needsStackTarget } from '../../hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, isBebRebEffect, needsStackTarget, needsExplicitTarget } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
-import { LotusColorPicker, DualLandColorPicker, BebRebModePicker } from '../duel/TargetingOverlay.jsx';
+import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker } from '../duel/TargetingOverlay.jsx';
 import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
@@ -30,54 +30,6 @@ import { StackDisplay } from '../Stack/StackDisplay';
 
 import s from './styles.module.css';
 
-function needsExplicitTarget(card: any): boolean {
-  const CREATURE_TARGET_EFFECTS = new Set([
-    'bounce',
-    'destroy',
-    'destroyArtifact',
-    'destroyArtOrEnch',
-    'destroyTargetLand',
-    'destroyBlack',
-    'destroyBlueOrCounter',
-    'destroyRedOrCounter',
-    'pumpCreature',
-    'enchantCreature',
-    'reanimate',
-    'howlFromBeyond',
-    'pumpPower',
-    'pumpToughness',
-    'steal',
-    'pacifism',
-    'fear',
-    'gloom',
-    'weakness',
-    'unholy_strength',
-    'regenerate',
-    'ping',
-    'destroyBlueCreature',
-    'removeFlying',
-    'untapTarget',
-    'debuffTargetPower1EOT',
-    'ebonyHorse',
-    'warBarge',
-    'jadeStatue',
-  ]);
-  const DAMAGE_EFFECTS = new Set(['damage3', 'damage5', 'psionicBlast', 'chainLightning']);
-  // Player-target effects: spells that say "target player" rather than "target creature".
-  const PLAYER_TARGET_EFFECTS = new Set([
-    'draw3',   // Ancestral Recall -- "target player draws three cards"
-    'stormSeeker',
-    'jovialEvil',
-    'damage4Any',
-  ]);
-  const TWO_CREATURE_TARGET_EFFECTS = new Set(['fightTargets']);
-  return CREATURE_TARGET_EFFECTS.has(card.effect)
-    || DAMAGE_EFFECTS.has(card.effect)
-    || PLAYER_TARGET_EFFECTS.has(card.effect)
-    || TWO_CREATURE_TARGET_EFFECTS.has(card.effect)
-    || (card.activated && CREATURE_TARGET_EFFECTS.has(card.activated?.effect))
-    || (card.activated && PLAYER_TARGET_EFFECTS.has(card.activated?.effect));
-}
 
 interface DuelScreenMobileProps {
   config: DuelConfig;
@@ -98,6 +50,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     confirmTransmutePay, declineTransmutePay,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
+    showBop, handleBopChoose, handleBopCancel,
     pendingDualLand, setPendingDualLand,
     adaptedLog, canUndoMana,
     pLands, pCreatures, pPerms, oLands, oCreatures, oPerms,
@@ -204,6 +157,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         setShowLotus(true);
         return;
       }
+      // Birds of Paradise and any addManaAny: tap + choose color
+      if (c.activated?.effect === 'addManaAny') {
+        activateAbility(card.iid, null);
+        // showBop is set by the useEffect in useDuelController watching state.pendingBop
+        return;
+      }
       // Simple mana producers (Moxen, Sol Ring, Llanowar Elves, etc.): tap directly
       if (c.activated?.effect === 'addMana') {
         tapArtifactMana(card.iid);
@@ -220,7 +179,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
     }
     // Plain creatures / permanents with no activated ability: no action.
-    // (addManaAny / Birds of Paradise is a Known Gap — BopColorPicker not yet wired.)
   }, [handleBfClick, targetingFor, activateAbility, tapArtifactMana]);
 
   const handleCancel = useCallback(() => {
@@ -289,6 +247,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       )}
       {showLotus && (
         <LotusColorPicker onChoose={handleLotusChoose} onCancel={handleLotusCancel} />
+      )}
+      {showBop && (
+        <BopColorPicker onChoose={handleBopChoose} onCancel={handleBopCancel} />
       )}
       {pendingDualLand && (
         <DualLandColorPicker
