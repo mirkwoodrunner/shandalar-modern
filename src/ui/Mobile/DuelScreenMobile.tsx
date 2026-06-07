@@ -6,11 +6,11 @@ import { useState, useCallback } from 'react';
 import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, resolveDefaultTarget } from '../../hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, isBebRebEffect, needsStackTarget } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
-import { LotusColorPicker, DualLandColorPicker } from '../duel/TargetingOverlay.jsx';
+import { LotusColorPicker, DualLandColorPicker, BebRebModePicker } from '../duel/TargetingOverlay.jsx';
 import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
@@ -104,6 +104,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     handleBfClick, pendingBlockerIid, setPendingBlockerIid,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
+    pendingMode, setPendingMode,
   } = useDuelController(config, onDuelEnd);
 
   const s_state = state;
@@ -125,7 +126,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         setSel(null);
         return;
       }
-      if (needsExplicitTarget(c) && !isLand(c)) {
+      if (isBebRebEffect(c) && !isLand(c)) {
+        // BEB/REB: enter mode-picker state first; clear any prior mode.
+        setTargetingFor(null);
+        setPendingTarget(null);
+        setPendingMode(null);
+        setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'hand', card });
+      } else if (needsExplicitTarget(c) && !isLand(c)) {
         setTargetingFor(card.iid);
         setPendingTarget(null);
         setSel({ iid: card.iid, zone: 'hand', card });
@@ -148,6 +155,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       setTargetingFor(null);
       setPendingTarget(null);
       setSel(null);
+      setPendingMode(null);
       return;
     }
 
@@ -156,12 +164,17 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     if (!card) return;
     if (isLand(card)) {
       playLand(card.iid);
+    } else if (needsStackTarget(card, pendingMode)) {
+      // Counter or BEB/REB in counter mode: cast with the selected stack item as target.
+      castSpell(card.iid, pendingTarget, s_state.xVal ?? 1);
+      setPendingMode(null);
     } else {
       const tgt = s_state.selTgt ?? resolveDefaultTarget(card, s_state);
       castSpell(card.iid, tgt, s_state.xVal ?? 1);
     }
     setSel(null);
-  }, [targetingFor, pendingTarget, sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell]);
+    setPendingTarget(null);
+  }, [targetingFor, pendingTarget, pendingMode, sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell, setPendingMode]);
 
   const handleActivateBf = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
@@ -215,7 +228,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     setTargetingFor(null);
     setPendingTarget(null);
     setPendingBlockerIid(null);
-  }, [setPendingBlockerIid]);
+    setPendingMode(null);
+  }, [setPendingBlockerIid, setPendingMode]);
 
   const handlePass = useCallback(() => {
     if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
@@ -340,6 +354,28 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             : undefined
       } />
 
+      {/* BEB/REB mode picker — shown when a two-mode card is selected and no mode chosen yet */}
+      {sel?.card && isBebRebEffect(sel.card) && pendingMode === null && (
+        <BebRebModePicker
+          cardName={(sel.card as any).name}
+          targetColor={(sel.card as any).effect === 'destroyRedOrCounter' ? 'R' : 'U'}
+          stack={s_state.stack}
+          playerBf={s_state.p.bf}
+          opponentBf={s_state.o.bf}
+          onSetMode={(mode: 'counter' | 'destroy') => {
+            if (mode === 'counter') {
+              setPendingTarget(null);
+              setTargetingFor(null);
+            } else {
+              setTargetingFor(sel.iid);
+              setPendingTarget(null);
+            }
+            setPendingMode(mode);
+          }}
+          onCancel={handleCancel}
+        />
+      )}
+
       {/* Scrollable battlefield — grows to fill remaining height between the two banners */}
       <div className={s.bfScroll}>
 
@@ -456,9 +492,18 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       } />
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
-      {s_state.stack?.length > 0 && (
-        <StackDisplay stack={s_state.stack} isMobile={true} bottomOffset={56} />
-      )}
+      {s_state.stack?.length > 0 && (() => {
+        const stackTargeting = needsStackTarget(sel?.card, pendingMode);
+        return (
+          <StackDisplay
+            stack={s_state.stack}
+            isMobile={true}
+            bottomOffset={56}
+            onItemClick={stackTargeting ? (id) => setPendingTarget(id) : undefined}
+            selectedItemId={stackTargeting ? pendingTarget : null}
+          />
+        );
+      })()}
 
       <ActionBar
         sel={sel}

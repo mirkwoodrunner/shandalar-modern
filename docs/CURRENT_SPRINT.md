@@ -1,5 +1,29 @@
 # Current Sprint
 
+## Counter-Spell Targeting (2026-06-07)
+
+### Deliverables
+
+| Fix | File(s) Changed |
+|-----|----------------|
+| findStackTarget() resolves counter targets by stack item id with positional fallback | `src/engine/DuelCore.js` |
+| counter/counterCreature/powerSink: explicit target, fizzle if target gone at resolution | `src/engine/DuelCore.js` |
+| destroyRedOrCounter/destroyBlueOrCounter: perm vs stack item dispatch by target type | `src/engine/DuelCore.js` |
+| Spell Blast CMC match enforced at cast time and resolution | `src/engine/DuelCore.js` |
+| BEB/REB cast legality gated on red/blue target existing | `src/engine/DuelCore.js` |
+| AI selectTarget and planInstantResponse return explicit stack item ids | `src/engine/AI.js` |
+| pendingMode, isCounterEffect, needsStackTarget exported from hook | `src/hooks/useDuelController.ts` |
+| StackDisplay: onItemClick + selectedItemId props for counter targeting | `src/ui/Stack/StackDisplay.tsx` |
+| Desktop: BEB/REB mode picker with greyed unavailable options; stack items clickable in counter mode | `src/DuelScreen.tsx`, `src/ui/duel/TargetingOverlay.jsx` |
+| Mobile: BEB/REB mode picker and stack item tap in counter mode | `src/ui/Mobile/DuelScreenMobile.tsx` |
+| Tests: CTR-01 through CTR-05 (Playwright), CT-01 through CT-04 (Vitest) | `e2e/sandbox.spec.ts`, `src/engine/__tests__/counter-targeting.test.js` |
+
+**Known simplifications:**
+- Force Spike counters unconditionally (no payment prompt from targeted player).
+- Spell Blast CMC match enforced via X input and fizzle log; no inline UI feedback for ineligible targets.
+
+---
+
 ## Bug Fixes (2026-06-06)
 
 - Fix: `viewOfs` now initializes to `{ x: startX, y: startY }` so the map centers on the player at game start instead of defaulting to tile (0,0). (`src/OverworldGame.jsx`)

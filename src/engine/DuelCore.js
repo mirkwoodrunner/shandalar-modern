@@ -366,6 +366,18 @@ return ns;
 // All spell/ability effects route through here.
 // Only this function (via DuelCore) may mutate GameState.
 
+// findStackTarget: resolve counter target by id, fallback to positional.
+function findStackTarget(stack, tgt, counterItemId) {
+  if (tgt) {
+    const byId = stack.find(i => i.id === tgt && i.id !== counterItemId);
+    if (byId) return byId;
+  }
+  // Fallback: item directly below the resolving counter spell.
+  // stack has already had the top item (the counter) removed before resolveEff
+  // is called, so stack[length - 1] IS the item below.
+  return stack[stack.length - 1] ?? null;
+}
+
 export function resolveEff(s, item) {
 const { card, caster, targets, xVal } = item;
 const opp = caster === "p" ? "o" : "p";
@@ -389,25 +401,35 @@ case "damage5":    ns = hurt(ns, tgt || opp, 5, card.name); break;
 case "damageX":    { const t2 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t2, xVal, card.name); break; }
 case "psionicBlast": ns = hurt(hurt(ns, tgt || opp, 4, card.name), caster, 2, "Psionic Blast"); break;
 case "counter": {
-const top = ns.stack[ns.stack.length - 2];
-if (top) {
-ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
-ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect");
+const top = findStackTarget(ns.stack, tgt, item.id);
+if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
+if (card.id === "spell_blast" && top.card.cmc !== xVal) {
+  ns = dlog(ns, `${card.name} fizzles -- target CMC ${top.card.cmc} does not match X=${xVal}.`, "effect");
+  break;
 }
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id),
+  [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
+ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect");
 break;
 }
 case "counterCreature": {
-const top = ns.stack[ns.stack.length - 2];
-if (top && isCre(top.card)) { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } }; ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect"); }
+const top = findStackTarget(ns.stack, tgt, item.id);
+if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
+if (!isCre(top.card)) { ns = dlog(ns, `${card.name} fizzles -- target is not a creature spell.`, "effect"); break; }
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id),
+  [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
+ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect");
 break;
 }
 case "powerSink": {
-const top = ns.stack[ns.stack.length - 2];
-if (top) {
-ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id), [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
-ns = { ...ns, [opp]: { ...ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+const top = findStackTarget(ns.stack, tgt, item.id);
+if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id),
+  [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
+ns = { ...ns, [opp]: { ...ns[opp],
+  bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c),
+  mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
 ns = dlog(ns, `Power Sink counters ${top.card?.name} and drains ${opp}'s mana.`, "effect");
-}
 break;
 }
 case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
@@ -458,13 +480,33 @@ if (tgtC && tgtC.color === "B") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC
 break;
 }
 case "destroyBlueOrCounter": {
-if (tgtC && tgtC.color === "U") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
-else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === "U") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, "effect"); } }
+const permTarget = tgt ? (ns.p.bf.find(c => c.iid === tgt) || ns.o.bf.find(c => c.iid === tgt)) : null;
+if (permTarget) {
+  if (permTarget.color !== "U") { ns = dlog(ns, `${card.name} fizzles -- target is not blue.`, "effect"); break; }
+  ns = zMove(ns, permTarget.iid, permTarget.controller, permTarget.controller, "gy");
+  ns = dlog(ns, `${card.name} destroys ${permTarget.name}.`, "effect");
+  break;
+}
+const stackTarget = findStackTarget(ns.stack, tgt, item.id);
+if (!stackTarget) { ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect"); break; }
+if (stackTarget.card?.color !== "U") { ns = dlog(ns, `${card.name} fizzles -- target spell is not blue.`, "effect"); break; }
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== stackTarget.id) };
+ns = dlog(ns, `${card.name} counters ${stackTarget.card.name}.`, "effect");
 break;
 }
 case "destroyRedOrCounter": {
-if (tgtC && tgtC.color === "R") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
-else { const top = ns.stack[ns.stack.length-2]; if (top && top.card?.color === "R") { ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id) }; ns = dlog(ns, `${card.name} counters ${top.card.name}.`, "effect"); } }
+const permTarget = tgt ? (ns.p.bf.find(c => c.iid === tgt) || ns.o.bf.find(c => c.iid === tgt)) : null;
+if (permTarget) {
+  if (permTarget.color !== "R") { ns = dlog(ns, `${card.name} fizzles -- target is not red.`, "effect"); break; }
+  ns = zMove(ns, permTarget.iid, permTarget.controller, permTarget.controller, "gy");
+  ns = dlog(ns, `${card.name} destroys ${permTarget.name}.`, "effect");
+  break;
+}
+const stackTarget = findStackTarget(ns.stack, tgt, item.id);
+if (!stackTarget) { ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect"); break; }
+if (stackTarget.card?.color !== "R") { ns = dlog(ns, `${card.name} fizzles -- target spell is not red.`, "effect"); break; }
+ns = { ...ns, stack: ns.stack.filter(i => i.id !== stackTarget.id) };
+ns = dlog(ns, `${card.name} counters ${stackTarget.card.name}.`, "effect");
 break;
 }
 case "wrathAll": {
@@ -2299,6 +2341,42 @@ case "CAST_SPELL": {
       return s;
     }
   }
+  // Counter-spell legality: must have a valid target on the stack at cast time.
+  const COUNTER_EFFECTS = new Set(['counter','counterCreature','powerSink']);
+  if (COUNTER_EFFECTS.has(c.effect)) {
+    const eligible = s.stack.filter(i => {
+      if (c.effect === 'counterCreature') return isCre(i.card);
+      return true;
+    });
+    if (!eligible.length) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} requires a spell on the stack`);
+      return s;
+    }
+    if (c.id === 'spell_blast') {
+      const xSpendCheck = action.xVal || s.xVal || 1;
+      if (!s.stack.some(i => i.card.cmc === xSpendCheck)) {
+        console.warn(`[DuelCore] CAST_SPELL blocked: Spell Blast X=${xSpendCheck} but no matching CMC on stack`);
+        return s;
+      }
+    }
+  }
+  // BEB/REB legality: must have a red/blue spell on stack OR a red/blue permanent on bf.
+  if (c.effect === 'destroyRedOrCounter') {
+    const hasRedSpell = s.stack.some(i => i.card?.color === 'R');
+    const hasRedPerm = s.p.bf.some(i => i.color === 'R') || s.o.bf.some(i => i.color === 'R');
+    if (!hasRedSpell && !hasRedPerm) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Blue Elemental Blast requires a red target`);
+      return s;
+    }
+  }
+  if (c.effect === 'destroyBlueOrCounter') {
+    const hasBlueSpell = s.stack.some(i => i.card?.color === 'U');
+    const hasBluePerm = s.p.bf.some(i => i.color === 'U') || s.o.bf.some(i => i.color === 'U');
+    if (!hasBlueSpell && !hasBluePerm) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Red Elemental Blast requires a blue target`);
+      return s;
+    }
+  }
   const xSpend = c.cost?.toUpperCase().includes('X') ? (action.xVal || s.xVal || 1) : 0;
   if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
@@ -2326,7 +2404,10 @@ case "CAST_SPELL": {
     if (t === 'p' || t === 'player' || t === 'player-p') return ' targeting Player';
     if (t === 'o' || t === 'opponent' || t === 'player-o') return ' targeting Opponent';
     const tgtCard = s.p.bf.find(x => x.iid === t) || s.o.bf.find(x => x.iid === t);
-    return tgtCard ? ` targeting ${tgtCard.name}` : '';
+    if (tgtCard) return ` targeting ${tgtCard.name}`;
+    const stackItem = s.stack.find(i => i.id === t);
+    if (stackItem) return ` targeting ${stackItem.card?.name ?? 'stack spell'}`;
+    return '';
   })();
   return dlog(
     { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null },

@@ -210,6 +210,22 @@ shape extended fields reserved for future implementation.
 
 Instants and Interrupts bypass all three checks and may be cast at any time priority is held, including when the stack is non-empty (responses/counter-spells).
 
+### Counter-Spell Targeting
+
+Counter-effect spells (`counter`, `counterCreature`, `powerSink`,
+`destroyRedOrCounter`, `destroyBlueOrCounter`) require an explicit target at
+cast time:
+
+- `targets[0]` is the `id` of a stack item (for spell-counter mode) or the
+  `iid` of a battlefield permanent (for BEB/REB destroy mode).
+- `resolveEff` looks up the target by id via `findStackTarget`. If the target
+  is no longer on the stack at resolution, the spell fizzles.
+- BEB/REB present a two-button mode picker in the UI; unavailable modes are
+  greyed out. The AI prefers counter mode when a valid stack target exists.
+- Spell Blast enforces CMC match against `xVal` at both cast time and
+  resolution.
+- Force Spike counters unconditionally (known simplification).
+
 ---
 
 # 5. Combat System

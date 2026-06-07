@@ -125,6 +125,15 @@ CORE SYSTEM (Critical)
 
 ---
 
+#### Counter-Spell Target Resolution
+Status: ACTIVE (counter-targeting sprint)
+`findStackTarget(stack, tgt, counterItemId)` resolves counter targets by id
+with positional fallback. BEB/REB mode state lives in `useDuelController.ts`
+as `pendingMode`. Stack item click-to-target wired in `StackDisplay` via
+`onItemClick` prop.
+
+---
+
 # 2. AI SYSTEMS
 
 ---
