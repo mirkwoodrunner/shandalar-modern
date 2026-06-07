@@ -134,6 +134,28 @@ export function getTou(c, state) {
   return computeCharacteristics(c, state).toughness;
 }
 
+/**
+ * Returns { power, toughness } suitable for UI display.
+ * Sums eotBuffs and counter deltas WITHOUT requiring full state (no lord layer).
+ * Used by FieldCard components so pumped P/T shows correctly.
+ * For combat/SBE accuracy always use getPow(c, state) / getTou(c, state) instead.
+ */
+export function getDisplayPT(c) {
+  const base_p = typeof c.power     === 'number' ? c.power     : 0;
+  const base_t = typeof c.toughness === 'number' ? c.toughness : 0;
+  let dp = base_p;
+  let dt = base_t;
+  for (const buff of (c.eotBuffs ?? [])) {
+    dp += buff.power     ?? 0;
+    dt += buff.toughness ?? 0;
+  }
+  const p1p1 = c.counters?.P1P1 ?? 0;
+  const m1m1 = c.counters?.M1M1 ?? 0;
+  dp += p1p1 - m1m1;
+  dt += p1p1 - m1m1;
+  return { power: Math.max(0, dp), toughness: dt };
+}
+
 export function canBlockDuel(bl, at, defBf, state = null) {
 // MTG rule 509.1a: blocking creatures must be untapped.
 if (bl.tapped) return false;
@@ -2651,7 +2673,9 @@ case "ACTIVATE_ABILITY": {
 
   // 2. Mana cost — strip 'T' and commas, parse remainder
   const manaPart = act.cost.replace(/T/g, "").replace(/,/g, "").trim();
-  if (manaPart) {
+  // Counter-cost abilities (e.g. Triskelion): cost is paid by removing a counter,
+  // not by spending mana. The effect handler validates and removes the counter.
+  if (manaPart && manaPart !== 'counter') {
     if (!canPay(s.p.mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
     s = { ...s, p: { ...s.p, mana: payMana(s.p.mana, manaPart) } };
   }

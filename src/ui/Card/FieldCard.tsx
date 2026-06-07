@@ -5,6 +5,7 @@ import { CardArtImage } from './CardArtImage';
 import { frameOf } from './frame';
 import type { CardData } from './types';
 import styles from './FieldCard.module.css';
+import { getDisplayPT } from '../../engine/DuelCore.js';
 
 interface FieldCardProps {
   card: CardData;
@@ -22,6 +23,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
   const h = sm ? 109 : 134;
   const isCre = card.type?.includes('Creature') === true || (card as any).isAnimatedLand === true;
   const fontSize = sm ? 7.5 : 8.5;
+  const { power: dispPow, toughness: dispTou } = isCre ? getDisplayPT(card) : { power: 0, toughness: 0 };
 
   const borderColor = casting ? 'var(--brass-hi)' : selected ? 'var(--brass)' : attacking ? 'var(--opp)' : frame.bd;
   const boxShadow = casting
@@ -121,10 +123,14 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
           style={{
             border: `1px solid ${frame.bd}`,
             fontSize: sm ? 9.5 : 11,
-            color: (card.damage ?? 0) > 0 ? 'var(--opp)' : '#f0e4b8',
+            color: (card.damage ?? 0) > 0
+              ? 'var(--opp)'
+              : (dispPow !== (card.power ?? 0) || dispTou !== (card.toughness ?? 0))
+                ? 'var(--brass-hi)'
+                : '#f0e4b8',
           }}
         >
-          {card.power}/{card.toughness}
+          {dispPow}/{dispTou}
         </div>
       )}
 
