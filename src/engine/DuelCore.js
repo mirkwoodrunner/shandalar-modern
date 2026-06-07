@@ -2636,7 +2636,7 @@ case "ACTIVATE_ABILITY": {
       if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
       s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
     }
-    const manaItem = { id: makeId(), card: { ...card, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
+    const manaItem = { id: makeId(), card: { ...card, effect: act.effect, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
     s = resolveEff(s, manaItem);
     return dlog(s, `${card.name} adds mana.`, "mana");
   }
