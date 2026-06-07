@@ -18,12 +18,14 @@ describe('Combat damage', () => {
       oBf: [attacker],
     });
 
-    // Declare the attacker, then advance through blockers to damage resolution.
+    // Declare the attacker, then advance through all combat phases to damage resolution.
     const s1 = duelReducer(state, { type: 'DECLARE_ATTACKER', iid: 'att-1' });
-    const s2 = duelReducer(s1, { type: 'ADVANCE_PHASE' }); // -> COMBAT_BLOCKERS
-    const s3 = duelReducer(s2, { type: 'ADVANCE_PHASE' }); // -> COMBAT_DAMAGE, resolves
+    const s2 = duelReducer(s1, { type: 'ADVANCE_PHASE' }); // -> COMBAT_AFTER_ATTACKERS
+    const s3 = duelReducer(s2, { type: 'ADVANCE_PHASE' }); // -> COMBAT_BLOCKERS
+    const s4 = duelReducer(s3, { type: 'ADVANCE_PHASE' }); // -> COMBAT_AFTER_BLOCKERS
+    const s5 = duelReducer(s4, { type: 'ADVANCE_PHASE' }); // -> COMBAT_DAMAGE, resolves
 
-    expect(s3.p.life).toBe(18);
+    expect(s5.p.life).toBe(18);
   });
 
   it('4b: blocked attacker and blocker deal lethal damage to each other and both die', () => {
@@ -38,16 +40,18 @@ describe('Combat damage', () => {
     });
 
     const s1 = duelReducer(state, { type: 'DECLARE_ATTACKER', iid: 'att-1' });
-    const s2 = duelReducer(s1, { type: 'ADVANCE_PHASE' }); // -> COMBAT_BLOCKERS
-    const s3 = duelReducer(s2, { type: 'DECLARE_BLOCKER', attId: 'att-1', blId: 'bl-1' });
-    const s4 = duelReducer(s3, { type: 'ADVANCE_PHASE' }); // -> COMBAT_DAMAGE, resolves
+    const s2 = duelReducer(s1, { type: 'ADVANCE_PHASE' }); // -> COMBAT_AFTER_ATTACKERS
+    const s3 = duelReducer(s2, { type: 'ADVANCE_PHASE' }); // -> COMBAT_BLOCKERS
+    const s4 = duelReducer(s3, { type: 'DECLARE_BLOCKER', attId: 'att-1', blId: 'bl-1' });
+    const s5 = duelReducer(s4, { type: 'ADVANCE_PHASE' }); // -> COMBAT_AFTER_BLOCKERS
+    const s6 = duelReducer(s5, { type: 'ADVANCE_PHASE' }); // -> COMBAT_DAMAGE, resolves
 
     // State-based action: both creatures had damage >= toughness, so both are destroyed.
-    expect(s4.o.bf.some(c => c.iid === 'att-1')).toBe(false);
-    expect(s4.p.bf.some(c => c.iid === 'bl-1')).toBe(false);
+    expect(s6.o.bf.some(c => c.iid === 'att-1')).toBe(false);
+    expect(s6.p.bf.some(c => c.iid === 'bl-1')).toBe(false);
     // Both creatures move to their respective graveyards.
-    expect(s4.o.gy.some(c => c.iid === 'att-1')).toBe(true);
-    expect(s4.p.gy.some(c => c.iid === 'bl-1')).toBe(true);
+    expect(s6.o.gy.some(c => c.iid === 'att-1')).toBe(true);
+    expect(s6.p.gy.some(c => c.iid === 'bl-1')).toBe(true);
   });
 
   it('4c: creature with summoning sickness cannot be declared as an attacker', () => {

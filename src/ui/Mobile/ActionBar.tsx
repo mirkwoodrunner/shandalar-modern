@@ -79,6 +79,53 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
     );
   }
 
+  if (phase === 'COMBAT_ATTACKERS' && isPlayerTurn) {
+    return (
+      <div
+        data-testid="action-bar"
+        className={s.actionBar}
+        style={{
+          gap: 5,
+          padding: '8px 8px',
+          borderTop: '1.5px solid rgba(200,120,80,.5)',
+          boxShadow: 'inset 0 10px 22px -10px rgba(200,120,80,.25)',
+        }}
+      >
+        <div
+          style={{
+            flex: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            color: 'rgba(255,180,140,.85)',
+            fontSize: 9,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 0.8,
+            textTransform: 'uppercase',
+          }}
+        >
+          <span style={{ fontSize: 10 }}>DECLARE ATTACKERS</span>
+        </div>
+        <button
+          className={s.actionBtn}
+          onClick={onEnd}
+          data-testid="done-attacking-button"
+          style={{
+            flex: 2,
+            background: 'linear-gradient(180deg, #3a1818, #1a0808)',
+            border: '1px solid rgba(200,80,80,.7)',
+            color: 'rgba(255,160,140,.9)',
+            boxShadow: '0 0 8px rgba(200,80,80,.4)',
+          }}
+        >
+          Done {'▸'}
+        </button>
+      </div>
+    );
+  }
+
   if (phase === 'COMBAT_BLOCKERS' && !isPlayerTurn) {
     const blockerCount = Object.keys(blockers ?? {}).length;
     return (
@@ -119,6 +166,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
         <button
           className={s.actionBtn}
           onClick={onEnd}
+          data-testid="done-blocking-button"
           style={{
             flex: 2,
             background: 'linear-gradient(180deg, #18283a, #0a1420)',

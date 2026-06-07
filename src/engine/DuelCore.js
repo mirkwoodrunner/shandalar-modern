@@ -1700,23 +1700,27 @@ return ns;
 
 export const PHASE_SEQ = PHASE_SEQUENCE;
 export const PHASE_LBL = {
-  [PHASE.UNTAP]:            "Untap",
-  [PHASE.UPKEEP]:           "Upkeep",
-  [PHASE.DRAW]:             "Draw",
-  [PHASE.MAIN_1]:           "Main 1",
-  [PHASE.COMBAT_BEGIN]:     "Cbt Begin",
-  [PHASE.COMBAT_ATTACKERS]: "Attackers",
-  [PHASE.COMBAT_BLOCKERS]:  "Blockers",
-  [PHASE.COMBAT_DAMAGE]:    "Combat",
-  [PHASE.COMBAT_END]:       "Cbt End",
-  [PHASE.MAIN_2]:           "Main 2",
-  [PHASE.END]:              "End",
-  [PHASE.CLEANUP]:          "Cleanup",
+  [PHASE.UNTAP]:                  "Untap",
+  [PHASE.UPKEEP]:                 "Upkeep",
+  [PHASE.DRAW]:                   "Draw",
+  [PHASE.MAIN_1]:                 "Main 1",
+  [PHASE.COMBAT_BEGIN]:           "Cbt Begin",
+  [PHASE.COMBAT_ATTACKERS]:       "Attackers",
+  [PHASE.COMBAT_AFTER_ATTACKERS]: "After Atk",
+  [PHASE.COMBAT_BLOCKERS]:        "Blockers",
+  [PHASE.COMBAT_AFTER_BLOCKERS]:  "After Blk",
+  [PHASE.COMBAT_DAMAGE]:          "Combat",
+  [PHASE.COMBAT_END]:             "Cbt End",
+  [PHASE.MAIN_2]:                 "Main 2",
+  [PHASE.END]:                    "End",
+  [PHASE.CLEANUP]:                "Cleanup",
 };
 export const COMBAT_PHASES = [
   PHASE.COMBAT_BEGIN,
   PHASE.COMBAT_ATTACKERS,
+  PHASE.COMBAT_AFTER_ATTACKERS,
   PHASE.COMBAT_BLOCKERS,
+  PHASE.COMBAT_AFTER_BLOCKERS,
   PHASE.COMBAT_DAMAGE,
   PHASE.COMBAT_END,
 ];
@@ -1726,8 +1730,13 @@ if (s.stack && s.stack.length > 0) return s;
 const idx = PHASE_SEQ.indexOf(s.phase);
 let next = PHASE_SEQ[(idx + 1) % PHASE_SEQ.length];
 
-// Issue B14: skip blockers and damage when no attackers were declared.
-if (next === PHASE.COMBAT_BLOCKERS && (!s.attackers || s.attackers.length === 0)) {
+// Issue B14: skip AFTER_ATTACKERS, BLOCKERS, and AFTER_BLOCKERS when no attackers declared.
+if (
+  (next === PHASE.COMBAT_AFTER_ATTACKERS ||
+   next === PHASE.COMBAT_BLOCKERS ||
+   next === PHASE.COMBAT_AFTER_BLOCKERS) &&
+  (!s.attackers || s.attackers.length === 0)
+) {
   next = PHASE.MAIN_2;
 }
 
@@ -2267,6 +2276,13 @@ pendingTransmutePay: null,
 };
 }
 
+// Phases where mana tapping and non-mana ability activation are illegal.
+// Players declare attackers/blockers only; no priority is held.
+const DECLARE_ONLY_PHASES = new Set([
+  PHASE.COMBAT_ATTACKERS,
+  PHASE.COMBAT_BLOCKERS,
+]);
+
 // --- DUEL REDUCER ------------------------------------------------------------
 // Pure function: (GameState, GameAction) ? GameState
 // This is the ONLY place GameState mutations are valid.
@@ -2278,6 +2294,7 @@ let s = state;
 switch (action.type) {
 
 case "TAP_LAND": {
+  if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot tap mana during declare phase.", "rule");
   let ns = s;
   if (action.who === 'p' && ns.manaTapSnapshot === null && (ns.stack?.length ?? 0) === 0) {
     ns = {
@@ -2292,6 +2309,7 @@ case "TAP_LAND": {
 }
 
 case "TAP_ART_MANA": {
+  if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot tap mana during declare phase.", "rule");
   const w = action.who;
   const c = s[w].bf.find(x => x.iid === action.iid);
   if (!c || c.tapped || !c.activated?.effect?.startsWith("addMana")) return s;
@@ -2578,6 +2596,7 @@ case "MULLIGAN": {
 }
 
 case "ACTIVATE_ABILITY": {
+  if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot activate abilities during declare phase.", "rule");
   const { iid, tgt, chosenColor, abilityId } = action;
   const card = s.p.bf.find(c => c.iid === iid);
   if (!card) return s;
