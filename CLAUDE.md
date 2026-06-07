@@ -168,30 +168,13 @@ All mobile UI changes must be scoped behind `isMobile` guards or `@media` rules.
 Mobile changes must not impact the desktop experience. Desktop changes must not break mobile.
 The `useIsMobile` hook lives at `src/hooks/useIsMobile.ts` (640px breakpoint).
 
-### Player Targeting (draw3 / Ancestral Recall)
+### Player Targeting
 
-When `needsExplicitTarget(card)` is true for a player-targeted effect (draw3),
-`DuelScreen.tsx` passes `onLifeClick` to both Banner components so the opponent
-and player life totals become click targets. The prop is only set when
-`playerTargetingActive` is true (a player-target spell is selected in hand).
+See `docs/MOBILE_VS_PC.md` — Player-target effects (draw3 / Ancestral Recall).
 
-`src/ui/Mobile/DuelScreenMobile.tsx` uses `targetingFor` / `pendingTarget` local
-state for the same purpose. Do not merge these paths.
+### TutorModal
 
-- **Mobile targeting mode:** `needsExplicitTarget()` is exported from `useDuelController.ts`
-  and imported by both screen components. Do not redefine it locally in either screen.
-  `EXPLICIT_TARGET_EFFECTS` covers only top-level `card.effect` values -- activated-ability
-  targeting (ping, regenerate, etc.) is handled post-cast via `handleActivate`.
-
-See `docs/MOBILE_VS_PC.md` for the full targeting table.
-
-### TutorModal (`src/ui/duel/TutorModal.tsx`)
-- Two-step selection: click selects a card (highlights it), a "Take" button commits the choice.
-- `data-testid="tutor-confirm"` on the Take button; only rendered when a card is pending.
-- `data-testid="tutor-decline"` on Decline button — unchanged behavior.
-- `data-testid="tutor-card-{card.id}"` on each valid (non-disabled) card row — unchanged.
-- Applies to both Demonic Tutor (filter: 'any') and Transmute Artifact (filter: 'artifact').
-- No engine changes. No DuelScreen or DuelScreenMobile changes.
+See `docs/COMPONENT_REGISTRY.md` — TutorModal and `docs/SYSTEMS.md` — Tutor Framework.
 
 ### Emoji in JSX
 Emoji in JSX must use Unicode escape expressions to survive rewrites without corruption.
@@ -207,11 +190,7 @@ Do not blur these boundaries.
 
 ### Overworld Structure Types
 
-Map size: `MAP_W = 64`, `MAP_H = 40`. Structure counts per run: towns 18-22, dungeons 14-16, castles 5, ruins 10-14.
-
-RUIN structure: `tile.ruinData = { name, looted, hasGuardian }`. Always visible (no `clued` gate).
-Guardian fight uses `context 'ruin_guardian'`; `handleDuelEnd` re-opens ruin modal on win via `setActiveTile` + `setModal('ruin')`.
-Loot draw uses weighted pool: common×3, uncommon×2, rare×1. No dungeon screen — single modal interaction only.
+See `docs/SYSTEMS.md` -- Section 22: Overworld Structure Types.
 
 ---
 
