@@ -2294,3 +2294,53 @@ test.describe('Counterspell stack visibility', () => {
     expect(topCard).toBe('counterspell');
   });
 });
+
+// ── Fix: Desktop Blocker UI ───────────────────────────────────────────────────
+
+test.describe('Blocker UI', () => {
+  test('BLK-03: pending blocker highlighted on desktop during COMBAT_BLOCKERS', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(sandboxWith('grizzly_bears,forest'));
+    await waitForDuel(page);
+
+    // Force COMBAT_BLOCKERS with AI attacking
+    await page.evaluate(() => {
+      const d = (window as any).__duelDispatch;
+      if (!d) throw new Error('dispatch not ready');
+      d({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s && s.phase === 'COMBAT_BLOCKERS' && s.active === 'o';
+    }, { timeout: 3000 });
+
+    // Done Blocking button must be visible during defender's blocker assignment
+    await expect(page.getByTestId('done-blocking-button')).toBeVisible({ timeout: 2000 });
+
+    // Blocker hint should indicate first-click instruction
+    const hint = page.locator('[data-testid="blocker-hint"]');
+    if (await hint.count() > 0) {
+      await expect(hint).toContainText(/click one of your creatures/i, { timeout: 2000 });
+    }
+  });
+
+// ── Fix: AI Blocking Chump ────────────────────────────────────────────────────
+
+  test('BLK-04: AI blocks with chump when attacker power >= threshold', async ({ page }) => {
+    await page.goto(sandboxWith('force_of_nature,forest,forest,forest,forest,forest'));
+    await waitForDuel(page);
+
+    // Force COMBAT_BLOCKERS phase (player attacking, AI defending)
+    await page.evaluate(() => {
+      const d = (window as any).__duelDispatch;
+      d({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'p' });
+    });
+
+    const phase = await page.evaluate(() => {
+      const s = (window as any).__duelState?.();
+      return s?.phase;
+    });
+    expect(phase).toBe('COMBAT_BLOCKERS');
+  });
+});

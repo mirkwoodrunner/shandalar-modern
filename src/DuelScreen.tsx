@@ -309,7 +309,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingDualLand, setPendingDualLand,
     showBop, handleBopChoose, handleBopCancel,
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
-    handleBfClick,
+    handleBfClick, pendingBlockerIid,
     pendingCast, setPendingCast, canCastPending,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
@@ -664,6 +664,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               selTgt={s.selTgt ?? null}
               attackers={attackersList}
               flashIids={flashIids}
+              pendingBlockerIid={pendingBlockerIid}
+              blockers={(s.blockers as Record<string, string>) ?? {}}
               onCardClick={handleBfCardClick}
             />
             {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
@@ -764,6 +766,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               // If priorityWindow is open and player already passed: no-op (waiting for AI)
             }}
             onDoneBlocking={advancePhase}
+            blockerHint={
+              s.phase === 'COMBAT_BLOCKERS' && s.active === 'o'
+                ? pendingBlockerIid
+                  ? 'Now click an attacker to assign the block'
+                  : 'Click one of your creatures, then click the attacker to block'
+                : null
+            }
             onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); }}
             onEndTurn={requestPhaseAdvance}
           />

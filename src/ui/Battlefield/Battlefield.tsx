@@ -10,6 +10,8 @@ interface BattlefieldProps {
   selTgt: string | null;
   attackers: string[];
   flashIids?: Set<string>;
+  pendingBlockerIid?: string | null;
+  blockers?: Record<string, string>;
   onCardClick?: (card: CardData) => void;
   onCardHover?: (iid: string | null) => void;
 }
@@ -22,6 +24,8 @@ export function Battlefield({
   selTgt,
   attackers,
   flashIids,
+  pendingBlockerIid,
+  blockers,
   onCardClick,
   onCardHover,
 }: BattlefieldProps) {
@@ -34,6 +38,8 @@ export function Battlefield({
         selTgt={selTgt}
         attackers={attackers}
         flashIids={flashIids}
+        pendingBlockerIid={pendingBlockerIid}
+        blockers={blockers}
         onCardClick={onCardClick}
         onCardHover={onCardHover}
       />
@@ -45,6 +51,8 @@ export function Battlefield({
         selTgt={selTgt}
         attackers={attackers}
         flashIids={flashIids}
+        pendingBlockerIid={pendingBlockerIid}
+        blockers={blockers}
         onCardClick={onCardClick}
         onCardHover={onCardHover}
       />

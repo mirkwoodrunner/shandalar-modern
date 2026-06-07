@@ -921,7 +921,14 @@ function planBlock(state, profile) {
     const survives = valid.find(b => getTou(b, state) > ap);
     const preventLethal = state.o.life <= ap ? valid[0] : null;
 
-    const chosen = favorableTrade || survives || preventLethal;
+    // Chump fallback: block to prevent free damage even when our blocker dies.
+    // Passive profiles (aggression < 0.4) accept small hits; balanced/aggressive chump earlier.
+    const chumpThreshold = profile.aggression >= 0.6 ? 2 : 3;
+    const preventDamage = (!favorableTrade && !survives && ap >= chumpThreshold)
+      ? valid[0]
+      : null;
+
+    const chosen = favorableTrade || survives || preventLethal || preventDamage;
     if (chosen) {
       alreadyBlocking.add(chosen.iid);
       blockActions.push({ type: 'BLOCK', blockerId: chosen.iid, attackerId: attId });

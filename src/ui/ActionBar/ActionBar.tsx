@@ -19,6 +19,7 @@ interface ActionBarProps {
   compact?: boolean;
   canUndo?: boolean;
   onUndo?: () => void;
+  blockerHint?: string | null;
 }
 
 export function ActionBar({
@@ -37,6 +38,7 @@ export function ActionBar({
   compact = false,
   canUndo,
   onUndo,
+  blockerHint,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
@@ -89,6 +91,18 @@ export function ActionBar({
       >
         {passPriorityLabel}
       </ActionButton>
+
+      {blockerHint && (
+        <span
+          data-testid="blocker-hint"
+          style={{
+            fontSize: 10, fontStyle: 'italic', color: 'var(--ink-faint)',
+            pointerEvents: 'none', userSelect: 'none',
+          }}
+        >
+          {blockerHint}
+        </span>
+      )}
 
       {phase === 'COMBAT_BLOCKERS' && !isPlayerTurn && (
         <ActionButton
