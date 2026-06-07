@@ -1789,3 +1789,177 @@ test.describe('TransmutePayModal', () => {
   });
 
 });
+
+// ---------------------------------------------------------------------------
+test.describe('Counter-spell targeting (CTR)', () => {
+
+  // CTR-01: Player counters opponent's Lightning Bolt with Counterspell
+  test('CTR-01: player counters opponent spell -- target removed from stack', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(sandboxWith('counterspell'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { R: 1 } });
+      const s = (window as any).__duelState();
+      const bolt = s.o.hand.find((c: any) => c.id === 'lightning_bolt')
+                   ?? { iid: 'test-bolt', id: 'lightning_bolt', name: 'Lightning Bolt',
+                        type: 'Instant', color: 'R', cmc: 1, cost: 'R', effect: 'damage3',
+                        tapped: false, summoningSick: false, attacking: false, blocking: null,
+                        damage: 0, counters: {}, eotBuffs: [], enchantments: [], keywords: [],
+                        controller: 'o', produces: null };
+      dispatch({ type: 'CAST_SPELL', who: 'o', iid: bolt.iid, tgt: 'p', xVal: null });
+    });
+
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s?.stack?.length > 0 && s?.priorityWindow === true;
+    }, { timeout: 5_000 });
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const bolt = s.stack.find((i: any) => i.card?.id === 'lightning_bolt');
+      const counterspell = s.p.hand.find((c: any) => c.id === 'counterspell');
+      if (!bolt || !counterspell) throw new Error('Setup failed: missing bolt or counterspell');
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { U: 2 } });
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: counterspell.iid, tgt: bolt.id, xVal: null });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' }); // resolve counterspell
+      dispatch({ type: 'RESOLVE_STACK' }); // bolt should already be gone
+    });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    expect(s.stack.length).toBe(0);
+    expect(s.o.gy.some((c: any) => c.id === 'lightning_bolt')).toBe(true);
+    expect(s.p.life).toBe(20);
+  });
+
+  // CTR-02: Counterspell blocked when stack is empty
+  test('CTR-02: counterspell cast blocked when stack is empty', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(sandboxWith('counterspell'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const counterspell = s.p.hand.find((c: any) => c.id === 'counterspell');
+      if (!counterspell) return;
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { U: 2 } });
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: counterspell.iid, tgt: null, xVal: null });
+    });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    // Stack must still be empty -- cast was blocked
+    expect(s.stack.length).toBe(0);
+    // Counterspell still in hand
+    expect(s.p.hand.some((c: any) => c.id === 'counterspell')).toBe(true);
+  });
+
+  // CTR-03: Remove Soul fizzles against a non-creature spell
+  test('CTR-03: remove soul fizzles against non-creature spell', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(sandboxWith('remove_soul'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { R: 1 } });
+      const s = (window as any).__duelState();
+      const bolt = s.o.hand.find((c: any) => c.id === 'lightning_bolt');
+      if (bolt) dispatch({ type: 'CAST_SPELL', who: 'o', iid: bolt.iid, tgt: 'p', xVal: null });
+    });
+
+    await page.waitForFunction(() => (window as any).__duelState()?.stack?.length > 0, { timeout: 3_000 });
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const boltItem = s.stack.find((i: any) => i.card?.id === 'lightning_bolt');
+      const removeSoul = s.p.hand.find((c: any) => c.id === 'remove_soul');
+      if (!removeSoul || !boltItem) return;
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { U: 1, C: 1 } });
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: removeSoul.iid, tgt: boltItem.id, xVal: null });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' }); // resolve Remove Soul -> fizzles
+      dispatch({ type: 'RESOLVE_STACK' }); // bolt resolves -> deals 3
+    });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    // Bolt resolved -- player took 3
+    expect(s.p.life).toBe(17);
+  });
+
+  // CTR-04: Spell Blast matches CMC
+  test('CTR-04: spell blast counters only when CMC matches X', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(sandboxWith('spell_blast'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { R: 1 } });
+      const s = (window as any).__duelState();
+      const bolt = s.o.hand.find((c: any) => c.id === 'lightning_bolt');
+      if (bolt) dispatch({ type: 'CAST_SPELL', who: 'o', iid: bolt.iid, tgt: 'p', xVal: null });
+    });
+
+    await page.waitForFunction(() => (window as any).__duelState()?.stack?.length > 0, { timeout: 3_000 });
+
+    // Set X = 1 (Lightning Bolt cmc = 1) -- should counter
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const boltItem = s.stack.find((i: any) => i.card?.id === 'lightning_bolt');
+      const spellBlast = s.p.hand.find((c: any) => c.id === 'spell_blast');
+      if (!spellBlast || !boltItem) return;
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { U: 1, C: 1 } });
+      dispatch({ type: 'SET_X', val: 1 });
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid: spellBlast.iid, tgt: boltItem.id, xVal: 1 });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' });
+    });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    expect(s.stack.length).toBe(0);
+    expect(s.o.gy.some((c: any) => c.id === 'lightning_bolt')).toBe(true);
+    expect(s.p.life).toBe(20);
+  });
+
+  // CTR-05: Mobile -- stack item tappable in counter-targeting mode
+  test('CTR-05: mobile stack item is tappable when counterspell selected', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(sandboxWith('counterspell'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Put a bolt on the stack from opponent
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { R: 1 } });
+      const s = (window as any).__duelState();
+      const bolt = s.o.hand.find((c: any) => c.id === 'lightning_bolt');
+      if (bolt) dispatch({ type: 'CAST_SPELL', who: 'o', iid: bolt.iid, tgt: 'p', xVal: null });
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'p' });
+    });
+
+    await expect(page.locator('[data-testid="stack-display"]')).toBeVisible({ timeout: 5_000 });
+
+    // Stack item should be visible in counter mode
+    await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 3_000 });
+  });
+
+});

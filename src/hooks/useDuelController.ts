@@ -75,6 +75,23 @@ export function needsExplicitTarget(card: any): boolean {
   return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
 }
 
+export function isCounterEffect(card: any): boolean {
+  return ['counter', 'counterCreature', 'powerSink'].includes(card?.effect);
+}
+
+export function isBebRebEffect(card: any): boolean {
+  return card?.effect === 'destroyRedOrCounter' || card?.effect === 'destroyBlueOrCounter';
+}
+
+// Returns true when the selected card needs the player to click a stack item.
+// BEB/REB only need stack target if mode === 'counter'.
+export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' | null): boolean {
+  if (!card) return false;
+  if (isCounterEffect(card)) return true;
+  if (isBebRebEffect(card) && pendingMode === 'counter') return true;
+  return false;
+}
+
 function scoreLibCard(card: any, _state: any): number {
   if (card.type?.includes('Creature')) {
     const pow = typeof card.power === 'number' ? card.power : 0;
@@ -158,6 +175,7 @@ export function useDuelController(
   const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
   const [pendingCast, setPendingCast] = useState<{ cardIid: string; target: string | null } | null>(null);
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
+  const [pendingMode, setPendingMode] = useState<'counter' | 'destroy' | null>(null);
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
@@ -598,6 +616,10 @@ export function useDuelController(
     pendingCast,
     setPendingCast,
     canCastPending,
+
+    // Counter mode state (BEB/REB two-mode selection)
+    pendingMode,
+    setPendingMode,
 
     // Activated ability state and handlers
     pendingActivate,

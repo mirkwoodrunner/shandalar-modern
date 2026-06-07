@@ -143,3 +143,7 @@ export function makeSpell(iid, overrides = {}) {
     ...overrides,
   };
 }
+
+export function makeStackItem(card, caster, targets = [], xVal = 1) {
+  return { id: `stack-${Math.random().toString(36).slice(2)}`, card, caster, targets, xVal };
+}

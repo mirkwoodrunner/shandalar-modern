@@ -272,4 +272,45 @@ export function DualLandColorPicker({ landName, colors, onChoose, onCancel }) {
   );
 }
 
-export default { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker };
+// --- BEB / REB MODE PICKER ---------------------------------------------------
+// Two-button picker for Blue/Red Elemental Blast: counter a spell or destroy a permanent.
+
+export function BebRebModePicker({ cardName, targetColor, stack, playerBf, opponentBf, onSetMode, onCancel }) {
+  const hasSpell = (stack ?? []).some(i => i.card?.color === targetColor);
+  const hasPerm = [...(playerBf ?? []), ...(opponentBf ?? [])].some(c => c.color === targetColor);
+  const btnBase = {
+    padding: "5px 14px", borderRadius: 5, cursor: "pointer",
+    fontSize: 11, fontFamily: "'Cinzel',serif", fontWeight: 700,
+    border: "2px solid rgba(180,140,60,.5)",
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <span style={{ fontSize: 11, color: "#c0a050", fontFamily: "'Cinzel',serif" }}>
+        {cardName}:
+      </span>
+      <button
+        disabled={!hasSpell}
+        onClick={() => onSetMode("counter")}
+        style={{ ...btnBase, background: hasSpell ? "rgba(60,50,20,.85)" : "rgba(30,30,30,.4)", opacity: hasSpell ? 1 : 0.35, color: "#f0d060" }}
+      >
+        Counter spell
+      </button>
+      <button
+        disabled={!hasPerm}
+        onClick={() => onSetMode("destroy")}
+        style={{ ...btnBase, background: hasPerm ? "rgba(60,50,20,.85)" : "rgba(30,30,30,.4)", opacity: hasPerm ? 1 : 0.35, color: "#f0d060" }}
+      >
+        Destroy permanent
+      </button>
+      <button
+        onClick={onCancel}
+        style={{ background: "transparent", border: "1px solid #5a3020", color: "#806040", padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontFamily: "'Cinzel',serif" }}
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+export default { ActionBar, LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker };

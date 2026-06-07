@@ -333,8 +333,20 @@ function selectTarget(card, state, profile, xVal = null) {
   const isCounter = card.effect === 'counter' || card.effect === 'counterCreature';
   if (isCounter) {
     const top = state.stack[state.stack.length - 1];
-    if (!top || top.controller !== 'p') return null;
-    return [];
+    if (!top || top.caster !== 'p') return null;
+    if (card.effect === 'counterCreature' && !isCre(top.card)) return null;
+    if (card.id === 'spell_blast') {
+      const xv = xVal ?? 1;
+      const hit = state.stack.filter(i => i.caster === 'p' && i.card.cmc === xv);
+      if (!hit.length) return null;
+      return [hit[hit.length - 1].id];
+    }
+    return [top.id];
+  }
+  if (card.effect === 'powerSink') {
+    const top = state.stack[state.stack.length - 1];
+    if (!top || top.caster !== 'p') return null;
+    return [top.id];
   }
 
   const isRemoval = ['destroy','exileCreature','bounce','destroyTapped',
@@ -962,7 +974,30 @@ function planInstantResponse(state, profile) {
                           (stackTop.card.effect?.startsWith('damage') ? 3 : 0) +
                           (stackTop.card.effect === 'wrathAll' ? 10 : 0);
       if (spellThreat < 3 && profile.greedySpells < 0.7) continue;
-      spellTargets = [];
+      if (card.effect === 'destroyRedOrCounter') {
+        const redSpell = state.stack.filter(i => i.caster === 'p' && i.card?.color === 'R');
+        if (redSpell.length) {
+          spellTargets = [redSpell[redSpell.length - 1].id];
+        } else {
+          const redPerm = state.p.bf.filter(i => i.color === 'R');
+          if (!redPerm.length) continue;
+          const target = redPerm.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a);
+          spellTargets = [target.iid];
+        }
+      } else if (card.effect === 'destroyBlueOrCounter') {
+        const blueSpell = state.stack.filter(i => i.caster === 'p' && i.card?.color === 'U');
+        if (blueSpell.length) {
+          spellTargets = [blueSpell[blueSpell.length - 1].id];
+        } else {
+          const bluePerm = state.p.bf.filter(i => i.color === 'U');
+          if (!bluePerm.length) continue;
+          const target = bluePerm.reduce((a, b) => scoreThreat(b, state) > scoreThreat(a, state) ? b : a);
+          spellTargets = [target.iid];
+        }
+      } else {
+        // Generic counter: target top opponent spell.
+        spellTargets = [stackTop.id];
+      }
     }
 
     // Instant-speed removal during opponent's attack.

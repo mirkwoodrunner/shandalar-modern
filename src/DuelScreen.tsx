@@ -28,7 +28,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -37,7 +37,7 @@ import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from './ui/duel/TransmutePayModal';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
-import { LotusColorPicker, BopColorPicker, DualLandColorPicker } from './ui/duel/TargetingOverlay.jsx';
+import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
 
 // -----------------------------------------------------------------------------
@@ -312,6 +312,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingCast, setPendingCast, canCastPending,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
+    pendingMode, setPendingMode,
   } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
 
   const s = state;
@@ -490,12 +491,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     })()) ||
     activateCanTargetPlayer;
 
-  // Clear pendingCast if the player deselects the card or selects a different one.
+  // Clear pendingCast and pendingMode if the player deselects the card or selects a different one.
   useEffect(() => {
     if (pendingCast && s.selCard !== pendingCast.cardIid) {
       setPendingCast(null);
     }
-  }, [s.selCard, pendingCast, setPendingCast]);
+    if (pendingMode !== null && !s.selCard) {
+      setPendingMode(null);
+    }
+  }, [s.selCard, pendingCast, setPendingCast, pendingMode, setPendingMode]);
 
   // -- Lotus / Bop / graveyard / mana-choice handlers ------------------------
 
@@ -676,9 +680,18 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               onCardClick={handleBfCardClick}
             />
             {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
-            {!isMobile && s.stack.length > 0 && (
-              <StackDisplay stack={s.stack} isMobile={false} />
-            )}
+            {!isMobile && s.stack.length > 0 && (() => {
+              const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+              const stackTargeting = needsStackTarget(selCardDef, pendingMode);
+              return (
+                <StackDisplay
+                  stack={s.stack}
+                  isMobile={false}
+                  onItemClick={stackTargeting ? (id) => selectTarget(id) : undefined}
+                  selectedItemId={stackTargeting ? s.selTgt : null}
+                />
+              );
+            })()}
           </div>
 
           {/* Player info banner */}
@@ -724,6 +737,24 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             </div>
           )}
 
+          {/* BEB/REB mode picker — shown when a two-mode card is selected and no mode chosen yet */}
+          {(() => {
+            const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+            if (!selCardDef || !isBebRebEffect(selCardDef) || pendingMode !== null) return null;
+            const targetColor = selCardDef.effect === 'destroyRedOrCounter' ? 'R' : 'U';
+            return (
+              <BebRebModePicker
+                cardName={selCardDef.name}
+                targetColor={targetColor}
+                stack={s.stack}
+                playerBf={s.p.bf}
+                opponentBf={s.o.bf}
+                onSetMode={(mode: 'counter' | 'destroy') => setPendingMode(mode)}
+                onCancel={() => { selectCard(null); selectTarget(null); setPendingMode(null); }}
+              />
+            );
+          })()}
+
           {/* Action bar */}
           <ActionBar
             phase={s.phase}
@@ -746,7 +777,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               // If priorityWindow is open and player already passed: no-op (waiting for AI)
             }}
             onDoneBlocking={advancePhase}
-            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); }}
+            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); }}
             onEndTurn={requestPhaseAdvance}
           />
 
@@ -935,9 +966,19 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       </div>
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
-      {isMobile && s.stack.length > 0 && (
-        <StackDisplay stack={s.stack} isMobile={true} bottomOffset={48} />
-      )}
+      {isMobile && s.stack.length > 0 && (() => {
+        const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+        const stackTargeting = needsStackTarget(selCardDef, pendingMode);
+        return (
+          <StackDisplay
+            stack={s.stack}
+            isMobile={true}
+            bottomOffset={48}
+            onItemClick={stackTargeting ? (id) => selectTarget(id) : undefined}
+            selectedItemId={stackTargeting ? s.selTgt : null}
+          />
+        );
+      })()}
 
       {/* -- MOBILE ACTION DRAWER -------------------------------------------- */}
       {isMobile && (

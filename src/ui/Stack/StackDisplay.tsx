@@ -25,6 +25,10 @@ export interface StackDisplayProps {
   // DuelScreenMobile.tsx passes 56 (mobile ActionBar height).
   // Update these values if ActionBar heights change.
   bottomOffset?: number;
+  // Optional: called when a stack item is clicked in counter-targeting mode.
+  onItemClick?: (itemId: string) => void;
+  // Item id currently selected as counter target, for highlight.
+  selectedItemId?: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -43,9 +47,11 @@ interface TopCardProps {
   entry: StackEntry;
   artUrl: string | null;
   isMobile: boolean;
+  onItemClick?: (itemId: string) => void;
+  selected?: boolean;
 }
 
-function TopCard({ entry, artUrl, isMobile }: TopCardProps) {
+function TopCard({ entry, artUrl, isMobile, onItemClick, selected }: TopCardProps) {
   const { card, caster, abilityText } = entry;
   const w = isMobile ? 96 : 120;
   const h = isMobile ? 134 : 168;
@@ -54,10 +60,16 @@ function TopCard({ entry, artUrl, isMobile }: TopCardProps) {
   return (
     <div
       data-testid="stack-top-card"
+      data-stack-item-id={entry.id}
+      role={onItemClick ? 'button' : undefined}
+      tabIndex={onItemClick ? 0 : undefined}
+      onClick={onItemClick ? () => onItemClick(entry.id) : undefined}
+      onKeyDown={onItemClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onItemClick(entry.id); } : undefined}
       style={{
         width: w,
         height: h,
-        border: `2px solid ${borderColor(caster)}`,
+        border: `2px solid ${selected ? '#60a0ff' : borderColor(caster)}`,
+        cursor: onItemClick ? 'pointer' : undefined,
         borderRadius: 6,
         background: '#1a1a1a',
         display: 'flex',
@@ -135,9 +147,11 @@ interface TitleBarProps {
   isMobile: boolean;
   expanded: boolean;
   onToggle: () => void;
+  onItemClick?: (itemId: string) => void;
+  selected?: boolean;
 }
 
-function TitleBar({ entry, artUrl, isMobile, expanded, onToggle }: TitleBarProps) {
+function TitleBar({ entry, artUrl, isMobile, expanded, onToggle, onItemClick, selected }: TitleBarProps) {
   const { card, caster } = entry;
   const h = isMobile ? 24 : 28;
   const rulesText = entry.abilityText ?? card.text ?? card.effect ?? '';
@@ -149,11 +163,12 @@ function TitleBar({ entry, artUrl, isMobile, expanded, onToggle }: TitleBarProps
         tabIndex={0}
         aria-label={`${card.name}, cast by ${caster === 'p' ? 'you' : 'opponent'}, click to view details`}
         data-testid="stack-title-bar"
-        onClick={onToggle}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onToggle(); }}
+        data-stack-item-id={entry.id}
+        onClick={() => { if (onItemClick) { onItemClick(entry.id); return; } onToggle(); }}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { if (onItemClick) { onItemClick(entry.id); } else { onToggle(); } } }}
         style={{
           height: h,
-          border: `1px solid ${borderColor(caster)}`,
+          border: `1px solid ${selected ? '#60a0ff' : borderColor(caster)}`,
           borderRadius: 4,
           background: '#111',
           display: 'flex',
@@ -215,7 +230,7 @@ function TitleBar({ entry, artUrl, isMobile, expanded, onToggle }: TitleBarProps
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDisplayProps) {
+export function StackDisplay({ stack, isMobile, bottomOffset = 48, onItemClick, selectedItemId }: StackDisplayProps) {
   const [artUrls, setArtUrls] = useState<Record<string, string | null>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(true);
@@ -351,6 +366,8 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDispla
         entry={topEntry}
         artUrl={artUrls[topEntry.card?.name] ?? null}
         isMobile={isMobile}
+        onItemClick={onItemClick}
+        selected={selectedItemId === topEntry.id}
       />
       {/* Remaining items — title bars only */}
       {restEntries.map(entry => (
@@ -361,6 +378,8 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48 }: StackDispla
           isMobile={isMobile}
           expanded={expandedId === entry.id}
           onToggle={() => setExpandedId(prev => prev === entry.id ? null : entry.id)}
+          onItemClick={onItemClick}
+          selected={selectedItemId === entry.id}
         />
       ))}
     </div>
