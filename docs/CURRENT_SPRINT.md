@@ -1,5 +1,13 @@
 # Current Sprint
 
+## Overworld Map Visual Polish (2026-06-07)
+
+- [x] Phase 1: Deterministic coord-hash tile variant classes (rotation/mirror per terrain type) via `getTileVariantClass()`; emoji wrapped in `display:inline-block` span for cross-platform transform stability
+- [x] Phase 2: `.ow-tile` overflow changed to `visible`; `.ow-grid-wrapper` clips at map boundary; row-index z-index passed to `MapTile` for Y-sort depth layering
+- [x] Phase 3: Biome-matched inset `box-shadow` borders replace hard grid edges per terrain class
+- [x] Phase 4: CSS `filter: drop-shadow()` added to `.sprite` in `Sprite.jsx` for grounded entity rendering
+- [x] Phase 5: CSS `mask-image` radial gradient on `.ow-fog-edge` tiles for candlelight fog boundary effect
+
 ## Duel Engine Bug Fixes (2026-06-07)
 
 ### Deliverables
