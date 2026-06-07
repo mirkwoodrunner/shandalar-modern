@@ -523,7 +523,7 @@ export function useDuelController(
     const { effect } = card.activated;
     if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
     if (effect === 'addMana3Any') { activateAbility(card.iid, null); setShowLotus(true); setPendingActivate(card); return; }
-    if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3'].includes(effect)) {
+    if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand'].includes(effect)) {
       setPendingActivate(card); selectCard(card.iid); return;
     }
     activateAbility(card.iid, null);

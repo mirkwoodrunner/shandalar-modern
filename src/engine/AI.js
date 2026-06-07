@@ -615,7 +615,7 @@ function planUpkeep(state, profile) {
 }
 
 const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
-  'MAIN_1', 'COMBAT_BEGIN', 'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS',
+  'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS',
 ]);
 
 function planMain(state, profile, phase) {

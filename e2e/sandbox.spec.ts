@@ -2062,3 +2062,69 @@ test.describe('AI Regrowth targeting — mobile parity', () => {
     expect(regrowthCast).toBeUndefined();
   });
 });
+
+test.describe('Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
+
+  test('BF-01: Llanowar Elves taps for green mana (not colorless)', async ({ page }) => {
+    await page.goto(sandboxWith('llanowar_elves,forest'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    const greenBefore = await page.evaluate(() => (window as any).__duelState().p.mana['G'] ?? 0);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const elf = s.p.bf.find((c: any) => c.id === 'llanowar_elves');
+      if (elf) dispatch({ type: 'DEBUG_PATCH_CARD', iid: elf.iid, patch: { summoningSick: false } });
+    });
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const elf = s.p.bf.find((c: any) => c.id === 'llanowar_elves');
+      if (elf) dispatch({ type: 'ACTIVATE_ABILITY', iid: elf.iid });
+    });
+
+    const greenAfter = await page.evaluate(() => (window as any).__duelState().p.mana['G'] ?? 0);
+    expect(greenAfter).toBeGreaterThan(greenBefore);
+  });
+
+  test('BF-02: Mana pool contains G (not C) after Llanowar Elves activation', async ({ page }) => {
+    await page.goto(sandboxWith('llanowar_elves'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    const result = await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const elf = s.p.bf.find((c: any) => c.id === 'llanowar_elves');
+      if (!elf) return { error: 'elf not on bf' };
+      dispatch({ type: 'DEBUG_PATCH_CARD', iid: elf.iid, patch: { summoningSick: false } });
+      dispatch({ type: 'ACTIVATE_ABILITY', iid: elf.iid });
+      const ns = (window as any).__duelState();
+      return { G: ns.p.mana['G'] ?? 0, C: ns.p.mana['C'] ?? 0 };
+    });
+
+    expect(result.G).toBeGreaterThan(0);
+    expect(result.C).toBe(0);
+  });
+
+  test('BF-03: Berserk not in AI hand candidates during MAIN_1', async ({ page }) => {
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    const aiCastsBerserkInMain = await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const oppHand = s.o.hand ?? [];
+      const hasBerserk = oppHand.some((c: any) => c.id === 'berserk');
+      if (!hasBerserk) return 'no_berserk_in_ai_hand';
+      const stackHasBerserk = (s.stack ?? []).some((item: any) => item.card?.effect === 'berserk');
+      return stackHasBerserk ? 'berserk_on_stack' : 'berserk_not_cast';
+    });
+
+    expect(aiCastsBerserkInMain).not.toBe('berserk_on_stack');
+  });
+
+});
