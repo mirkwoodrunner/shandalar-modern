@@ -178,6 +178,11 @@ and player life totals become click targets. The prop is only set when
 `src/ui/Mobile/DuelScreenMobile.tsx` uses `targetingFor` / `pendingTarget` local
 state for the same purpose. Do not merge these paths.
 
+- **Mobile targeting mode:** `needsExplicitTarget()` is exported from `useDuelController.ts`
+  and imported by both screen components. Do not redefine it locally in either screen.
+  `EXPLICIT_TARGET_EFFECTS` covers only top-level `card.effect` values -- activated-ability
+  targeting (ping, regenerate, etc.) is handled post-cast via `handleActivate`.
+
 See `docs/MOBILE_VS_PC.md` for the full targeting table.
 
 ### TutorModal (`src/ui/duel/TutorModal.tsx`)

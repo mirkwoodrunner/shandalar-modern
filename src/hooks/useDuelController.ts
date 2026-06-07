@@ -39,8 +39,9 @@ export function resolveDefaultTarget(card: any, state: any): string | null {
   return state.selTgt ?? null;
 }
 
-// Effects that require the player to pick a target before casting.
-// Keep in sync with needsExplicitTarget() in DuelScreenMobile.tsx.
+// Single authoritative source for cast-time explicit-target effects.
+// Both DuelScreen.tsx and DuelScreenMobile.tsx import needsExplicitTarget from here.
+// Do NOT duplicate this logic in screen components.
 export const EXPLICIT_TARGET_EFFECTS = new Set([
   'bounce',
   'destroy',
@@ -62,7 +63,6 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'gloom',
   'weakness',
   'unholy_strength',
-  'regenerate',
   'ping',
   'damage3',
   'damage5',
@@ -171,6 +171,7 @@ export function useDuelController(
   const [showMulligan, setShowMulligan] = useState(true);
   const [mulliganCount, setMulliganCount] = useState(0);
   const [showLotus, setShowLotus] = useState(false);
+  const [showBop, setShowBop] = useState(false);
   const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
   const [pendingCast, setPendingCast] = useState<{ cardIid: string; target: string | null } | null>(null);
@@ -410,6 +411,11 @@ export function useDuelController(
     if (mulliganDismissed.current) setShowMulligan(false);
   }, [s.p.hand]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── BOP color picker sync ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (state.pendingBop) setShowBop(true);
+  }, [state.pendingBop]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Shared handlers ────────────────────────────────────────────────────────
   const handleKeep = useCallback(() => {
     mulliganDismissed.current = true;
@@ -430,6 +436,17 @@ export function useDuelController(
     cancelLotus();
     setShowLotus(false);
   }, [cancelLotus]);
+
+  const handleBopChoose = useCallback((color: string) => {
+    dispatch({ type: 'CHOOSE_BOP_COLOR', color });
+    setShowBop(false);
+  }, [dispatch]);
+
+  const handleBopCancel = useCallback(() => {
+    // BOP tap already fired in engine; default to Green so the tap isn't wasted.
+    dispatch({ type: 'CHOOSE_BOP_COLOR', color: 'G' });
+    setShowBop(false);
+  }, [dispatch]);
 
   // ── Battlefield click routing ──────────────────────────────────────────────
   // Single entry point for all battlefield card clicks. Both DuelScreen and
@@ -606,6 +623,12 @@ export function useDuelController(
     handleLotusCancel,
     pendingDualLand,
     setPendingDualLand,
+
+    // BOP UI state (mirrors Lotus pattern)
+    showBop,
+    setShowBop,
+    handleBopChoose,
+    handleBopCancel,
 
     // Battlefield click routing
     pendingBlockerIid,
