@@ -419,11 +419,11 @@ function selectTarget(card, state, profile, xVal = null) {
     return [];
   }
 
-  // Regrowth returns any card from the caster's own graveyard — no player/creature target.
+  // Regrowth targets a specific card in the caster's own graveyard at cast time.
   // Bail if graveyard is empty (nothing to recover).
   if (card.effect === 'regrowth') {
     if (!state.o.gy.length) return null;
-    return [];
+    return [state.o.gy[state.o.gy.length - 1].iid];
   }
 
   const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
