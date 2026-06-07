@@ -615,7 +615,8 @@ function planUpkeep(state, profile) {
 }
 
 const BEFORE_COMBAT_DAMAGE_PHASES = new Set([
-  'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS',
+  'COMBAT_ATTACKERS', 'COMBAT_AFTER_ATTACKERS',
+  'COMBAT_BLOCKERS',  'COMBAT_AFTER_BLOCKERS',
 ]);
 
 function planMain(state, profile, phase) {
@@ -1115,13 +1116,15 @@ export function getAIPlan(gameState, phase) {
   }
 
   switch (phase) {
-    case PHASE.UPKEEP:           return planUpkeep(gameState, profile);
-    case PHASE.MAIN_1:           return planMain(gameState, profile, PHASE.MAIN_1);
-    case PHASE.COMBAT_ATTACKERS: return planAttack(gameState, profile);
-    case PHASE.COMBAT_BLOCKERS:  return planBlock(gameState, profile);
-    case PHASE.MAIN_2:           return planMain(gameState, profile, PHASE.MAIN_2);
-    case PHASE.END:              return planEnd(gameState, profile);
-    default:                     return passPlan(phase);
+    case PHASE.UPKEEP:                  return planUpkeep(gameState, profile);
+    case PHASE.MAIN_1:                  return planMain(gameState, profile, PHASE.MAIN_1);
+    case PHASE.COMBAT_ATTACKERS:        return planAttack(gameState, profile);
+    case PHASE.COMBAT_AFTER_ATTACKERS:  return planInstantResponse(gameState, profile);
+    case PHASE.COMBAT_BLOCKERS:         return planBlock(gameState, profile);
+    case PHASE.COMBAT_AFTER_BLOCKERS:   return planInstantResponse(gameState, profile);
+    case PHASE.MAIN_2:                  return planMain(gameState, profile, PHASE.MAIN_2);
+    case PHASE.END:                     return planEnd(gameState, profile);
+    default:                            return passPlan(phase);
   }
 }
 

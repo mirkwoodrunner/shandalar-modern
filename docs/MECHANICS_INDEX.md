@@ -1515,6 +1515,19 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 | Goblin Balloon Brigade | combat-phase activation | Priority window now opens during `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` when non-mana activated abilities exist on the battlefield, enabling instant-speed use. |
 | Prodigal Sorcerer / Royal Assassin | player targeting | `pendingActivate` ping-type abilities now enable Banner `onLifeClick` on both desktop and mobile, firing `ACTIVATE_ABILITY` with `'o'`/`'p'` as target. `pendingActivate` state moved to `useDuelController.ts`. |
 
+### Combat Priority Windows (B33)
+
+- `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` are declare-only phases. `TAP_LAND`, `TAP_ART_MANA`,
+  and `ACTIVATE_ABILITY` are rejected at the engine level with a rule log entry.
+- `COMBAT_AFTER_ATTACKERS` and `COMBAT_AFTER_BLOCKERS` are full priority windows. Instants and
+  non-mana activated abilities are legal. Both phases are in `ABILITY_PRIORITY_PHASES`.
+- Done Attacking (`COMBAT_ATTACKERS`, player's turn) and Done Blocking (`COMBAT_BLOCKERS`,
+  opponent's turn) call `advancePhase()` directly, not `requestPhaseAdvance()`, so the
+  priority window opens in the subsequent AFTER phase rather than the declare phase.
+- AI uses `planInstantResponse()` for both AFTER phases.
+- No-attacker skip (B14) extended: if `attackers` is empty, `advPhase` skips
+  `COMBAT_AFTER_ATTACKERS`, `COMBAT_BLOCKERS`, and `COMBAT_AFTER_BLOCKERS` and jumps to `MAIN_2`.
+
 ### Activated Mana Abilities (creature sources)
 
 Cards with `activated: { cost: "T", effect: "addMana", mana: "<color>" }` route through

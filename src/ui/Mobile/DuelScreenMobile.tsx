@@ -44,6 +44,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     tapLand, tapArtifactMana, playLand, castSpell,
     activateAbility,
     passPriority, undoManaTaps,
+    advancePhase,
     requestPhaseAdvance,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
@@ -472,7 +473,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         onActivate={handleActivateBf}
         onCancel={handleCancel}
         onPass={handlePass}
-        onEnd={requestPhaseAdvance}
+        onEnd={
+          (s_state.phase === 'COMBAT_ATTACKERS' && s_state.active === 'p') ||
+          (s_state.phase === 'COMBAT_BLOCKERS' && s_state.active !== 'p')
+            ? advancePhase
+            : requestPhaseAdvance
+        }
         isPlayerTurn={isPlayerTurn}
         isWaitingForAI={isWaitingForAI}
         priorityWindowOpen={s_state.priorityWindow === true}

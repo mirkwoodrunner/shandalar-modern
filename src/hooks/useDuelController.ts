@@ -375,14 +375,9 @@ export function useDuelController(
     }
 
     if (s.active !== 'o' || aiRef.current) return;
-    // Bail during COMBAT_BLOCKERS so the AI doesn't skip past blocker
-    // declaration. When the AI is attacking (active='o'), the player declares
-    // blockers via the UI and then clicks "Done Blocking" which calls
-    // advancePhase directly. The AI loop must not fire requestPhaseAdvance
-    // here — it would race past the player's blocker window.
-    // When the player is attacking (active='p'), the outer guard above already
-    // bails, so this line is never reached on the player's turn anyway.
-    if (s.phase === 'COMBAT_BLOCKERS') return;
+    // Bail during declare phases. The player acts via Done buttons; the AI
+    // loop must not race past these windows.
+    if (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS') return;
     aiRef.current = true;
     const t = setTimeout(() => {
       const acts = aiDecide(s);

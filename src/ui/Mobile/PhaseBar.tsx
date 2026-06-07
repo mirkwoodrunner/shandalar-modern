@@ -5,7 +5,8 @@ import s from './styles.module.css';
 const SHORT: Record<string, string> = {
   UNTAP: 'UNT', UPKEEP: 'UPK', DRAW: 'DRW',
   MAIN_1: 'M1', COMBAT_BEGIN: 'CB', COMBAT_ATTACKERS: 'ATK',
-  COMBAT_BLOCKERS: 'BLK', COMBAT_DAMAGE: 'DMG', COMBAT_END: 'CE',
+  COMBAT_AFTER_ATTACKERS: 'A-A', COMBAT_BLOCKERS: 'BLK',
+  COMBAT_AFTER_BLOCKERS: 'A-B', COMBAT_DAMAGE: 'DMG', COMBAT_END: 'CE',
   MAIN_2: 'M2', END: 'END', CLEANUP: 'CLN',
 };
 

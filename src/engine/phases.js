@@ -5,18 +5,20 @@
 import KEYWORDS from '../data/keywords.js';
 
 export const PHASE = {
-  UNTAP:            'UNTAP',
-  UPKEEP:           'UPKEEP',
-  DRAW:             'DRAW',
-  MAIN_1:           'MAIN_1',
-  COMBAT_BEGIN:     'COMBAT_BEGIN',
-  COMBAT_ATTACKERS: 'COMBAT_ATTACKERS',
-  COMBAT_BLOCKERS:  'COMBAT_BLOCKERS',
-  COMBAT_DAMAGE:    'COMBAT_DAMAGE',
-  COMBAT_END:       'COMBAT_END',
-  MAIN_2:           'MAIN_2',
-  END:              'END',
-  CLEANUP:          'CLEANUP',
+  UNTAP:                  'UNTAP',
+  UPKEEP:                 'UPKEEP',
+  DRAW:                   'DRAW',
+  MAIN_1:                 'MAIN_1',
+  COMBAT_BEGIN:           'COMBAT_BEGIN',
+  COMBAT_ATTACKERS:       'COMBAT_ATTACKERS',
+  COMBAT_AFTER_ATTACKERS: 'COMBAT_AFTER_ATTACKERS',
+  COMBAT_BLOCKERS:        'COMBAT_BLOCKERS',
+  COMBAT_AFTER_BLOCKERS:  'COMBAT_AFTER_BLOCKERS',
+  COMBAT_DAMAGE:          'COMBAT_DAMAGE',
+  COMBAT_END:             'COMBAT_END',
+  MAIN_2:                 'MAIN_2',
+  END:                    'END',
+  CLEANUP:                'CLEANUP',
 };
 
 export const PHASE_SEQUENCE = [
@@ -26,7 +28,9 @@ export const PHASE_SEQUENCE = [
   PHASE.MAIN_1,
   PHASE.COMBAT_BEGIN,
   PHASE.COMBAT_ATTACKERS,
+  PHASE.COMBAT_AFTER_ATTACKERS,
   PHASE.COMBAT_BLOCKERS,
+  PHASE.COMBAT_AFTER_BLOCKERS,
   PHASE.COMBAT_DAMAGE,
   PHASE.COMBAT_END,
   PHASE.MAIN_2,
@@ -37,14 +41,15 @@ export const PHASE_SEQUENCE = [
 // Phases where the active player may cast spells at sorcery speed
 export const SORCERY_SPEED_PHASES = [PHASE.MAIN_1, PHASE.MAIN_2];
 
-// Phases where priority is passed and instant-speed responses are legal
+// Phases where priority is passed and instant-speed responses are legal.
+// COMBAT_ATTACKERS, COMBAT_BLOCKERS, and COMBAT_DAMAGE are declare/auto phases
+// without priority windows -- instants are legal in the adjacent AFTER phases.
 export const PRIORITY_PHASES = [
   PHASE.UPKEEP,
   PHASE.MAIN_1,
   PHASE.COMBAT_BEGIN,
-  PHASE.COMBAT_ATTACKERS,
-  PHASE.COMBAT_BLOCKERS,
-  PHASE.COMBAT_DAMAGE,
+  PHASE.COMBAT_AFTER_ATTACKERS,
+  PHASE.COMBAT_AFTER_BLOCKERS,
   PHASE.COMBAT_END,
   PHASE.MAIN_2,
   PHASE.END,

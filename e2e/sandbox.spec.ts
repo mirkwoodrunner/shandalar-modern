@@ -2344,3 +2344,182 @@ test.describe('Blocker UI', () => {
     expect(phase).toBe('COMBAT_BLOCKERS');
   });
 });
+
+// ---------------------------------------------------------------------------
+test.describe('Combat priority windows (B33) — desktop 1280x800', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('CBT-PW-01: Done Attacking advances to COMBAT_AFTER_ATTACKERS', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_ATTACKERS', { timeout: 3000 });
+
+    const btn = page.getByTestId('done-attacking-button');
+    await expect(btn).toBeVisible({ timeout: 3000 });
+    await btn.click();
+
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.phase === 'COMBAT_AFTER_ATTACKERS',
+      { timeout: 3000 }
+    );
+  });
+
+  test('CBT-PW-02: Done Blocking advances to COMBAT_AFTER_BLOCKERS', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_BLOCKERS', { timeout: 3000 });
+
+    const btn = page.getByTestId('done-blocking-button');
+    await expect(btn).toBeVisible({ timeout: 3000 });
+    await btn.click();
+
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.phase === 'COMBAT_AFTER_BLOCKERS',
+      { timeout: 3000 }
+    );
+  });
+
+  test('CBT-PW-03: TAP_LAND rejected during COMBAT_ATTACKERS', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_ATTACKERS', { timeout: 3000 });
+
+    const before = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+
+    await page.evaluate(() => {
+      const s = (window as any).__duelState?.();
+      const land = s?.p.bf.find((c: any) => c.type === 'Land');
+      if (!land) return;
+      (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid, mana: 'G' });
+    });
+
+    const after = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+    expect(after).toBe(before);
+  });
+
+  test('CBT-PW-04: TAP_LAND rejected during COMBAT_BLOCKERS', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_BLOCKERS', { timeout: 3000 });
+
+    const before = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+
+    await page.evaluate(() => {
+      const s = (window as any).__duelState?.();
+      const land = s?.p.bf.find((c: any) => c.type === 'Land');
+      if (!land) return;
+      (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid, mana: 'G' });
+    });
+
+    const after = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+    expect(after).toBe(before);
+  });
+
+  test('CBT-PW-05: No attackers causes advance to skip to MAIN_2', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_ATTACKERS', { timeout: 3000 });
+
+    await page.getByTestId('done-attacking-button').click();
+
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.phase === 'MAIN_2',
+      { timeout: 5000 }
+    );
+  });
+
+  test('CBT-PW-06: Priority window opens in COMBAT_AFTER_BLOCKERS', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_AFTER_BLOCKERS', active: 'o' });
+      (window as any).__duelDispatch({ type: 'OPEN_PRIORITY_WINDOW' });
+    });
+
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.priorityWindow === true,
+      { timeout: 3000 }
+    );
+
+    const ppBtn = page.getByTestId('pass-priority-button');
+    await expect(ppBtn).toBeEnabled({ timeout: 2000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+test.describe('Mobile combat priority windows — 390x844', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('CBT-MOB-01: Done Attacking advances phase on mobile', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_ATTACKERS', { timeout: 3000 });
+
+    await page.getByTestId('done-attacking-button').click();
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.phase === 'COMBAT_AFTER_ATTACKERS',
+      { timeout: 3000 }
+    );
+  });
+
+  test('CBT-MOB-02: Done Blocking advances phase on mobile', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_BLOCKERS', { timeout: 3000 });
+
+    await page.getByTestId('done-blocking-button').click();
+    await page.waitForFunction(
+      () => (window as any).__duelState?.()?.phase === 'COMBAT_AFTER_BLOCKERS',
+      { timeout: 3000 }
+    );
+  });
+
+  test('CBT-MOB-03: TAP_LAND rejected during COMBAT_BLOCKERS on mobile', async ({ page }) => {
+    await page.goto(SANDBOX_URL);
+    await waitForDuel(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_BLOCKERS', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.()?.phase === 'COMBAT_BLOCKERS', { timeout: 3000 });
+
+    const before = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+    await page.evaluate(() => {
+      const s = (window as any).__duelState?.();
+      const land = s?.p.bf.find((c: any) => c.type === 'Land');
+      if (!land) return;
+      (window as any).__duelDispatch({ type: 'TAP_LAND', who: 'p', iid: land.iid, mana: 'G' });
+    });
+    const after = await page.evaluate(() => JSON.stringify((window as any).__duelState?.()?.p.mana));
+    expect(after).toBe(before);
+  });
+});

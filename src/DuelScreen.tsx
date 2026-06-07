@@ -765,6 +765,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               }
               // If priorityWindow is open and player already passed: no-op (waiting for AI)
             }}
+            onDoneAttacking={advancePhase}
             onDoneBlocking={advancePhase}
             blockerHint={
               s.phase === 'COMBAT_BLOCKERS' && s.active === 'o'
