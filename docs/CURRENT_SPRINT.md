@@ -1,5 +1,16 @@
 # Current Sprint
 
+## Bug Fixes: P/T Display, Triskelion Targeting, Counterspell Stack (2026-06-07)
+
+| Fix | File(s) Changed |
+|-----|----------------|
+| `getDisplayPT()` helper: sums eotBuffs + counter deltas for UI display | `src/engine/DuelCore.js` |
+| FieldCard (desktop): renders dispPow/dispTou; brass-hi tint when buffed | `src/ui/Card/FieldCard.tsx` |
+| FieldCard (mobile): renders dispPow/dispTou; brass-hi tint when buffed | `src/ui/Mobile/FieldCard.tsx` |
+| Triskelion targeting: triskelionPing added to target-required and player-targetable lists | `src/hooks/useDuelController.ts` |
+| ACTIVATE_ABILITY: counter-cost abilities skip canPay mana check | `src/engine/DuelCore.js` |
+| AI priority window response uses applyAiActionsWithPriority so Counterspell sits on stack visibly | `src/hooks/useDuelController.ts` |
+
 ## Overworld Map Visual Polish (2026-06-07)
 
 - [x] Phase 1: Deterministic coord-hash tile variant classes (rotation/mirror per terrain type) via `getTileVariantClass()`; emoji wrapped in `display:inline-block` span for cross-platform transform stability

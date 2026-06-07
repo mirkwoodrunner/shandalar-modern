@@ -252,7 +252,7 @@ export function useDuelController(
     }
     const timer = setTimeout(() => {
       const acts = aiDecide(s);
-      if (acts && acts.length) applyAiActions(acts);
+      if (acts && acts.length) applyAiActionsWithPriority(acts);
     }, 200);
     return () => clearTimeout(timer);
   }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -505,7 +505,7 @@ export function useDuelController(
   // ── Activated ability helpers ──────────────────────────────────────────────
 
   // Effects that target any target (creature or player).
-  const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set(['ping', 'damage1', 'damage2', 'damage3']);
+  const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set(['ping', 'triskelionPing', 'damage1', 'damage2', 'damage3']);
 
   const activateCanTargetPlayer: boolean =
     pendingActivate != null &&
@@ -523,7 +523,7 @@ export function useDuelController(
     const { effect } = card.activated;
     if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
     if (effect === 'addMana3Any') { activateAbility(card.iid, null); setShowLotus(true); setPendingActivate(card); return; }
-    if (['ping', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand'].includes(effect)) {
+    if (['ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand'].includes(effect)) {
       setPendingActivate(card); selectCard(card.iid); return;
     }
     activateAbility(card.iid, null);

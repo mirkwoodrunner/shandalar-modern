@@ -393,6 +393,26 @@ ACTIVE
 
 ---
 
+## 5.3 Display P/T Helper
+
+### Description
+`getDisplayPT(card)` in `src/engine/DuelCore.js` computes UI-safe effective P/T by summing
+`eotBuffs` power/toughness deltas and `counters.P1P1`/`M1M1` without requiring full game state.
+Used by `FieldCard` (desktop and mobile) so pumped stats display correctly.
+For combat/SBE accuracy, always use `getPow(c, state)` / `getTou(c, state)` instead.
+
+### Implementation
+```
+src/engine/DuelCore.js        -- getDisplayPT() export
+src/ui/Card/FieldCard.tsx     -- desktop creature P/T badge
+src/ui/Mobile/FieldCard.tsx   -- mobile creature P/T badge
+```
+
+### Status
+ACTIVE
+
+---
+
 # 6. ENGINE BRIDGE SYSTEM
 
 ---

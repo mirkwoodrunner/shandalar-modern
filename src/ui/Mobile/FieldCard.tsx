@@ -4,6 +4,7 @@ import { CardArtImage } from '../Card/CardArtImage';
 import { frameOf } from '../Card/frame';
 import type { CardData } from '../Card/types';
 import s from './styles.module.css';
+import { getDisplayPT } from '../../engine/DuelCore.js';
 
 interface FieldCardProps {
   card: CardData;
@@ -21,6 +22,7 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
   const frame = frameOf(card);
   const isCre = card.type?.includes('Creature');
   const tapped = card.tapped;
+  const { power: dispPow, toughness: dispTou } = isCre ? getDisplayPT(card) : { power: 0, toughness: 0 };
   const w = density === 'perm' ? 50 : 64;
   const h = density === 'perm' ? 70 : 90;
   const nameFontSize = density === 'perm' ? 5.5 : 6.5;
@@ -86,9 +88,13 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
       {isCre && (
         <div
           className={s.ptBadge}
-          style={{ border: `1px solid ${frame.bd}`, fontSize: ptFontSize, color: (card.damage ?? 0) > 0 ? 'var(--log-damage)' : 'var(--ink-parchment)' }}
+          style={{ border: `1px solid ${frame.bd}`, fontSize: ptFontSize, color: (card.damage ?? 0) > 0
+            ? 'var(--log-damage)'
+            : (dispPow !== (card.power ?? 0) || dispTou !== (card.toughness ?? 0))
+              ? 'var(--brass-hi)'
+              : 'var(--ink-parchment)' }}
         >
-          {card.power}/{card.toughness}
+          {dispPow}/{dispTou}
         </div>
       )}
 
