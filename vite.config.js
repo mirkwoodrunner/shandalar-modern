@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)', 'tests/**/*.mjs', 'tests/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+    include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)', 'tests/**/*.mjs', 'tests/scenarios/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
   },
 });
