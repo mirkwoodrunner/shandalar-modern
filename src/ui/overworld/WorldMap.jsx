@@ -86,6 +86,7 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
           <div
             className={[
               'ow-plaque',
+              s === 'TOWN'    ? 'ow-plaque-town'    : '',
               s === 'DUNGEON' ? 'ow-plaque-dungeon' : '',
               s === 'CASTLE'  ? 'ow-plaque-castle'  : '',
               s === 'CASTLE' && castleDefeated ? 'ow-plaque-castle-defeated' : '',
@@ -276,16 +277,19 @@ const OW_STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
+  filter: drop-shadow(0 0 2px rgba(255,220,140,0.70));
 }
 
 .ow-plaque-dungeon {
   background: radial-gradient(circle at 35% 30%, #2a0a0a, #100404 75%);
   box-shadow:
-    0 0 0 1.5px rgba(180,60,60,.55),
+    0 0 0 1.5px rgba(200,80,80,.80),
     0 0 0 3px rgba(0,0,0,.65),
+    0 0 6px rgba(180,60,60,.50),
     0 1px 3px rgba(0,0,0,.80);
+  filter: drop-shadow(0 0 2px rgba(255,160,140,0.65));
 }
 
 .ow-plaque-castle {
@@ -309,9 +313,20 @@ const OW_STYLES = `
 .ow-plaque-ruin {
   background: radial-gradient(circle at 35% 30%, #2a2520, #0f0d0b 75%);
   box-shadow:
-    0 0 0 1.5px rgba(140,120,90,.55),
+    0 0 0 1.5px rgba(180,160,120,.80),
     0 0 0 3px rgba(0,0,0,.65),
+    0 0 6px rgba(140,120,90,.45),
     0 1px 3px rgba(0,0,0,.80);
+  filter: drop-shadow(0 0 2px rgba(220,200,160,0.60));
+}
+
+.ow-plaque-town {
+  box-shadow:
+    0 0 0 1.5px rgba(220,180,80,.85),
+    0 0 0 3px rgba(0,0,0,.65),
+    0 0 7px rgba(200,160,60,.45),
+    0 1px 3px rgba(0,0,0,.80);
+  filter: drop-shadow(0 0 2px rgba(255,220,140,0.75));
 }
 
 .ow-label {
