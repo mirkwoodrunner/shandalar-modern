@@ -162,30 +162,54 @@ Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helpe
 
 ---
 
-## OverworldGame (`src/OverworldGame.jsx`)
+## OverworldGame -- Layout Architecture
 
-|Element              |Desktop              |Mobile (≤ 768px)            |
-|---------------------|---------------------|----------------------------|
-|Duel screen rendered |`DuelScreen`         |`DuelScreenMobile` (≤ 640px), `DuelScreen` (641–768px)|
-|Log/Chronicle sidebar|Rendered             |Hidden                      |
-|D-pad buttons        |Small (existing size)|`48x48px` min, larger font  |
-|Tile viewport width  |`VIEW_W = 22`        |`12` tiles                  |
-|Tile viewport height |`VIEW_H = 14`        |`9` tiles                   |
-|Toolbar overflow     |`wrap`               |`nowrap` + horizontal scroll|
-|All game logic       |Identical            |Identical                   |
+`OverworldGame.jsx` is now a routing shell. It calls `useOverworldController`
+once and delegates to `OverworldGameDesktop` or `OverworldGameMobile` based on
+a breakpoint snapshotted at mount (<= 640px = compact mobile, same threshold as
+duel screen).
+
+### Breakpoint: <= 640px -> `OverworldGameMobile`
+
+|Element              |Desktop (> 640px)                 |Compact mobile (<= 640px)           |
+|---------------------|----------------------------------|-----------------------------------|
+|Component file       |`OverworldGameDesktop.jsx`        |`OverworldGameMobile.jsx`          |
+|Topbar               |Full toolbar with d-pad, all controls|Compact 44px bar: HP/gold/gems + hamburger|
+|Tile info            |Right sidebar section             |24px strip below topbar            |
+|Map viewport W/H     |22 x 14 tiles                     |14 x 16 tiles                      |
+|Map tileSize         |34px fixed                        |Computed: fills `100dvh - 96px`    |
+|Left sidebar         |Rendered (legend, mage panel)     |Bottom sheet drawer (Info tab)     |
+|Right sidebar        |Rendered (tile, deck, magics, log)|Bottom sheet drawer (all tabs)     |
+|D-pad buttons        |Rendered                          |Not rendered (tap-to-move only)    |
+|Quick-stat bar       |Not present                       |28px bar below map; taps -> Mages drawer|
+|All game logic       |Identical (useOverworldController)|Identical (useOverworldController) |
+
+### Overworld controller rule (enforced)
+
+All overworld game logic lives in `useOverworldController.js`. Neither layout
+file may declare state (except local UI-only state like `drawerOpen`), define
+`useCallback` handlers, or import from engine files. Violations are a failure
+condition and will be caught by code review.
+
+### Future change rule
+
+Any new overworld feature that affects game behaviour must be added to
+`useOverworldController.js` first, then surfaced via the `ctrl` prop in both
+layout files. Never add a handler to one layout file only.
 
 ---
 
 ## Rules for Future Mobile Changes
 
-1. **Duel screen changes at ≤ 640px** belong in `src/ui/Mobile/`. Do not add `isMobile` branches inside `DuelScreen.tsx` for compact-phone layout.
-1. **OverworldGame and other non-duel screens** continue to use `isMobile` branching inside the existing component (breakpoint: 768px).
+1. **Duel screen changes at <= 640px** belong in `src/ui/Mobile/`. Do not add `isMobile` branches inside `DuelScreen.tsx` for compact-phone layout.
+1. **Overworld layout changes at <= 640px** belong in `src/ui/Mobile/OverworldGameMobile.jsx`. Game logic changes belong in `src/hooks/useOverworldController.js`.
 1. **Engine files** (`DuelCore.js`, `AI.js`, etc.) must never be conditioned on any mobile flag.
-1. **Both duel screens read from the same `useDuel` store** — never fork the data layer.
-1. **Screen-type choice is snapshotted at duel launch, not read live.** `OverworldGame` stores `duelScreenIsCompact` in state and sets it once alongside `setDuelCfg`. Never use the live `isCompactMobile` value in the render condition — doing so causes component-type swaps on orientation change which re-initialise the game engine and retrigger the mulligan.
+1. **Both duel screens read from the same `useDuel` store** -- never fork the data layer.
+1. **Screen-type choice is snapshotted at duel launch, not read live.** `OverworldGame` stores `duelScreenIsCompact` in state and sets it once alongside `setDuelCfg`. Never use the live `isCompactMobile` value in the render condition -- doing so causes component-type swaps on orientation change which re-initialise the game engine and retrigger the mulligan.
+1. **Overworld layout choice is snapshotted at mount** into `overworldIsCompact`. Same reason as above.
 1. Document every new divergence in this file under the appropriate component's table.
 1. If a new screen/component is added (e.g., dungeon), add its own section here before implementing mobile layout for it.
-1. The compact-phone breakpoint (640px) is defined only in the `useMedia` call in `OverworldGame.jsx`. The general mobile breakpoint (768px) is defined only in `useIsMobile.js`. Change each at its single source.
+1. The compact-phone breakpoint (640px) is defined in `useOverworldController.js` (viewport sizing) and snapshotted in `OverworldGame.jsx` (layout routing). The general mobile breakpoint (768px) is defined only in `useIsMobile.js`. Change each at its single source.
 
 ---
 

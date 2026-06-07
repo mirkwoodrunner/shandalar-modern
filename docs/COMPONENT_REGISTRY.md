@@ -10,10 +10,27 @@
 
 ## Components
 
+### `useOverworldController`
+- **File**: `src/hooks/useOverworldController.js`
+- **Purpose**: Shared hook for all overworld game logic. Accepts `{ startConfig, onQuit, onScore, isCompactMobile }`. Returns flat `ctrl` object with all state, setters, derived flags, refs, and handlers. Both layout components call this via `OverworldGame.jsx` which passes `ctrl` as a prop.
+- **Consumers**: `OverworldGameDesktop.jsx`, `OverworldGameMobile.jsx` (via `OverworldGame.jsx`)
+- **Constraint**: Never import from engine files in layout components. All engine interaction flows through this hook.
+
 ### `OverworldGame`
 - **File**: `src/OverworldGame.jsx`
+- **Purpose**: Thin routing shell. Detects breakpoint at mount, calls `useOverworldController` once, routes duel/dungeon screens, and delegates to `OverworldGameDesktop` or `OverworldGameMobile`.
+
+### `OverworldGameDesktop`
+- **File**: `src/ui/overworld/OverworldGameDesktop.jsx`
+- **Purpose**: Desktop overworld layout (> 640px). Receives `ctrl` prop from `OverworldGame.jsx`. No game state. No handlers declared here.
 - **Key state**: No map-scale state. The map container uses `flex: 1, height: '100%'` and a full-size centering wrapper; scaling is delegated to `WorldMap`.
-- **Sidebar collapse**: On desktop (`!isMobile`), the right sidebar `display` is `'flex'` only when `log.length > 0`; collapses to `'none'` when the log is empty so the map fills full available width.
+- **Sidebar collapse**: The right sidebar `display` is `'flex'` only when `log.length > 0`; collapses to `'none'` when the log is empty so the map fills full available width.
+
+### `OverworldGameMobile`
+- **File**: `src/ui/Mobile/OverworldGameMobile.jsx`
+- **Purpose**: Compact mobile overworld layout (<= 640px). Receives `ctrl` prop. Local state: `drawerOpen` (bool), `drawerTab` ('info'|'mages'|'deck'|'magics'). Four inline drawer sub-components: `DrawerInfo`, `DrawerMages`, `DrawerDeck`, `DrawerMagics`.
+- **Layout**: 44px topbar -> 24px tile strip -> flex-fill map -> 28px quick-stat bar -> fixed bottom sheet drawer.
+- **Viewport**: 14x16 tiles. tileSize computed in controller.
 
 ### `WorldMap`
 - **File**: `src/ui/overworld/WorldMap.jsx`

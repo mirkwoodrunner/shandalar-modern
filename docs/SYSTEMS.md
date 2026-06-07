@@ -597,11 +597,28 @@ This prevents the AI from calling `requestPhaseAdvance` during blocker declarati
 `active === 'o'`. The "Done Blocking" button (not the AI loop) is the mechanism that
 advances the phase. Removing this bail would race the AI past the blocker window.
 
-### 11.3 UI/Overworld — Dynamic Tile Size
+### 11.3 UI/Overworld -- Controller and Layout Split
+
+`useOverworldController` (`src/hooks/useOverworldController.js`) is the shared
+orchestration hook for both overworld layouts. It owns all state, movement
+callbacks, encounter dispatching, duel bridging, dungeon progression, and
+viewport computation. It accepts `isCompactMobile: boolean` from the shell
+component and uses it to compute viewport dimensions.
+
+**Viewport computation (mobile <= 640px):**
+- `viewW = 14`, `viewH = 16` (portrait-optimised: taller than wide)
+- `tileSize` = largest integer fitting `(innerHeight - 68) / 16` and `(innerWidth - 8) / 14`, clamped min 16px
+- 68px chrome = 44px topbar + 24px tile strip
+
+**Viewport computation (desktop > 640px):**
+- `viewW = VIEW_W (22)`, `viewH = VIEW_H (14)`, `tileSize = 34` (unchanged)
+
+`OverworldGame.jsx` snapshots the breakpoint at mount into `overworldIsCompact`
+(same pattern as `duelScreenIsCompact`) to prevent layout component swaps on
+orientation change. The live `isCompactMobile` value from `useMedia` feeds only
+the controller's viewport `useMemo`.
 
 `WorldMap` (`src/ui/overworld/WorldMap.jsx`) accepts an optional `tileSize` prop (default `34`). All grid template dimensions, tile element sizes, canvas dimensions, and empty-tile placeholders are derived from this prop so the grid scales uniformly.
-
-In `OverworldGame`, `tileSize` is computed via `useMemo`: when `isMobile` is true, it calculates the largest integer tile size that fits both the available viewport height (screen height − 88 px for toolbar and HUD) and available viewport width (screen width − 16 px), divided by the mobile viewport tile counts (`viewH = 9`, `viewW = 12`), clamped to a minimum of 18 px. On desktop `tileSize` is always `34`. This eliminates the black void below the map on portrait mobile.
 
 ---
 
