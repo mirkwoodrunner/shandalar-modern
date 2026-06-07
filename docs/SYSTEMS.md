@@ -2037,4 +2037,19 @@ pendingTransmutePay: null | { caster: 'p'|'o', tutored: Card, required: number }
 Permanents entering via CHOOSE_TUTOR_TRANSMUTE or CONFIRM_TRANSMUTE_PAY use
 `summoningSick: !hasKw(card, 'HASTE')` -- do NOT hardcode false.
 
+## 22. Overworld Structure Types
+
+Map size: `MAP_W = 64`, `MAP_H = 40`.
+
+Structure counts per run: towns 18-22, dungeons 14-16, castles 5, ruins 10-14.
+
+### RUIN
+
+- Tile shape: `tile.ruinData = { name, looted, hasGuardian }`
+- Always visible (no `clued` gate)
+- Guardian fight uses context `'ruin_guardian'`
+- `handleDuelEnd` re-opens the ruin modal on win via `setActiveTile` + `setModal('ruin')`
+- Loot draw uses weighted pool: common x3, uncommon x2, rare x1
+- No dungeon screen -- single modal interaction only
+
 # End of SYSTEMS v1.5
