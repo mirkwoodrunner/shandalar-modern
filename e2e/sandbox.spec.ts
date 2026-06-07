@@ -1938,6 +1938,56 @@ test.describe('Counter-spell targeting (CTR)', () => {
     expect(s.p.life).toBe(20);
   });
 
+  // AI-REGROWTH-01: AI Regrowth produces no targeting log entry
+  test('AI-REGROWTH-01: AI Regrowth produces no targeting log entry', async ({ page }) => {
+    await page.goto(sandboxWith('regrowth'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Put a card in the AI graveyard, give AI enough mana, then let it act
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      // Seed AI graveyard with one card so Regrowth has something to return
+      const anyCard = s.o.hand[0] || { id: 'forest', iid: 'gy_seed_1', name: 'Forest' };
+      dispatch({ type: 'SANDBOX_FORCE_GY', who: 'o', cards: [anyCard] });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { G: 2 } });
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      // Force Regrowth into AI hand
+      const regrowth = s.o.hand.find((c: any) => c.id === 'regrowth');
+      if (regrowth) dispatch({ type: 'CAST_SPELL', who: 'o', iid: regrowth.iid, tgt: null, xVal: null });
+    });
+
+    await page.waitForTimeout(500);
+
+    const logEntries = await page.locator('[data-testid="log-entry"]').allTextContents();
+    const regrowthEntry = logEntries.find((e: string) => e.toLowerCase().includes('regrowth'));
+    if (regrowthEntry) {
+      expect(regrowthEntry).not.toMatch(/targeting/i);
+    }
+  });
+
+  // AI-REGROWTH-02: AI does not cast Regrowth with empty graveyard
+  test('AI-REGROWTH-02: AI does not cast Regrowth with empty graveyard', async ({ page }) => {
+    await page.goto(sandboxWith('regrowth'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    // Ensure AI graveyard is empty, give AI mana
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SANDBOX_FORCE_GY', who: 'o', cards: [] });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { G: 2 } });
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+    });
+
+    await page.waitForTimeout(1_000);
+
+    const logEntries = await page.locator('[data-testid="log-entry"]').allTextContents();
+    const regrowthCast = logEntries.find((e: string) => e.toLowerCase().includes('o casts regrowth'));
+    expect(regrowthCast).toBeUndefined();
+  });
+
   // CTR-05: Mobile -- stack item tappable in counter-targeting mode
   test('CTR-05: mobile stack item is tappable when counterspell selected', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -1962,4 +2012,53 @@ test.describe('Counter-spell targeting (CTR)', () => {
     await expect(page.locator('[data-testid="stack-top-card"]')).toBeVisible({ timeout: 3_000 });
   });
 
+});
+
+// ---------------------------------------------------------------------------
+test.describe('AI Regrowth targeting — mobile parity', () => {
+  test('AI-REGROWTH-01 mobile: AI Regrowth produces no targeting log entry', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(sandboxWith('regrowth'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      const s = (window as any).__duelState();
+      const anyCard = s.o.hand[0] || { id: 'forest', iid: 'gy_seed_1', name: 'Forest' };
+      dispatch({ type: 'SANDBOX_FORCE_GY', who: 'o', cards: [anyCard] });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { G: 2 } });
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+      const regrowth = s.o.hand.find((c: any) => c.id === 'regrowth');
+      if (regrowth) dispatch({ type: 'CAST_SPELL', who: 'o', iid: regrowth.iid, tgt: null, xVal: null });
+    });
+
+    await page.waitForTimeout(500);
+
+    const logEntries = await page.locator('[data-testid="log-entry"]').allTextContents();
+    const regrowthEntry = logEntries.find((e: string) => e.toLowerCase().includes('regrowth'));
+    if (regrowthEntry) {
+      expect(regrowthEntry).not.toMatch(/targeting/i);
+    }
+  });
+
+  test('AI-REGROWTH-02 mobile: AI does not cast Regrowth with empty graveyard', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(sandboxWith('regrowth'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SANDBOX_FORCE_GY', who: 'o', cards: [] });
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', mana: { G: 2 } });
+      dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+    });
+
+    await page.waitForTimeout(1_000);
+
+    const logEntries = await page.locator('[data-testid="log-entry"]').allTextContents();
+    const regrowthCast = logEntries.find((e: string) => e.toLowerCase().includes('o casts regrowth'));
+    expect(regrowthCast).toBeUndefined();
+  });
 });

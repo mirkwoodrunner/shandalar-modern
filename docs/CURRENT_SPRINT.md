@@ -24,6 +24,10 @@
 
 ---
 
+## Bug Fixes (2026-06-07)
+
+| AI-REGROWTH-01: Regrowth incorrectly targeted opponent player | `src/engine/AI.js` | ✅ Fixed |
+
 ## Bug Fixes (2026-06-06)
 
 - Fix: `viewOfs` now initializes to `{ x: startX, y: startY }` so the map centers on the player at game start instead of defaulting to tile (0,0). (`src/OverworldGame.jsx`)
