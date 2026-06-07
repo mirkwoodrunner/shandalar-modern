@@ -120,9 +120,11 @@ const FALLBACK_DECK = [
 ];
 
 // Evaluated once at module scope -- no re-render cost.
-const _duelParam = new URLSearchParams(window.location.search).get('duel');
-const sandboxMode       = _duelParam === 'sandbox';
-const sandboxMobileMode = _duelParam === 'sandbox-mobile';
+const _duelParam      = new URLSearchParams(window.location.search).get('duel');
+const _overworldParam = new URLSearchParams(window.location.search).get('overworld');
+const sandboxMode          = _duelParam === 'sandbox';
+const sandboxMobileMode    = _duelParam === 'sandbox-mobile';
+const overworldSandboxMode = _overworldParam === 'sandbox';
 
 // ---------------------------------------------------------------------------
 // Sandbox entry point
@@ -237,9 +239,28 @@ function SandboxMobileApp() {
 // Normal app
 // ---------------------------------------------------------------------------
 
+function SandboxOverworldApp() {
+  return (
+    <GameErrorBoundary>
+      <OverworldGame
+        startConfig={{
+          color: 'U',
+          name: 'Sandbox Mage',
+          seed: 42,
+          difficulty: 'APPRENTICE',
+          sandbox: true,
+        }}
+        onQuit={() => { window.location.href = '/'; }}
+        onScore={() => { window.location.href = '/'; }}
+      />
+    </GameErrorBoundary>
+  );
+}
+
 export default function App() {
-  if (sandboxMode)       return <SandboxApp />;
-  if (sandboxMobileMode) return <SandboxMobileApp />;
+  if (sandboxMode)          return <SandboxApp />;
+  if (sandboxMobileMode)    return <SandboxMobileApp />;
+  if (overworldSandboxMode) return <SandboxOverworldApp />;
   return <NormalApp />;
 }
 

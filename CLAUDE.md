@@ -73,6 +73,14 @@ interactions. Any change to AI behaviour, priority handling, or combat click beh
 here and only here. Do not add AI, priority, or combat click logic directly to
 `DuelScreen.tsx` or `DuelScreenMobile.tsx`.
 
+`useOverworldController.js` is the shared orchestration hook for both overworld
+layouts. It owns all overworld state, movement logic, encounter dispatching,
+duel bridging, dungeon progression, and viewport computation. Any change to
+overworld game behaviour must be made here and only here. Do not add game
+logic, state declarations, or `useCallback` handlers directly to
+`OverworldGameDesktop.jsx` or `OverworldGameMobile.jsx`. These files are
+presentation-only and receive the controller result object as a `ctrl` prop.
+
 ### Stack Resolution (Universal)
 As of Sprint 7, all non-land spells use the stack. CAST_SPELL pushes every spell
 to s.stack and opens a priority window. RESOLVE_STACK handles ETB for permanents.
@@ -89,6 +97,7 @@ Do not modify these files unless the prompt explicitly names them:
 - `src/data/cards.js`
 - `src/hooks/useDuel.js`
 - `src/hooks/useDuelController.ts`
+- `src/hooks/useOverworldController.js`
 - `src/engine/cardHandlers.js`
 - `src/engine/phases.js`
 - State reducers

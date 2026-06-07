@@ -1,5 +1,13 @@
 # Current Sprint
 
+## Overworld Mobile Refactor (2026-06-07)
+
+- [x] Overworld mobile layout refactor -- useOverworldController extracted;
+      OverworldGameDesktop and OverworldGameMobile split; 14x16 viewport;
+      compact topbar + tile strip + quick-stat bar + bottom sheet drawer
+
+---
+
 ## Counter-Spell Targeting (2026-06-07)
 
 ### Deliverables
