@@ -80,7 +80,7 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
         className={s.fieldType}
         style={{ background: `linear-gradient(90deg, ${frame.bd}33, transparent)`, borderTop: `1px solid ${frame.bd}66`, fontSize: typeFontSize, color: frame.parch }}
       >
-        {card.subtype ?? card.type}
+        {card.subtype ? `${card.type} — ${card.subtype}` : card.type}
       </div>
 
       {isCre && (

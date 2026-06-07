@@ -83,7 +83,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
           color: frame.parch,
         }}
       >
-        {card.subtype ? `${card.type} ? ${card.subtype}` : card.type}
+        {card.subtype ? `${card.type} — ${card.subtype}` : card.type}
       </div>
 
       <div className={styles.textBox} style={{ minHeight: sm ? 16 : 22, fontSize: sm ? 6 : 7 }}>

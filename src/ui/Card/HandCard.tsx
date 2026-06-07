@@ -76,7 +76,7 @@ function HandCardInner({ card, selected, playable, fanAngle = 0, fanY = 0, onCli
           color: frame.parch,
         }}
       >
-        {card.subtype ? `${card.type} ? ${card.subtype}` : card.type}
+        {card.subtype ? `${card.type} — ${card.subtype}` : card.type}
       </div>
 
       <div className={styles.textBox}>{card.text ?? ''}</div>
