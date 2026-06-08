@@ -1,5 +1,15 @@
 # Current Sprint
 
+## Bug Fixes: AI COMBAT_ATTACKERS Guard (2026-06-08)
+
+| Fix | Root Cause | Change |
+|-----|-----------|--------|
+| AI stuck on COMBAT_ATTACKERS | Guard in AI loop useEffect bailed on COMBAT_ATTACKERS and COMBAT_BLOCKERS unconditionally, including when active === 'o' | Added `s.active === 'p'` condition so the bail only fires when the player is declaring |
+
+**Tests:** "AI declares attackers on its turn" desktop + mobile in `e2e/duel-controller.spec.ts`
+
+---
+
 ## Bug Fixes: Blocker UI Clarity + AI Chump Blocking (2026-06-07)
 
 | Fix | File(s) Changed |

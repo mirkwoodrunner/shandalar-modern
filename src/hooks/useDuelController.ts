@@ -375,9 +375,9 @@ export function useDuelController(
     }
 
     if (s.active !== 'o' || aiRef.current) return;
-    // Bail during declare phases. The player acts via Done buttons; the AI
-    // loop must not race past these windows.
-    if (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS') return;
+    // Bail during declare phases only when the PLAYER is the one declaring.
+    // When active === 'o', the AI must run planAttack / planBlock itself.
+    if (s.active === 'p' && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS')) return;
     aiRef.current = true;
     const t = setTimeout(() => {
       const acts = aiDecide(s);
