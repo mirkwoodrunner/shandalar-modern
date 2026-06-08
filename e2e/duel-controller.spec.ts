@@ -348,3 +348,64 @@ test('6: AI cast opens priority window before stack resolves (mobile)', async ({
   // Bear must be gone — Terror resolved and destroyed it.
   expect(sAfter.p.bf.find((c: any) => c.id === 'grizzly_bears')).toBeUndefined();
 });
+
+// ---------------------------------------------------------------------------
+// AI declares attackers on its own turn -- desktop
+// Regression for: guard in AI loop bailed on COMBAT_ATTACKERS unconditionally,
+// blocking the AI when active === 'o'.
+// ---------------------------------------------------------------------------
+test('AI declares attackers on its turn -- desktop', async ({ page }) => {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+  await waitForMain1(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'o' });
+  });
+
+  // Step 1: confirm dispatch committed -- state must leave MAIN_1/active=p.
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s != null && !(s.phase === 'MAIN_1' && s.active === 'p');
+  }, { timeout: 3_000 });
+
+  // Step 2: AI must advance past COMBAT_ATTACKERS.
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s != null && s.phase !== 'COMBAT_ATTACKERS';
+  }, { timeout: 5_000 });
+
+  const s = await page.evaluate(() => (window as any).__duelState());
+  expect(['COMBAT_AFTER_ATTACKERS', 'COMBAT_BLOCKERS', 'COMBAT_AFTER_BLOCKERS',
+          'COMBAT_DAMAGE', 'MAIN_2', 'END', 'UNTAP', 'MAIN_1']).toContain(s.phase);
+});
+
+// ---------------------------------------------------------------------------
+// AI declares attackers on its own turn -- mobile
+// ---------------------------------------------------------------------------
+test('AI declares attackers on its turn -- mobile', async ({ page }) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.goto(SANDBOX_URL);
+  await page.waitForFunction(() => typeof (window as any).__duelState === 'function', { timeout: 10_000 });
+  await waitForMain1(page);
+
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'o' });
+  });
+
+  // Step 1: confirm dispatch committed -- state must leave MAIN_1/active=p.
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s != null && !(s.phase === 'MAIN_1' && s.active === 'p');
+  }, { timeout: 3_000 });
+
+  // Step 2: AI must advance past COMBAT_ATTACKERS.
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s != null && s.phase !== 'COMBAT_ATTACKERS';
+  }, { timeout: 5_000 });
+
+  const s = await page.evaluate(() => (window as any).__duelState());
+  expect(['COMBAT_AFTER_ATTACKERS', 'COMBAT_BLOCKERS', 'COMBAT_AFTER_BLOCKERS',
+          'COMBAT_DAMAGE', 'MAIN_2', 'END', 'UNTAP', 'MAIN_1']).toContain(s.phase);
+});
