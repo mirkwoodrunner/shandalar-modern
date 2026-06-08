@@ -40,8 +40,7 @@ const VARIANT_TRANSFORMS = {
   FOREST:   ['', 'tile-icon-v1'],
   SWAMP:    ['', 'tile-icon-v1'],
   MOUNTAIN: [''],
-  ISLAND:   ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
-  WATER:    ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
+  ISLAND:   ['', 'tile-icon-v1'],
 };
 
 function getTileVariantClass(terrainId, x, y) {
