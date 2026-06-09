@@ -118,7 +118,7 @@ function scoreThreat(creature, state) {
 // --- MANA SIMULATION HELPERS --------------------------------------------------
 // Compute how much mana the AI can access (current pool + untapped lands).
 
-function computeAvailableMana(state) {
+export function computeAvailableMana(state) {
   const pool = { ...state.o.mana };
   for (const c of state.o.bf) {
     if (isLand(c) && !c.tapped) {
@@ -137,7 +137,7 @@ function computeAvailableMana(state) {
 
 // Build TAP_LAND / TAP_ART_MANA actions to cover the cost of a spell.
 // Returns { tapActions, affordable } where tapActions is the DuelCore action list.
-function buildTapActions(state, cost) {
+export function buildTapActions(state, cost) {
   const req = parseMana(cost);
   const vPool = { ...state.o.mana };
   const tapActions = [];
@@ -250,7 +250,7 @@ function planActivatedAbilities(state, profile) {
 // Returns an array of { card, effectiveCost, xVal, effectiveCmc } for cards the AI could legally cast.
 // Does not consider strategic value — only legality and affordability ceiling.
 // Order is determined by selectBestCurve to maximise mana utilisation.
-function selectPlayableCards(state, phase) {
+export function selectPlayableCards(state, phase) {
   const totalManaCeiling = Object.values(computeAvailableMana(state))
     .reduce((s, v) => s + v, 0);
 
@@ -295,7 +295,7 @@ function selectPlayableCards(state, phase) {
 // Greedy mana-fit: picks the combination of candidates that maximises mana spent
 // without exceeding the budget. Runs a greedy descending pass then checks up to
 // three "drop the largest" alternatives. O(n^2) but n is bounded by hand size.
-function selectBestCurve(candidates, manaBudget) {
+export function selectBestCurve(candidates, manaBudget) {
   const sorted = [...candidates].sort((a, b) => b.effectiveCmc - a.effectiveCmc);
   const greedy = [];
   let remaining = manaBudget;
