@@ -1,5 +1,16 @@
 # Current Sprint
 
+## Gemini Advisor: LegalActions.js (2026-06-09)
+
+| Deliverable | Files |
+|---|---|
+| `src/engine/LegalActions.js` -- `computeLegalActions(state, phase)` | New file |
+| Export `selectPlayableCards`, `buildTapActions`, `computeAvailableMana`, `selectBestCurve` from `AI.js` | `src/engine/AI.js` |
+| Vitest unit tests (index 0 invariant, empty board, empty attacker list) | `tests/scenarios/computeLegalActions.test.js` |
+| SYSTEMS.md §23 updated | `docs/SYSTEMS.md` |
+
+---
+
 ## Bug Fixes: AI COMBAT_ATTACKERS Guard (2026-06-08)
 
 | Fix | Root Cause | Change |

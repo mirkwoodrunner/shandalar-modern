@@ -18,6 +18,9 @@
 
 import { GoogleGenAI, Type } from '@google/genai';
 
+// computeLegalActions is imported by callers (useDuelController.ts) before calling
+// fetchGeminiMove. GeminiAdvisor itself does not import LegalActions -- it only
+// receives the already-serialized state payload.
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
 const SYSTEM_INSTRUCTION = [
