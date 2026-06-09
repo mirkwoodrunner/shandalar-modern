@@ -2069,4 +2069,13 @@ Structure counts per run: towns 18-22, dungeons 14-16, castles 5, ruins 10-14.
 - Loot draw uses weighted pool: common x3, uncommon x2, rare x1
 - No dungeon screen -- single modal interaction only
 
+## 23. Gemini Advisor (Scaffolded -- Not Yet Wired)
+
+GeminiAdvisor.js is an isolated async module in src/engine/.
+It is NOT imported by DuelCore.js, AI.js, or any synchronous engine file.
+It is called conditionally by the orchestration layer (useDuelController.ts) -- not yet implemented.
+Phase gate: MAIN_1, MAIN_2, COMBAT_ATTACKERS, COMBAT_BLOCKERS only.
+legalActions[0] invariant: index 0 must always be a pass/passive action.
+Fallback: null return always defers to heuristic AI (AI.js).
+
 # End of SYSTEMS v1.5
