@@ -2523,3 +2523,114 @@ test.describe('Mobile combat priority windows — 390x844', () => {
     expect(after).toBe(before);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Helper: inject pendingConditionalCounter directly (bypasses full sequence)
+async function setPendingConditionalCounter(page: any, overrides: object) {
+  await page.evaluate((o: any) => {
+    (window as any).__duelDispatch({ type: 'DEBUG_SET_CONDITIONAL_COUNTER', ...o });
+  }, overrides);
+}
+
+test.describe('Conditional Counter Modal (Force Spike / Power Sink)', () => {
+  test('Force Spike: pendingConditionalCounter set when it resolves vs player spell', async ({ page }) => {
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.waitForFunction(() => (window as any).__duelState !== undefined);
+
+    // Give player a bear in hand with G mana; AI gets Force Spike with U
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['grizzly_bears'], mana: { G:2 } });
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'o', cardIds: ['force_spike'], mana: { U:1 } });
+    });
+
+    // Player casts Grizzly Bears
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const bear = s.p.hand.find((c: any) => c.id === 'grizzly_bears');
+      (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bear.iid, tgt: null, xVal: null });
+    });
+
+    // Wait for AI to counter with Force Spike and choice to be set
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s?.pendingConditionalCounter !== null;
+    }, { timeout: 5000 });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.pendingConditionalCounter.cardId).toBe('force_spike');
+    expect(state.pendingConditionalCounter.targetCaster).toBe('p');
+    expect(state.pendingConditionalCounter.cost).toBe(1);
+    // Bear must still be on stack
+    const bearOnStack = state.stack.find((i: any) => i.card.id === 'grizzly_bears');
+    expect(bearOnStack).toBeDefined();
+  });
+
+  test('Force Spike: player pays {1}, spell survives on stack', async ({ page }) => {
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.waitForFunction(() => (window as any).__duelState !== undefined);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { C:2 } });
+    });
+
+    await setPendingConditionalCounter(page, {
+      cardId: 'force_spike', cardName: 'Force Spike',
+      stackItemId: 'stack-bear', targetCaster: 'p', cost: 1, canPay: true,
+    });
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'CONDITIONAL_COUNTER_CHOICE', paid: true });
+    });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.pendingConditionalCounter).toBeNull();
+    const total = Object.values(state.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+    expect(total).toBe(1); // paid 1 of 2C
+  });
+
+  test('Force Spike: player declines, spell countered', async ({ page }) => {
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.waitForFunction(() => (window as any).__duelState !== undefined);
+
+    await setPendingConditionalCounter(page, {
+      cardId: 'force_spike', cardName: 'Force Spike',
+      stackItemId: 'stack-bear', targetCaster: 'p', cost: 1, canPay: false,
+    });
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'CONDITIONAL_COUNTER_CHOICE', paid: false });
+    });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.pendingConditionalCounter).toBeNull();
+  });
+
+  test('Power Sink: player declines, spell countered and lands tapped', async ({ page }) => {
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.waitForFunction(() => (window as any).__duelState !== undefined);
+
+    // Give player some lands on battlefield
+    await page.evaluate(() => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { G:1 } });
+    });
+
+    await setPendingConditionalCounter(page, {
+      cardId: 'power_sink', cardName: 'Power Sink',
+      stackItemId: 'stack-bear', targetCaster: 'p', cost: 2, canPay: false,
+    });
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'CONDITIONAL_COUNTER_CHOICE', paid: false });
+    });
+
+    const state = await page.evaluate(() => (window as any).__duelState());
+    expect(state.pendingConditionalCounter).toBeNull();
+    // All player lands should be tapped
+    const untappedLands = state.p.bf.filter((c: any) => c.type === 'Land' && !c.tapped);
+    expect(untappedLands).toHaveLength(0);
+    // Mana pool drained
+    const total = Object.values(state.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+    expect(total).toBe(0);
+  });
+});

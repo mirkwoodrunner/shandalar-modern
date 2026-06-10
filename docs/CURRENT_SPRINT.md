@@ -1,5 +1,21 @@
 # Current Sprint
 
+## Bug Fix: Conditional Counter Payment Modal -- Force Spike + Power Sink (2026-06-10)
+
+| Change | Files |
+|--------|-------|
+| `pendingConditionalCounter` state field in `buildDuelState` | `src/engine/DuelCore.js` |
+| `"counter"` case forks on `card.id === "force_spike"` to suspend resolution | `src/engine/DuelCore.js` |
+| `"powerSink"` case always suspends via `pendingConditionalCounter` | `src/engine/DuelCore.js` |
+| `CONDITIONAL_COUNTER_CHOICE` reducer: pay deducts cost, decline counters spell; Power Sink additionally taps lands + drains mana on decline | `src/engine/DuelCore.js` |
+| `ADVANCE_PHASE` blocked while `pendingConditionalCounter` is set | `src/engine/DuelCore.js` |
+| `resolveConditionalCounter` dispatcher | `src/hooks/useDuel.js` |
+| `ConditionalCounterModal` shared component (Force Spike + Power Sink) | `src/ui/duel/ConditionalCounterModal.tsx` |
+| Modal render in `DuelScreen.tsx` when `targetCaster === 'p'` | `src/DuelScreen.tsx` |
+| AI auto-resolution: pay if totalMana >= cost | `src/hooks/useDuelController.ts` |
+
+**Spell Blast**: unchanged. It is a hard counter gated at cast time by CMC matching; no payment interaction.
+
 ## Gemini Advisor: LegalActions.js (2026-06-09)
 
 | Deliverable | Files |
