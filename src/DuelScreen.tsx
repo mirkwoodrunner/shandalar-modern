@@ -35,6 +35,7 @@ import type { DuelConfig } from './types/duel';
 import { TutorModal } from './ui/duel/TutorModal';
 import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from './ui/duel/TransmutePayModal';
+import { ConditionalCounterModal } from './ui/duel/ConditionalCounterModal';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
@@ -299,7 +300,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     tapLand, tapArtifactMana, playLand, castSpell, resolveStack,
     advancePhase, selectCard, selectTarget,
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
-    resolveUpkeepChoice, openPriorityWindow, passPriority, useChannel,
+    resolveUpkeepChoice, resolveConditionalCounter, openPriorityWindow, passPriority, useChannel,
     undoManaTaps, requestPhaseAdvance,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
@@ -1045,6 +1046,23 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onResolve={resolveUpkeepChoice}
         />
       )}
+
+      {s.pendingConditionalCounter && s.pendingConditionalCounter.targetCaster === 'p' && (() => {
+        const cc = s.pendingConditionalCounter;
+        const totalMana = Object.values(s.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+        const targeted = s.stack.find((i: any) => i.id === cc.stackItemId);
+        return (
+          <ConditionalCounterModal
+            cardName={cc.cardName}
+            targetedSpellName={targeted?.card?.name ?? 'your spell'}
+            cost={cc.cost}
+            canPay={cc.canPay}
+            totalMana={totalMana}
+            isPowerSink={cc.cardId === 'power_sink'}
+            onResolve={resolveConditionalCounter}
+          />
+        );
+      })()}
 
       {s.pendingChoice && s.pendingChoice.controller === 'p' && (
         <ChoiceModal

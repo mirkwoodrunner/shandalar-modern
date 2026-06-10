@@ -425,10 +425,27 @@ case "psionicBlast": ns = hurt(hurt(ns, tgt || opp, 4, card.name), caster, 2, "P
 case "counter": {
 const top = findStackTarget(ns.stack, tgt, item.id);
 if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
+
+// Spell Blast: hard counter, CMC-gated at cast time. No payment interaction.
 if (card.id === "spell_blast" && top.card.cmc !== xVal) {
   ns = dlog(ns, `${card.name} fizzles -- target CMC ${top.card.cmc} does not match X=${xVal}.`, "effect");
   break;
 }
+
+// Force Spike: counter unless controller pays {1}.
+if (card.id === "force_spike") {
+  const totalMana = Object.values(ns[top.caster].mana).reduce((acc, v) => acc + v, 0);
+  ns = dlog(ns, `Force Spike targets ${top.card?.name}. ${top.caster} may pay {1}.`, "effect");
+  return { ...ns, pendingConditionalCounter: {
+    cardId: 'force_spike',
+    cardName: 'Force Spike',
+    stackItemId: top.id,
+    targetCaster: top.caster,
+    cost: 1,
+    canPay: totalMana >= 1,
+  }};
+}
+
 ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id),
   [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
 ns = dlog(ns, `${card.name} counters ${top.card?.name}.`, "effect");
@@ -446,13 +463,17 @@ break;
 case "powerSink": {
 const top = findStackTarget(ns.stack, tgt, item.id);
 if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
-ns = { ...ns, stack: ns.stack.filter(i => i.id !== top.id),
-  [top.caster]: { ...ns[top.caster], gy: [...ns[top.caster].gy, { ...top.card }] } };
-ns = { ...ns, [opp]: { ...ns[opp],
-  bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c),
-  mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
-ns = dlog(ns, `Power Sink counters ${top.card?.name} and drains ${opp}'s mana.`, "effect");
-break;
+const psX = xVal || 1;
+const totalMana = Object.values(ns[top.caster].mana).reduce((acc, v) => acc + v, 0);
+ns = dlog(ns, `Power Sink targets ${top.card?.name}. ${top.caster} may pay {${psX}}.`, "effect");
+return { ...ns, pendingConditionalCounter: {
+  cardId: 'power_sink',
+  cardName: 'Power Sink',
+  stackItemId: top.id,
+  targetCaster: top.caster,
+  cost: psX,
+  canPay: totalMana >= psX,
+}};
 }
 case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
 case "draw1":   ns = drawD(ns, caster, 1); break;
@@ -2267,6 +2288,7 @@ turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, a
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
+pendingConditionalCounter: null,
 priorityWindow: false,
 priorityPasser: null,
 manaTapSnapshot: null,
@@ -2564,6 +2586,7 @@ case "ADVANCE_PHASE": {
     return s;
   }
   if (s.pendingUpkeepChoice) return s;
+  if (s.pendingConditionalCounter) return s;
   s = { ...s, manaTapSnapshot: null };
   return advPhase(s);
 }
@@ -2996,6 +3019,48 @@ case "UPKEEP_CHOICE_RESOLVE": {
   return ns;
 }
 
+case "CONDITIONAL_COUNTER_CHOICE": {
+  // action.paid: boolean
+  if (!s.pendingConditionalCounter) return s;
+  const { cardId, cardName, stackItemId, targetCaster, cost } = s.pendingConditionalCounter;
+  let ns = { ...s, pendingConditionalCounter: null };
+
+  if (action.paid) {
+    // Deduct `cost` generic mana from cheapest available colors (C first, then GRBUOW)
+    let remaining = cost;
+    const pool = { ...ns[targetCaster].mana };
+    for (const col of ['C','G','R','B','U','W']) {
+      if (remaining <= 0) break;
+      const take = Math.min(pool[col] || 0, remaining);
+      pool[col] = (pool[col] || 0) - take;
+      remaining -= take;
+    }
+    ns = { ...ns, [targetCaster]: { ...ns[targetCaster], mana: pool } };
+    ns = dlog(ns, `${targetCaster} pays {${cost}}. ${cardName} is countered.`, "effect");
+    // Targeted spell remains on stack; Force Spike / Power Sink already removed by RESOLVE_STACK.
+  } else {
+    // Targeted spell is countered
+    const top = ns.stack.find(i => i.id === stackItemId);
+    if (top) {
+      ns = { ...ns,
+        stack: ns.stack.filter(i => i.id !== stackItemId),
+        [targetCaster]: { ...ns[targetCaster], gy: [...ns[targetCaster].gy, { ...top.card }] },
+      };
+      ns = dlog(ns, `${targetCaster} does not pay. ${cardName} counters ${top.card?.name}.`, "effect");
+    }
+    // Power Sink additional effect: tap all lands and drain mana if player declined
+    if (cardId === 'power_sink') {
+      ns = { ...ns, [targetCaster]: {
+        ...ns[targetCaster],
+        bf: ns[targetCaster].bf.map(c => isLand(c) ? { ...c, tapped: true } : c),
+        mana: { W:0, U:0, B:0, R:0, G:0, C:0 },
+      }};
+      ns = dlog(ns, `Power Sink taps all ${targetCaster}'s lands and drains their mana pool.`, "effect");
+    }
+  }
+  return ns;
+}
+
 case 'SANDBOX_FORCE_HAND': {
   // Sandbox-only: inject cards into a player's hand and optionally set mana.
   // action.who:          'p' | 'o'  (defaults to 'p')
@@ -3041,6 +3106,18 @@ case 'SET_PHASE_FOR_TEST': {
   // Also clears priorityWindow and stack so ADVANCE_PHASE is not blocked.
   return { ...s, phase: action.phase, active: action.active ?? s.active,
            priorityWindow: false, stack: [], priorityPasser: null };
+}
+
+case 'DEBUG_SET_CONDITIONAL_COUNTER': {
+  if (process.env.NODE_ENV !== 'test' && !import.meta.env?.DEV) return s;
+  return { ...s, pendingConditionalCounter: {
+    cardId: action.cardId,
+    cardName: action.cardName,
+    stackItemId: action.stackItemId,
+    targetCaster: action.targetCaster,
+    cost: action.cost,
+    canPay: action.canPay,
+  }};
 }
 
 case 'DEBUG_PATCH_CARD': {

@@ -94,6 +94,9 @@ dispatch({ type: "RESOLVE_CHOICE", optionId }), []);
 const resolveUpkeepChoice = useCallback((choice) =>
 dispatch({ type: "UPKEEP_CHOICE_RESOLVE", choice }), []);
 
+const resolveConditionalCounter = useCallback((paid) =>
+dispatch({ type: "CONDITIONAL_COUNTER_CHOICE", paid }), []);
+
 const openPriorityWindow = useCallback(() =>
 dispatch({ type: "OPEN_PRIORITY_WINDOW" }), []);
 
@@ -150,6 +153,7 @@ setPendingLotus,
 applyAiActions,
 resolveChoice,
 resolveUpkeepChoice,
+resolveConditionalCounter,
 openPriorityWindow,
 passPriority,
 useChannel,

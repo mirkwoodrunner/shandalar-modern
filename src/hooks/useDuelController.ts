@@ -138,6 +138,7 @@ export function useDuelController(
     passPriority,
     resolveChoice,
     resolveUpkeepChoice,
+    resolveConditionalCounter,
     useChannel,
     undoManaTaps,
     chooseTutor,
@@ -292,6 +293,15 @@ export function useDuelController(
     if (s.over) return;
     if (s.pendingUpkeepChoice) return;
 
+    // AI resolves conditional counter payment (Force Spike, Power Sink)
+    if (s.pendingConditionalCounter && s.pendingConditionalCounter.targetCaster === 'o') {
+      const { cost } = s.pendingConditionalCounter;
+      const totalMana = Object.values(s.o.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+      // Pay if able. Simple heuristic: always pay to protect the spell on stack.
+      resolveConditionalCounter(totalMana >= cost);
+      return;
+    }
+
     if (s.pendingChoice && s.pendingChoice.controller === 'o') {
       const choice = s.pendingChoice;
       const payOption = choice.options.find((o: any) => o.id === 'pay_gggg');
@@ -390,7 +400,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -590,6 +600,7 @@ export function useDuelController(
     applyAiActions,
     resolveChoice,
     resolveUpkeepChoice,
+    resolveConditionalCounter,
     openPriorityWindow,
     passPriority,
     useChannel,
