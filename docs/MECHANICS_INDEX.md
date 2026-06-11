@@ -1612,4 +1612,24 @@ AI response is evaluated by `AI.js` planPriority(); result dispatched via
 ### Status
 ACTIVE (Phase 6 Sprint 7)
 
+---
+
+## Gemini LLM Integration (ARZAKON AI)
+
+| Entry | Location |
+|---|---|
+| Advisor | `src/engine/GeminiAdvisor.js` — Gemini API call wrapper; produces `GameAction[]` |
+| Hook integration | `src/hooks/useDuelController.ts` — reads `duelCfg.useGemini`; substitutes Gemini branch for final boss |
+| Toggle | `src/ui/layout/GameWrapper.jsx` — `useGemini` state on choose step; passed through `startConfig` |
+| Config threading | `src/hooks/useOverworldController.js` — derives `useGemini` from `startConfig`; passes into `launchArzakon` -> `setDuelCfg` |
+
+### Behavior
+- Only fires for context `'arzakon'`. All other opponents always use `aiDecide`.
+- Default is OFF. Each session starts with Gemini disabled.
+- Requires `VITE_GEMINI_API_KEY` env var. If absent, `GeminiAdvisor.js` errors and the heuristic fallback fires automatically.
+- Toggle is not persisted to localStorage.
+
+### Status
+ACTIVE (Sprint — Gemini toggle title screen)
+
 # End of MECHANICS INDEX v1.5
