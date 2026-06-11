@@ -29,7 +29,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
     worldMagics, wmCooldowns, manaLinks, magesDefeated, mlEvents,
     activeDelivery, encounterPopup, postDuelChoice, duelCfg,
     anteEnabled, modal, setModal, activeTile,
-    arzakonReady, gameLost, conquestLost,
+    arzakonReady, gameLost, conquestLost, isSandbox,
     viewW, viewH, tileSize, viewOfs, enemies,
     moves,
     canvasRef,
@@ -464,6 +464,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
           player={player}
           anteEnabled={anteEnabled}
           worldMagics={worldMagics}
+          isSandbox={isSandbox}
           onFight={() => {
             launchDuel(
               encounterPopup.oppArchKey,

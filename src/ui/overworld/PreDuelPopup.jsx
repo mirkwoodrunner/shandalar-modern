@@ -4,6 +4,7 @@
 import React from 'react';
 import { CCOLOR } from '../shared/Card.jsx';
 import { MANA_SYM } from '../../engine/MapGenerator.js';
+import { ARCHETYPES } from '../../data/cards.js';
 
 const RARITY_COLORS = { R: '#f0c040', U: '#88b8d0', C: '#909090' };
 const RARITY_LABELS = { R: 'Rare', U: 'Uncommon', C: 'Common' };
@@ -56,7 +57,7 @@ function AnteCardBox({ label, card, emptyText, accentColor }) {
   );
 }
 
-export default function PreDuelPopup({ popup, player, anteEnabled, worldMagics = [], onFight, onFlee, onClose }) {
+export default function PreDuelPopup({ popup, player, anteEnabled, worldMagics = [], isSandbox = false, onFight, onFlee, onClose }) {
   const {
     monsterName, monsterFlavor, monsterColor,
     playerAnteCard, opponentAnteCard,
@@ -65,6 +66,7 @@ export default function PreDuelPopup({ popup, player, anteEnabled, worldMagics =
 
   const accentColor = CCOLOR[monsterColor] || CCOLOR[''];
   const icon = context === 'castle' ? (MANA_SYM[monsterColor] || '⚔') : '⚔';
+  const profileId = ARCHETYPES[popup.oppArchKey]?.profileId ?? popup.oppArchKey;
   const canAffordFlee = player.gold >= fleeCost;
   const showAnte = anteEnabled && (playerAnteCard !== null || opponentAnteCard !== null);
 
@@ -107,6 +109,22 @@ export default function PreDuelPopup({ popup, player, anteEnabled, worldMagics =
           {worldMagics.includes('orb_of_knowing') && tier != null && (
             <div style={{ fontSize: 11, color: '#88b8d0', marginTop: 6, fontFamily: "'Cinzel',serif" }}>
               🔮 Enemy Tier: {tier}
+            </div>
+          )}
+          {isSandbox && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              marginTop: 8, padding: '3px 10px',
+              background: 'rgba(100,180,255,.08)',
+              border: '1px solid rgba(100,180,255,.25)',
+              borderRadius: 4,
+            }}>
+              <span style={{ fontSize: 9, color: 'rgba(100,180,255,.5)', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
+                AI PROFILE
+              </span>
+              <span style={{ fontSize: 10, color: '#a0d0ff', fontFamily: "'Fira Code',monospace", fontWeight: 700 }}>
+                {profileId}
+              </span>
             </div>
           )}
         </div>
