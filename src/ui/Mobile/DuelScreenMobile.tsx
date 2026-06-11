@@ -59,6 +59,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
+    isGeminiThinking,
   } = useDuelController(config, onDuelEnd);
 
   const s_state = state;
@@ -315,6 +316,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             ? () => handleActivateWithPlayerTarget('o')
             : undefined
       } />
+
+      {isGeminiThinking && (
+        <div className={s.geminiThinking}>
+          Gemini is thinking{'…'}
+        </div>
+      )}
 
       {/* BEB/REB mode picker — shown when a two-mode card is selected and no mode chosen yet */}
       {sel?.card && isBebRebEffect(sel.card) && pendingMode === null && (

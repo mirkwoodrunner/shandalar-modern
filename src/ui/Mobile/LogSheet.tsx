@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import s from './styles.module.css';
 
-type LogKind = 'turn' | 'phase' | 'play' | 'opp_play' | 'damage' | 'heal' | 'info' | 'system';
+type LogKind = 'turn' | 'phase' | 'play' | 'opp_play' | 'damage' | 'heal' | 'info' | 'system' | 'gemini';
 
 export interface LogEntry {
   kind: LogKind;
@@ -18,6 +18,7 @@ const KIND_CLASS: Record<LogKind, string> = {
   heal:     s.logEntryHeal,
   info:     s.logEntryInfo,
   system:   s.logEntryTurn,
+  gemini:   s.logEntryGemini,
 };
 
 interface LogSheetProps {

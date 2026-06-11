@@ -50,7 +50,8 @@ const RESPONSE_SCHEMA = {
  *
  * @param {object} serializedState - Token-optimized game state snapshot.
  *   Must include a legalActions array where index 0 is always a pass/passive action.
- * @returns {Promise<number|null>} Selected index, or null if the call fails.
+ * @returns {Promise<{index: number, reasoning: string, sentPayload: object}|null>}
+ *   Resolved decision, or null if the call fails or should fall back to heuristic AI.
  */
 export async function fetchGeminiMove(serializedState) {
   const actions = serializedState?.legalActions;
@@ -61,7 +62,9 @@ export async function fetchGeminiMove(serializedState) {
   }
 
   // Trivial choice: only one option, no need to call the API.
-  if (actions.length === 1) return 0;
+  if (actions.length === 1) {
+    return { index: 0, reasoning: '(only one legal action)', sentPayload: serializedState };
+  }
 
   try {
     const response = await ai.models.generateContent({
@@ -78,13 +81,14 @@ export async function fetchGeminiMove(serializedState) {
 
     const decision = JSON.parse(response.text);
     const idx = decision.selectedActionIndex;
+    const reasoning = decision.strategicReasoning ?? '(no reasoning provided)';
 
     if (Number.isInteger(idx) && idx >= 0 && idx < actions.length) {
-      return idx;
+      return { index: idx, reasoning, sentPayload: serializedState };
     }
 
     console.warn(`[GeminiAdvisor] Out-of-bounds index ${idx} -- falling back to 0.`);
-    return 0;
+    return { index: 0, reasoning: `(out-of-bounds index ${idx}, defaulted to pass)`, sentPayload: serializedState };
 
   } catch (err) {
     console.error('[GeminiAdvisor] API call failed:', err?.message ?? err);
