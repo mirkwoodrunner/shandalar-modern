@@ -1,5 +1,13 @@
 # Current Sprint
 
+## Bug Fix: UNDO_MANA_TAPS Exploit via Activated Abilities (2026-06-11)
+
+- Fixed: UNDO_MANA_TAPS exploitable after non-mana activated abilities (DuelCore.js)
+- Fixed: Creature mana sources (Llanowar Elves etc.) not captured in undo snapshot
+  when activated before first land tap (DuelCore.js)
+
+---
+
 ## Bug Fix: Conditional Counter Payment Modal -- Force Spike + Power Sink (2026-06-10)
 
 | Change | Files |

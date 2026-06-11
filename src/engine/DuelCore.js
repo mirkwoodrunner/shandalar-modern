@@ -2698,6 +2698,18 @@ case "ACTIVATE_ABILITY": {
   if (act.effect === "addMana") {
     if (act.cost.includes("T")) {
       if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+      // Take snapshot before tapping so UNDO_MANA_TAPS can restore this creature
+      // alongside any lands already recorded. Guard: only if no snapshot yet and
+      // stack is empty (same guard as TAP_LAND / TAP_ART_MANA).
+      if (s.manaTapSnapshot === null && (s.stack?.length ?? 0) === 0) {
+        s = {
+          ...s,
+          manaTapSnapshot: {
+            pBfTapped: s.p.bf.map(c => ({ iid: c.iid, tapped: c.tapped })),
+            pMana: { ...s.p.mana },
+          },
+        };
+      }
       s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
     }
     const manaItem = { id: makeId(), card: { ...card, effect: act.effect, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
@@ -2721,6 +2733,10 @@ case "ACTIVATE_ABILITY": {
     if (!canPay(s.p.mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
     s = { ...s, p: { ...s.p, mana: payMana(s.p.mana, manaPart) } };
   }
+  // Mana has been spent to activate a non-mana ability -- the snapshot is now
+  // stale (it predates this payment). Clear it so UNDO_MANA_TAPS cannot refund
+  // mana that was legitimately consumed by this activation.
+  s = { ...s, manaTapSnapshot: null };
 
   // 3. Route EOT variants so CLEANUP expires them correctly.
   const effectOverride = act.effect === "pumpPower"     ? "pumpPowerEOT"
