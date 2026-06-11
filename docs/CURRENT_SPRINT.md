@@ -1,5 +1,12 @@
 # Current Sprint
 
+## Bug Fix: Disintegrate creature targeting (2026-06-11)
+
+- Fixed: Disintegrate routed all creature targets to player hurt() due to
+  dead-code else branch; removed t2 intermediary variable (DuelCore.js)
+
+---
+
 ## Bug Fix: UNDO_MANA_TAPS Exploit via Activated Abilities (2026-06-11)
 
 - Fixed: UNDO_MANA_TAPS exploitable after non-mana activated abilities (DuelCore.js)

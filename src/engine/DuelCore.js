@@ -1558,9 +1558,8 @@ case "triskelionPing": {
 }
 // --- GROUP A NEW EFFECTS (Batch 2) -------------------------------------------
 case "disintegrate": {
-  const t2 = tgt === "p" || tgt === "o" ? tgt : opp;
-  if (t2 === "p" || t2 === "o") {
-    ns = hurt(ns, t2, xVal, card.name);
+  if (tgt === "p" || tgt === "o") {
+    ns = hurt(ns, tgt, xVal, card.name);
   } else if (tgtC) {
     ns = { ...ns, exileNextDeath: true,
       [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
