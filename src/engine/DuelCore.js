@@ -3108,6 +3108,19 @@ case 'SANDBOX_FORCE_HAND': {
   return ns;
 }
 
+case 'GEMINI_LOG': {
+  // Sandbox-only: append Gemini diagnostic entries to the game log.
+  // action.entries: Array<{ text: string, type: string }>
+  // Does not mutate any game state other than appending to s.log.
+  if (!import.meta.env?.DEV && !import.meta.env?.VITE_SANDBOX) return s;
+  const entries = (action.entries ?? []).map(e => ({
+    text: e.text,
+    type: e.type ?? 'gemini',
+    turn: s.turn,
+  }));
+  return { ...s, log: [...s.log.slice(-100), ...entries] };
+}
+
 case 'DEBUG_SET_ACTIVE': {
   // Sandbox-only: force arbitrary state patches. Used by e2e tests.
   // action.who   -- sets active player (legacy, still supported)

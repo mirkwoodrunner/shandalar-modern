@@ -1618,18 +1618,27 @@ ACTIVE (Phase 6 Sprint 7)
 
 | Entry | Location |
 |---|---|
-| Advisor | `src/engine/GeminiAdvisor.js` — Gemini API call wrapper; produces `GameAction[]` |
-| Hook integration | `src/hooks/useDuelController.ts` — reads `duelCfg.useGemini`; substitutes Gemini branch for final boss |
+| Advisor | `src/engine/GeminiAdvisor.js` — Gemini API call wrapper; returns `{ index, reasoning, sentPayload }` |
+| Hook integration | `src/hooks/useDuelController.ts` — reads `duelCfg.useGemini`; substitutes Gemini branch for sandbox+useGemini duels |
 | Toggle | `src/ui/layout/GameWrapper.jsx` — `useGemini` state on choose step; passed through `startConfig` |
 | Config threading | `src/hooks/useOverworldController.js` — derives `useGemini` from `startConfig`; passes into `launchArzakon` -> `setDuelCfg` |
+| Legal actions | `src/engine/LegalActions.js` — `computeLegalActions(state, phase)` builds action array; index 0 is always PASS_PRIORITY |
+| Diagnostic log action | `src/engine/DuelCore.js` — `GEMINI_LOG` appends `type:'gemini'` entries to `s.log` (sandbox/dev-gated) |
+| Log rendering | `src/hooks/useDuelController.ts` `adaptLog` — maps `type:'gemini'` -> `LogKind 'gemini'` |
+| Log styling | `src/ui/Mobile/LogSheet.tsx` + `styles.module.css` — steel-blue `logEntryGemini` style |
+| Thinking indicator | `src/ui/Mobile/DuelScreenMobile.tsx` — `isGeminiThinking` div renders below opp banner |
 
 ### Behavior
-- Only fires for context `'arzakon'`. All other opponents always use `aiDecide`.
+- Only fires when `config.useGemini === true` AND `config.sandbox === true`.
+- Phases gated: MAIN_1, MAIN_2, COMBAT_ATTACKERS, COMBAT_BLOCKERS.
+- ATTACK_ALL action type expands to individual DECLARE_ATTACKER dispatches.
+- On API failure (`null` result), heuristic `aiDecide` fallback fires automatically.
+- Sandbox diagnostic: `console.group` with full payload + in-game GEMINI_LOG entries per decision.
 - Default is OFF. Each session starts with Gemini disabled.
 - Requires `VITE_GEMINI_API_KEY` env var. If absent, `GeminiAdvisor.js` errors and the heuristic fallback fires automatically.
 - Toggle is not persisted to localStorage.
 
 ### Status
-ACTIVE (Sprint — Gemini toggle title screen)
+ACTIVE (Sprint — Gemini controller wiring complete)
 
 # End of MECHANICS INDEX v1.5

@@ -1,5 +1,15 @@
 # Current Sprint
 
+## Gemini Controller Wiring (2026-06-11)
+
+- Gemini controller wiring complete (Prompt 3): fetchGeminiMove wired for
+  useGemini:true opponents in MAIN_1/MAIN_2/COMBAT_ATTACKERS/COMBAT_BLOCKERS.
+  ATTACK_ALL expands to individual DECLARE_ATTACKER dispatches.
+  Sandbox diagnostic logging: console.group payload + GEMINI_LOG in-game entries.
+  isGeminiThinking state surfaced to UI.
+
+---
+
 ## Bug Fix: Disintegrate creature targeting (2026-06-11)
 
 - Fixed: Disintegrate routed all creature targets to player hurt() due to
