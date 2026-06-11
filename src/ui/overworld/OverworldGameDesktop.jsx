@@ -521,6 +521,7 @@ export default function OverworldGameDesktop({ ctrl, onQuit }) {
           player={player}
           anteEnabled={anteEnabled}
           worldMagics={worldMagics}
+          isSandbox={isSandbox}
           onFight={() => {
             launchDuel(
               encounterPopup.oppArchKey,
