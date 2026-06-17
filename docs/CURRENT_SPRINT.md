@@ -1,5 +1,24 @@
 # Current Sprint
 
+## Bug Fix: AI mulligan re-firing during priority windows (2026-06-17)
+
+Root cause: `aiDecide` / `shouldMulligan` in `AI.js` had no terminal pregame state. The instant-
+response priority effect in `useDuelController.ts` called `aiDecide` on every open priority window
+during the player's turn -- including after a turn-1 spell cast. `shouldMulligan` re-evaluated each
+time, returning MULLIGAN actions that are not valid priority-window responses. `priorityPasser` for
+'o' was never set, stalling the priority window permanently.
+
+| Change | File |
+|---|---|
+| `mulliganDecided: false` added to both player objects in `buildDuelState` | `src/engine/DuelCore.js` |
+| MULLIGAN reducer: sets `o.mulliganDecided: true`; no-ops if already set | `src/engine/DuelCore.js` |
+| New MULLIGAN_KEEP reducer: sets `o.mulliganDecided: true`, no hand change | `src/engine/DuelCore.js` |
+| `shouldMulligan`: bails immediately when `state.o.mulliganDecided` is true | `src/engine/AI.js` |
+| Instant-response priority effect: rejects MULLIGAN/MULLIGAN_KEEP, falls back to PASS_PRIORITY | `src/hooks/useDuelController.ts` |
+| Regression tests (11 Vitest unit tests) | `tests/scenarios/ai-mulligan-no-restall.test.js` |
+
+---
+
 ## Gemini Controller Wiring (2026-06-11)
 
 - Gemini controller wiring complete (Prompt 3): fetchGeminiMove wired for

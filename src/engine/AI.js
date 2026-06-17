@@ -1081,6 +1081,7 @@ function planInstantResponse(state, profile) {
 // --- MULLIGAN DECISION --------------------------------------------------------
 
 function shouldMulligan(state) {
+  if (state.o.mulliganDecided) return false;
   // Only legal at the very start of the AI's first opportunity.
   if (state.turn !== 1) return false;
   if (state.o.bf.length > 0) return false;

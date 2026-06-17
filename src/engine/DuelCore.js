@@ -2263,8 +2263,8 @@ landsPlayed: 0,
 spellsThisTurn: 0,
 totalCardsCast: 0,
 peakDamage: 0,
-p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
-o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false },
+p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false },
+o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false },
 stack: [],
 attackers: [],
 blockers: {},
@@ -2602,10 +2602,11 @@ case "AI_ACTS": {
 
 case "MULLIGAN": {
   const w = action.who || "p";
+  if (w === "o" && s.o.mulliganDecided) return s;
   if (w === "p" && (s.turn > 1 || s.p.bf.length > 0 || s.landsPlayed > 0)) return s;
   const mulls = (s[w].mulls || 0) + 1;
   const lib = shuffle([...s[w].lib, ...s[w].hand]);
-  let ns = { ...s, [w]: { ...s[w], lib, hand: [], mulls } };
+  let ns = { ...s, [w]: { ...s[w], lib, hand: [], mulls, ...(w === "o" ? { mulliganDecided: true } : {}) } };
   ns = drawD(ns, w, s.ruleset.startingHandSize);
   if (s.ruleset.londonMulligan) {
     for (let i = 0; i < mulls && ns[w].hand.length > 0; i++) {
@@ -2615,6 +2616,11 @@ case "MULLIGAN": {
     }
   }
   return dlog(ns, `${w} mulligans (${ns[w].hand.length} cards).`, "info");
+}
+
+case "MULLIGAN_KEEP": {
+  if (s.o.mulliganDecided) return s;
+  return { ...s, o: { ...s.o, mulliganDecided: true } };
 }
 
 case "ACTIVATE_ABILITY": {

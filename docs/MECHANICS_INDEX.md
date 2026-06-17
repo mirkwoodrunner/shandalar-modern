@@ -1528,6 +1528,26 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 - No-attacker skip (B14) extended: if `attackers` is empty, `advPhase` skips
   `COMBAT_AFTER_ATTACKERS`, `COMBAT_BLOCKERS`, and `COMBAT_AFTER_BLOCKERS` and jumps to `MAIN_2`.
 
+### Fix: AI mulligan re-firing during priority windows (AI-MULL-1)
+
+- Root cause: `shouldMulligan` in `AI.js` had no terminal pregame state. The instant-response
+  priority effect in `useDuelController.ts` calls `aiDecide` every time a priority window opens
+  during the player's turn, including on turn 1 after a spell cast. `shouldMulligan` re-evaluated
+  on each call and could return true repeatedly, dispatching MULLIGAN actions that are not valid
+  priority responses -- `priorityPasser` for 'o' was never set, stalling the window permanently.
+- Fix:
+  - `buildDuelState` (DuelCore.js): adds `mulliganDecided: false` to both player objects.
+  - MULLIGAN reducer (DuelCore.js): sets `o.mulliganDecided: true` for `who === 'o'`; no-ops if
+    already true. Player mulligans are unaffected.
+  - New MULLIGAN_KEEP reducer (DuelCore.js): sets `o.mulliganDecided: true` with no other state
+    change; used when the AI decides to keep its opening hand.
+  - `shouldMulligan` (AI.js): bails immediately when `state.o.mulliganDecided` is true.
+  - Instant-response priority effect (useDuelController.ts): rejects MULLIGAN/MULLIGAN_KEEP during
+    an open priority window, falls back to PASS_PRIORITY as defense-in-depth.
+- `mulliganDecided` uses strict `=== true` / `=== false` checks so old test states (where the
+  field is `undefined`) are unaffected and existing tests remain valid.
+- Regression test: `tests/scenarios/ai-mulligan-no-restall.test.js`
+
 ### Activated Mana Abilities (creature sources)
 
 Cards with `activated: { cost: "T", effect: "addMana", mana: "<color>" }` route through
