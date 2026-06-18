@@ -1,5 +1,32 @@
 # Current Sprint
 
+## Premodern Card Pool -- Data Generation (2026-06-18)
+
+Generated `src/data/cardsPremodern.js` (`CARD_DB_PREMODERN`), a standalone Premodern format
+card pool. No effect logic -- all entries have `implemented:false`. Fully independent of `CARD_DB`.
+
+| Metric | Value |
+|---|---|
+| Total unique cards | 5408 |
+| Legal (legal:true) | 5375 |
+| Banned (legal:false) | 33 |
+| Sets covered | 29 (4ed through scg) |
+| Source | Scryfall oracle bulk data, filtered by `legalities.premodern` |
+| Ban list match | All 33 match prompt spec exactly -- no discrepancies |
+| Slug collisions with CARD_DB | 403 (flagged; no merging done -- separate pools) |
+| Tests | 16 Vitest tests in `tests/scenarios/cardsPremodern.test.js` |
+
+**Notes:**
+- The `set` field on each card is the Scryfall oracle canonical printing, which may be
+  a post-Premodern reprint (e.g. `dmr`, `vma`, `ema`). It does not always reflect the
+  earliest Premodern appearance. No runtime effect since all cards are `implemented:false`.
+- 403 slug collisions with existing `CARD_DB` represent shared cards (Alpha-era reprints
+  in core sets). These are separate pools and do not need to be merged.
+- Generation script: `tools/generate-premodern-pool.mjs` (uses local
+  `scryfall/oracle-cards-20260419090229.zip`).
+
+---
+
 ## Bug Fix: AI land destruction silent no-op (2026-06-18)
 
 Root cause: `selectTarget()` in `AI.js` had no `destroyTargetLand` branch and returned `[]`
