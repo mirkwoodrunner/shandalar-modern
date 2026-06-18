@@ -70,21 +70,41 @@ export function terrainGroup(terrainId) {
 
 // --- 3x3 feathered blob sub-offset -------------------------------------------
 // neighborsSameGroupFn(dx, dy) -> true when the neighbor at (x+dx, y+dy) is in
-// the SAME group as this tile. Picks the sub-cell of the 3x3 feathered blob:
-//   sub-column: 0 if W differs, 2 if E differs, else 1
-//   sub-row:    0 if N differs, 2 if S differs, else 1
-// All four neighbors same -> (1,1) which equals the flat-center tile.
-function blobSubOffset(neighborsSameGroupFn) {
+// the SAME group as this tile. Picks the sub-cell of the 3x3 feathered blob.
+//
+// `softFeather` selects between two edge behaviors:
+//
+//  - softFeather = true (dark-grass / SWAMP): the blob edges fade to
+//    transparency, so even a lopsided corner piece reads as an organic dark
+//    patch over the grass base. Standard 9-slice:
+//      sub-column: 0 if W differs, 2 if E differs, else 1
+//      sub-row:    0 if N differs, 2 if S differs, else 1
+//    An isolated tile resolves to a feathered corner -- the natural look.
+//
+//  - softFeather = false (water / WATER+ISLAND): the blob edges carry an opaque
+//    rocky shoreline that only looks right as a complete ring. A 9-slice cannot
+//    show two opposing borders, so when BOTH sides of an axis differ (isolated
+//    tile or 1-wide strip) we fall back to the center column/row. A fully
+//    isolated water tile thus resolves to the solid center -- a clean pond --
+//    instead of a stray rock mound.
+function blobSubOffset(neighborsSameGroupFn, softFeather) {
   const w = neighborsSameGroupFn(-1, 0);
   const e = neighborsSameGroupFn(1, 0);
   const n = neighborsSameGroupFn(0, -1);
   const s = neighborsSameGroupFn(0, 1);
   let sc = 1;
-  if (!w) sc = 0;
-  else if (!e) sc = 2;
   let sr = 1;
-  if (!n) sr = 0;
-  else if (!s) sr = 2;
+  if (softFeather) {
+    if (!w) sc = 0;
+    else if (!e) sc = 2;
+    if (!n) sr = 0;
+    else if (!s) sr = 2;
+  } else {
+    if (!w && e) sc = 0;
+    else if (w && !e) sc = 2;
+    if (!n && s) sr = 0;
+    else if (n && !s) sr = 2;
+  }
   return { sc, sr };
 }
 
@@ -105,13 +125,13 @@ export function getGroundLayers(terrainId, x, y, neighborsSameGroupFn) {
   const layers = [groundLayer(TILESET.GRASS_FLAT)];
 
   if (terrainId === 'SWAMP') {
-    const { sc, sr } = blobSubOffset(neighborsSameGroupFn);
+    const { sc, sr } = blobSubOffset(neighborsSameGroupFn, true);
     layers.push(groundLayer([
       TILESET.DARKGRASS_ANCHOR[0] + sc,
       TILESET.DARKGRASS_ANCHOR[1] + sr,
     ]));
   } else if (terrainId === 'WATER' || terrainId === 'ISLAND') {
-    const { sc, sr } = blobSubOffset(neighborsSameGroupFn);
+    const { sc, sr } = blobSubOffset(neighborsSameGroupFn, false);
     layers.push(groundLayer([
       TILESET.WATER_ANCHOR[0] + sc,
       TILESET.WATER_ANCHOR[1] + sr,

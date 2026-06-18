@@ -1730,6 +1730,18 @@ no AI training.
 All sprite/variant/decoration selection is deterministic from tile (x,y) via `hashTile`
 (copied from `getTileVariantClass`). No `Math.random()`. Decorations are 0-2 per tile.
 
+### Patch-edge feathering
+3x3 (9-slice) blob, with type-specific isolated-tile handling because overworld maps are
+often a near-checkerboard of mixed terrain (few contiguous same-type runs):
+- SWAMP (dark grass) uses `softFeather` -- edges fade to transparency, so an isolated tile
+  resolves to a feathered corner that reads as an organic dark patch over the grass base.
+- WATER/ISLAND edges carry an opaque rocky shoreline that only looks right as a full ring,
+  so when both sides of an axis differ (isolated tile / 1-wide strip) the sub-cell falls back
+  to the center; a fully isolated water tile is a clean solid pond, not a stray rock mound.
+
+The faint emoji terrain-icon overlay was removed from `MapTile` -- biome is now conveyed by the
+sprite canvas + decoration scatter (the old icon clashed visually with the sprites).
+
 ### Fallback
 Until both PNGs settle (or if either fails to load), the per-tile canvas stays transparent
 and the existing `TERRAIN_BG` flat color shows through — the map is never blank. `imageSmoothingEnabled = false`

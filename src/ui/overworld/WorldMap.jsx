@@ -264,21 +264,8 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
         </div>
       )}
 
-      {/* Terrain icon — no structure tiles only, not water */}
-      {!s && t.id !== 'WATER' && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, opacity: 0.30, pointerEvents: 'none', zIndex: 1,
-        }}>
-          <span
-            className={getTileVariantClass(t.id, tile.x, tile.y)}
-            style={{ display: 'inline-block', lineHeight: 1 }}
-          >
-            {t.icon}
-          </span>
-        </div>
-      )}
+      {/* Terrain biome is now conveyed by the sprite canvas + decoration scatter;
+          the old faint emoji terrain icon is intentionally not rendered. */}
 
       {/* Player sprite */}
       {isPlayer && (
