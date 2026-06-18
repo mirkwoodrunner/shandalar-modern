@@ -479,12 +479,26 @@ const COLOR_BY_ARCH = {
   GREEN_STOMPY:    'green',
 };
 
+// Sprite kind by archetype, so a monster's appearance follows the monster
+// itself (not the tile it spawned on) now that encounters are decoupled from
+// biome. KIND_BY_TERRAIN remains a fallback.
+const KIND_BY_ARCH = {
+  WHITE_WEENIE:     'pegasus',
+  GREEN_STOMPY:     'spider',
+  BLACK_CONTROL:    'zombie',
+  BLACK_REANIMATOR: 'zombie',
+  RED_AGGRO:        'goblin',
+  RED_BURN:         'goblin',
+  BLUE_TEMPO:       'fish',
+  BLUE_CONTROL:     'fish',
+};
+
 const COLOR_BY_LETTER = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 
 export function spriteForMonster(archKey, terrainId) {
   return {
-    kind:  KIND_BY_TERRAIN[terrainId] ?? 'goblin',
-    color: COLOR_BY_ARCH[archKey]     ?? 'red',
+    kind:  KIND_BY_ARCH[archKey] ?? KIND_BY_TERRAIN[terrainId] ?? 'goblin',
+    color: COLOR_BY_ARCH[archKey] ?? 'red',
   };
 }
 

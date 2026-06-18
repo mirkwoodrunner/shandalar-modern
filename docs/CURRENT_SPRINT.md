@@ -1,5 +1,75 @@
 # Current Sprint
 
+## Monster Variety: Decouple Encounters from Biome (2026-06-18)
+
+Clustered terrain made the player fight the same archetype repeatedly while crossing a biome.
+Encounter monster selection was hard-keyed to terrain (`MONSTER_TABLE[tile.terrain.id]`).
+
+| Change | File |
+|---|---|
+| `pickMonster(tier, rand)` — tier-appropriate pick from a random biome list (terrain-independent) | `src/engine/MapGenerator.js` |
+| `KIND_BY_ARCH`; `spriteForMonster` sprite kind follows archetype (terrain fallback kept) | `src/ui/overworld/Sprite.jsx` |
+| 5 encounter sites call `pickMonster` instead of `MONSTER_TABLE[terrain]` | `src/hooks/useOverworldController.js` |
+| Unit test: tier clamping + cross-biome variety | `tests/scenarios/monster-variety.test.js` |
+| Spec | `docs/SYSTEMS.md` 27.2 |
+
+Tier (difficulty) still scales by distance/move count; only archetype/color/sprite is unbound.
+Verified: on a single terrain, encounters now produce all five kind/color combos. Uniform random
+across the five archetypes (optional terrain-bias deferred).
+
+---
+
+## Connected Terrain: Coherent-Noise Biomes + Grass-Unified Render (2026-06-18)
+
+The pixel-art tileset still looked like a disconnected checkerboard because terrain was
+generated with a pure per-tile random value (no spatial coherence). Fixed in two parts so the
+overworld reads as connected organic regions (matching the reference forest look).
+
+| Change | File |
+|---|---|
+| Coherent value-noise terrain generation (clusters biomes into connected regions) | `src/engine/MapGenerator.js` |
+| Grass-unified ground + per-biome tint + decoration scale variation + tree overflow | `src/ui/overworld/terrainRenderer.js` |
+| Taller per-tile canvas (OVERFLOW_TOP), tint draw, translate | `src/ui/overworld/WorldMap.jsx` |
+| Terrain-generation unit test (determinism, proportions, connectivity, clustering) | `tests/scenarios/map-terrain-clustering.test.js` |
+| Spec: terrain distribution method | `docs/SYSTEMS.md` 7.3.1 |
+
+Engine change details: two cosine-interpolated noise octaves (241 rng draws, all up front);
+quantile remap preserves exact land biome proportions on a cost-monotonic ladder (ISLAND ->
+PLAINS -> FOREST -> SWAMP -> MOUNTAIN); wavy water coast; existing flood-fill still guarantees
+connectivity (verified: all land reachable, clustering metric ~0.69 vs ~0.2 checkerboard).
+Biome legibility via subtle tint + decorations (user choice). Determinism preserved throughout.
+
+**Deferred follow-ups:**
+- Mountain-specific art (currently grass + grey tint + rocks; reads as rocky highland).
+- Tint feathering at region borders (currently flat per-tile fill).
+- Two-field Whittaker biomes for more varied adjacency (single elevation field for now).
+
+---
+
+## Overworld Tileset Rendering (2026-06-18)
+
+Replaced flat CSS-color terrain backgrounds in the overworld map with layered pixel-art
+sprite rendering (TopDownFantasy-Forest, aamatniekss, free license). Grass base + feathered
+dark-grass/water blob patches + deterministic decoration scatter. Presentation-only; no
+engine/state changes. Shared desktop/mobile render path.
+
+| Change | File |
+|---|---|
+| New pure render module (coordinate tables, hash, ground layers, decorations) | `src/ui/overworld/terrainRenderer.js` |
+| Tilesheet loader + per-tile terrain canvas + neighbor-group computation | `src/ui/overworld/WorldMap.jsx` |
+| Tileset + decoration PNGs | `src/assets/tiles/forest_tileset.png`, `src/assets/tiles/forest_decorations.png` |
+| E2E tests (desktop + mobile, determinism, fallback) | `tests/e2e/overworld-tileset.spec.ts` |
+
+Falls back to `TERRAIN_BG` colors until assets load (never blank). All selection deterministic
+from tile (x,y) — no `Math.random()`.
+
+**Deferred follow-ups:**
+- MOUNTAIN art: currently dirt fill + rock-cluster substitute; needs a real mountain tile.
+- Autotile corner pieces: only N/S/E/W edge feathering implemented (no diagonal corner tiles).
+- ISLAND grass-center: ISLAND renders identically to WATER for now.
+
+---
+
 ## Premodern Card Pool -- Data Generation (2026-06-18)
 
 Generated `src/data/cardsPremodern.js` (`CARD_DB_PREMODERN`), a standalone Premodern format

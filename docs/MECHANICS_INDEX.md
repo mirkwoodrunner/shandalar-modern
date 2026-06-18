@@ -1094,6 +1094,22 @@ Section 27 (Enemy Tier System)
 /src/OverworldGame.jsx        — henchman spawn logic in doMove; canFlee override in
 openEncounterPopup
 ```
+
+### Monster variety (terrain-decoupled selection)
+Encounter monster archetype/color/sprite is decoupled from the tile biome so the player sees a
+variety of monsters everywhere (difficulty/tier unchanged).
+```
+/src/engine/MapGenerator.js          — pickMonster(tier, rand): tier-appropriate pick from a
+                                        RANDOM biome list (rand injected; no ambient randomness)
+/src/ui/overworld/Sprite.jsx         — KIND_BY_ARCH; spriteForMonster prefers archetype kind
+                                        (terrain kind kept as fallback)
+/src/hooks/useOverworldController.js — 5 encounter sites now call pickMonster(...) instead of
+                                        MONSTER_TABLE[terrain.id] (initial/spontaneous spawn,
+                                        ruin guardian, two collision lookups)
+/tests/scenarios/monster-variety.test.js — tier clamping + cross-biome variety
+```
+See SYSTEMS.md 27.2.
+
 ### Status
 ACTIVE (Phase 7)
 
@@ -1707,5 +1723,54 @@ ACTIVE (Phase 6 Sprint 7)
 
 ### Status
 ACTIVE (Sprint — Gemini controller wiring complete)
+
+## Overworld Tileset Rendering + Connected Terrain
+
+Replaces flat CSS-color terrain backgrounds with layered pixel-art sprite rendering on a
+**continuous grass base**, paired with a terrain-generation change that clusters biomes into
+**connected regions**. Shared desktop/mobile render path (single `WorldMap`, no viewport branch).
+
+| Entry | Location |
+|---|---|
+| Connected-region terrain gen | `src/engine/MapGenerator.js` — coherent value-noise field (`cerp`/`buildLattice`/`sampleLattice`), quantile-remapped to a cost-monotonic biome ladder, wavy water coast. See SYSTEMS.md 7.3.1 |
+| Render data + helpers | `src/ui/overworld/terrainRenderer.js` — frozen coordinate tables, `hashTile`, `terrainGroup`, `getGroundLayers`, `getTint`, `getDecorations` |
+| Tilesheet loader + per-tile canvas | `src/ui/overworld/WorldMap.jsx` — module-level singleton image loader (`useTilesheets`); `MapTile` draws grass base + tint + decorations on a per-tile canvas (taller by `OVERFLOW_TOP` so trees overflow upward) beneath all overlays |
+| Neighbor-group computation | `src/ui/overworld/WorldMap.jsx` — `WorldMap` passes `groundNeighbors` (same-group N/S/E/W flags) per tile for water/swamp autotile edges |
+| Assets | `src/assets/tiles/forest_tileset.png` (128x240), `src/assets/tiles/forest_decorations.png` (256x256) |
+| Tests | `tests/e2e/overworld-tileset.spec.ts` (sprite-not-flat, determinism, fallback; 1280x800 + 390x844); `tests/scenarios/map-terrain-clustering.test.js` (determinism, proportions, connectivity, clustering) |
+
+### Asset pack / license
+TopDownFantasy-Forest (aamatniekss). Free license: commercial OK, no redistribution/resale,
+no AI training.
+
+### Grass-unified render + biome legibility
+All LAND biomes (PLAINS, FOREST, MOUNTAIN, ISLAND, SWAMP) share one continuous grass base, so
+the ground never breaks at tile edges. Biomes are conveyed by a subtle low-alpha per-biome tint
+(`getTint`: FOREST green, MOUNTAIN grey-brown, ISLAND coastal blue, SWAMP faint murk) plus
+decoration scatter (trees=forest, rocks=mountain, mushrooms+dark grass=swamp, blades/flowers=
+plains). Only WATER (connected ponds/coast) and SWAMP's dark-grass overlay autotile via the
+3x3 (9-slice) `blobSubOffset` (soft feather for swamp, center-fallback shoreline for water).
+
+### Determinism
+All sprite/tint/decoration selection is deterministic from tile (x,y) via `hashTile`. No
+`Math.random()`. Decorations are 0-2 per tile with deterministic scale variation to avoid
+repetition. The terrain field itself is deterministic from the map seed (SYSTEMS.md 7.3.1).
+
+### Fallback
+Until both PNGs settle (or if either fails to load), the per-tile canvas stays transparent
+and the existing `TERRAIN_BG` flat color shows through — the map is never blank. `imageSmoothingEnabled = false`
+and `image-rendering: pixelated` everywhere (16px source at 34px dest is an accepted 2.125x soft upscale).
+
+### Known gaps (deferred art pass)
+- MOUNTAIN has no matching tile — rendered as grass + grey tint + dense rock-cluster (reads as
+  rocky highland, not a true mountain).
+- Tint is a flat per-tile fill — region borders are not feathered (acceptable since regions are
+  now connected; border feathering deferred).
+- ISLAND has no distinct tile — grass + faint coastal tint.
+
+### Status
+ACTIVE (overworld presentation + terrain generation)
+
+---
 
 # End of MECHANICS INDEX v1.5

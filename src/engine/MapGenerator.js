@@ -158,6 +158,19 @@ ISLAND:   [
 ],
 };
 
+// All biome monster lists, flattened by biome key. Used to decouple encounter
+// monster selection from terrain so the player sees a variety of monsters
+// everywhere (difficulty still scales by tier, set by the caller).
+const MONSTER_LISTS = Object.values(MONSTER_TABLE);
+
+// Pick a tier-appropriate monster from a RANDOM biome list, independent of the
+// tile terrain. `rand` is a 0..1 source injected by the caller (the overworld
+// layer passes Math.random); this module stays free of ambient randomness.
+export function pickMonster(tier, rand) {
+  const list = MONSTER_LISTS[Math.floor(rand() * MONSTER_LISTS.length)];
+  return list[Math.min(Math.max(tier, 1) - 1, list.length - 1)];
+}
+
 export const HENCHMAN_TABLE = [
 { name:'High Priest',     hp:24, archKey:'WHITE_WEENIE',    tier:4, color:'W' },
 { name:'Thought Invoker', hp:24, archKey:'BLUE_CONTROL',    tier:4, color:'U' },
@@ -207,6 +220,37 @@ return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 }
 
+// --- COHERENT VALUE NOISE -----------------------------------------------------
+// Deterministic low-frequency noise used to cluster terrain into connected
+// biome regions (instead of per-tile random checkerboard). All randomness comes
+// from the seeded rng; field sampling consumes no rng.
+
+// Cosine interpolation: smooth C1 blend between a and b, t in [0,1].
+function cerp(a, b, t) {
+  const f = (1 - Math.cos(t * Math.PI)) * 0.5;
+  return a * (1 - f) + b * f;
+}
+
+// Build a gw x gh lattice of rng() values. Consumes gw*gh rng draws.
+function buildLattice(rng, gw, gh) {
+  const lat = new Array(gh);
+  for (let j = 0; j < gh; j++) {
+    lat[j] = new Array(gw);
+    for (let i = 0; i < gw; i++) lat[j][i] = rng();
+  }
+  return lat;
+}
+
+// Sample a lattice at continuous grid coords (gx, gy) with cosine bilinear lerp.
+function sampleLattice(lat, gx, gy) {
+  const x0 = Math.floor(gx), y0 = Math.floor(gy);
+  const x1 = x0 + 1,         y1 = y0 + 1;
+  const tx = gx - x0,        ty = gy - y0;
+  const top = cerp(lat[y0][x0], lat[y0][x1], tx);
+  const bot = cerp(lat[y1][x0], lat[y1][x1], tx);
+  return cerp(top, bot, ty);
+}
+
 // --- CONNECTIVITY HELPER ------------------------------------------------------
 
 /**
@@ -254,22 +298,66 @@ function floodFillLand(tiles, sx, sy) {
     const rng = makeRng(seed);
     const tiles = [];
 
-// -- Terrain --------------------------------------------------------------
+// -- Terrain (coherent value noise) ---------------------------------------
+// Biomes are clustered into connected regions via a low-frequency value-noise
+// field so the renderer can autotile them (vs the old per-tile checkerboard).
+//
+// TERRAIN RNG BUDGET: exactly 241 rng() draws, all consumed building the two
+// lattices below (54 + 187). Field sampling and biome bucketing use NO rng.
+// This changes the downstream rng stream vs the old per-tile model (2560
+// draws), so structure placement differs by seed -- still fully deterministic.
+const CS1 = 8, CS2 = 4;
+const gw1 = Math.ceil(MAP_W / CS1) + 1, gh1 = Math.ceil(MAP_H / CS1) + 1; // 9 x 6 = 54
+const gw2 = Math.ceil(MAP_W / CS2) + 1, gh2 = Math.ceil(MAP_H / CS2) + 1; // 17 x 11 = 187
+const lat1 = buildLattice(rng, gw1, gh1);
+const lat2 = buildLattice(rng, gw2, gh2);
+// (no further rng() draws in the terrain step)
+
+// Pass 1: field + dist + water decision; collect land field values for quantile.
+const field = [];
+const water = [];
+const landVals = [];
+for (let y = 0; y < MAP_H; y++) {
+  field[y] = [];
+  water[y] = [];
+  for (let x = 0; x < MAP_W; x++) {
+    const o1 = sampleLattice(lat1, x / CS1, y / CS1);
+    const o2 = sampleLattice(lat2, x / CS2, y / CS2);
+    const f = (o1 + 0.5 * o2) / 1.5;
+    field[y][x] = f;
+    const nx = x / MAP_W - 0.5;
+    const ny = y / MAP_H - 0.5;
+    const dist = Math.sqrt(nx * nx + ny * ny);
+    // Wavy, connected coast: noise wobbles the effective sea-level radius.
+    const isWater = dist + (f - 0.5) * 0.18 > 0.46;
+    water[y][x] = isWater;
+    if (!isWater) landVals.push(f);
+  }
+}
+
+// Quantile thresholds over LAND tiles only -> exact land biome proportions,
+// independent of the noise distribution shape. Cost-monotonic biome ladder
+// (ISLAND -> PLAINS -> FOREST -> SWAMP -> MOUNTAIN) keeps high-cost SWAMP a
+// thin band rather than a basin, easing movement.
+landVals.sort((a, b) => a - b);
+const N = landVals.length || 1;
+const cut = [0.28, 0.48, 0.68, 0.82];
+const thr = cut.map((p) => landVals[Math.min(N - 1, Math.floor(p * N))] ?? 1);
+const biomeFor = (f) =>
+  f < thr[0] ? TERRAIN.ISLAND :
+  f < thr[1] ? TERRAIN.PLAINS :
+  f < thr[2] ? TERRAIN.FOREST :
+  f < thr[3] ? TERRAIN.SWAMP  :
+               TERRAIN.MOUNTAIN;
+
+// Pass 2: build tile objects (shape + encChance unchanged).
 for (let y = 0; y < MAP_H; y++) {
 tiles[y] = [];
 for (let x = 0; x < MAP_W; x++) {
 const nx = x / MAP_W - 0.5;
 const ny = y / MAP_H - 0.5;
 const dist = Math.sqrt(nx * nx + ny * ny);
-const v = rng();
-
-  let terrain;
-  if (dist > 0.45 && v > 0.3)  terrain = TERRAIN.WATER;
-  else if (v < 0.18)            terrain = TERRAIN.MOUNTAIN;
-  else if (v < 0.32)            terrain = TERRAIN.SWAMP;
-  else if (v < 0.52)            terrain = TERRAIN.FOREST;
-  else if (v < 0.72)            terrain = TERRAIN.PLAINS;
-  else                          terrain = TERRAIN.ISLAND;
+const terrain = water[y][x] ? TERRAIN.WATER : biomeFor(field[y][x]);
 
   tiles[y][x] = {
     x, y,
@@ -439,6 +527,8 @@ startY = Math.max(1, Math.min(MAP_H - 2, startY));
       if (tiles[y][x].terrain !== TERRAIN.WATER) {
         if (!reachable.has(`${x},${y}`)) {
           // Remove any structure that would have been stranded
+          // NOTE (log-don't-fix): ruinData is not cleared here like the other
+          // structure data fields -- pre-existing latent bug, left as-is.
           tiles[y][x].structure  = null;
           tiles[y][x].townData   = null;
           tiles[y][x].dungeonData = null;
