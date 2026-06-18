@@ -1,5 +1,29 @@
 # Current Sprint
 
+## Bug Fix: AI land destruction silent no-op (2026-06-18)
+
+Root cause: `selectTarget()` in `AI.js` had no `destroyTargetLand` branch and returned `[]`
+instead of `null`, causing Sinkhole/Stone Rain/Ice Storm to cast with zero targets and silently
+fizzle. `ACTIVATE_ABILITY` in `DuelCore.js` hardcoded `s.p.bf`/`caster:"p"`, so the AI could
+never activate abilities (Strip Mine sacrifice, Demonic Hordes tap) -- the card lookup always
+searched the human's battlefield and returned nothing.
+
+| Change | File |
+|---|---|
+| `selectLandToDestroy()` helper: picks highest-value opposing land (nonbasics first, then scarcest-color basic) | `src/engine/AI.js` |
+| `selectTarget()`: new `destroyTargetLand` branch returns `null` when no target exists | `src/engine/AI.js` |
+| `planActivatedAbilities()`: new Strip Mine (T+sac) and Demonic Hordes (BBB+T) branches | `src/engine/AI.js` |
+| `dcActions` translator: `ACTIVATE_ABILITY` now emits `who: 'o'` | `src/engine/AI.js` |
+| `ACTIVATE_ABILITY`: who-aware via `w = action.who \|\| 'p'`; `sac` cost parsing added (step 2) | `src/engine/DuelCore.js` |
+| `destroyTargetLand` resolution: fizzle `dlog` added for missing/invalid target | `src/engine/DuelCore.js` |
+| 18 Vitest unit tests (Groups A-D) | `tests/scenarios/ai-land-destruction.test.js` |
+
+Follow-up (not done in this pass): Mishra's Factory `animateLand`/`pumpAssemblyWorker` and
+Birds of Paradise `addManaAny` activated abilities remain player-only and are not yet planned
+by the AI.
+
+---
+
 ## Bug Fix: AI mulligan re-firing during priority windows (2026-06-17)
 
 Root cause: `aiDecide` / `shouldMulligan` in `AI.js` had no terminal pregame state. The instant-

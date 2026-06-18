@@ -516,6 +516,7 @@ break;
 }
 case "destroyTargetLand": {
 if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+else { ns = dlog(ns, `${card.name} fizzles -- no valid land target.`, "effect"); }
 break;
 }
 case "destroyBlack": {
@@ -2626,7 +2627,8 @@ case "MULLIGAN_KEEP": {
 case "ACTIVATE_ABILITY": {
   if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot activate abilities during declare phase.", "rule");
   const { iid, tgt, chosenColor, abilityId } = action;
-  const card = s.p.bf.find(c => c.iid === iid);
+  const w = action.who || 'p';
+  const card = s[w].bf.find(c => c.iid === iid);
   if (!card) return s;
 
   // Handle cards with activatedAbilities array (e.g. Mishra's Factory).
@@ -2723,27 +2725,36 @@ case "ACTIVATE_ABILITY": {
   }
 
   // ── Non-mana activated abilities: pay cost, push to stack, open priority window ──
+  // From here on the case is who-aware (w) to support AI ('o') activation.
 
   // 1. Tap cost
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
-    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+    s = { ...s, [w]: { ...s[w], bf: s[w].bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
   }
 
-  // 2. Mana cost — strip 'T' and commas, parse remainder
-  const manaPart = act.cost.replace(/T/g, "").replace(/,/g, "").trim();
+  // 2. Sacrifice cost (e.g. Strip Mine: "T,sac"). Sacrifices the activating
+  // permanent itself. Must happen before pushing to the stack so the source
+  // is already gone by the time the ability resolves.
+  if (act.cost.includes("sac")) {
+    s = zMove(s, iid, w, w, "gy");
+    s = dlog(s, `${card.name} sacrificed to activate its ability.`, "info");
+  }
+
+  // 3. Mana cost -- strip 'T', 'sac', and commas, parse remainder
+  const manaPart = act.cost.replace(/T/g, "").replace(/sac/g, "").replace(/,/g, "").trim();
   // Counter-cost abilities (e.g. Triskelion): cost is paid by removing a counter,
   // not by spending mana. The effect handler validates and removes the counter.
   if (manaPart && manaPart !== 'counter') {
-    if (!canPay(s.p.mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
-    s = { ...s, p: { ...s.p, mana: payMana(s.p.mana, manaPart) } };
+    if (!canPay(s[w].mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+    s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, manaPart) } };
   }
   // Mana has been spent to activate a non-mana ability -- the snapshot is now
   // stale (it predates this payment). Clear it so UNDO_MANA_TAPS cannot refund
   // mana that was legitimately consumed by this activation.
   s = { ...s, manaTapSnapshot: null };
 
-  // 3. Route EOT variants so CLEANUP expires them correctly.
+  // 4. Route EOT variants so CLEANUP expires them correctly.
   const effectOverride = act.effect === "pumpPower"     ? "pumpPowerEOT"
                        : act.effect === "pumpToughness" ? "pumpToughnessEOT"
                        : act.effect === "pumpSelf"      ? "pumpSelfEOT"
@@ -2752,11 +2763,11 @@ case "ACTIVATE_ABILITY": {
                        : act.effect === "grantFlying"   ? "grantFlyingEOT"
                        : act.effect;
 
-  // 4. Push to stack and open priority window (same pattern as CAST_SPELL).
+  // 5. Push to stack and open priority window (same pattern as CAST_SPELL).
   const abilityItem = {
     id: makeId(),
     card: { ...card, effect: effectOverride, mana: act.mana },
-    caster: "p",
+    caster: w,
     targets: tgt ? [tgt] : [],
     xVal: 1,
     chosenColor,

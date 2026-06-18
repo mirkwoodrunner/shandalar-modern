@@ -115,6 +115,37 @@ function scoreThreat(creature, state) {
   return score;
 }
 
+// Pick the opposing land most worth destroying. Priority:
+//   1. Nonbasic lands (utility/dual lands cost more to replace and often
+//      enable specific strategies -- denying them hurts more than a basic).
+//   2. Among basics, the color the player has the fewest sources of
+//      (denial pushes them toward color screw rather than just card disadvantage).
+//   3. Fallback: any tapped land (already used this turn, "free" tempo loss).
+//   4. Fallback: any land at all.
+// Returns null if the player controls no lands.
+function selectLandToDestroy(state) {
+  const lands = state.p.bf.filter(isLand);
+  if (!lands.length) return null;
+
+  const isBasic = (l) => l.subtype?.startsWith('Basic ');
+  const nonbasics = lands.filter(l => !isBasic(l));
+  if (nonbasics.length) {
+    return nonbasics.reduce((a, b) => (a.tapped && !b.tapped ? a : b));
+  }
+
+  const colorCounts = {};
+  for (const l of lands) {
+    const c = l.produces?.[0] || 'C';
+    colorCounts[c] = (colorCounts[c] || 0) + 1;
+  }
+  const scarcest = lands.reduce((a, b) => {
+    const ca = colorCounts[a.produces?.[0] || 'C'];
+    const cb = colorCounts[b.produces?.[0] || 'C'];
+    return cb < ca ? b : a;
+  });
+  return scarcest;
+}
+
 // --- MANA SIMULATION HELPERS --------------------------------------------------
 // Compute how much mana the AI can access (current pool + untapped lands).
 
@@ -205,6 +236,27 @@ function planActivatedAbilities(state, profile) {
       if (state.p.life <= 5) {
         actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: ['p'] });
       }
+    }
+
+    // Strip Mine: {T}, Sacrifice this land: Destroy target land.
+    // Only fire if there's an opposing land worth blowing up -- don't burn
+    // a land drop for nothing.
+    if (c.activated?.effect === 'destroyTargetLand' && c.activated.cost?.includes('sac') && isLand(c)) {
+      const land = selectLandToDestroy(state);
+      if (land) {
+        actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: [land.iid] });
+      }
+      continue;
+    }
+
+    // Demonic Hordes: {BBB}{T}: Destroy target land (upkeep sac-a-land-of-choice
+    // drawback is handled separately by its upkeep hook, not here).
+    if (c.activated?.effect === 'destroyTargetLand' && !c.activated.cost?.includes('sac') && !isLand(c)) {
+      const land = selectLandToDestroy(state);
+      if (land) {
+        actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: [land.iid] });
+      }
+      continue;
     }
   }
 
@@ -424,6 +476,12 @@ function selectTarget(card, state, profile, xVal = null) {
   if (card.effect === 'regrowth') {
     if (!state.o.gy.length) return null;
     return [state.o.gy[state.o.gy.length - 1].iid];
+  }
+
+  if (card.effect === 'destroyTargetLand') {
+    const land = selectLandToDestroy(state);
+    if (!land) return null;
+    return [land.iid];
   }
 
   const targetsSelf = ['draw3','draw1','drawX','gainLife3','gainLifeX','gainLife1',
@@ -1220,7 +1278,7 @@ export function aiDecide(state) {
       }
 
       case 'ACTIVATE_ABILITY': {
-        dcActions.push({ type: 'ACTIVATE_ABILITY', iid: action.sourceId, tgt: action.targets?.[0] || null });
+        dcActions.push({ type: 'ACTIVATE_ABILITY', who: 'o', iid: action.sourceId, tgt: action.targets?.[0] || null });
         break;
       }
 
