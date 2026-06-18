@@ -5,8 +5,66 @@
 import React from 'react';
 import { TERRAIN, MANA_HEX, MANA_SYM, MAGE_NAMES, COLORS } from '../../engine/MapGenerator.js';
 import { Sprite, SpriteStyles, spriteForMonster, spriteForHenchman } from './Sprite.jsx';
+import {
+  getGroundLayers,
+  getDecorations,
+  terrainGroup,
+  SHEET_TILESET,
+  TILE_PX,
+} from './terrainRenderer.js';
+import tilesetUrl from '../../assets/tiles/forest_tileset.png';
+import decorationsUrl from '../../assets/tiles/forest_decorations.png';
 
 const TILE_SIZE = 34;
+
+// --- TILESHEET LOADER --------------------------------------------------------
+// Module-level singleton: load the two PNGs once and notify subscribers when
+// both attempts settle. Until then (and if an asset fails) tiles fall back to
+// the flat TERRAIN_BG color so the map is never blank. No Math.random anywhere.
+const _sheets = {
+  tileset:     { img: null, ok: false },
+  decorations: { img: null, ok: false },
+};
+let _loadStarted = false;
+let _loadSettled = false;
+const _subs = new Set();
+
+function getSheet(key) {
+  const s = _sheets[key];
+  return s && s.ok ? s.img : null;
+}
+
+function _startSheetLoad() {
+  if (_loadStarted || typeof Image === 'undefined') return;
+  _loadStarted = true;
+  const entries = [['tileset', tilesetUrl], ['decorations', decorationsUrl]];
+  let remaining = entries.length;
+  const done = () => {
+    remaining -= 1;
+    if (remaining === 0) {
+      _loadSettled = true;
+      _subs.forEach((fn) => fn());
+    }
+  };
+  for (const [key, url] of entries) {
+    const img = new Image();
+    img.onload = () => { _sheets[key].img = img; _sheets[key].ok = true; done(); };
+    img.onerror = () => { _sheets[key].ok = false; done(); };
+    img.src = url;
+  }
+}
+
+// Subscribes to sheet load completion; returns true once both loads settle.
+function useTilesheets() {
+  const [, force] = React.useReducer((c) => c + 1, 0);
+  React.useEffect(() => {
+    if (_loadSettled) return undefined;
+    _startSheetLoad();
+    _subs.add(force);
+    return () => { _subs.delete(force); };
+  }, []);
+  return _loadSettled;
+}
 
 function hexToRgba(hex, a) {
   const n = parseInt(hex.replace('#', ''), 16);
@@ -52,9 +110,55 @@ function getTileVariantClass(terrainId, x, y) {
   return variants[idx];
 }
 
-export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick }) {
+export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null }) {
   const t = tile.terrain;
   const s = tile.structure;
+
+  const sheetsReady = useTilesheets();
+  const terrainCanvasRef = React.useRef(null);
+
+  // Same-group neighbor flags drive feathered patch-edge selection. Default to
+  // "all same" (flat-center tiles) when neighbor data is unavailable.
+  const gnN = groundNeighbors ? groundNeighbors.n : true;
+  const gnS = groundNeighbors ? groundNeighbors.s : true;
+  const gnE = groundNeighbors ? groundNeighbors.e : true;
+  const gnW = groundNeighbors ? groundNeighbors.w : true;
+
+  React.useEffect(() => {
+    const cv = terrainCanvasRef.current;
+    if (!cv) return;
+    const tilesetImg = getSheet('tileset');
+    // No tileset image (still loading or failed): leave canvas transparent so
+    // the div's TERRAIN_BG fallback shows through. Never a blank tile.
+    if (!tilesetImg) return;
+    const decorImg = getSheet('decorations');
+
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, tileSize, tileSize);
+
+    const nsg = (dx, dy) => {
+      if (dx === -1) return gnW;
+      if (dx === 1) return gnE;
+      if (dy === -1) return gnN;
+      if (dy === 1) return gnS;
+      return true;
+    };
+
+    const layers = getGroundLayers(t.id, tile.x, tile.y, nsg);
+    for (const l of layers) {
+      const img = l.sheet === SHEET_TILESET ? tilesetImg : decorImg;
+      if (img) ctx.drawImage(img, l.sx, l.sy, TILE_PX, TILE_PX, 0, 0, tileSize, tileSize);
+    }
+
+    if (decorImg) {
+      for (const d of getDecorations(t.id, tile.x, tile.y)) {
+        const dw = d.w * d.scale;
+        const dh = d.h * d.scale;
+        ctx.drawImage(decorImg, d.sx, d.sy, d.w, d.h, d.anchorX - dw / 2, d.anchorY - dh, dw, dh);
+      }
+    }
+  }, [t.id, tile.x, tile.y, tileSize, sheetsReady, gnN, gnS, gnE, gnW]);
 
   if (!tile.revealed) {
     return (
@@ -84,6 +188,24 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
       style={{ background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex }}
       onClick={() => onClick(tile)}
     >
+      {/* Terrain sprites -- drawn beneath all overlays. Transparent until the
+          tilesheets load (or if they fail), letting the TERRAIN_BG fallback show. */}
+      <canvas
+        ref={terrainCanvasRef}
+        className="ow-terrain-canvas"
+        width={tileSize}
+        height={tileSize}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: tileSize,
+          height: tileSize,
+          imageRendering: 'pixelated',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
       {/* Mana link corruption overlay */}
       {ml && (
         <div
@@ -508,6 +630,20 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                 return n && !n.revealed;
               });
 
+              // Same-group neighbor flags for feathered patch edges (WATER and
+              // ISLAND count as one group). Drives the 3x3 blob sub-tile pick.
+              const myGroup = terrainGroup(tile.terrain.id);
+              const sameG = (dx, dy) => {
+                const n = tileAt(x + dx, y + dy);
+                return !!n && terrainGroup(n.terrain.id) === myGroup;
+              };
+              const groundNeighbors = {
+                n: sameG(0, -1),
+                s: sameG(0, 1),
+                e: sameG(1, 0),
+                w: sameG(-1, 0),
+              };
+
               return (
                 <MapTile
                   key={`${x}-${y}`}
@@ -518,6 +654,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                   tileSize={tileSize}
                   rowIndex={vy}
                   onClick={onTileClick}
+                  groundNeighbors={groundNeighbors}
                 />
               );
             })

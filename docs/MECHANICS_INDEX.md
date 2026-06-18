@@ -1708,4 +1708,42 @@ ACTIVE (Phase 6 Sprint 7)
 ### Status
 ACTIVE (Sprint — Gemini controller wiring complete)
 
+## Overworld Tileset Rendering (presentation)
+
+Replaces flat CSS-color terrain backgrounds with layered pixel-art sprite rendering.
+Presentation-only: no engine/state changes. Terrain TYPE data is unchanged; only how a
+tile is DRAWN changes. Shared desktop/mobile render path (single `WorldMap`, no viewport branch).
+
+| Entry | Location |
+|---|---|
+| Render data + helpers | `src/ui/overworld/terrainRenderer.js` — frozen coordinate tables, `hashTile`, `terrainGroup`, `getGroundLayers`, `getDecorations` |
+| Tilesheet loader + per-tile canvas | `src/ui/overworld/WorldMap.jsx` — module-level singleton image loader (`useTilesheets`); `MapTile` draws ground layers + decorations on a 34x34 canvas beneath all overlays |
+| Neighbor-group computation | `src/ui/overworld/WorldMap.jsx` — `WorldMap` passes `groundNeighbors` (same-group N/S/E/W flags) per tile for feathered patch edges |
+| Assets | `src/assets/tiles/forest_tileset.png` (128x240), `src/assets/tiles/forest_decorations.png` (256x256) |
+| E2E tests | `tests/e2e/overworld-tileset.spec.ts` — sprite-not-flat, determinism, fallback; runs at 1280x800 and 390x844 |
+
+### Asset pack / license
+TopDownFantasy-Forest (aamatniekss). Free license: commercial OK, no redistribution/resale,
+no AI training.
+
+### Determinism
+All sprite/variant/decoration selection is deterministic from tile (x,y) via `hashTile`
+(copied from `getTileVariantClass`). No `Math.random()`. Decorations are 0-2 per tile.
+
+### Fallback
+Until both PNGs settle (or if either fails to load), the per-tile canvas stays transparent
+and the existing `TERRAIN_BG` flat color shows through — the map is never blank. `imageSmoothingEnabled = false`
+and `image-rendering: pixelated` everywhere (16px source at 34px dest is an accepted 2.125x soft upscale).
+
+### Known gaps (deferred art pass)
+- MOUNTAIN has no matching tile — rendered as dirt fill + rock-cluster decoration (imperfect substitute).
+- Dirt has no soft 4-directional edge in this pack — used as fill only, not as an open feathered patch.
+  SWAMP uses the dark-grass feathered blob instead.
+- ISLAND renders identically to WATER (grass-center island deferred).
+
+### Status
+ACTIVE (overworld presentation)
+
+---
+
 # End of MECHANICS INDEX v1.5

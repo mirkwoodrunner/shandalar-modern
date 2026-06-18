@@ -1,5 +1,29 @@
 # Current Sprint
 
+## Overworld Tileset Rendering (2026-06-18)
+
+Replaced flat CSS-color terrain backgrounds in the overworld map with layered pixel-art
+sprite rendering (TopDownFantasy-Forest, aamatniekss, free license). Grass base + feathered
+dark-grass/water blob patches + deterministic decoration scatter. Presentation-only; no
+engine/state changes. Shared desktop/mobile render path.
+
+| Change | File |
+|---|---|
+| New pure render module (coordinate tables, hash, ground layers, decorations) | `src/ui/overworld/terrainRenderer.js` |
+| Tilesheet loader + per-tile terrain canvas + neighbor-group computation | `src/ui/overworld/WorldMap.jsx` |
+| Tileset + decoration PNGs | `src/assets/tiles/forest_tileset.png`, `src/assets/tiles/forest_decorations.png` |
+| E2E tests (desktop + mobile, determinism, fallback) | `tests/e2e/overworld-tileset.spec.ts` |
+
+Falls back to `TERRAIN_BG` colors until assets load (never blank). All selection deterministic
+from tile (x,y) — no `Math.random()`.
+
+**Deferred follow-ups:**
+- MOUNTAIN art: currently dirt fill + rock-cluster substitute; needs a real mountain tile.
+- Autotile corner pieces: only N/S/E/W edge feathering implemented (no diagonal corner tiles).
+- ISLAND grass-center: ISLAND renders identically to WATER for now.
+
+---
+
 ## Premodern Card Pool -- Data Generation (2026-06-18)
 
 Generated `src/data/cardsPremodern.js` (`CARD_DB_PREMODERN`), a standalone Premodern format
