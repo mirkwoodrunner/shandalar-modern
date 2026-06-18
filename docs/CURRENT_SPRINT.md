@@ -1,5 +1,32 @@
 # Current Sprint
 
+## Connected Terrain: Coherent-Noise Biomes + Grass-Unified Render (2026-06-18)
+
+The pixel-art tileset still looked like a disconnected checkerboard because terrain was
+generated with a pure per-tile random value (no spatial coherence). Fixed in two parts so the
+overworld reads as connected organic regions (matching the reference forest look).
+
+| Change | File |
+|---|---|
+| Coherent value-noise terrain generation (clusters biomes into connected regions) | `src/engine/MapGenerator.js` |
+| Grass-unified ground + per-biome tint + decoration scale variation + tree overflow | `src/ui/overworld/terrainRenderer.js` |
+| Taller per-tile canvas (OVERFLOW_TOP), tint draw, translate | `src/ui/overworld/WorldMap.jsx` |
+| Terrain-generation unit test (determinism, proportions, connectivity, clustering) | `tests/scenarios/map-terrain-clustering.test.js` |
+| Spec: terrain distribution method | `docs/SYSTEMS.md` 7.3.1 |
+
+Engine change details: two cosine-interpolated noise octaves (241 rng draws, all up front);
+quantile remap preserves exact land biome proportions on a cost-monotonic ladder (ISLAND ->
+PLAINS -> FOREST -> SWAMP -> MOUNTAIN); wavy water coast; existing flood-fill still guarantees
+connectivity (verified: all land reachable, clustering metric ~0.69 vs ~0.2 checkerboard).
+Biome legibility via subtle tint + decorations (user choice). Determinism preserved throughout.
+
+**Deferred follow-ups:**
+- Mountain-specific art (currently grass + grey tint + rocks; reads as rocky highland).
+- Tint feathering at region borders (currently flat per-tile fill).
+- Two-field Whittaker biomes for more varied adjacency (single elevation field for now).
+
+---
+
 ## Overworld Tileset Rendering (2026-06-18)
 
 Replaced flat CSS-color terrain backgrounds in the overworld map with layered pixel-art

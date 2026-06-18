@@ -8,9 +8,11 @@ import { Sprite, SpriteStyles, spriteForMonster, spriteForHenchman } from './Spr
 import {
   getGroundLayers,
   getDecorations,
+  getTint,
   terrainGroup,
   SHEET_TILESET,
   TILE_PX,
+  OVERFLOW_TOP,
 } from './terrainRenderer.js';
 import tilesetUrl from '../../assets/tiles/forest_tileset.png';
 import decorationsUrl from '../../assets/tiles/forest_decorations.png';
@@ -135,7 +137,11 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
 
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, tileSize, tileSize);
+    ctx.clearRect(0, 0, tileSize, tileSize + OVERFLOW_TOP);
+
+    // Draw in tile-local coords; the overflow band sits above (negative y).
+    ctx.save();
+    ctx.translate(0, OVERFLOW_TOP);
 
     const nsg = (dx, dy) => {
       if (dx === -1) return gnW;
@@ -145,12 +151,21 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
       return true;
     };
 
+    // Ground layers (grass base + optional water/dark-grass autotile).
     const layers = getGroundLayers(t.id, tile.x, tile.y, nsg);
     for (const l of layers) {
       const img = l.sheet === SHEET_TILESET ? tilesetImg : decorImg;
       if (img) ctx.drawImage(img, l.sx, l.sy, TILE_PX, TILE_PX, 0, 0, tileSize, tileSize);
     }
 
+    // Subtle per-biome tint over the grass base (land biomes only).
+    const tint = getTint(t.id);
+    if (tint) {
+      ctx.fillStyle = `rgba(${tint.r},${tint.g},${tint.b},${tint.a})`;
+      ctx.fillRect(0, 0, tileSize, tileSize);
+    }
+
+    // Decorations (may overflow upward into the OVERFLOW_TOP band).
     if (decorImg) {
       for (const d of getDecorations(t.id, tile.x, tile.y)) {
         const dw = d.w * d.scale;
@@ -158,6 +173,8 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
         ctx.drawImage(decorImg, d.sx, d.sy, d.w, d.h, d.anchorX - dw / 2, d.anchorY - dh, dw, dh);
       }
     }
+
+    ctx.restore();
   }, [t.id, tile.x, tile.y, tileSize, sheetsReady, gnN, gnS, gnE, gnW]);
 
   if (!tile.revealed) {
@@ -189,17 +206,20 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
       onClick={() => onClick(tile)}
     >
       {/* Terrain sprites -- drawn beneath all overlays. Transparent until the
-          tilesheets load (or if they fail), letting the TERRAIN_BG fallback show. */}
+          tilesheets load (or if they fail), letting the TERRAIN_BG fallback show.
+          The canvas extends OVERFLOW_TOP px above the tile so tall decorations
+          (trees) can spill upward; row-based zIndex makes front rows occlude. */}
       <canvas
         ref={terrainCanvasRef}
         className="ow-terrain-canvas"
         width={tileSize}
-        height={tileSize}
+        height={tileSize + OVERFLOW_TOP}
         style={{
           position: 'absolute',
-          inset: 0,
+          left: 0,
+          top: -OVERFLOW_TOP,
           width: tileSize,
-          height: tileSize,
+          height: tileSize + OVERFLOW_TOP,
           imageRendering: 'pixelated',
           pointerEvents: 'none',
           zIndex: 0,

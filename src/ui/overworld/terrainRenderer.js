@@ -10,15 +10,26 @@
 // non-integer upscale. Detail softens; this is accepted. Callers must set
 // imageSmoothingEnabled = false.
 //
+// Connected terrain: the map generator now clusters biomes into connected
+// regions (coherent value noise), and all LAND biomes share one continuous
+// grass base so the ground never breaks at tile edges. Biomes are conveyed by a
+// subtle per-biome tint (getTint) plus decoration scatter. Only WATER (and
+// SWAMP's dark-grass overlay) autotile.
+//
 // Known gaps (deferred art pass, see CURRENT_SPRINT.md):
-//  - MOUNTAIN has no matching tile -> dirt fill + rock-cluster decoration.
+//  - MOUNTAIN has no matching tile -> grass base + dense rock-cluster + grey
+//    tint substitute.
 //  - Dirt has no soft edge in this pack -> not used as an open patch; SWAMP
 //    uses the dark-grass feathered blob instead.
-//  - ISLAND renders identically to WATER (grass-center island deferred).
+//  - ISLAND has no distinct tile -> grass base + faint coastal tint.
 
 // --- canonical sizes ---------------------------------------------------------
 export const TILE_PX = 16;     // source art tile, pixels
 export const TILE_SIZE = 34;   // destination tile, pixels (matches WorldMap)
+// Extra canvas band above the tile so tall decorations (trees) can overflow
+// upward. WorldMap sizes the per-tile canvas to TILE_SIZE + OVERFLOW_TOP and
+// translates ground/decoration drawing down by OVERFLOW_TOP.
+export const OVERFLOW_TOP = 40;
 
 // --- sheet identifiers -------------------------------------------------------
 export const SHEET_TILESET = 'tileset';
@@ -61,10 +72,10 @@ export function hashTile(x, y, seed = 0) {
 }
 
 // --- terrain group helper ----------------------------------------------------
-// ISLAND and WATER feather against each other as one "water" group; SWAMP is
-// its own group; everything else is grass/dirt with no feathering.
+// Only WATER autotiles as a connected ground. ISLAND is now a grass-based land
+// biome (faint coastal tint), so it is its own group; SWAMP is its own group;
+// everything else is grass with no ground feathering.
 export function terrainGroup(terrainId) {
-  if (terrainId === 'WATER' || terrainId === 'ISLAND') return 'WATER';
   return terrainId;
 }
 
@@ -116,12 +127,8 @@ function groundLayer(coord) {
 // Returns an ordered array of { sheet, sx, sy } drawn full-tile (16px source ->
 // TILE_SIZE dest). Base tile first, then the feathered patch tile if any.
 export function getGroundLayers(terrainId, x, y, neighborsSameGroupFn) {
-  // MOUNTAIN: dirt fill, no grass base, no edge (known gap).
-  if (terrainId === 'MOUNTAIN') {
-    return [groundLayer(TILESET.DIRT_FLAT)];
-  }
-
-  // Grass is the universal base layer.
+  // Grass is the universal base layer for ALL land biomes (PLAINS, FOREST,
+  // MOUNTAIN, ISLAND, SWAMP), so the ground is continuous across tile edges.
   const layers = [groundLayer(TILESET.GRASS_FLAT)];
 
   if (terrainId === 'SWAMP') {
@@ -130,27 +137,47 @@ export function getGroundLayers(terrainId, x, y, neighborsSameGroupFn) {
       TILESET.DARKGRASS_ANCHOR[0] + sc,
       TILESET.DARKGRASS_ANCHOR[1] + sr,
     ]));
-  } else if (terrainId === 'WATER' || terrainId === 'ISLAND') {
+  } else if (terrainId === 'WATER') {
+    // WATER is the only distinct ground; it autotiles into connected ponds/coast.
     const { sc, sr } = blobSubOffset(neighborsSameGroupFn, false);
     layers.push(groundLayer([
       TILESET.WATER_ANCHOR[0] + sc,
       TILESET.WATER_ANCHOR[1] + sr,
     ]));
   }
-  // PLAINS and FOREST: grass only.
+  // PLAINS, FOREST, MOUNTAIN, ISLAND: grass base only (differentiated by tint +
+  // decorations).
   return layers;
+}
+
+// --- subtle per-biome tint ---------------------------------------------------
+// Low-alpha flat color drawn over the grass base so land biomes stay legible
+// without a hard colored grid. Connected regions mean few borders, so even a
+// flat tint reads cleanly. Returns null for no tint, or { r, g, b, a }.
+const TINTS = Object.freeze({
+  FOREST:   Object.freeze({ r: 34,  g: 78,  b: 34,  a: 0.18 }),
+  MOUNTAIN: Object.freeze({ r: 128, g: 110, b: 84,  a: 0.26 }),
+  ISLAND:   Object.freeze({ r: 70,  g: 132, b: 150, a: 0.16 }),
+  SWAMP:    Object.freeze({ r: 64,  g: 70,  b: 32,  a: 0.12 }),
+});
+
+export function getTint(terrainId) {
+  return TINTS[terrainId] ?? null;
 }
 
 // --- deterministic decoration scatter ----------------------------------------
 // density is a 0..1 chance the primary decoration appears on a tile.
 const DECOR_POOLS = Object.freeze({
-  PLAINS:   Object.freeze({ density: 0.45, items: Object.freeze(['grassBladeA', 'grassBladeB', 'bush1', 'pebbles']) }),
-  FOREST:   Object.freeze({ density: 0.85, items: Object.freeze(['bigTree1', 'smallTree1']) }),
-  SWAMP:    Object.freeze({ density: 0.50, items: Object.freeze(['mushroomCluster', 'bush2']) }),
-  MOUNTAIN: Object.freeze({ density: 0.70, items: Object.freeze(['rockCluster']) }),
-  ISLAND:   null,
+  PLAINS:   Object.freeze({ density: 0.50, items: Object.freeze(['grassBladeA', 'grassBladeB', 'bush1', 'pebbles']) }),
+  FOREST:   Object.freeze({ density: 0.88, items: Object.freeze(['bigTree1', 'smallTree1']) }),
+  SWAMP:    Object.freeze({ density: 0.55, items: Object.freeze(['mushroomCluster', 'bush2']) }),
+  MOUNTAIN: Object.freeze({ density: 0.60, items: Object.freeze(['rockCluster', 'pebbles', 'rockCluster']) }),
+  ISLAND:   Object.freeze({ density: 0.30, items: Object.freeze(['grassBladeA', 'pebbles', 'bushSmall']) }),
   WATER:    null,
 });
+
+// Tall decorations overflow upward beyond the tile; everything else fits inside.
+const TALL_DECOR = Object.freeze(new Set(['bigTree1', 'smallTree1']));
 
 // Distinct seeds so each deterministic decision is an independent stream.
 const SEED_GATE = 101;
@@ -160,24 +187,42 @@ const SEED_GATE2 = 404;
 const SEED_PICK2 = 505;
 const SEED_POS2 = 606;
 
-// Build a single decoration draw instruction. Scaled to fit fully inside the
-// tile (v1 stays within bounds to avoid clipping; trees scaled to fit).
-// Anchored bottom-center at a deterministic jittered point.
+// Build a single decoration draw instruction, anchored bottom-center at a
+// deterministic jittered point. Tall decorations (trees) are scaled to roughly
+// tile width and allowed to overflow upward into the OVERFLOW_TOP band; all
+// others fit fully inside the tile. anchorX/anchorY are tile-local (0..TILE_SIZE);
+// WorldMap applies the OVERFLOW_TOP vertical offset when drawing.
 function makeDecorInstance(name, x, y, posSeed) {
   const [col, row, wTiles, hTiles] = DECORATIONS[name];
   const srcW = wTiles * TILE_PX;
   const srcH = hTiles * TILE_PX;
-  const scale = TILE_SIZE / Math.max(srcW, srcH);
-  const jx = (hashTile(x, y, posSeed) % 9) - 4;   // -4..4 px
-  const jy = hashTile(x, y, posSeed + 1) % 4;      // 0..3 px up from bottom
+
+  // Deterministic per-tile scale variation breaks up sprite repetition.
+  const vary = TALL_DECOR.has(name)
+    ? 0.85 + (hashTile(x, y, posSeed + 2) % 21) / 100   // 0.85..1.05
+    : 0.68 + (hashTile(x, y, posSeed + 2) % 38) / 100;  // 0.68..1.05
+
+  let scale;
+  if (TALL_DECOR.has(name)) {
+    // Fill ~tile width; clamp height to the tile + overflow band.
+    scale = (TILE_SIZE * 1.05) / srcW;
+    const maxH = TILE_SIZE + OVERFLOW_TOP;
+    if (srcH * scale > maxH) scale = maxH / srcH;
+    scale *= vary;
+  } else {
+    scale = (TILE_SIZE / Math.max(srcW, srcH)) * vary;
+  }
+
+  const jx = (hashTile(x, y, posSeed) % 13) - 6;   // -6..6 px
+  const jy = hashTile(x, y, posSeed + 1) % 5;       // 0..4 px up from bottom
   return {
     sheet: SHEET_DECORATIONS,
     sx: col * TILE_PX,
     sy: row * TILE_PX,
     w: srcW,
     h: srcH,
-    anchorX: TILE_SIZE / 2 + jx,   // destination bottom-center X
-    anchorY: TILE_SIZE - jy,       // destination bottom Y
+    anchorX: TILE_SIZE / 2 + jx,   // destination bottom-center X (tile-local)
+    anchorY: TILE_SIZE - jy,       // destination bottom Y (tile-local)
     scale,
   };
 }
@@ -206,6 +251,7 @@ export function getDecorations(terrainId, x, y) {
 export default {
   TILE_PX,
   TILE_SIZE,
+  OVERFLOW_TOP,
   SHEET_TILESET,
   SHEET_DECORATIONS,
   TILESET,
@@ -213,5 +259,6 @@ export default {
   hashTile,
   terrainGroup,
   getGroundLayers,
+  getTint,
   getDecorations,
 };

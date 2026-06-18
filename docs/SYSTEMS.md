@@ -460,6 +460,22 @@ MapGenerator.js defines a fixed coordinate system:
 - Node placement is mathematically derived
 - No runtime randomness outside seed system
 
+### 7.3.1 Terrain Distribution (coherent value noise)
+
+Terrain biomes are assigned from a deterministic low-frequency **value-noise field**
+(two cosine-interpolated lattice octaves, cell sizes 8 and 4), not per-tile random.
+This clusters biomes into **connected regions** so the renderer can autotile them.
+
+- The terrain step consumes a fixed **241 rng() draws** (the two lattices: 54 + 187),
+  all up front; field sampling and biome assignment use no rng. Determinism preserved.
+- Land biome proportions are made exact by **quantile-remapping** the field over land
+  tiles against cumulative cut points `[0.28, 0.48, 0.68, 0.82]`, mapped to a
+  **cost-monotonic ladder**: ISLAND -> PLAINS -> FOREST -> SWAMP -> MOUNTAIN. This keeps
+  high-cost SWAMP a thin band rather than a basin.
+- The outer **water ring** persists, with a noise-perturbed (wavy, connected) coast.
+- Connectivity is still enforced by the existing flood-fill pass: any land unreachable
+  from the player start is converted to water, so clustered terrain never traps the player.
+
 ---
 
 # 8. Ruleset System
