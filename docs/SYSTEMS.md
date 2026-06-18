@@ -1493,8 +1493,17 @@ Cleared when activeDelivery = null.
 | Castle Boss | Boss | 38–42 | No |
 
 ## 27.2 MONSTER_TABLE
-Defined in MapGenerator.js. Tiers 1–3 indexed by terrain type.
-Tier selected in doMove based on move count: <20 → tier 1; <60 → tier 1–2; else → tier 2–3.
+Defined in MapGenerator.js. Tiers 1–3 grouped by biome key (one color/archetype per biome).
+
+Encounter monster selection is **decoupled from terrain**: `pickMonster(tier, rand)`
+(MapGenerator.js) returns a tier-appropriate monster from a **random biome list** (uniform
+across all five), so the player sees a variety of archetypes/colors everywhere regardless of
+the tile they stand on. The biome key is no longer used as a lookup index at encounter time.
+
+Tier (difficulty) is still set at spawn by distance/move count: initial spawns scale tier by
+distance from center; spontaneous spawns are tier 1–2; ruin guardians are tier 2. Sprite
+appearance follows the chosen archetype (`spriteForMonster` -> `KIND_BY_ARCH`/`COLOR_BY_ARCH`),
+not the terrain. `rand` is injected by the caller (overworld uses `Math.random`).
 
 ## 27.3 HENCHMAN_TABLE
 Defined in MapGenerator.js. One per color. Spawns at moves > 80, ~4% per step.

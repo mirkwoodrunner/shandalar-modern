@@ -8,7 +8,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   generateMap, findPath, revealAround,
   TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
-  MANA_SYM, DUNGEON_ARCHETYPES, MONSTER_TABLE, HENCHMAN_TABLE, MAP_W, MAP_H,
+  MANA_SYM, DUNGEON_ARCHETYPES, pickMonster, HENCHMAN_TABLE, MAP_W, MAP_H,
   WORLD_MAGICS,
 } from '../engine/MapGenerator.js';
 import { isLand } from '../engine/DuelCore.js';
@@ -128,11 +128,11 @@ function spawnInitialEnemies(tiles, mapW, mapH) {
   const spawns = candidates.slice(0, count);
 
   return spawns.map(t => {
-    const mList = MONSTER_TABLE[t.terrain.id] || MONSTER_TABLE.PLAINS;
     const cx = Math.floor(mapW / 2), cy = Math.floor(mapH / 2);
     const dist = Math.abs(t.x - cx) + Math.abs(t.y - cy);
     const tier = dist < 10 ? 1 : dist < 20 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(3, 2 + (Math.random() > 0.7 ? 1 : 0));
-    const monster = mList[Math.min(tier - 1, mList.length - 1)];
+    // Monster archetype is decoupled from terrain (variety); tier still scales by distance.
+    const monster = pickMonster(tier, Math.random);
     const { kind: spriteKind, color: spriteColor } = spriteForMonster(monster.archKey, t.terrain.id);
     return {
       id: mkId(),
@@ -662,8 +662,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     setEnemies(prev => {
       const caught = prev.find(e => e.x === nx && e.y === ny);
       if (caught) {
-        const mList = MONSTER_TABLE[tiles[ny]?.[nx]?.terrain?.id] || MONSTER_TABLE.PLAINS;
-        const monster = { ...mList[Math.min(caught.tier - 1, mList.length - 1)], tier: caught.tier };
+        const monster = { ...pickMonster(caught.tier, Math.random), tier: caught.tier };
         setTimeout(() => {
           openEncounterPopup(
             caught.archKey || monster.archKey,
@@ -809,9 +808,8 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
           }));
           if (!candidates.length) return prev;
           const spawn = candidates[Math.floor(Math.random() * candidates.length)];
-          const mList = MONSTER_TABLE[spawn.terrain.id] || MONSTER_TABLE.PLAINS;
           const tier = Math.ceil(Math.random() * 2);
-          const monster = mList[Math.min(tier - 1, mList.length - 1)];
+          const monster = pickMonster(tier, Math.random);
           const { kind: spriteKind, color: spriteColor } = spriteForMonster(monster.archKey, spawn.terrain.id);
           return [...prev, {
             id: mkId(),
@@ -1225,9 +1223,8 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
 
   const handleRuinGuardianFight = useCallback(() => {
     if (!activeTile?.ruinData) return;
-    const terrain = tiles[activeTile.y]?.[activeTile.x]?.terrain?.id || 'PLAINS';
-    const mList = MONSTER_TABLE[terrain] || MONSTER_TABLE.PLAINS;
-    const guardian = mList[Math.min(1, mList.length - 1)];
+    // Ruin guardians are tier 2, archetype decoupled from terrain.
+    const guardian = pickMonster(2, Math.random);
     setModal(null);
     openEncounterPopup(
       guardian.archKey,
@@ -1504,8 +1501,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
 
       const caught = enemies.find(e => e.x === pos.x && e.y === pos.y);
       if (caught) {
-        const mList = MONSTER_TABLE[tiles[caught.y]?.[caught.x]?.terrain?.id] || MONSTER_TABLE.PLAINS;
-        const monster = { ...mList[Math.min(caught.tier - 1, mList.length - 1)], tier: caught.tier };
+        const monster = { ...pickMonster(caught.tier, Math.random), tier: caught.tier };
         setEnemies(prev => prev.filter(e => e.id !== caught.id));
         openEncounterPopup(
           caught.archKey || monster.archKey, player.hp, 'monster', null, {},

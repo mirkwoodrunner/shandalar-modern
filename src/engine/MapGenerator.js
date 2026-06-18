@@ -158,6 +158,19 @@ ISLAND:   [
 ],
 };
 
+// All biome monster lists, flattened by biome key. Used to decouple encounter
+// monster selection from terrain so the player sees a variety of monsters
+// everywhere (difficulty still scales by tier, set by the caller).
+const MONSTER_LISTS = Object.values(MONSTER_TABLE);
+
+// Pick a tier-appropriate monster from a RANDOM biome list, independent of the
+// tile terrain. `rand` is a 0..1 source injected by the caller (the overworld
+// layer passes Math.random); this module stays free of ambient randomness.
+export function pickMonster(tier, rand) {
+  const list = MONSTER_LISTS[Math.floor(rand() * MONSTER_LISTS.length)];
+  return list[Math.min(Math.max(tier, 1) - 1, list.length - 1)];
+}
+
 export const HENCHMAN_TABLE = [
 { name:'High Priest',     hp:24, archKey:'WHITE_WEENIE',    tier:4, color:'W' },
 { name:'Thought Invoker', hp:24, archKey:'BLUE_CONTROL',    tier:4, color:'U' },

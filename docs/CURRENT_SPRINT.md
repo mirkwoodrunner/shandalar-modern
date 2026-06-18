@@ -1,5 +1,24 @@
 # Current Sprint
 
+## Monster Variety: Decouple Encounters from Biome (2026-06-18)
+
+Clustered terrain made the player fight the same archetype repeatedly while crossing a biome.
+Encounter monster selection was hard-keyed to terrain (`MONSTER_TABLE[tile.terrain.id]`).
+
+| Change | File |
+|---|---|
+| `pickMonster(tier, rand)` — tier-appropriate pick from a random biome list (terrain-independent) | `src/engine/MapGenerator.js` |
+| `KIND_BY_ARCH`; `spriteForMonster` sprite kind follows archetype (terrain fallback kept) | `src/ui/overworld/Sprite.jsx` |
+| 5 encounter sites call `pickMonster` instead of `MONSTER_TABLE[terrain]` | `src/hooks/useOverworldController.js` |
+| Unit test: tier clamping + cross-biome variety | `tests/scenarios/monster-variety.test.js` |
+| Spec | `docs/SYSTEMS.md` 27.2 |
+
+Tier (difficulty) still scales by distance/move count; only archetype/color/sprite is unbound.
+Verified: on a single terrain, encounters now produce all five kind/color combos. Uniform random
+across the five archetypes (optional terrain-bias deferred).
+
+---
+
 ## Connected Terrain: Coherent-Noise Biomes + Grass-Unified Render (2026-06-18)
 
 The pixel-art tileset still looked like a disconnected checkerboard because terrain was

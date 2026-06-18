@@ -1094,6 +1094,22 @@ Section 27 (Enemy Tier System)
 /src/OverworldGame.jsx        — henchman spawn logic in doMove; canFlee override in
 openEncounterPopup
 ```
+
+### Monster variety (terrain-decoupled selection)
+Encounter monster archetype/color/sprite is decoupled from the tile biome so the player sees a
+variety of monsters everywhere (difficulty/tier unchanged).
+```
+/src/engine/MapGenerator.js          — pickMonster(tier, rand): tier-appropriate pick from a
+                                        RANDOM biome list (rand injected; no ambient randomness)
+/src/ui/overworld/Sprite.jsx         — KIND_BY_ARCH; spriteForMonster prefers archetype kind
+                                        (terrain kind kept as fallback)
+/src/hooks/useOverworldController.js — 5 encounter sites now call pickMonster(...) instead of
+                                        MONSTER_TABLE[terrain.id] (initial/spontaneous spawn,
+                                        ruin guardian, two collision lookups)
+/tests/scenarios/monster-variety.test.js — tier clamping + cross-biome variety
+```
+See SYSTEMS.md 27.2.
+
 ### Status
 ACTIVE (Phase 7)
 
