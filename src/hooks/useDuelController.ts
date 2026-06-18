@@ -258,7 +258,13 @@ export function useDuelController(
     }
     const timer = setTimeout(() => {
       const acts = aiDecide(s);
-      if (acts && acts.length) applyAiActionsWithPriority(acts);
+      const illegal = acts?.some((a: any) => a.type === 'MULLIGAN' || a.type === 'MULLIGAN_KEEP');
+      if (illegal) {
+        console.warn('[useDuelController] aiDecide returned a mulligan action during an open priority window; ignoring and passing priority.', acts);
+        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      } else if (acts && acts.length) {
+        applyAiActionsWithPriority(acts);
+      }
     }, 200);
     return () => clearTimeout(timer);
   }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
