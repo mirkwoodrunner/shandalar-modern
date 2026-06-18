@@ -1565,6 +1565,43 @@ set `mana: act.mana` at the top level -- spreading `{ ...card }` is insufficient
 - `handleLotusCancel` in `useDuelController.ts` dispatches `CANCEL_LOTUS` before closing the modal.
 - Playwright tests: `tests/e2e/lotus-cancel-undo.spec.js` (T1, T3-T5 desktop; M1-M2 mobile).
 
+### Fix: AI land destruction -- silent no-op on Sinkhole / Strip Mine / Demonic Hordes (AI-LAND-1)
+
+Root cause (two-part):
+
+1. `selectTarget()` in `AI.js` had no branch for `effect === 'destroyTargetLand'`. It fell through
+   to the final `targetsSelf`/`targetsOpp` check, returned `[]` (not `null`), and the spell was
+   cast with zero targets. `DuelCore.js`'s `destroyTargetLand` case was a silent no-op when `tgtC`
+   was falsy (no `dlog` call on the failure path).
+
+2. `ACTIVATE_ABILITY` in `DuelCore.js` hardcoded `s.p.bf` / `caster: "p"` throughout. The AI's
+   `ACTIVATE_ABILITY` dispatch included no `who` field, so the card lookup always searched
+   `s.p.bf` (the human's battlefield) and found nothing -- returning `s` unchanged.
+   Additionally, no `sac` cost parsing existed, so Strip Mine could not pay its sacrifice cost.
+
+Fixes:
+
+| Site | Change |
+|---|---|
+| `AI.js` `selectLandToDestroy()` (new helper) | Picks the highest-value opposing land to destroy: nonbasics first, then scarcest-color basic, then any land. Returns `null` if no lands exist (causes caller to skip the cast). |
+| `AI.js` `selectTarget()` | New `destroyTargetLand` branch calls `selectLandToDestroy`, returns `null` when no target exists (correctly skips cast). Covers Sinkhole, Stone Rain, Ice Storm. |
+| `AI.js` `planActivatedAbilities()` | New Strip Mine branch (`isLand(c)` + `sac` cost) and Demonic Hordes branch (`!isLand(c)` + no `sac`) each call `selectLandToDestroy` and push `ACTIVATE_ABILITY` when a target exists. |
+| `AI.js` `dcActions` translator | Added `who: 'o'` to `ACTIVATE_ABILITY` dispatch so DuelCore routes to the AI's battlefield. |
+| `DuelCore.js` `ACTIVATE_ABILITY` | Now reads `w = action.who \|\| 'p'` and uses `s[w]` throughout the non-mana cost-payment and stack-push section. Defaults to `'p'` for backward compatibility. Added `sac` cost parsing (step 2): sacrifices the activating permanent before pushing the ability to the stack. |
+| `DuelCore.js` `destroyTargetLand` resolution | Added `else` fizzle branch: `dlog(ns, "${card.name} fizzles -- no valid land target.", "effect")` when `tgtC` is absent or not a land. Matches the existing `destroyBlueOrCounter` fizzle pattern. |
+
+Cards affected: Sinkhole (B, BB), Stone Rain (R, 2R), Ice Storm (G, 2G) -- spell path.
+Strip Mine (colorless land, T+sac), Demonic Hordes (B, BBB+T) -- activated-ability path.
+
+Follow-up (not in this fix): Mishra's Factory and Birds of Paradise activated abilities remain
+player-only (`s.p` hardcoded) and are not yet planned by the AI. Any future AI ability planning
+for those cards can rely on the `who`-aware `ACTIVATE_ABILITY` engine path without further
+engine changes.
+
+Regression tests: `tests/scenarios/ai-land-destruction.test.js` (18 Vitest unit tests -- Groups
+A/B/C/D covering DuelCore resolution, ACTIVATE_ABILITY who-routing, sac cost, AI target
+selection, and AI planActivatedAbilities for both Strip Mine and Demonic Hordes).
+
 ---
 
 # 17. PRIORITY WINDOW SYSTEM
