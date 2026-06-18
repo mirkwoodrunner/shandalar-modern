@@ -1,5 +1,15 @@
 # Shandalar Mechanics Index (v1.0)
 
+## Premodern Card Pool (data only)
+
+`src/data/cardsPremodern.js` exports `CARD_DB_PREMODERN` -- a standalone card data array
+covering the Premodern format (Fourth Edition through Scourge, 29 sets, 5408 unique cards).
+Sourced from Scryfall oracle bulk data filtered by `legalities.premodern`. All entries have
+`implemented:false` -- no effect handlers exist yet. Fully independent of `CARD_DB`/`cards.js`.
+Ban list (33 cards) stored as `legal:false` entries. See `docs/CURRENT_SPRINT.md` for counts.
+
+---
+
 ## Overview
 
 This document maps every gameplay mechanic in Shandalar to:
