@@ -30,7 +30,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
     activeDelivery, encounterPopup, postDuelChoice, duelCfg,
     anteEnabled, modal, setModal, activeTile,
     arzakonReady, gameLost, conquestLost, isSandbox,
-    viewW, viewH, tileSize, viewOfs, enemies,
+    viewW, viewH, tileSize, viewOfs, enemies, animState,
     moves,
     canvasRef,
     handleTileClick, handleRespondAlert, handleDismissAlert,
@@ -226,6 +226,8 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
           onTileClick={handleTileClick}
           canvasRef={canvasRef}
           enemies={enemies}
+          playerAnim={animState.player}
+          enemyAnim={animState.enemyFrame}
         />
         <ManaLinkAlert
           events={mlEvents}

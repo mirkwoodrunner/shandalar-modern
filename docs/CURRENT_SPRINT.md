@@ -1,5 +1,28 @@
 # Current Sprint
 
+## Overworld Character Sprites + Directional Walk Cycle (2026-06-19)
+
+Replaced the CSS-div/inline-SVG character renderer with image-based pixel-art sprite sheets
+matching the forest tileset's style, and revived `playerAnimRef` into a rendered directional
+walk cycle -- including closing the mobile tap-to-move parity gap (mobile previously never set
+`dir`/`moving` at all).
+
+| Change | File |
+|---|---|
+| `Sprite` redrawn from `<kind>.png` sheets via tinted offscreen canvas; new `dir`/`frame` props; module-level sheet loader; graceful fallback (recolored mage -> flat square) | `src/ui/overworld/Sprite.jsx` |
+| Thread `playerAnim`/`enemyAnim` -> `MapTile` -> `Sprite` (`dir`/`frame`) | `src/ui/overworld/WorldMap.jsx` |
+| `animState` mirror of `playerAnimRef` + shared enemy idle-bob, emitted from rAF loop on visible change; mobile parity in `handleTileClick` (dir from step delta + ~280ms `moving` timeout); `window.__overworldAnim()` test global | `src/hooks/useOverworldController.js` |
+| Pass `animState.player`/`animState.enemyFrame` to `WorldMap` | `src/ui/overworld/OverworldGameDesktop.jsx`, `src/ui/Mobile/OverworldGameMobile.jsx` |
+| 6 sprite sheets (128x128, 4 dir x 4 frame) + CREDITS + generator | `src/assets/sprites/*.png`, `src/assets/sprites/CREDITS.md`, `tools/gen-sprites.py` |
+| Playwright tests (desktop + mobile): canvas render, old CSS gone, frame/dir/moving, gold tint, 404 fallback, mobile tap parity | `tests/e2e/overworld-sprites.spec.ts` |
+| Component interface note (new `dir`/`frame` props) | `docs/COMPONENT_REGISTRY.md` |
+| Traceability | `docs/MECHANICS_INDEX.md` — Overworld Character Sprites + Directional Walk Cycle |
+
+CC0 art note: the prompt called for sourced CC0 art (OpenGameArt/Kenney/itch.io), but all three
+hosts were unreachable from the execution environment (HTTP 403; only GitHub + pip/npm allowed).
+With explicit owner approval, sheets were generated deterministically (`tools/gen-sprites.py`,
+CC0). No engine, combat, or generator changes. All 162 unit tests + 18 overworld e2e tests pass.
+
 ## Dungeon Map Sprite Rendering — 0x72 DungeonTilesetII (2026-06-19)
 
 Replaced flat CSS-color floor/wall tiles and emoji entity tokens in `DungeonMap.jsx` with

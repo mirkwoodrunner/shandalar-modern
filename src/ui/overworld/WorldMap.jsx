@@ -112,7 +112,7 @@ function getTileVariantClass(terrainId, x, y) {
   return variants[idx];
 }
 
-export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null }) {
+export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null, playerAnim = null, enemyAnim = 0 }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -296,17 +296,26 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
             pointerEvents: 'none',
             zIndex: 10,
           }} />
-          <Sprite kind="mage" color="gold" isPlayer={true} name="You" />
+          <Sprite
+            kind="mage"
+            color="gold"
+            isPlayer={true}
+            name="You"
+            dir={playerAnim?.dir ?? 'down'}
+            frame={playerAnim?.frame ?? 0}
+          />
         </>
       )}
 
-      {/* Enemy sprite */}
+      {/* Enemy sprite -- direction from AI, frame from the shared idle-bob */}
       {enemy && tile.revealed && (
         <Sprite
           kind={enemy.spriteKind}
           color={enemy.spriteColor}
           isPlayer={false}
           name={enemy.name}
+          dir={enemy.dir ?? 'down'}
+          frame={enemyAnim ?? enemy.animFrame ?? 0}
         />
       )}
     </div>
@@ -566,7 +575,7 @@ const OW_STYLES = `
 
 `;
 
-export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 34, onTileClick, canvasRef, enemies = [] }) {
+export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 34, onTileClick, canvasRef, enemies = [], playerAnim = null, enemyAnim = 0 }) {
   const tileAt = (x, y) => tiles[y]?.[x] ?? null;
   const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
@@ -662,6 +671,8 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                   rowIndex={vy}
                   onClick={onTileClick}
                   groundNeighbors={groundNeighbors}
+                  playerAnim={playerAnim}
+                  enemyAnim={enemyAnim}
                 />
               );
             })

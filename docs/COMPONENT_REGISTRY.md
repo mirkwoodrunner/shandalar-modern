@@ -38,6 +38,13 @@
   - `containerRef` (`React.RefObject`) — attached to the outer fill div inside `WorldMap`. Used by `useEffect` to measure available space.
   - `scale` (`number`, default `1`) — CSS transform scale applied to the grid wrapper. Computed as `Math.max(0.4, Math.min(containerW / gridW, containerH / gridH))` where `gridW = viewW * tileSize + 16`.
 - **Resize listener**: `useEffect` (deps: `viewW`, `viewH`, `tileSize`) adds a `resize` listener on mount. Also fires via `setTimeout(50)` to handle initial paint. Measurement is taken at the grid container level inside `WorldMap`, not at the page-level wrapper.
+- **Anim props**: `playerAnim` (`{frame,dir,moving}|null`) and `enemyAnim` (`number`, shared enemy idle-bob frame) are threaded down to each `MapTile` and on to `Sprite` as `dir`/`frame`. `WorldMap` stays presentation-only; the anim state is owned by `useOverworldController` (`animState`).
+
+### `Sprite`
+- **File**: `src/ui/overworld/Sprite.jsx`
+- **Purpose**: Image-sheet pixel-art renderer for overworld characters. Draws a `(dir, frame)` cell from a per-kind 128x128 sheet (4 dirs x 4 frames) onto a `<canvas>`. Per-color tinting recolors only the grayscale mass pixels (saturated accents kept), computed once per `kind:color` on a cached offscreen canvas. Exports `Sprite`, `SpriteStyles`, `spriteForMonster`, `spriteForHenchman`.
+- **Props**: `kind`, `color`, `isPlayer` (default `false`), `name` (unchanged) plus **new** `dir` (`'up'|'down'|'left'|'right'`, default `'down'`) and `frame` (`0-3`, default `0`). Callers that omit `dir`/`frame` get the idle down-facing cell, so existing call sites stay valid.
+- **Fallback**: missing/failed kind sheet -> recolored `mage` sheet; all sheets failed -> flat color-tinted square (no crash, no retry loop).
 
 ### `ActionBar`
 - **File**: `src/ui/ActionBar/ActionBar.tsx`
