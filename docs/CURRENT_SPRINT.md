@@ -141,6 +141,21 @@ card pool. No effect logic -- all entries have `implemented:false`. Fully indepe
 
 ---
 
+## Bug Fix: Demonic Hordes upkeep drawback fires on wrong player's turn (2026-06-19)
+
+`demonicHordesUpkeep` in `DuelCore.js` was missing the `if (w !== ns.active) break;` guard that
+all other "your upkeep" triggers use (`forceOfNatureUpkeep`, `landTax`, `erhnamsUpkeep`,
+`kudzuUpkeep`). The BBB-or-tap/3-damage drawback was firing on both players' upkeeps instead of
+only on the controller's own upkeep.
+
+| Change | File |
+|---|---|
+| Added `if (w !== ns.active) break;` as first guard in `demonicHordesUpkeep` case | `src/engine/DuelCore.js` |
+| Regression tests DH-01 to DH-04 | `src/engine/__tests__/phase6.test.js` |
+| E2E tests DH-E2E-01 (desktop + mobile) | `e2e/sandbox.spec.ts` |
+
+---
+
 ## Bug Fix: AI land destruction silent no-op (2026-06-18)
 
 Root cause: `selectTarget()` in `AI.js` had no `destroyTargetLand` branch and returned `[]`

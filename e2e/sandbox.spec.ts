@@ -2634,3 +2634,98 @@ test.describe('Conditional Counter Modal (Force Spike / Power Sink)', () => {
     expect(total).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// DH-E2E-01: Demonic Hordes upkeep active-player guard — desktop + mobile
+// ---------------------------------------------------------------------------
+
+const MOBILE_VIEWPORT_DH = { width: 390, height: 844 };
+
+async function setupDemonicHordes(page: Page): Promise<string> {
+  // Inject Demonic Hordes into the player's hand and cast it onto the battlefield.
+  await page.evaluate(() => {
+    const dispatch = (window as any).__duelDispatch;
+    // Give player enough mana to cast (cost: 2BBB)
+    dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['demonic_hordes'], mana: { B: 3, C: 2 } });
+  });
+
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s?.p?.hand?.some((c: any) => c.id === 'demonic_hordes');
+  }, { timeout: 5_000 });
+
+  // Cast the creature and resolve it onto the battlefield.
+  await page.evaluate(() => {
+    const dispatch = (window as any).__duelDispatch;
+    const s = (window as any).__duelState();
+    const dh = s.p.hand.find((c: any) => c.id === 'demonic_hordes');
+    dispatch({ type: 'CAST_SPELL', who: 'p', iid: dh.iid, tgt: null, xVal: null });
+    dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    dispatch({ type: 'RESOLVE_STACK' });
+    dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'p' });
+  });
+
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s?.p?.bf?.some((c: any) => c.id === 'demonic_hordes');
+  }, { timeout: 5_000 });
+
+  const iid = await page.evaluate(() => {
+    const s = (window as any).__duelState();
+    return s.p.bf.find((c: any) => c.id === 'demonic_hordes').iid;
+  });
+  return iid as string;
+}
+
+async function runDHE2ETest(page: Page) {
+  await page.goto(SANDBOX_URL);
+  await waitForDuel(page);
+  await waitForMain1(page);
+
+  const dhIid = await setupDemonicHordes(page);
+
+  // ── Part A: advance through the OPPONENT's upkeep (active='o') ──
+  // Demonic Hordes is controlled by 'p', so the active-player guard must suppress it.
+  await page.evaluate(() => {
+    const dispatch = (window as any).__duelDispatch;
+    // Move to opponent's UNTAP phase (bypassing turn overhead)
+    dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'UNTAP', active: 'o' });
+    // Advance to opponent's UPKEEP
+    dispatch({ type: 'ADVANCE_PHASE' });
+  });
+
+  const stateAfterOppUpkeep = await page.evaluate(() => (window as any).__duelState());
+  expect(stateAfterOppUpkeep.phase).toBe('UPKEEP');
+  expect(stateAfterOppUpkeep.active).toBe('o');
+  const dhAfterOpp = stateAfterOppUpkeep.p.bf.find((c: any) => c.iid === dhIid);
+  expect(dhAfterOpp.tapped).toBe(false);      // guard fired — DH did NOT tap
+  expect(stateAfterOppUpkeep.p.life).toBe(20); // no damage dealt
+
+  // ── Part B: advance through the PLAYER's own upkeep (active='p') ──
+  // Now the drawback must fire: DH taps and player takes 3 damage (mana burned before handler).
+  await page.evaluate(() => {
+    const dispatch = (window as any).__duelDispatch;
+    dispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'UNTAP', active: 'p' });
+    dispatch({ type: 'ADVANCE_PHASE' });
+  });
+
+  const stateAfterOwnUpkeep = await page.evaluate(() => (window as any).__duelState());
+  expect(stateAfterOwnUpkeep.phase).toBe('UPKEEP');
+  expect(stateAfterOwnUpkeep.active).toBe('p');
+  const dhAfterOwn = stateAfterOwnUpkeep.p.bf.find((c: any) => c.iid === dhIid);
+  expect(dhAfterOwn.tapped).toBe(true);        // drawback fired — DH tapped
+  expect(stateAfterOwnUpkeep.p.life).toBe(17); // 3 damage dealt
+}
+
+test.describe('DH-E2E-01: Demonic Hordes upkeep active-player guard', () => {
+  test('desktop (1280x800): guard suppresses drawback on opponent upkeep; fires on own upkeep', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await runDHE2ETest(page);
+  });
+
+  test('mobile (390x844): guard suppresses drawback on opponent upkeep; fires on own upkeep', async ({ page }) => {
+    await page.setViewportSize(MOBILE_VIEWPORT_DH);
+    await runDHE2ETest(page);
+  });
+});

@@ -1514,6 +1514,14 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 
 ## Bug Fix Log
 
+### Fix: Demonic Hordes upkeep drawback fires on wrong player's turn (DH-UPKEEP-1)
+
+- `demonicHordesUpkeep` in `DuelCore.js` was missing the active-player guard present on sibling
+  "your upkeep" triggers (`forceOfNatureUpkeep`, `landTax`, `erhnamsUpkeep`, `kudzuUpkeep`).
+- Added `if (w !== ns.active) break;` as the first line of the case body to match the established pattern.
+- Regression tests DH-01 through DH-04 added to `src/engine/__tests__/phase6.test.js`.
+- E2E coverage (desktop + mobile) added to `e2e/sandbox.spec.ts` (describe block `DH-E2E-01`).
+
 > **Skip log (Step 3):** Group P section for `docs/CURRENT_SPRINT.md` was skipped because "Group P" text already exists there (eject condition triggered).
 
 ### Fix: Tapped creatures cannot block (rule 509.1a)

@@ -896,3 +896,129 @@ describe('Priority Window', () => {
     expect(blocked.phase).toBe(PHASE.MAIN_1); // cannot advance with open window
   });
 });
+
+// ─── 6. Demonic Hordes Upkeep ─────────────────────────────────────────────────
+
+function makeDemonicHordesCard(iid, controller = 'p') {
+  return {
+    iid,
+    id: 'demonic_hordes',
+    name: 'Demonic Hordes',
+    type: 'Creature',
+    subtype: 'Demon',
+    color: 'B',
+    cmc: 5,
+    cost: '2BBB',
+    power: 5,
+    toughness: 5,
+    keywords: [],
+    tapped: false,
+    summoningSick: false,
+    attacking: false,
+    blocking: null,
+    damage: 0,
+    counters: {},
+    eotBuffs: [],
+    enchantments: [],
+    upkeep: 'demonicHordesUpkeep',
+    controller,
+  };
+}
+
+describe('Demonic Hordes Upkeep', () => {
+  it('DH-01: opponent controls Demonic Hordes on player turn — drawback does not fire', () => {
+    // active='p', but DH is controlled by 'o'. The active-player guard (w !== ns.active)
+    // must skip the handler so 'o' DH does not tap and 'o' does not take damage.
+    const dh = makeDemonicHordesCard('dh-1', 'o');
+    const state = buildTestState({
+      phase: PHASE.UNTAP,
+      active: 'p',
+      oBf: [dh],
+    });
+
+    const result = duelReducer(state, { type: 'ADVANCE_PHASE' });
+
+    expect(result.phase).toBe(PHASE.UPKEEP);
+    const dhAfter = result.o.bf.find(c => c.iid === 'dh-1');
+    expect(dhAfter.tapped).toBe(false);
+    expect(result.o.life).toBe(20);
+    const hasLog = result.log.some(e => e.text && e.text.toLowerCase().includes('demonic hordes'));
+    expect(hasLog).toBe(false);
+  });
+
+  it('DH-02: player controls Demonic Hordes on own turn with no B mana — drawback fires', () => {
+    // burnMana clears the pool before upkeep handlers run, so DH can never auto-pay.
+    // The drawback (tap + 3 damage) fires on the controller own turn.
+    const dh = makeDemonicHordesCard('dh-2', 'p');
+    const state = buildTestState({
+      phase: PHASE.UNTAP,
+      active: 'p',
+      pBf: [dh],
+    });
+
+    const result = duelReducer(state, { type: 'ADVANCE_PHASE' });
+
+    expect(result.phase).toBe(PHASE.UPKEEP);
+    const dhAfter = result.p.bf.find(c => c.iid === 'dh-2');
+    expect(dhAfter.tapped).toBe(true);
+    expect(result.p.life).toBe(17);
+    const hasLog = result.log.some(e => e.text && e.text.toLowerCase().includes('demonic hordes'));
+    expect(hasLog).toBe(true);
+  });
+
+  it('DH-03: BBB pre-set is cleared by burnMana before handler runs; drawback still fires', () => {
+    // burnMana empties the mana pool at every phase boundary before upkeep handlers run.
+    // Even with B:3 set, the handler sees B:0 and applies the drawback.
+    const dh = makeDemonicHordesCard('dh-3', 'p');
+    const state = buildTestState({
+      phase: PHASE.UNTAP,
+      active: 'p',
+      pBf: [dh],
+      pMana: { B: 3 },
+    });
+
+    const result = duelReducer(state, { type: 'ADVANCE_PHASE' });
+
+    expect(result.phase).toBe(PHASE.UPKEEP);
+    const dhAfter = result.p.bf.find(c => c.iid === 'dh-3');
+    // mana was cleared by burnMana; drawback fires regardless of pre-set pool
+    expect(dhAfter.tapped).toBe(true);
+    expect(result.p.life).toBe(17);
+  });
+
+  it('DH-04 (regression): each player controls a Demonic Hordes; each only fires on its own upkeep', () => {
+    const dhP = makeDemonicHordesCard('dh-p', 'p');
+    const dhO = makeDemonicHordesCard('dh-o', 'o');
+
+    // --- Player upkeep (active='p') ---
+    const stateP = buildTestState({
+      phase: PHASE.UNTAP,
+      active: 'p',
+      pBf: [dhP],
+      oBf: [dhO],
+    });
+    const afterPUpkeep = duelReducer(stateP, { type: 'ADVANCE_PHASE' });
+
+    // 'p' DH fires (its controller's turn)
+    const dhPAfterP = afterPUpkeep.p.bf.find(c => c.iid === 'dh-p');
+    expect(dhPAfterP.tapped).toBe(true);
+    expect(afterPUpkeep.p.life).toBe(17);
+
+    // 'o' DH must NOT fire (not 'o' turn)
+    const dhOAfterP = afterPUpkeep.o.bf.find(c => c.iid === 'dh-o');
+    expect(dhOAfterP.tapped).toBe(false);
+    expect(afterPUpkeep.o.life).toBe(20);
+
+    // --- Opponent upkeep (active='o') via SET_PHASE_FOR_TEST to avoid turn overhead ---
+    const stateO = duelReducer(afterPUpkeep, { type: 'SET_PHASE_FOR_TEST', phase: 'UNTAP', active: 'o' });
+    const afterOUpkeep = duelReducer(stateO, { type: 'ADVANCE_PHASE' });
+
+    // 'o' DH fires (its controller's turn)
+    const dhOAfterO = afterOUpkeep.o.bf.find(c => c.iid === 'dh-o');
+    expect(dhOAfterO.tapped).toBe(true);
+    expect(afterOUpkeep.o.life).toBe(17);
+
+    // 'p' life must not have decreased further (guard prevented 'p' DH from firing again)
+    expect(afterOUpkeep.p.life).toBe(17);
+  });
+});

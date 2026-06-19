@@ -1968,6 +1968,7 @@ case "erhnamsUpkeep": {
   break;
 }
 case "demonicHordesUpkeep": {
+  if (w !== ns.active) break;
   const demonPool = { ...ns[w].mana };
   if ((demonPool.B || 0) >= 3) {
     demonPool.B -= 3;
