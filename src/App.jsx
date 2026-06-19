@@ -58,6 +58,8 @@ import OverworldGame from './OverworldGame.jsx';
 import DuelScreen from './DuelScreen.tsx';
 import DuelScreenMobile from './ui/Mobile/DuelScreenMobile';
 import { getCardById } from './data/cards.js';
+import DungeonMap from './ui/dungeon/DungeonMap.jsx';
+import { generateDungeon } from './engine/DungeonGenerator.js';
 
 // OverworldGame owns the full game loop including duel transitions.
 
@@ -122,9 +124,11 @@ const FALLBACK_DECK = [
 // Evaluated once at module scope -- no re-render cost.
 const _duelParam      = new URLSearchParams(window.location.search).get('duel');
 const _overworldParam = new URLSearchParams(window.location.search).get('overworld');
+const _dungeonParam   = new URLSearchParams(window.location.search).get('dungeon');
 const sandboxMode          = _duelParam === 'sandbox';
 const sandboxMobileMode    = _duelParam === 'sandbox-mobile';
 const overworldSandboxMode = _overworldParam === 'sandbox';
+const dungeonSandboxMode   = _dungeonParam === 'sandbox';
 
 // ---------------------------------------------------------------------------
 // Sandbox entry point
@@ -257,10 +261,63 @@ function SandboxOverworldApp() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Dungeon sandbox entry point (?dungeon=sandbox)
+// Renders DungeonMap directly with a fixed-seed generated dungeon so
+// Playwright tests can exercise sprite rendering without the overworld flow.
+// ---------------------------------------------------------------------------
+
+const _DUNGEON_SANDBOX_DATA = {
+  name: 'Sandbox Dungeon',
+  domColor: 'R',
+  rooms: 4,
+  mod: { name: 'None', key: 'NONE' },
+};
+
+function DungeonSandboxApp() {
+  const [dungeon] = React.useState(() => generateDungeon(_DUNGEON_SANDBOX_DATA, 42));
+  const [playerPos, setPlayerPos] = React.useState(() => dungeon.playerStart);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__dungeonState = () => dungeon;
+      window.__dungeonPlayerPos = () => playerPos;
+    }
+  });
+
+  return (
+    <div
+      data-testid="dungeon-sandbox"
+      style={{
+        height: '100vh', width: '100vw',
+        background: '#050302',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <DungeonMap
+        dungeon={dungeon}
+        playerPos={playerPos}
+        onMove={(dx, dy) => {
+          setPlayerPos(p => {
+            const nx = p.x + dx;
+            const ny = p.y + dy;
+            if (nx < 0 || nx >= dungeon.width || ny < 0 || ny >= dungeon.height) return p;
+            if (dungeon.grid[ny][nx].type === 'WALL') return p;
+            return { x: nx, y: ny };
+          });
+        }}
+        onEntityInteract={() => {}}
+      />
+    </div>
+  );
+}
+
 export default function App() {
   if (sandboxMode)          return <SandboxApp />;
   if (sandboxMobileMode)    return <SandboxMobileApp />;
   if (overworldSandboxMode) return <SandboxOverworldApp />;
+  if (dungeonSandboxMode)   return <DungeonSandboxApp />;
   return <NormalApp />;
 }
 

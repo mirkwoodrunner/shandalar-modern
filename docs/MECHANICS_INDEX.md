@@ -1773,4 +1773,40 @@ ACTIVE (overworld presentation + terrain generation)
 
 ---
 
+## Dungeon Map Tileset Rendering
+
+Replaces flat CSS-color floor/wall tiles and emoji entity tokens in `DungeonMap.jsx` with
+pixel-art sprites from the **0x72 DungeonTilesetII v1.7** pack (CC0 license — free for
+commercial/AI-assisted use, no attribution required).
+
+| Entry | Location |
+|---|---|
+| Floor tiles | `src/ui/dungeon/DungeonMap.jsx` — position-hash variant pick (`(x*31+y*17)%8+1`) across `floor_1..floor_8`; deterministic, no `Math.random()` |
+| Wall autotiling | `src/ui/dungeon/DungeonMap.jsx` — exported pure function `getWallVariant(grid, x, y)` maps 4-neighbor adjacency (N/S/E/W WALL flags) to `wall_top_*`, `wall_left/mid/right`, `wall_outer_*` sprite names |
+| Enemy tokens | `src/ui/dungeon/DungeonMap.jsx` — exported `ENEMY_SPRITE_MAP` const maps archKey+tier to sprite base name; 4-frame idle animation via `useAnimFrame` hook (~600ms/frame) |
+| Treasure tokens | `src/ui/dungeon/DungeonMap.jsx` — `chest_full_open_anim` (cardRarity set) or `chest_empty_open_anim` (cardRarity null), 3-frame hold-on-last |
+| Exit token | `src/ui/dungeon/DungeonMap.jsx` — `floor_ladder` sprite with existing `exitPulse` CSS opacity animation |
+| Player token | `src/ui/dungeon/DungeonMap.jsx` — `wizzard_f_idle_anim_f0..f3` cycling with existing `wizPulse` glow filter |
+| Assets | `public/assets/dungeon/sprites/` (135 individual frame PNGs), `public/assets/dungeon/atlas_floor.png`, `public/assets/dungeon/atlas_walls_low.png` |
+| Dungeon sandbox | `src/App.jsx` — `?dungeon=sandbox` URL param renders `DungeonMap` directly with a fixed-seed dungeon; exposes `window.__dungeonState()` for tests |
+| Tests | `tests/e2e/dungeon-tileset.spec.ts` (sprite rendering, fog-of-war guard, chest rarity, exit pulse, player frame cycling, 404 guard; 1280x800 + 390x844) |
+
+### ENEMY_SPRITE_MAP — single edit point
+
+`ENEMY_SPRITE_MAP` in `DungeonMap.jsx` maps each archKey to `[tier1_base, tier2_base, tier3_base]`
+sprite base names. To remap a sprite, change only this const — the animator reads it at runtime.
+
+### Fog-of-war
+Unrevealed cells render as solid `#050302` with no sprite — fog behavior unchanged from the
+flat-color implementation. The LOS/reveal logic lives entirely in `DungeonGenerator.js` and
+`useOverworldController.js` and is untouched.
+
+### Asset license
+0x72 DungeonTilesetII v1.7 by 0x72. CC0 1.0 Universal. No attribution required.
+
+### Status
+ACTIVE (dungeon presentation only — no state, logic, or generator changes)
+
+---
+
 # End of MECHANICS INDEX v1.5
