@@ -1878,4 +1878,23 @@ ACTIVE
 
 ---
 
+## Bug Fix: Fog Edge Mask + Eager Tilesheet Preload (2026-06-19)
+
+Two presentation-layer fixes in `src/ui/overworld/WorldMap.jsx`. No engine or
+state changes.
+
+| Fix | Detail |
+|---|---|
+| Eager preload | `_startSheetLoad()` now fires at module scope (line 60) in addition to inside `useTilesheets()`, so PNG loading begins at import time rather than first `MapTile` mount. Eliminates intermittent flat-color pop-in before sheets settle. |
+| Directional fog edge | Replaced single `isFogEdge: boolean` with `fogSides: {w,e,n,s}` per-direction flags. `MapTile` builds a composite `mask-image` of linear-gradients — one per unrevealed side — composited with `mask-composite: intersect` so fades multiply at corners. Old radial `ellipse at center` mask removed. |
+| Test hook | `data-fog-sides` attribute on revealed boundary tiles lists active sides as a comma-separated string for Playwright assertions. |
+
+### Tests
+- Playwright: `tests/e2e/overworld-tileset.spec.ts` — 3 new tests per viewport (desktop + mobile): eager-preload 2 s budget, directional gradient assertion via `data-fog-sides`, interior tile no-mask check.
+
+### Status
+CLOSED
+
+---
+
 # End of MECHANICS INDEX v1.5
