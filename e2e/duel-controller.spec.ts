@@ -409,3 +409,252 @@ test('AI declares attackers on its turn -- mobile', async ({ page }) => {
   expect(['COMBAT_AFTER_ATTACKERS', 'COMBAT_BLOCKERS', 'COMBAT_AFTER_BLOCKERS',
           'COMBAT_DAMAGE', 'MAIN_2', 'END', 'UNTAP', 'MAIN_1']).toContain(s.phase);
 });
+
+// ---------------------------------------------------------------------------
+// Helpers shared by E2E-CAST-01 through E2E-CAST-08
+// ---------------------------------------------------------------------------
+
+async function dismissMulligan(page: Page) {
+  // MulliganModal is always shown on load; click Keep to dismiss it.
+  const keepBtn = page.locator('[data-testid="mulligan-keep"]');
+  await keepBtn.waitFor({ state: 'visible', timeout: 8_000 });
+  await keepBtn.click();
+  await keepBtn.waitFor({ state: 'hidden', timeout: 3_000 });
+}
+
+async function waitForCardInHand(page: Page, cardId: string) {
+  await page.waitForFunction((id: string) => {
+    const s = (window as any).__duelState?.();
+    return s && s.p.hand?.some((c: any) => c.id === id);
+  }, cardId, { timeout: 15_000 });
+}
+
+async function getCardIid(page: Page, cardId: string): Promise<string> {
+  return page.evaluate((id: string) => {
+    const s = (window as any).__duelState();
+    return s.p.hand.find((c: any) => c.id === id)?.iid ?? '';
+  }, cardId);
+}
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-01 (desktop 1280x800): Non-targeting card opens mana mode in Banner
+// ---------------------------------------------------------------------------
+test('E2E-CAST-01: non-targeting card (Grizzly Bears) shows mana mode in player Banner', async ({ page }) => {
+  // Only Forests in deck so AI never gets stuck on 0-cost artifacts
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Forest x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('grizzly_bears'));
+  await waitForDuel(page);
+  await waitForCardInHand(page, 'grizzly_bears');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  // Ensure player has no mana so the auto-fire does NOT trigger
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 } });
+  });
+
+  const iid = await getCardIid(page, 'grizzly_bears');
+  await page.click(`[data-testid="hand-card-${iid}"]`);
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.click('[data-testid="cast-button"]');
+
+  // castFlow should now be in mana mode — banner shows NEED label
+  await page.waitForSelector('[data-testid="cast-prompt-need"]', { timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt-need"]')).toBeVisible();
+  // cast-button disappears once flow is active (hasSelection becomes false)
+  await expect(page.locator('[data-testid="cast-button"]')).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-02 (desktop): Targeting card (Counterspell) opens targeting mode
+// ---------------------------------------------------------------------------
+test('E2E-CAST-02: targeting card (Counterspell) shows targeting mode in player Banner', async ({ page }) => {
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('counterspell'));
+  await waitForDuel(page);
+  await waitForCardInHand(page, 'counterspell');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  const iid = await getCardIid(page, 'counterspell');
+  await page.click(`[data-testid="hand-card-${iid}"]`);
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.click('[data-testid="cast-button"]');
+
+  // castFlow enters targeting mode — banner shows "Select target" label
+  await page.waitForSelector('[data-testid="cast-prompt-label"]', { timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt-label"]')).toBeVisible();
+  await expect(page.locator('[data-testid="cast-prompt-label"]')).toContainText('Select target');
+  // Confirm button must NOT appear yet (0 targets selected)
+  await expect(page.locator('[data-testid="cast-prompt-confirm"]')).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-03 (desktop): Cancel during targeting mode clears the cast prompt
+// ---------------------------------------------------------------------------
+test('E2E-CAST-03: cancel during targeting mode clears the cast prompt from Banner', async ({ page }) => {
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('counterspell'));
+  await waitForDuel(page);
+  await waitForCardInHand(page, 'counterspell');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  const iid = await getCardIid(page, 'counterspell');
+  await page.click(`[data-testid="hand-card-${iid}"]`);
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.click('[data-testid="cast-button"]');
+  await page.waitForSelector('[data-testid="cast-prompt"]', { timeout: 3_000 });
+
+  // Cancel the flow — cast-prompt must disappear
+  await page.click('[data-testid="cast-prompt-cancel"]');
+  await page.waitForSelector('[data-testid="cast-prompt"]', { state: 'hidden', timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt"]')).toHaveCount(0);
+  // cast-button should reappear (card is still selected)
+  await expect(page.locator('[data-testid="cast-button"]')).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-04 (desktop): Optional-target card (Twiddle) shows Skip button
+// ---------------------------------------------------------------------------
+test('E2E-CAST-04: optional-target card (Twiddle) shows Skip button in targeting mode', async ({ page }) => {
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('twiddle'));
+  await waitForDuel(page);
+  await waitForCardInHand(page, 'twiddle');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  // Clear mana so auto-fire won't happen before we can check UI
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 } });
+  });
+
+  const iid = await getCardIid(page, 'twiddle');
+  await page.click(`[data-testid="hand-card-${iid}"]`);
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.click('[data-testid="cast-button"]');
+
+  // Twiddle has optionalTarget=true — targeting mode opens with Skip button
+  await page.waitForSelector('[data-testid="cast-prompt-label"]', { timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt-label"]')).toContainText('optional');
+  await expect(page.locator('[data-testid="cast-prompt-skip"]')).toBeVisible();
+  // Required-target Confirm button must NOT appear at 0 targets
+  await expect(page.locator('[data-testid="cast-prompt-confirm"]')).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-05 (desktop): Required-target card — Confirm hidden until target chosen
+// ---------------------------------------------------------------------------
+test('E2E-CAST-05: required-target card (Lightning Bolt) — Confirm blocked at 0 targets', async ({ page }) => {
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Mountain x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('lightning_bolt'));
+  await waitForDuel(page);
+  await waitForCardInHand(page, 'lightning_bolt');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  // Clear mana so the flow stays open for inspection
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 } });
+  });
+
+  const iid = await getCardIid(page, 'lightning_bolt');
+  await page.click(`[data-testid="hand-card-${iid}"]`);
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.click('[data-testid="cast-button"]');
+
+  await page.waitForSelector('[data-testid="cast-prompt-label"]', { timeout: 3_000 });
+  // At 0 targets — Confirm must be hidden
+  await expect(page.locator('[data-testid="cast-prompt-confirm"]')).toHaveCount(0);
+  // No Skip button on required-target cards
+  await expect(page.locator('[data-testid="cast-prompt-skip"]')).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-06 (mobile 390x844): Non-targeting card opens mana mode on mobile
+// ---------------------------------------------------------------------------
+test('E2E-CAST-06: mobile — non-targeting card shows mana mode in player Banner', async ({ page }) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Forest x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('grizzly_bears'));
+  await page.waitForFunction(() => typeof (window as any).__duelState === 'function', { timeout: 10_000 });
+  await waitForCardInHand(page, 'grizzly_bears');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  // Clear mana so flow stays in mana mode (no auto-fire)
+  await page.evaluate(() => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', mana: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 } });
+  });
+
+  // Tap the first hand card (mobile uses data-testid="hand-card" without iid suffix)
+  await page.locator('[data-testid="hand-card"]').first().tap();
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.locator('[data-testid="cast-button"]').tap();
+
+  await page.waitForSelector('[data-testid="cast-prompt-need"]', { timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt-need"]')).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-07 (mobile): Targeting card opens targeting mode on mobile Banner
+// ---------------------------------------------------------------------------
+test('E2E-CAST-07: mobile — targeting card (Counterspell) shows targeting mode in Banner', async ({ page }) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('counterspell'));
+  await page.waitForFunction(() => typeof (window as any).__duelState === 'function', { timeout: 10_000 });
+  await waitForCardInHand(page, 'counterspell');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  await page.locator('[data-testid="hand-card"]').first().tap();
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.locator('[data-testid="cast-button"]').tap();
+
+  await page.waitForSelector('[data-testid="cast-prompt-label"]', { timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt-label"]')).toBeVisible();
+  await expect(page.locator('[data-testid="cast-prompt-label"]')).toContainText('Select target');
+  // No Confirm yet (0 targets)
+  await expect(page.locator('[data-testid="cast-prompt-confirm"]')).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// E2E-CAST-08 (mobile): Cancel clears the cast prompt on mobile
+// ---------------------------------------------------------------------------
+test('E2E-CAST-08: mobile — cancel during targeting flow clears cast prompt from Banner', async ({ page }) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.route('**/sandbox-decklist.txt', route =>
+    route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+  );
+  await page.goto(sandboxWith('counterspell'));
+  await page.waitForFunction(() => typeof (window as any).__duelState === 'function', { timeout: 10_000 });
+  await waitForCardInHand(page, 'counterspell');
+  await dismissMulligan(page);
+  await waitForMain1(page);
+
+  await page.locator('[data-testid="hand-card"]').first().tap();
+  await page.waitForSelector('[data-testid="cast-button"]', { timeout: 3_000 });
+  await page.locator('[data-testid="cast-button"]').tap();
+  await page.waitForSelector('[data-testid="cast-prompt"]', { timeout: 3_000 });
+
+  // Tap the X/Cancel button inside the castPrompt
+  await page.locator('[data-testid="cast-prompt-cancel"]').tap();
+  await page.waitForSelector('[data-testid="cast-prompt"]', { state: 'hidden', timeout: 3_000 });
+  await expect(page.locator('[data-testid="cast-prompt"]')).toHaveCount(0);
+});

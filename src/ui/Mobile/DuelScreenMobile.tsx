@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react';
 import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, resolveDefaultTarget, isBebRebEffect, needsStackTarget, needsExplicitTarget } from '../../hooks/useDuelController';
+import { useDuelController, isBebRebEffect, isCounterEffect, getManaShortfall } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -56,9 +56,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     adaptedLog, canUndoMana,
     pLands, pCreatures, pPerms, oLands, oCreatures, oPerms,
     handleBfClick, pendingBlockerIid, setPendingBlockerIid,
-    pendingActivate, setPendingActivate,
-    activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
+    castFlow, beginCastFlow, beginActivateFlow,
+    selectCastTarget, confirmCastTargets, cancelCastFlow,
     isGeminiThinking,
   } = useDuelController(config, onDuelEnd);
 
@@ -67,75 +67,36 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
   const [logOpen, setLogOpen] = useState(false);
-  const [targetingFor, setTargetingFor] = useState<string | null>(null);
-  const [pendingTarget, setPendingTarget] = useState<string | null>(null);
 
   // ── Card tap handler ───────────────────────────────────────────────────────
   const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
-    const c = card as any;
-
     if (zone === 'hand') {
-      if (targetingFor === card.iid) {
-        setTargetingFor(null);
-        setPendingTarget(null);
-        setSel(null);
-        return;
-      }
-      if (isBebRebEffect(c) && !isLand(c)) {
-        // BEB/REB: enter mode-picker state first; clear any prior mode.
-        setTargetingFor(null);
-        setPendingTarget(null);
-        setPendingMode(null);
-        setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'hand', card });
-      } else if (needsExplicitTarget(c) && !isLand(c)) {
-        setTargetingFor(card.iid);
-        setPendingTarget(null);
-        setSel({ iid: card.iid, zone: 'hand', card });
-      } else {
-        setTargetingFor(null);
-        setPendingTarget(null);
-        setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'hand', card });
-      }
+      setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'hand', card });
       return;
     }
-
     setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone, card });
-  }, [targetingFor, isLand]);
+  }, []);
 
   // ── Action bar handlers ────────────────────────────────────────────────────
   const handleCast = useCallback(() => {
-    if (targetingFor !== null) {
-      if (!pendingTarget) return;
-      castSpell(targetingFor, pendingTarget, s_state.xVal ?? 1);
-      setTargetingFor(null);
-      setPendingTarget(null);
-      setSel(null);
-      setPendingMode(null);
-      return;
-    }
-
+    if (castFlow) return; // flow already active
     if (!sel || sel.zone !== 'hand') return;
     const card = (s_state.p.hand as any[]).find((c: any) => c.iid === sel.iid);
     if (!card) return;
     if (isLand(card)) {
       playLand(card.iid);
-    } else if (needsStackTarget(card, pendingMode)) {
-      // Counter or BEB/REB in counter mode: cast with the selected stack item as target.
-      castSpell(card.iid, pendingTarget, s_state.xVal ?? 1);
-      setPendingMode(null);
-    } else {
-      const tgt = s_state.selTgt ?? resolveDefaultTarget(card, s_state);
-      castSpell(card.iid, tgt, s_state.xVal ?? 1);
+      setSel(null);
+      return;
     }
+    beginCastFlow(card);
     setSel(null);
-    setPendingTarget(null);
-  }, [targetingFor, pendingTarget, pendingMode, sel, s_state.p.hand, s_state.selTgt, s_state.xVal, playLand, castSpell, setPendingMode]);
+  }, [castFlow, sel, s_state.p.hand, playLand, beginCastFlow]);
 
   const handleActivateBf = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
-    handleActivate(sel.card);
+    beginActivateFlow(sel.card, null);
     setSel(null);
-  }, [sel, handleActivate]);
+  }, [sel, beginActivateFlow]);
 
   // ── Battlefield card click dispatcher ─────────────────────────────────────
   const handleBfCardClick = useCallback((card: CardData) => {
@@ -145,9 +106,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     const consumed = handleBfClick(card);
     if (consumed !== false) return;
 
-    // ── Targeting mode ───────────────────────────────────────────────────────
-    if (targetingFor !== null) {
-      setPendingTarget(card.iid);
+    // ── Cast/activate targeting mode — highest priority ──────────────────────
+    if (castFlow?.mode === 'targeting') {
+      selectCastTarget(card.iid);
       return;
     }
 
@@ -181,15 +142,16 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
     }
     // Plain creatures / permanents with no activated ability: no action.
-  }, [handleBfClick, targetingFor, activateAbility, tapArtifactMana]);
+  }, [handleBfClick, castFlow, selectCastTarget, activateAbility, tapArtifactMana]);
 
   const handleCancel = useCallback(() => {
+    if (castFlow) {
+      cancelCastFlow();
+    }
     setSel(null);
-    setTargetingFor(null);
-    setPendingTarget(null);
     setPendingBlockerIid(null);
     setPendingMode(null);
-  }, [setPendingBlockerIid, setPendingMode]);
+  }, [castFlow, cancelCastFlow, setPendingBlockerIid, setPendingMode]);
 
   const handlePass = useCallback(() => {
     if (s_state.priorityWindow && s_state.priorityPasser !== 'p') {
@@ -310,11 +272,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       />
 
       <Banner side="opp" player={oData} onLifeClick={
-        targetingFor !== null
-          ? () => setPendingTarget('o')
-          : activateCanTargetPlayer
-            ? () => handleActivateWithPlayerTarget('o')
-            : undefined
+        castFlow?.mode === 'targeting' && castFlow.canTargetPlayers
+          ? () => selectCastTarget('o')
+          : undefined
       } />
 
       {isGeminiThinking && (
@@ -324,7 +284,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       )}
 
       {/* BEB/REB mode picker — shown when a two-mode card is selected and no mode chosen yet */}
-      {sel?.card && isBebRebEffect(sel.card) && pendingMode === null && (
+      {sel?.card && isBebRebEffect(sel.card) && pendingMode === null && !castFlow && (
         <BebRebModePicker
           cardName={(sel.card as any).name}
           targetColor={(sel.card as any).effect === 'destroyRedOrCounter' ? 'R' : 'U'}
@@ -332,14 +292,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           playerBf={s_state.p.bf}
           opponentBf={s_state.o.bf}
           onSetMode={(mode: 'counter' | 'destroy') => {
-            if (mode === 'counter') {
-              setPendingTarget(null);
-              setTargetingFor(null);
-            } else {
-              setTargetingFor(sel.iid);
-              setPendingTarget(null);
-            }
             setPendingMode(mode);
+            const card = (s_state.p.hand as any[]).find((c: any) => c.iid === sel.iid);
+            if (card) { beginCastFlow(card); setSel(null); }
           }}
           onCancel={handleCancel}
         />
@@ -388,7 +343,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             >
               <FieldCard card={c} density="perm"
                 selected={selIid === c.iid}
-                isTarget={pendingTarget === c.iid}
+                isTarget={castFlow?.selectedTargets.includes(c.iid) ?? false}
                 isPendingAttackerTarget={
                   s_state.phase === PHASE.COMBAT_BLOCKERS &&
                   pendingBlockerIid !== null &&
@@ -452,30 +407,56 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       </div>{/* end bfScroll */}
 
-      <Banner side="you" player={pData} onLifeClick={
-        targetingFor !== null
-          ? () => setPendingTarget('p')
-          : activateCanTargetPlayer
-            ? () => handleActivateWithPlayerTarget('p')
+      <Banner side="you" player={pData}
+        onLifeClick={
+          castFlow?.mode === 'targeting' && castFlow.canTargetPlayers
+            ? () => selectCastTarget('p')
             : undefined
-      } />
+        }
+        castPrompt={castFlow ? (() => {
+          const sourceCard = castFlow.kind === 'spell'
+            ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+            : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+          const cost = castFlow.kind === 'spell'
+            ? sourceCard?.cost
+            : (castFlow.abilityId
+                ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
+                : sourceCard?.activated?.cost);
+          return {
+            mode: castFlow.mode ?? 'targeting',
+            targetLabel: castFlow.mode === 'targeting'
+              ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
+              : undefined,
+            canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
+            onSkip: confirmCastTargets,
+            onConfirmTargets: castFlow.mode === 'targeting' && castFlow.selectedTargets.length >= 1 ? confirmCastTargets : undefined,
+            targetsSelected: castFlow.selectedTargets.length,
+            costNeeded: cost,
+            shortfall: cost ? getManaShortfall(s_state.p.mana, cost, s_state.xVal || 0) : null,
+            onCancel: cancelCastFlow,
+          };
+        })() : undefined}
+      />
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
       {s_state.stack?.length > 0 && (() => {
-        const stackTargeting = needsStackTarget(sel?.card, pendingMode);
+        const sourceCard = castFlow
+          ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+          : null;
+        const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && isCounterEffect(sourceCard);
         return (
           <StackDisplay
             stack={s_state.stack}
             isMobile={true}
             bottomOffset={56}
-            onItemClick={stackTargeting ? (id) => setPendingTarget(id) : undefined}
-            selectedItemId={stackTargeting ? pendingTarget : null}
+            onItemClick={stackTargeting ? (id) => selectCastTarget(id) : undefined}
+            selectedItemId={castFlow?.selectedTargets[0] ?? null}
           />
         );
       })()}
 
       <ActionBar
-        sel={sel}
+        sel={castFlow ? null : sel}
         onCast={handleCast}
         onActivate={handleActivateBf}
         onCancel={handleCancel}
@@ -492,8 +473,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         canUndo={canUndoMana}
         onUndo={undoManaTaps}
         phase={s_state.phase}
-        targetingFor={targetingFor}
-        pendingTarget={pendingTarget}
         pendingBlocker={pendingBlockerIid}
         blockers={s_state.blockers ?? {}}
       />

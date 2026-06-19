@@ -221,7 +221,7 @@ export const CARD_DB = [
 {id:"spell_blast",       name:"Spell Blast",       type:"Instant", color:"U",cmc:1,cost:"XU",  text:"Counter target spell with mana value X. (For example, if that spell's mana cost is {3}{U}{U}, X is 5.)",effect:"counter",rarity:"C"},
 {id:"stasis",            name:"Stasis",            type:"Enchantment",color:"U",cmc:2,cost:"1U",  text:"Players skip their untap steps.\nAt the beginning of your upkeep, sacrifice this enchantment unless you pay {U}.",effect:"stub" /* STUB: all players skip untap; sacrifice unless paying U each upkeep */,rarity:"R"},
 {id:"steal_artifact",    name:"Steal Artifact",    type:"Enchantment",subtype:"Aura",color:"U",cmc:4,cost:"3U",  text:"Enchant artifact\nYou control enchanted artifact.",effect:"controlCreature",rarity:"U"},
-{id:"twiddle",           name:"Twiddle",           type:"Instant", color:"U",cmc:1,cost:"U",   text:"You may tap or untap target artifact, creature, or land.",effect:"tapTarget",rarity:"C"},
+{id:"twiddle",           name:"Twiddle",           type:"Instant", color:"U",cmc:1,cost:"U",   text:"You may tap or untap target artifact, creature, or land.",effect:"tapTarget",optionalTarget:true,rarity:"C"},
 
 // -- BLACK SPELLS --------------------------------------------
 {id:"dark_ritual",    name:"Dark Ritual",   type:"Instant", color:"B",cmc:1,cost:"B",   text:"Add {B}{B}{B}.",effect:"addMana",mana:["B","B","B"],rarity:"C"},

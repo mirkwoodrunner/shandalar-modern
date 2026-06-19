@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
 import { aiDecide } from '../engine/AI.js';
-import { isLand, isArt, canPay } from '../engine/DuelCore.js';
+import { isLand, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
@@ -96,6 +96,51 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
   return false;
 }
 
+// ── Cast/Activate flow ─────────────────────────────────────────────────────
+
+export type CastFlowMode = 'targeting' | 'mana' | null;
+
+export interface CastFlowState {
+  kind: 'spell' | 'ability';
+  sourceIid: string;
+  abilityId: string | null;
+  mode: CastFlowMode;
+  selectedTargets: string[];
+  requiresTarget: boolean;
+  maxTargets: number;
+  canTargetPlayers: boolean;
+}
+
+export function needsAnyTarget(card: any): boolean {
+  return needsExplicitTarget(card) || isCounterEffect(card) || isBebRebEffect(card);
+}
+
+export function isOptionalTarget(card: any): boolean {
+  return Boolean(card?.optionalTarget);
+}
+
+export function getManaShortfall(
+  pool: Record<string, number>,
+  cost: string,
+  xVal = 0
+): { needed: Record<string, number>; have: Record<string, number> } | null {
+  if (canPay(pool, cost, xVal)) return null;
+  const required = parseMana(cost) as Record<string, number>;
+  if (xVal > 0) required.generic = (required.generic || 0) + xVal;
+  return { needed: required, have: { ...pool } };
+}
+
+// Effects for activated abilities that require selecting a target.
+const ACTIVATE_TARGET_EFFECTS = new Set([
+  'ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying',
+  'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand', 'tapTarget',
+]);
+
+// Ability effects that can target players (in addition to permanents).
+const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
+  'ping', 'triskelionPing', 'damage1', 'damage2', 'damage3',
+]);
+
 function scoreLibCard(card: any, _state: any): number {
   if (card.type?.includes('Creature')) {
     const pow = typeof card.power === 'number' ? card.power : 0;
@@ -179,7 +224,7 @@ export function useDuelController(
   const [showBop, setShowBop] = useState(false);
   const [pendingDualLand, setPendingDualLand] = useState<{ card: any; colors: string[] } | null>(null);
   const [pendingBlockerIid, setPendingBlockerIid] = useState<string | null>(null);
-  const [pendingCast, setPendingCast] = useState<{ cardIid: string; target: string | null } | null>(null);
+  const [castFlow, setCastFlow] = useState<CastFlowState | null>(null);
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
   const [pendingMode, setPendingMode] = useState<'counter' | 'destroy' | null>(null);
   const [isGeminiThinking, setIsGeminiThinking] = useState(false);
@@ -639,33 +684,231 @@ export function useDuelController(
     pendingBlockerIid, declareBlocker, declareAttacker,
   ]);
 
-  // ── Activated ability helpers ──────────────────────────────────────────────
+  // ── Cast/Activate flow handlers ────────────────────────────────────────────
 
-  // Effects that target any target (creature or player).
-  const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set(['ping', 'triskelionPing', 'damage1', 'damage2', 'damage3']);
+  const cancelCastFlow = useCallback(() => {
+    if (s.manaTapSnapshot !== null) {
+      dispatch({ type: 'UNDO_MANA_TAPS' });
+    }
+    setCastFlow(null);
+    selectCard(null);
+    selectTarget(null);
+    setPendingActivate(null);
+  }, [s.manaTapSnapshot, dispatch, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const selectCastTarget = useCallback((iid: string) => {
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'targeting') return prev;
+      const already = prev.selectedTargets.includes(iid);
+      return { ...prev, selectedTargets: already ? prev.selectedTargets.filter(t => t !== iid) : [iid] };
+    });
+  }, []);
+
+  const deselectCastTarget = useCallback((iid: string) => {
+    setCastFlow(prev => {
+      if (!prev) return prev;
+      return { ...prev, selectedTargets: prev.selectedTargets.filter(t => t !== iid) };
+    });
+  }, []);
+
+  // Advance from targeting → mana or immediate cast.
+  // Called by confirmCastTargets and beginCastFlow (no-target path).
+  const advanceCastFlow = useCallback((flow: CastFlowState) => {
+    if (flow.kind === 'spell') {
+      const card = (s.p.hand as any[]).find((c: any) => c.iid === flow.sourceIid);
+      if (!card) { setCastFlow(null); return; }
+      const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      const tgt = flow.selectedTargets[0] ?? null;
+      if (canPay(s.p.mana, card.cost, xSpend)) {
+        castSpell(flow.sourceIid, tgt, s.xVal);
+        setCastFlow(null);
+        selectCard(null);
+        selectTarget(null);
+      } else {
+        setCastFlow({ ...flow, mode: 'mana' });
+      }
+    } else {
+      const card = (s.p.bf as any[]).find((c: any) => c.iid === flow.sourceIid);
+      const ab = flow.abilityId
+        ? (card?.activatedAbilities ?? []).find((a: any) => a.id === flow.abilityId)
+        : card?.activated;
+      if (!card || !ab) { setCastFlow(null); return; }
+      const cost = ab.cost ?? '';
+      const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      const tgt = flow.selectedTargets[0] ?? null;
+      if (!cost || canPay(s.p.mana, cost, xSpend)) {
+        activateAbility(flow.sourceIid, tgt, null, flow.abilityId ?? undefined);
+        setCastFlow(null);
+        selectCard(null);
+        selectTarget(null);
+        setPendingActivate(null);
+      } else {
+        setCastFlow({ ...flow, mode: 'mana' });
+      }
+    }
+  }, [s, castSpell, activateAbility, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const confirmCastTargets = useCallback(() => {
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'targeting') return prev;
+      if (prev.requiresTarget && prev.selectedTargets.length < 1) return prev;
+      // Advance synchronously via the flow object we have in hand.
+      // We schedule advanceCastFlow via a separate effect trigger by returning
+      // a transitioned state; instead, call advanceCastFlow directly here.
+      return prev; // will be handled by the useEffect below after state settles
+    });
+    // Direct advance — read from castFlow ref-equivalent via functional update.
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'targeting') return prev;
+      if (prev.requiresTarget && prev.selectedTargets.length < 1) return prev;
+      return { ...prev, mode: 'mana' as CastFlowMode, _advance: true } as any;
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-advance when castFlow mode transitions from targeting to mana or when
+  // the player's mana pool changes while in mana-wait mode.
+  useEffect(() => {
+    if (!castFlow) return;
+    const flow = castFlow as any;
+
+    // Pending advance from confirmCastTargets
+    if (flow._advance) {
+      const clean: CastFlowState = { ...flow };
+      delete (clean as any)._advance;
+      advanceCastFlow(clean);
+      return;
+    }
+
+    if (castFlow.mode !== 'mana') return;
+
+    if (castFlow.kind === 'spell') {
+      const card = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      if (!card) return;
+      const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      if (canPay(s.p.mana, card.cost, xSpend)) {
+        const tgt = castFlow.selectedTargets[0] ?? null;
+        castSpell(castFlow.sourceIid, tgt, s.xVal);
+        setCastFlow(null);
+        selectCard(null);
+        selectTarget(null);
+      }
+    } else {
+      const card = (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      const ab = castFlow.abilityId
+        ? (card?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)
+        : card?.activated;
+      if (!card || !ab) return;
+      const cost = ab.cost ?? '';
+      const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      if (!cost || canPay(s.p.mana, cost, xSpend)) {
+        const tgt = castFlow.selectedTargets[0] ?? null;
+        activateAbility(castFlow.sourceIid, tgt, null, castFlow.abilityId ?? undefined);
+        setCastFlow(null);
+        selectCard(null);
+        selectTarget(null);
+        setPendingActivate(null);
+      }
+    }
+  }, [s.p.mana, castFlow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const beginCastFlow = useCallback((card: any) => {
+    if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
+
+    const hasTarget = needsAnyTarget(card) || isOptionalTarget(card);
+    const req = needsAnyTarget(card) && !isOptionalTarget(card);
+
+    if (hasTarget) {
+      setCastFlow({
+        kind: 'spell',
+        sourceIid: card.iid,
+        abilityId: null,
+        mode: 'targeting',
+        selectedTargets: [],
+        requiresTarget: req,
+        maxTargets: 1,
+        canTargetPlayers: needsExplicitTarget(card) && !isCounterEffect(card),
+      });
+      return;
+    }
+
+    // No targeting — go directly to mana check.
+    const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+    if (canPay(s.p.mana, card.cost, xSpend)) {
+      const tgt = resolveDefaultTarget(card, s);
+      castSpell(card.iid, tgt, s.xVal);
+      selectCard(null);
+      selectTarget(null);
+      return;
+    }
+    setCastFlow({
+      kind: 'spell',
+      sourceIid: card.iid,
+      abilityId: null,
+      mode: 'mana',
+      selectedTargets: [],
+      requiresTarget: false,
+      maxTargets: 0,
+      canTargetPlayers: false,
+    });
+  }, [s, castSpell, playLand, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const beginActivateFlow = useCallback((card: any, abilityId: string | null) => {
+    if (!card) return;
+    const ab = abilityId
+      ? (card.activatedAbilities ?? []).find((a: any) => a.id === abilityId)
+      : card.activated;
+    if (!ab) return;
+
+    const { effect } = ab;
+
+    // Mana abilities resolve immediately — never route through castFlow.
+    if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
+    if (effect === 'addMana3Any') {
+      activateAbility(card.iid, null);
+      setShowLotus(true);
+      setPendingActivate(card);
+      return;
+    }
+    if (effect === 'addMana') { activateAbility(card.iid, null); return; }
+
+    if (ACTIVATE_TARGET_EFFECTS.has(effect)) {
+      setCastFlow({
+        kind: 'ability',
+        sourceIid: card.iid,
+        abilityId,
+        mode: 'targeting',
+        selectedTargets: [],
+        requiresTarget: true,
+        maxTargets: 1,
+        canTargetPlayers: PLAYER_TARGETABLE_ABILITY_EFFECTS.has(effect),
+      });
+      selectCard(card.iid);
+      return;
+    }
+
+    // Non-targeting, non-mana ability: activate immediately.
+    activateAbility(card.iid, null, null, abilityId ?? undefined);
+  }, [activateAbility, selectCard, setShowLotus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // handleActivate keeps backward-compat API; delegates to beginActivateFlow.
+  const handleActivate = useCallback((card: any) => {
+    beginActivateFlow(card, null);
+  }, [beginActivateFlow]);
+
+  // activateCanTargetPlayer is kept for any remaining callsites during migration;
+  // under the new model castFlow.canTargetPlayers drives this.
   const activateCanTargetPlayer: boolean =
-    pendingActivate != null &&
-    PLAYER_TARGETABLE_ABILITY_EFFECTS.has(pendingActivate.activated?.effect);
+    castFlow?.mode === 'targeting' ? castFlow.canTargetPlayers :
+    (pendingActivate != null && PLAYER_TARGETABLE_ABILITY_EFFECTS.has(pendingActivate.activated?.effect));
 
+  // handleActivateWithPlayerTarget is preserved for any remaining callsites.
   const handleActivateWithPlayerTarget = useCallback((playerKey: 'p' | 'o') => {
+    if (castFlow?.mode === 'targeting') { selectCastTarget(playerKey); return; }
     if (!pendingActivate) return;
     activateAbility(pendingActivate.iid, playerKey);
     setPendingActivate(null);
     selectCard(null);
-  }, [pendingActivate, activateAbility, selectCard]);
-
-  const handleActivate = useCallback((card: any) => {
-    if (!card.activated) return;
-    const { effect } = card.activated;
-    if (effect === 'addManaAny') { activateAbility(card.iid, null); return; }
-    if (effect === 'addMana3Any') { activateAbility(card.iid, null); setShowLotus(true); setPendingActivate(card); return; }
-    if (['ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying', 'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand'].includes(effect)) {
-      setPendingActivate(card); selectCard(card.iid); return;
-    }
-    activateAbility(card.iid, null);
-    setPendingActivate(null);
-  }, [activateAbility, selectCard, setShowLotus]);
+  }, [castFlow, pendingActivate, selectCastTarget, activateAbility, selectCard]);
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const adaptedLog = useMemo(() => adaptLog(s.log ?? []), [s.log]);
@@ -688,13 +931,6 @@ export function useDuelController(
     s.active === 'p' &&
     (s.stack?.length ?? 0) === 0 &&
     s.manaTapSnapshot !== null;
-
-  const canCastPending = pendingCast !== null && (() => {
-    const card = (s.p.hand as any[]).find((c: any) => c.iid === pendingCast.cardIid);
-    if (!card) return false;
-    const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
-    return canPay(s.p.mana, card.cost, xSpend);
-  })();
 
   const oppBfIids = useMemo(
     () => new Set((s.o.bf as any[]).map((c: any) => c.iid)),
@@ -773,10 +1009,16 @@ export function useDuelController(
     setPendingBlockerIid,
     handleBfClick,
 
-    // Pending cast state
-    pendingCast,
-    setPendingCast,
-    canCastPending,
+    // Cast/Activate flow state
+    castFlow,
+    setCastFlow,
+    beginCastFlow,
+    beginActivateFlow,
+    selectCastTarget,
+    deselectCastTarget,
+    confirmCastTargets,
+    cancelCastFlow,
+    getManaShortfall,
 
     // Counter mode state (BEB/REB two-mode selection)
     pendingMode,

@@ -256,6 +256,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
         }}
       >
         <button
+          data-testid="cast-button"
           className={`${s.actionBtn} ${s.actionBtnCast}`}
           onClick={onCast}
           style={{
@@ -268,6 +269,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
           <span className={s.actionBtnCastName}>{card.name}</span>
         </button>
         <button
+          data-testid="cancel-button"
           className={s.actionBtn}
           onClick={onCancel}
           style={{
