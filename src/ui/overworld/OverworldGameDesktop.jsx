@@ -44,7 +44,7 @@ export default function OverworldGameDesktop({ ctrl, onQuit }) {
     encounterPopup, postDuelChoice,
     ruleset, setRuleset, anteEnabled, setAnteEnabled, foodEnabled, setFoodEnabled,
     modal, setModal, activeTile, setActiveTile, log,
-    viewOfs, enemies,
+    viewOfs, enemies, animState,
     hasBoots, hasDwarvenPick, hasSwampwalk, hasStone,
     arzakonReady, gameLost, conquestLost, isSandbox, duelCfg,
     viewW, viewH, tileSize,
@@ -283,6 +283,8 @@ export default function OverworldGameDesktop({ ctrl, onQuit }) {
               onTileClick={handleTileClick}
               canvasRef={canvasRef}
               enemies={enemies}
+              playerAnim={animState.player}
+              enemyAnim={animState.enemyFrame}
             />
           </div>
           <MapLegend />

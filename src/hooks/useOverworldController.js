@@ -313,6 +313,18 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
   const animFrameRef  = useRef(null);
   const playerAnimRef = useRef({ frame: 0, dir: 'down', moving: false });
   const canvasRef     = useRef(null);
+  // Tap/click-move stops `moving` after a short timeout (mobile has no keyup).
+  const tapMoveTimerRef = useRef(null);
+  // Shared enemy idle-bob frame; advanced on a fixed timer in the rAF loop.
+  const enemyFrameRef = useRef(0);
+  // Last anim snapshot emitted to React, so we only re-render on visible change.
+  const lastAnimRef   = useRef({ p: null, e: 0 });
+  // React-visible mirror of the player/enemy animation refs (refs alone do not
+  // trigger re-renders of the DOM <Sprite> elements in WorldMap).
+  const [animState, setAnimState] = useState({
+    player: playerAnimRef.current,
+    enemyFrame: 0,
+  });
 
   // -- Derived --------------------------------------------------------------
   const hasBoots       = artifacts.some(a => a.id === 'boots'  && a.owned);
@@ -694,7 +706,22 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     if (tile.x === pos.x && tile.y === pos.y) return;
     const path = findPath(tiles, pos.x, pos.y, tile.x, tile.y);
     if (!path || !path.length) { addLog('No path to that location.', 'warn'); return; }
-    doMove(path[0].x, path[0].y);
+    const step = path[0];
+    // Mobile/tap parity: derive the walk direction from the first step's delta
+    // (same up/down/left/right mapping as the keyboard DIRS table) and drive the
+    // walk cycle. Mobile movement is an instant tile-swap with no keyup, so a
+    // short timeout flips `moving` back off after a few animation frames. This
+    // is intentionally a separate path from the keyboard handler's keydown/keyup
+    // logic -- explicit duplication, not a shared platform-branched helper.
+    const dx = step.x - pos.x;
+    const dy = step.y - pos.y;
+    const dir = dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down';
+    playerAnimRef.current = { ...playerAnimRef.current, dir, moving: true };
+    if (tapMoveTimerRef.current) clearTimeout(tapMoveTimerRef.current);
+    tapMoveTimerRef.current = setTimeout(() => {
+      playerAnimRef.current = { ...playerAnimRef.current, moving: false };
+    }, 280);
+    doMove(step.x, step.y);
   }, [tiles, pos, doMove, addLog]);
 
   // -------------------------------------------------------------------------
@@ -1481,6 +1508,21 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
         };
       }
 
+      // Enemy idle-bob: a single shared frame cycling on a fixed timer,
+      // independent of enemy movement (enemies are AI-driven, not input-driven).
+      if (frameCount % 12 === 0) {
+        enemyFrameRef.current = (enemyFrameRef.current + 1) % 4;
+      }
+
+      // Mirror the animation refs into React state only when the visible frame
+      // actually changes, so the DOM <Sprite> elements update without a
+      // re-render on every rAF tick.
+      if (playerAnimRef.current !== lastAnimRef.current.p ||
+          enemyFrameRef.current !== lastAnimRef.current.e) {
+        lastAnimRef.current = { p: playerAnimRef.current, e: enemyFrameRef.current };
+        setAnimState({ player: playerAnimRef.current, enemyFrame: enemyFrameRef.current });
+      }
+
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -1564,6 +1606,19 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
   }, [modal, duelCfg, dungeonScreen, encounterPopup, postDuelChoice, pos, tiles, doMove]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -------------------------------------------------------------------------
+  // TEST GLOBAL -- expose the live player-animation ref for e2e assertions.
+  // Gated on sandbox mode, mirroring how the duel screen gates __duelState.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isSandbox || typeof window === 'undefined') return undefined;
+    window.__overworldAnim = () => ({
+      player: { ...playerAnimRef.current },
+      enemyFrame: enemyFrameRef.current,
+    });
+    return () => { delete window.__overworldAnim; };
+  }, [isSandbox]);
+
+  // -------------------------------------------------------------------------
   // RETURN
   // -------------------------------------------------------------------------
 
@@ -1578,6 +1633,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     ruleset, anteEnabled, foodEnabled,
     modal, activeTile, log,
     viewOfs, enemies,
+    animState,
 
     // Setters
     setModal, setActiveTile, setPostDuelChoice, setEncounterPopup,

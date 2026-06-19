@@ -1809,4 +1809,37 @@ ACTIVE (dungeon presentation only — no state, logic, or generator changes)
 
 ---
 
+## Overworld Character Sprites + Directional Walk Cycle
+
+Replaced the CSS-div/inline-SVG character renderer in `Sprite.jsx` with image-based
+pixel-art sprite sheets, and revived `playerAnimRef` into a rendered directional walk
+cycle on both desktop (keyboard) and mobile (tap-to-move).
+
+| Aspect | Detail |
+|---|---|
+| Sheet format | One `<kind>.png` per creature (`mage`, `pegasus`, `spider`, `zombie`, `goblin`, `fish`). 128x128 = 4 rows (down, up, left, right) x 4 columns (idle, walk1, walk2, walk3), 32x32 cells, no padding |
+| Asset location | `src/assets/sprites/<kind>.png`; provenance/license in `src/assets/sprites/CREDITS.md`; generator `tools/gen-sprites.py` |
+| `dir`/`frame` semantics | `Sprite` gained props `dir` (`'up'|'down'|'left'|'right'`, default `'down'` -> sheet row) and `frame` (`0-3`, default `0` -> sheet column). Existing props (`kind`, `color`, `isPlayer`, `name`) unchanged |
+| Color model | Each sheet's main mass (robe/body/wings) is grayscale; accents (skin, eyes, mane, staff, hooves, teeth, fins) are saturated intrinsic colors. So one sheet per kind serves all 6 palette colors while still looking multi-colored |
+| Tint compositing | At first use of a `kind:color`, an offscreen canvas pixel-pass multiplies the palette color onto only the low-saturation (mass) pixels (`max-min < 38`), leaving saturated accents as-authored. Tinted full-sheet cached per `kind:color` |
+| Sheet loader | Module-level singleton in `Sprite.jsx` (subscriber set, no per-render refetch), mirroring `WorldMap.jsx`'s tilesheet loader |
+| Graceful fallback | Unknown/failed kind -> recolored `mage` sheet; all sheets failed -> flat color-tinted square. Never a crash or retry loop |
+| Player animation | `useOverworldController.js` mirrors `playerAnimRef` (+ a shared enemy idle-bob frame) into `animState` React state, emitted from the rAF loop only when the visible frame changes; threaded `WorldMap` -> `MapTile` -> `Sprite` via `playerAnim`/`enemyAnim` props |
+| Desktop walk | Keyboard keydown/keyup sets `dir`/`moving`; rAF loop cycles `frame` every 8 ticks while `moving` (unchanged path, now actually rendered) |
+| Mobile parity fix | `handleTileClick` now derives `dir` from the first path-step delta, sets `moving=true`, and flips it back to `false` via a ~280ms timeout (mobile has no keyup). Independent code path from the keyboard handler -- explicit duplication, not a shared branch |
+| Enemy idle-bob | Enemies use existing `dir` from `tickEnemyAI`; `frame` driven by a single shared idle counter cycling 0->3 on a fixed timer (no per-enemy walk-on-move logic) |
+| Test global | `window.__overworldAnim()` returns `{ player:{frame,dir,moving}, enemyFrame }`; gated on sandbox mode like `__duelState` |
+| Tests | `tests/e2e/overworld-sprites.spec.ts` (1280x800 + 390x844): canvas-backed render, old CSS gone, frame cycling, per-arrow dir, keyup clears moving, gold tint pixels, 404 fallback, mobile tap dir/moving toggle |
+
+### Asset license
+Original generated art, CC0 1.0. The task specified sourcing CC0 art from OpenGameArt/Kenney/
+itch.io, but those hosts were unreachable from the execution environment (HTTP 403; only GitHub +
+pip/npm on the egress allowlist). Sheets were generated deterministically instead -- see
+`src/assets/sprites/CREDITS.md`.
+
+### Status
+ACTIVE (overworld presentation + animation wiring; no engine/combat/generator changes)
+
+---
+
 # End of MECHANICS INDEX v1.5
