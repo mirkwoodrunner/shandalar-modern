@@ -3,51 +3,44 @@
 # Format: Card Name x<quantity>
 # Card names must match exactly (case-insensitive).
 
-# Sandbox — Activated Ability Stress Test
-# Covers: ping, pumpSelf, pumpPower, pumpToughness, regenerate,
-#         addMana, destroyTapped, gainFlying, triskelionPing, untapLand
+# Sandbox — Stack & Block Stress Test (U/B)
+# Covers: conditional counter modals (Force Spike, Power Sink), priority windows,
+#         triggered abilities (Sengir, ETB removal), upkeep choice (Lord of the Pit),
+#         activated abilities at instant speed (Icy Manipulator, Royal Assassin),
+#         regeneration (Drudge Skeletons), AI land destruction (Demonic Hordes)
 
-# --- Ping ---
-Prodigal Sorcerer x2
-Witch Hunter x2
+# --- Fast mana ---
+Dark Ritual x4
 
-# --- pumpSelf (pay mana to grow) ---
-Frozen Shade x2
-Vampire Bats x2
+# --- Conditional counters ---
+Force Spike x4
+Power Sink x3
 
-# --- pumpPower / pumpToughness ---
-Shivan Dragon x1
-Dragon Whelp x1
-Granite Gargoyle x1
+# --- Hard counter (baseline) ---
+Counterspell x3
 
-# --- Regenerate ---
-Drudge Skeletons x2
-Uthden Troll x1
-Wall of Bone x1
+# --- ETB removal / triggered abilities ---
+Nekrataal x4
+Sengir Vampire x2
 
-# --- addMana (mana dork) ---
-Llanowar Elves x2
-Birds of Paradise x1
+# --- Activated abilities (instant speed) ---
+Royal Assassin x4
+Icy Manipulator x2
 
-# --- destroyTapped ---
-Royal Assassin x2
-Merfolk Assassin x1
+# --- Upkeep choice ---
+Lord of the Pit x2
 
-# --- gainFlying ---
-Goblin Balloon Brigade x2
+# --- AI land destruction targeting ---
+Demonic Hordes x2
 
-# --- triskelionPing ---
-Triskelion x1
+# --- Regeneration ---
+Drudge Skeletons x4
 
-# --- untapLand ---
-Ley Druid x1
+# --- Fast mana (artifacts) ---
+Mox Sapphire x2
+Mox Jet x2
 
-# --- Mana base (mixed to support B/R/G/U) ---
-Volcanic Island x2
-Bayou x2
-Underground Sea x2
-Badlands x2
-Tropical Island x2
-Mox Jet x3
-Mox Ruby x3
-Mox Emerald x3
+# --- Mana base (U/B, dual-producing) ---
+Underground Sea x3
+Island x4
+Swamp x4
