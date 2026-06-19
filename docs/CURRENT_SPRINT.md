@@ -1,5 +1,26 @@
 # Current Sprint
 
+## Dungeon Map Sprite Rendering — 0x72 DungeonTilesetII (2026-06-19)
+
+Replaced flat CSS-color floor/wall tiles and emoji entity tokens in `DungeonMap.jsx` with
+pixel-art sprites from the 0x72 DungeonTilesetII v1.7 pack (CC0).
+
+| Change | File |
+|---|---|
+| `getWallVariant(grid, x, y)` — 4-neighbor autotiling pure function | `src/ui/dungeon/DungeonMap.jsx` |
+| `ENEMY_SPRITE_MAP` — exported const mapping archKey+tier to sprite bases | `src/ui/dungeon/DungeonMap.jsx` |
+| `useAnimFrame` — shared 4-frame/3-frame cycling hook | `src/ui/dungeon/DungeonMap.jsx` |
+| `EnemyToken`, `TreasureToken`, `ExitToken`, `PlayerToken` — sprite-based replacements | `src/ui/dungeon/DungeonMap.jsx` |
+| Floor tiles: position-hash variant across `floor_1..floor_8` | `src/ui/dungeon/DungeonMap.jsx` |
+| 135 sprite PNGs + atlas files | `public/assets/dungeon/` |
+| `?dungeon=sandbox` entry point + `window.__dungeonState()` test global | `src/App.jsx` |
+| Playwright tests: floor imgs, fog guard, chest rarity, exit pulse, frame cycling, 404 guard | `tests/e2e/dungeon-tileset.spec.ts` |
+| Traceability | `docs/MECHANICS_INDEX.md` — Dungeon Map Tileset Rendering |
+
+No changes to `DungeonGenerator.js`, `OverworldGame.jsx`, or any state shape.
+
+---
+
 ## Monster Variety: Decouple Encounters from Biome (2026-06-18)
 
 Clustered terrain made the player fight the same archetype repeatedly while crossing a biome.

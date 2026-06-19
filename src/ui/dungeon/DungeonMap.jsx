@@ -1,12 +1,105 @@
 // src/ui/dungeon/DungeonMap.jsx
-// Dungeon 24?16 CSS-grid renderer with keyboard movement and entity tokens.
-// Presentation only ? all state lives in OverworldGame. Per SYSTEMS.md S9.
+// Dungeon 24x16 CSS-grid renderer with keyboard movement and entity tokens.
+// Presentation only - all state lives in OverworldGame. Per SYSTEMS.md S9.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const TILE_SIZE = 28;
 
-// --- TILE STYLE ---------------------------------------------------------------
+// --- ENEMY SPRITE MAP ---------------------------------------------------------
+// Single edit point for archKey -> sprite assignment.
+// Each entry: [tier1_base, tier2_base, tier3_base] (frame suffix _f0.._f3 appended by animator)
+export const ENEMY_SPRITE_MAP = {
+  WHITE_WEENIE:     ['knight_f_idle_anim',   'knight_m_idle_anim',   'big_zombie_idle_anim'],
+  BLUE_CONTROL:     ['wizzard_f_idle_anim',   'wizzard_m_idle_anim',  'necromancer_anim'],
+  BLUE_TEMPO:       ['elf_f_idle_anim',       'elf_m_idle_anim',      'lizard_m_idle_anim'],
+  BLACK_REANIMATOR: ['skelet_idle_anim',      'tiny_zombie_idle_anim','big_demon_idle_anim'],
+  BLACK_CONTROL:    ['imp_idle_anim',         'masked_orc_idle_anim', 'ogre_idle_anim'],
+  RED_BURN:         ['goblin_idle_anim',      'orc_warrior_idle_anim','chort_idle_anim'],
+  RED_AGGRO:        ['orc_shaman_idle_anim',  'wogol_idle_anim',      'big_demon_idle_anim'],
+  GREEN_STOMPY:     ['lizard_f_idle_anim',    'dwarf_m_idle_anim',    'ogre_idle_anim'],
+  ARTIFACT_CONTROL: ['pumpkin_dude_idle_anim','swampy_anim',          'muddy_anim'],
+};
+
+// --- WALL AUTOTILING ----------------------------------------------------------
+
+// Pure function: given the grid and coords of a WALL cell, returns the sprite name
+// to use based on 4-neighbor adjacency. Fully unit-testable in isolation.
+export function getWallVariant(grid, x, y) {
+  const isWall = (cx, cy) => {
+    const cell = grid[cy]?.[cx];
+    // Out-of-bounds and WALL both count as wall for autotiling
+    return !cell || cell.type === 'WALL';
+  };
+  const N = isWall(x, y - 1);
+  const S = isWall(x, y + 1);
+  const E = isWall(x + 1, y);
+  const W = isWall(x - 1, y);
+
+  // South neighbor is floor: this wall has a visible front face
+  if (!S) {
+    if (!W && !E) return 'wall_top_mid';   // isolated pillar
+    if (!W) return 'wall_top_left';        // left edge of wall run (open to west)
+    if (!E) return 'wall_top_right';       // right edge (open to east)
+    return 'wall_top_mid';                 // run of walls (both sides walled)
+  }
+  // North is floor but south is wall: outer-corner style
+  if (!N) {
+    if (!W && !E) return 'wall_outer_top_left';
+    if (!W) return 'wall_outer_top_left';
+    if (!E) return 'wall_outer_top_right';
+    return 'wall_mid';
+  }
+  // Fully enclosed interior: pick by E/W openness
+  if (!W && !E) return 'wall_mid';
+  if (!W) return 'wall_left';
+  if (!E) return 'wall_right';
+  return 'wall_mid';
+}
+
+// --- FLOOR TILE VARIANT -------------------------------------------------------
+
+// Position-hash floor variant: deterministic, no Math.random(), no flicker.
+const FLOOR_VARIANTS = 8;
+function floorVariant(x, y) {
+  return ((x * 31 + y * 17) % FLOOR_VARIANTS) + 1;
+}
+
+// --- SPRITE IMAGE HELPERS -----------------------------------------------------
+
+const SPRITE_BASE = '/assets/dungeon/sprites/';
+
+function spriteUrl(name) {
+  return `${SPRITE_BASE}${name}.png`;
+}
+
+const spriteStyle = {
+  width: TILE_SIZE,
+  height: TILE_SIZE,
+  imageRendering: 'pixelated',
+  display: 'block',
+};
+
+// --- ANIMATED SPRITE ----------------------------------------------------------
+
+// Cycles through 4-frame idle animations at ~600ms per frame.
+// frameCount: how many frames to cycle (4 for enemy/player, 3 for chest)
+// hold: if true, stop on last frame instead of looping
+function useAnimFrame(frameCount, intervalMs = 600, hold = false) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFrame(f => {
+        if (hold && f >= frameCount - 1) return f;
+        return (f + 1) % frameCount;
+      });
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [frameCount, intervalMs, hold]);
+  return frame;
+}
+
+// --- TILE STYLE (unrevealed / revealed) --------------------------------------
 
 function tileBackground(cell) {
   if (!cell.revealed) return '#050302';
@@ -31,51 +124,97 @@ function isAdjacentToLit(grid, x, y) {
 
 // --- ENTITY TOKEN -------------------------------------------------------------
 
-function EntityToken({ entity }) {
-  if (entity.type === 'ENEMY') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-        <span style={{
-          fontSize: 14, lineHeight: 1,
+function EnemyToken({ entity }) {
+  const spriteBase = ENEMY_SPRITE_MAP[entity.archKey];
+  // Fallback if archKey not in map
+  const base = spriteBase ? spriteBase[(entity.tier || 1) - 1] : 'imp_idle_anim';
+  const frame = useAnimFrame(4, 600);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+      <img
+        src={spriteUrl(`${base}_f${frame}`)}
+        alt={entity.name || 'enemy'}
+        style={{
+          ...spriteStyle,
           filter: 'drop-shadow(0 0 4px #cc2020)',
-        }}>{'\u{1F480}'}</span>
-        <span style={{
-          fontSize: 6, color: '#e06060',
-          fontFamily: "'Cinzel', serif",
-          lineHeight: 1.1,
-          maxWidth: TILE_SIZE - 2,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          textAlign: 'center',
-        }}>{entity.name}</span>
-      </div>
-    );
-  }
-  if (entity.type === 'TREASURE') {
-    return (
+        }}
+      />
       <span style={{
-        fontSize: 14, lineHeight: 1,
+        fontSize: 6, color: '#e06060',
+        fontFamily: "'Cinzel', serif",
+        lineHeight: 1.1,
+        maxWidth: TILE_SIZE - 2,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        textAlign: 'center',
+      }}>{entity.name}</span>
+    </div>
+  );
+}
+
+function TreasureToken({ entity }) {
+  const hasCard = entity.cardRarity != null;
+  const baseAnim = hasCard ? 'chest_full_open_anim' : 'chest_empty_open_anim';
+  const frame = useAnimFrame(3, 400, true); // 3-frame, hold on last
+  return (
+    <img
+      src={spriteUrl(`${baseAnim}_f${frame}`)}
+      alt="treasure"
+      style={{
+        ...spriteStyle,
         filter: 'drop-shadow(0 0 4px #c0a020)',
         zIndex: 2,
-      }}>{'\u{1F4B0}'}</span>
-    );
-  }
-  if (entity.type === 'EXIT') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-        <span style={{
-          fontSize: 14, lineHeight: 1,
+      }}
+    />
+  );
+}
+
+function ExitToken() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+      <img
+        src={spriteUrl('floor_ladder')}
+        alt="exit"
+        style={{
+          ...spriteStyle,
           filter: 'drop-shadow(0 0 6px rgba(255,255,200,.95))',
           animation: 'exitPulse 1.8s ease-in-out infinite',
-        }}>🚪</span>
-        <span style={{
-          fontSize: 6, color: '#d0d0c0',
-          fontFamily: "'Cinzel', serif",
-          lineHeight: 1.1,
-        }}>EXIT</span>
-      </div>
-    );
-  }
+        }}
+      />
+      <span style={{
+        fontSize: 6, color: '#d0d0c0',
+        fontFamily: "'Cinzel', serif",
+        lineHeight: 1.1,
+      }}>EXIT</span>
+    </div>
+  );
+}
+
+function EntityToken({ entity }) {
+  if (entity.type === 'ENEMY') return <EnemyToken entity={entity} />;
+  if (entity.type === 'TREASURE') return <TreasureToken entity={entity} />;
+  if (entity.type === 'EXIT') return <ExitToken />;
   return null;
+}
+
+// --- PLAYER TOKEN -------------------------------------------------------------
+
+function PlayerToken() {
+  const frame = useAnimFrame(4, 600);
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'wizPulse 2s ease-in-out infinite',
+      zIndex: 10,
+      filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))',
+    }}>
+      <img
+        src={spriteUrl(`wizzard_f_idle_anim_f${frame}`)}
+        alt="player"
+        style={spriteStyle}
+      />
+    </div>
+  );
 }
 
 // --- D-PAD BUTTON -------------------------------------------------------------
@@ -109,7 +248,7 @@ function DPadButton({ label, onClick }) {
 // --- DUNGEON MAP --------------------------------------------------------------
 
 export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInteract }) {
-  // Keyboard handler ? Arrow keys + WASD
+  // Keyboard handler - Arrow keys + WASD
   useEffect(() => {
     const handler = (e) => {
       if (e.key === 'ArrowUp'    || e.key === 'w') { e.preventDefault(); onMove(0, -1); }
@@ -121,7 +260,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
     return () => window.removeEventListener('keydown', handler);
   }, [onMove]);
 
-  // Build entity lookup: "x,y" ? entity
+  // Build entity lookup: "x,y" -> entity
   const entityMap = {};
   dungeon.entities.forEach(e => { entityMap[`${e.x},${e.y}`] = e; });
 
@@ -160,21 +299,28 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
           const entity   = entityMap[`${x},${y}`];
           const showEntity = cell.revealed && entity && !entity.defeated && !entity.collected;
 
-          // Torch tint: cell adjacent to a lit FLOOR tile
+          // Torch tint overlay for cells adjacent to lit floor
           const litTint = cell.revealed && cell.type !== 'WALL' && isAdjacentToLit(dungeon.grid, x, y)
             ? 'rgba(255,160,40,0.08)'
             : null;
 
-          const bg = litTint
-            ? `${tileBackground(cell)}`  // base color; tint applied via overlay
-            : tileBackground(cell);
+          // Sprite selection
+          let tileSprite = null;
+          if (cell.revealed) {
+            if (cell.type === 'WALL') {
+              tileSprite = getWallVariant(dungeon.grid, x, y);
+            } else {
+              // FLOOR or CORRIDOR
+              tileSprite = `floor_${floorVariant(x, y)}`;
+            }
+          }
 
           return (
             <div
               key={`${x},${y}`}
               style={{
                 width: TILE_SIZE, height: TILE_SIZE,
-                background: bg,
+                background: tileBackground(cell),
                 border: tileBorder(cell),
                 boxSizing: 'border-box',
                 position: 'relative',
@@ -182,14 +328,33 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'column',
+                overflow: 'hidden',
               }}
             >
+              {/* Floor/wall sprite */}
+              {tileSprite && (
+                <img
+                  src={spriteUrl(tileSprite)}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: TILE_SIZE,
+                    height: TILE_SIZE,
+                    imageRendering: 'pixelated',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+
               {/* Torch tint overlay */}
               {litTint && (
                 <div style={{
                   position: 'absolute', inset: 0,
                   background: litTint,
                   pointerEvents: 'none',
+                  zIndex: 1,
                 }} />
               )}
 
@@ -197,18 +362,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
               {showEntity && <EntityToken entity={entity} />}
 
               {/* Player wizard token */}
-              {isPlayer && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16,
-                  animation: 'wizPulse 2s ease-in-out infinite',
-                  zIndex: 10,
-                  filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))',
-                }}>
-                  {'\u{1F9D9}'}
-                </div>
-              )}
+              {isPlayer && <PlayerToken />}
             </div>
           );
         })}
@@ -246,10 +400,10 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
         fontFamily: "'Cinzel', serif",
         letterSpacing: 0.5,
       }}>
-        <span style={{ color: '#e06060' }}>✦ Enemy</span>
-        <span style={{ color: '#c0a020' }}>✦ Treasure</span>
-        <span style={{ color: '#d0d0c0' }}>✦ Exit</span>
-        <span style={{ color: '#f0e060' }}>● You</span>
+        <span style={{ color: '#e06060' }}>{'✦'} Enemy</span>
+        <span style={{ color: '#c0a020' }}>{'✦'} Treasure</span>
+        <span style={{ color: '#d0d0c0' }}>{'✦'} Exit</span>
+        <span style={{ color: '#f0e060' }}>{'●'} You</span>
       </div>
       <div style={{
         marginTop: 4,
@@ -258,7 +412,7 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
         fontFamily: "'Crimson Text', serif",
         fontStyle: 'italic',
       }}>
-        Arrow keys / WASD to move · Step on Exit to leave dungeon
+        Arrow keys / WASD to move {'·'} Step on Exit to leave dungeon
       </div>
     </div>
   );
