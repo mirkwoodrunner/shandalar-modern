@@ -401,4 +401,19 @@ This document does NOT define:
 
 ---
 
+---
+
+# 13. Card-Data UI Annotations
+
+Certain card-data fields in `src/data/cards.js` are consumed exclusively by
+the UI/hook layer and are invisible to `DuelCore.js`:
+
+| Field | Type | Consumed by | Purpose |
+|---|---|---|---|
+| `optionalTarget` | `boolean` | `useDuelController.ts` (`isOptionalTarget`) | When true, the cast flow opens targeting mode with a Skip button; the spell may be confirmed with 0 targets, resolving with `tgt: null`. |
+
+**Contract:** `DuelCore.js` must never read, branch on, or validate `optionalTarget`.
+It receives `tgt: null` from `castSpell` when the player skips; that is the only
+engine-visible signal.
+
 # End of ENGINE CONTRACT SPEC v1.0

@@ -2116,4 +2116,115 @@ GeminiAdvisor.js defaults to index 0 on any API failure or out-of-bounds return.
 ### Status
 Scaffolded. Not yet wired to useDuelController.ts.
 
+---
+
+# 24. Cast/Activate Flow Redesign (2026-06-19)
+
+## 24.1 Overview
+
+The player cast/activate flow is a five-step sequential process. All prompts
+are rendered inline inside the player's own Banner strip. No modal or overlay
+is used.
+
+### Steps
+
+1. Player selects a card in hand (or a permanent with an activated ability).
+2. Player clicks **Cast** or **Activate**.
+3. **[Target step]** If the spell/ability requires or offers targets, targeting
+   mode opens inside the Banner. The player clicks a valid target (creature,
+   player, or stack item) to select it.
+4. **[Mana step]** If the player's mana pool does not already satisfy the cost,
+   mana mode opens in the Banner showing the outstanding cost. The player taps
+   lands/artifacts to fund it.
+5. When the cost is fully satisfied the spell/ability is dispatched to the
+   stack automatically.
+
+## 24.2 Optional Targets
+
+Cards with `optionalTarget: true` in their card-data entry open the targeting
+step but include a **Skip** button. Skipping advances with `selectedTargets = []`
+and `castSpell(..., null)`. Currently only Twiddle carries this flag.
+
+`optionalTarget` is a card-data field consumed exclusively by the UI/hook layer
+(`isOptionalTarget` helper in `useDuelController.ts`). DuelCore has no awareness
+of it.
+
+## 24.3 Required Targets
+
+Cards whose `effect` is in `EXPLICIT_TARGET_EFFECTS` (or which trigger
+`isCounterEffect`/`isBebRebEffect`) require at least one target before the flow
+can advance. The **Confirm** button inside the Banner is hidden at 0 targets.
+
+## 24.4 Shared State: `CastFlowState`
+
+`castFlow: CastFlowState | null` in `useDuelController.ts` replaces the previous
+`pendingCast` state. Fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `kind` | `'spell' \| 'ability'` | Cast or activate |
+| `sourceIid` | `string` | IID of the card/permanent |
+| `abilityId` | `string \| null` | Activated ability ID (null for spells) |
+| `mode` | `'targeting' \| 'mana' \| null` | Current flow step |
+| `selectedTargets` | `string[]` | Accumulated target IIDs |
+| `requiresTarget` | `boolean` | `needsAnyTarget && !isOptionalTarget` |
+| `maxTargets` | `number` | Max targets (always 1 in current impl) |
+| `canTargetPlayers` | `boolean` | Whether player/opp life totals are valid targets |
+
+## 24.5 Key Helpers (`useDuelController.ts`)
+
+| Export | Purpose |
+|---|---|
+| `needsAnyTarget(card)` | `needsExplicitTarget || isCounterEffect || isBebRebEffect` |
+| `isOptionalTarget(card)` | `Boolean(card?.optionalTarget)` |
+| `getManaShortfall(pool, cost, xVal)` | Returns `{needed, have}` or null |
+| `EXPLICIT_TARGET_EFFECTS` | Set of effect strings that require a target at cast time |
+| `beginCastFlow(card)` | Opens the flow for a spell |
+| `beginActivateFlow(card, abilityId)` | Opens the flow for an activated ability |
+| `selectCastTarget(iid)` | Adds a target (creature IID, 'p', 'o', or stack item IID) |
+| `confirmCastTargets()` | Advances from targeting to mana step (or casts if mana ready) |
+| `cancelCastFlow()` | Cancels flow; dispatches `UNDO_MANA_TAPS` if mana was tapped |
+
+## 24.6 Auto-fire
+
+A `useEffect` watching `[s.p.mana, castFlow]` fires `castSpell`/`activateAbility`
+automatically when mana becomes sufficient. This lets the player tap a single land
+and have the spell cast without any extra click when that tap satisfies the cost.
+
+## 24.7 Bug Fixes (delivered with this feature)
+
+| Bug | Fix |
+|---|---|
+| Icy Manipulator activated ability opened no target prompt | Added `tapTarget` to `ACTIVATE_TARGET_EFFECTS` in `useDuelController.ts` |
+| Counterspell/Force Spike on mobile lacked explicit stack-item selection UI | `castFlow.selectedTargets[0]` is used instead of a top-of-stack fallback; StackDisplay receives `selectedItemId` and `onItemClick` from the flow |
+
+## 24.8 Banner Cast Prompt UI
+
+Both `src/ui/Battlefield/Banner.tsx` (desktop) and `src/ui/Mobile/Banner.tsx`
+(mobile) accept a `castPrompt?: CastPromptProps` prop. The castPrompt is rendered
+as an inline flex container inside the Banner, right-aligned after the mana pool.
+
+Targeting mode shows: label ("Select target" / "Select target (optional)") +
+optional Confirm button (visible only when `targetsSelected >= 1`) + optional
+Skip button (visible only when `canSkip`) + Cancel button.
+
+Mana mode shows: "NEED" label + `<Cost>` chip for the outstanding cost + Cancel
+button.
+
+`data-testid` anchors: `cast-prompt`, `cast-prompt-label`, `cast-prompt-confirm`,
+`cast-prompt-skip`, `cast-prompt-need`, `cast-prompt-cancel`.
+
+## 24.9 System File Map
+
+| File | Change |
+|---|---|
+| `src/hooks/useDuelController.ts` | `CastFlowState`, flow handlers, `ACTIVATE_TARGET_EFFECTS`, exported helpers |
+| `src/ui/Battlefield/Banner.tsx` | `CastPromptProps`, `castPrompt` prop, inline UI |
+| `src/ui/Mobile/Banner.tsx` | Same as desktop Banner |
+| `src/DuelScreen.tsx` | Wires castFlow to Banner, ActionBar, StackDisplay |
+| `src/ui/Mobile/DuelScreenMobile.tsx` | Same wiring; removed local `targetingFor`/`pendingTarget` state |
+| `src/data/cards.js` | Added `optionalTarget: true` to Twiddle |
+| `src/hooks/__tests__/useDuelController.castFlow.test.ts` | Vitest unit tests CAST-FLOW-01 through CAST-FLOW-08 |
+| `e2e/duel-controller.spec.ts` | Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 |
+
 # End of SYSTEMS v1.5

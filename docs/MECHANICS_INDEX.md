@@ -1850,4 +1850,32 @@ ACTIVE (overworld presentation + animation wiring; no engine/combat/generator ch
 
 ---
 
+---
+
+## Cast/Activate Flow Redesign (2026-06-19)
+
+Replaced the old `pendingCast` one-shot state with a sequential `CastFlowState`
+(targeting → mana → auto-dispatch). All prompts are inline in the player Banner;
+no modals or overlays introduced.
+
+| Aspect | Detail |
+|---|---|
+| Hook | `useDuelController.ts` owns `castFlow: CastFlowState | null`; exposes `beginCastFlow`, `beginActivateFlow`, `selectCastTarget`, `confirmCastTargets`, `cancelCastFlow` |
+| Optional target | `optionalTarget: true` added to Twiddle in `cards.js`; `isOptionalTarget(card)` in `useDuelController.ts`; Banner shows Skip button instead of requiring a target |
+| Required target | `needsAnyTarget(card)` = `needsExplicitTarget || isCounterEffect || isBebRebEffect`; Confirm button hidden at 0 targets |
+| Mana shortfall | `getManaShortfall(pool, cost, xVal)` (exported from `useDuelController.ts`); Banner shows "NEED `<Cost>`" chip |
+| Auto-fire | `useEffect` watching `[s.p.mana, castFlow]` casts automatically when pool becomes sufficient |
+| Cancel/undo | `cancelCastFlow()` dispatches `UNDO_MANA_TAPS` when `manaTapSnapshot` is non-null |
+| Bug fix — Icy Manipulator | `tapTarget` added to `ACTIVATE_TARGET_EFFECTS`; activated ability now opens a target prompt |
+| Bug fix — Counterspell mobile | `castFlow.selectedTargets[0]` passed explicitly; StackDisplay receives `onItemClick` from flow (not top-of-stack fallback) |
+
+### Tests
+- Vitest: `src/hooks/__tests__/useDuelController.castFlow.test.ts` (CAST-FLOW-01 through CAST-FLOW-08, 27 tests)
+- Playwright: `e2e/duel-controller.spec.ts` (E2E-CAST-01 through E2E-CAST-08, both desktop 1280x800 and mobile 390x844)
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5

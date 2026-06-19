@@ -1,5 +1,5 @@
 import { ZoneChip } from './ZoneChip';
-import { PoolDisplay } from '../Card/Cost';
+import { Cost, PoolDisplay } from '../Card/Cost';
 import s from './styles.module.css';
 
 interface BannerPlayer {
@@ -11,13 +11,26 @@ interface BannerPlayer {
   handCount?: number;
 }
 
+export interface CastPromptProps {
+  mode: 'targeting' | 'mana';
+  targetLabel?: string;
+  canSkip?: boolean;
+  onSkip?: () => void;
+  onConfirmTargets?: () => void;
+  targetsSelected?: number;
+  costNeeded?: string;
+  shortfall?: { needed: Record<string, number>; have: Record<string, number> } | null;
+  onCancel: () => void;
+}
+
 interface BannerProps {
   side: 'you' | 'opp';
   player: BannerPlayer;
   onLifeClick?: () => void;
+  castPrompt?: CastPromptProps;
 }
 
-export function Banner({ side, player, onLifeClick }: BannerProps) {
+export function Banner({ side, player, onLifeClick, castPrompt }: BannerProps) {
   const isOpp = side === 'opp';
   const accent = isOpp ? 'var(--opp)' : 'var(--you)';
 
@@ -106,6 +119,62 @@ export function Banner({ side, player, onLifeClick }: BannerProps) {
         </div>
       ) : (
         <span className={s.noMana}>NO MANA</span>
+      )}
+
+      {/* Cast/Activate flow prompt */}
+      {castPrompt && (
+        <div data-testid="cast-prompt" style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '3px 6px',
+          background: 'rgba(20,10,40,.7)',
+          border: '1px solid rgba(100,80,180,.4)',
+          borderRadius: 3,
+        }}>
+          {castPrompt.mode === 'targeting' && (
+            <>
+              <span data-testid="cast-prompt-label" style={{ fontSize: 9, color: 'rgba(180,160,255,.9)', fontFamily: 'var(--font-display)' }}>
+                {castPrompt.targetLabel ?? 'Select target'}
+              </span>
+              {castPrompt.targetsSelected != null && castPrompt.targetsSelected >= 1 && (
+                <button
+                  data-testid="cast-prompt-confirm"
+                  onClick={castPrompt.onConfirmTargets}
+                  style={{
+                    background: 'rgba(60,40,120,.8)', border: '1px solid rgba(120,100,200,.6)',
+                    color: 'rgba(200,180,255,.9)', borderRadius: 2, cursor: 'pointer',
+                    fontSize: 9, padding: '1px 5px',
+                  }}
+                >OK</button>
+              )}
+              {castPrompt.canSkip && (
+                <button
+                  data-testid="cast-prompt-skip"
+                  onClick={castPrompt.onSkip}
+                  style={{
+                    background: 'transparent', border: '1px solid rgba(100,80,160,.4)',
+                    color: 'rgba(160,140,220,.7)', borderRadius: 2, cursor: 'pointer',
+                    fontSize: 9, padding: '1px 5px',
+                  }}
+                >Skip</button>
+              )}
+            </>
+          )}
+          {castPrompt.mode === 'mana' && castPrompt.costNeeded && (
+            <>
+              <span data-testid="cast-prompt-need" style={{ fontSize: 9, color: 'var(--ink-faint)', fontFamily: 'var(--font-display)' }}>NEED</span>
+              <Cost cost={castPrompt.costNeeded} size={11} />
+            </>
+          )}
+          <button
+            data-testid="cast-prompt-cancel"
+            onClick={castPrompt.onCancel}
+            style={{
+              background: 'transparent', border: '1px solid rgba(120,90,40,.4)',
+              color: 'var(--ink-parchment)', borderRadius: 2, cursor: 'pointer',
+              fontSize: 9, padding: '1px 5px',
+            }}
+          >X</button>
+        </div>
       )}
     </div>
   );

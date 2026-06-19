@@ -1,5 +1,32 @@
 # Current Sprint
 
+## Cast/Activate Flow Redesign (2026-06-19)
+
+Replaced the old `pendingCast` one-shot pattern with a sequential five-step cast/activate flow:
+select card → Cast/Activate → [target step] → [mana step] → auto-dispatch. All UI prompts live
+inside the player's Banner strip; no new modals or overlays introduced. Desktop (`DuelScreen.tsx`)
+and mobile (`DuelScreenMobile.tsx`) share the same `CastFlowState` from `useDuelController.ts`.
+
+| Change | File |
+|---|---|
+| `CastFlowState` interface, `needsAnyTarget`, `isOptionalTarget`, `getManaShortfall`, `ACTIVATE_TARGET_EFFECTS`, flow handlers (`beginCastFlow`, `beginActivateFlow`, `selectCastTarget`, `confirmCastTargets`, `cancelCastFlow`) | `src/hooks/useDuelController.ts` |
+| `CastPromptProps`, `castPrompt` prop, inline targeting/mana UI, `data-testid` anchors | `src/ui/Battlefield/Banner.tsx`, `src/ui/Mobile/Banner.tsx` |
+| Wire `castFlow` to Banner, ActionBar, StackDisplay; remove `pendingCast` | `src/DuelScreen.tsx` |
+| Remove local `targetingFor`/`pendingTarget`; wire `castFlow` same as desktop | `src/ui/Mobile/DuelScreenMobile.tsx` |
+| `optionalTarget: true` added to Twiddle | `src/data/cards.js` |
+| `data-testid="cast-button"`, `data-testid="cancel-button"` on mobile cast/cancel buttons | `src/ui/Mobile/ActionBar.tsx` |
+| `data-testid="mulligan-keep"` on Keep button | `src/ui/Mulligan/MulliganModal.tsx` |
+| Vitest unit tests CAST-FLOW-01 through CAST-FLOW-08 (27 assertions) | `src/hooks/__tests__/useDuelController.castFlow.test.ts` |
+| Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 (desktop 1280x800 + mobile 390x844) | `e2e/duel-controller.spec.ts` |
+| Spec | `docs/SYSTEMS.md` section 24; `docs/ENGINE_CONTRACT_SPEC.md` section 13 |
+| Traceability | `docs/MECHANICS_INDEX.md` — Cast/Activate Flow Redesign |
+
+**Bug fixes included:**
+- Icy Manipulator activated ability now opens a target prompt (`tapTarget` added to `ACTIVATE_TARGET_EFFECTS`)
+- Counterspell / Force Spike on mobile now uses explicit stack-item selection (no top-of-stack fallback)
+
+---
+
 ## Overworld Character Sprites + Directional Walk Cycle (2026-06-19)
 
 Replaced the CSS-div/inline-SVG character renderer with image-based pixel-art sprite sheets

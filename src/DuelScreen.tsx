@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { isLand, isArt, canPay, isInst } from './engine/DuelCore.js';
+import { isLand, isArt, isInst } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 
 // -- New design system components ----------------------------------------------
@@ -28,7 +28,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -311,7 +311,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     showBop, handleBopChoose, handleBopCancel,
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
     handleBfClick, pendingBlockerIid,
-    pendingCast, setPendingCast, canCastPending,
+    castFlow, setCastFlow, beginCastFlow, beginActivateFlow,
+    selectCastTarget, confirmCastTargets, cancelCastFlow,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
@@ -334,7 +335,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
 
   // -- Keyboard shortcuts ----------------------------------------------------
-  const isIdle = s.active === 'p' && !pendingActivate;
+  const isIdle = s.active === 'p' && !pendingActivate && !castFlow;
   useKeyboardShortcuts({
     onPassPriority: () => {
       if (s.priorityWindow && s.priorityPasser !== 'p') {
@@ -345,7 +346,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       // If priorityWindow is open and player already passed: no-op (waiting for AI)
     },
     onEndTurn: requestPhaseAdvance,
-    onCancel: () => { setPendingActivate(null); selectCard(null); selectTarget(null); },
+    onCancel: () => { if (castFlow) { cancelCastFlow(); } else { setPendingActivate(null); selectCard(null); selectTarget(null); } },
     onQuickCast: (idx: number) => { const c = s.p.hand[idx]; if (c) selectCard(c.iid); },
     isIdle,
   });
@@ -379,6 +380,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   // -- Card click dispatcher -------------------------------------------------
   const handleCardClick = useCallback((card: any, zone: string) => {
     if (s.over) return;
+
+    // During an active cast/activate targeting step, all bf clicks route to selectCastTarget.
+    if (castFlow?.mode === 'targeting' && (zone === 'pBf' || zone === 'oBf')) {
+      selectCastTarget(card.iid);
+      return;
+    }
 
     if (zone === 'hand') {
       selectCard(s.selCard === card.iid ? null : card.iid);
@@ -426,8 +433,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       return;
     }
   }, [
-    s.over, s.selCard, s.selTgt, s.phase, s.p.hand, pendingActivate,
-    selectCard, selectTarget, tapLand, tapArtifactMana,
+    s.over, s.selCard, s.selTgt, s.phase, s.p.hand, pendingActivate, castFlow,
+    selectCard, selectTarget, selectCastTarget, tapLand, tapArtifactMana,
     activateAbility, handleActivate,
   ]);
 
@@ -447,55 +454,21 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   // -- Cast / play selected card ---------------------------------------------
   const handleCast = useCallback(() => {
-    // If a pendingCast is queued and mana is now satisfied, fire it.
-    if (pendingCast) {
-      if (!canCastPending) return;
-      const card = (s.p.hand as any[]).find((c: any) => c.iid === pendingCast.cardIid);
-      if (!card) { setPendingCast(null); return; }
-      castSpell(pendingCast.cardIid, pendingCast.target, s.xVal);
-      setPendingCast(null);
-      selectCard(null);
-      selectTarget(null);
-      return;
-    }
-
+    if (castFlow) return; // flow already active
     const card = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
     if (!card) return;
-    if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
+    beginCastFlow(card);
+  }, [s, castFlow, beginCastFlow]);
 
-    // For targetable spells: queue pendingCast so target survives mana taps.
-    if (needsExplicitTarget(card)) {
-      const tgt = s.selTgt ?? null;
-      if (!tgt) return; // no target selected yet — wait
-      setPendingCast({ cardIid: card.iid, target: tgt });
-      return;
-    }
+  // True when the active cast/activate flow is in targeting mode that can reach players.
+  const playerTargetingActive = castFlow?.mode === 'targeting' && castFlow.canTargetPlayers;
 
-    // Non-targetable spells: cast immediately.
-    const tgt = s.selTgt ?? resolveDefaultTarget(card, s);
-    castSpell(card.iid, tgt, s.xVal);
-    selectCard(null);
-    selectTarget(null);
-  }, [s, pendingCast, canCastPending, playLand, castSpell, selectCard, selectTarget, setPendingCast]);
-
-  // True when a player-targeted spell or ping-type ability is active.
-  // Activates clickable life totals on both Banners so the player can pick a target.
-  const playerTargetingActive =
-    (!!s.selCard && (() => {
-      const card = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
-      return card ? needsExplicitTarget(card) && !isLand(card) : false;
-    })()) ||
-    activateCanTargetPlayer;
-
-  // Clear pendingCast and pendingMode if the player deselects the card or selects a different one.
+  // Clear pendingMode if the player deselects the card.
   useEffect(() => {
-    if (pendingCast && s.selCard !== pendingCast.cardIid) {
-      setPendingCast(null);
-    }
     if (pendingMode !== null && !s.selCard) {
       setPendingMode(null);
     }
-  }, [s.selCard, pendingCast, setPendingCast, pendingMode, setPendingMode]);
+  }, [s.selCard, pendingMode, setPendingMode]);
 
   // -- Graveyard / mana-choice handlers --------------------------------------
 
@@ -650,7 +623,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
             onLifeClick={
               playerTargetingActive
-                ? () => activateCanTargetPlayer ? handleActivateWithPlayerTarget('o') : selectTarget('o')
+                ? () => selectCastTarget('o')
                 : undefined
             }
           />
@@ -671,14 +644,16 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             />
             {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
             {!isMobile && s.stack.length > 0 && (() => {
-              const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
-              const stackTargeting = needsStackTarget(selCardDef, pendingMode);
+              const sourceCard = castFlow
+                ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+                : null;
+              const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && isCounterEffect(sourceCard);
               return (
                 <StackDisplay
                   stack={s.stack}
                   isMobile={false}
-                  onItemClick={stackTargeting ? (id) => selectTarget(id) : undefined}
-                  selectedItemId={stackTargeting ? s.selTgt : null}
+                  onItemClick={stackTargeting ? (id) => selectCastTarget(id) : undefined}
+                  selectedItemId={castFlow?.selectedTargets[0] ?? null}
                 />
               );
             })()}
@@ -699,9 +674,32 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
             onLifeClick={
               playerTargetingActive
-                ? () => activateCanTargetPlayer ? handleActivateWithPlayerTarget('p') : selectTarget('p')
+                ? () => selectCastTarget('p')
                 : undefined
             }
+            castPrompt={castFlow ? (() => {
+              const sourceCard = castFlow.kind === 'spell'
+                ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+                : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+              const cost = castFlow.kind === 'spell'
+                ? sourceCard?.cost
+                : (castFlow.abilityId
+                    ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
+                    : sourceCard?.activated?.cost);
+              return {
+                mode: castFlow.mode ?? 'targeting',
+                targetLabel: castFlow.mode === 'targeting'
+                  ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
+                  : undefined,
+                canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
+                onSkip: confirmCastTargets,
+                onConfirmTargets: castFlow.mode === 'targeting' && castFlow.selectedTargets.length >= 1 ? confirmCastTargets : undefined,
+                targetsSelected: castFlow.selectedTargets.length,
+                costNeeded: cost,
+                shortfall: cost ? getManaShortfall(s.p.mana, cost, s.xVal || 0) : null,
+                onCancel: cancelCastFlow,
+              };
+            })() : undefined}
           />
 
           {/* Channel mana button */}
@@ -749,15 +747,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           <ActionBar
             phase={s.phase}
             compact={isMobile}
-            hasSelection={!!s.selCard || !!pendingCast}
-            selectedCard={(s.p.hand as any[]).find((c: any) => c.iid === (pendingCast?.cardIid ?? s.selCard)) ?? null}
+            hasSelection={!!s.selCard && !castFlow}
+            selectedCard={castFlow ? null : ((s.p.hand as any[]).find((c: any) => c.iid === s.selCard) ?? null)}
             isPlayerTurn={s.active === 'p'}
             isWaitingForAI={s.priorityWindow === true && s.priorityPasser === 'p'}
             priorityWindowOpen={s.priorityWindow === true}
             canUndo={canUndoMana}
             onUndo={undoManaTaps}
             onCast={handleCast}
-            castDisabled={!!pendingCast && !canCastPending}
+            castDisabled={false}
             onPassPriority={() => {
               if (s.priorityWindow && s.priorityPasser !== 'p') {
                 passPriority('p');
@@ -775,7 +773,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                   : 'Click one of your creatures, then click the attacker to block'
                 : null
             }
-            onCancel={() => { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); }}
+            onCancel={() => { if (castFlow) { cancelCastFlow(); } else { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); } }}
             onEndTurn={requestPhaseAdvance}
           />
 
