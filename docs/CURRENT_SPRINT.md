@@ -1,5 +1,20 @@
 # Current Sprint
 
+## Overworld Fog Edge Mask + Eager Tilesheet Preload (2026-06-19)
+
+Presentation-layer bug fixes in `src/ui/overworld/WorldMap.jsx`. No engine or state changes.
+
+| Change | Detail |
+|---|---|
+| Eager preload | `_startSheetLoad()` called at module scope (after definition), so PNG loading begins at import time. Eliminates intermittent flat-color tile pop-in during early exploration. |
+| Directional fog mask | `isFogEdge: boolean` prop replaced by `fogSides: {w,e,n,s} \| null`. `MapTile` builds per-side `linear-gradient` masks composited with `mask-composite: intersect` so each active direction fades independently. Old single radial-gradient removed. |
+| CSS cleanup | `.ow-fog-edge` CSS rule removed; box-shadow + mask-image now applied inline. `data-fog-sides` attribute added for test assertions. |
+| Tests | 3 new Playwright tests per viewport in `tests/e2e/overworld-tileset.spec.ts`: eager-preload 2 s budget, directional gradient shape, interior-tile no-mask. |
+
+**Status:** ✅ Done
+
+---
+
 ## Cast/Activate Flow Redesign (2026-06-19)
 
 Replaced the old `pendingCast` one-shot pattern with a sequential five-step cast/activate flow:

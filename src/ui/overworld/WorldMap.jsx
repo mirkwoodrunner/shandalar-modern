@@ -55,6 +55,9 @@ function _startSheetLoad() {
     img.src = url;
   }
 }
+// Kick off loading immediately at module evaluation time so tiles never race
+// against the load window during early exploration.
+_startSheetLoad();
 
 // Subscribes to sheet load completion; returns true once both loads settle.
 function useTilesheets() {
@@ -112,7 +115,7 @@ function getTileVariantClass(terrainId, x, y) {
   return variants[idx];
 }
 
-export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null, playerAnim = null, enemyAnim = 0 }) {
+export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null, playerAnim = null, enemyAnim = 0 }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -188,7 +191,31 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
   }
 
   const terrainClass = TERRAIN_CLASS[t.id] ?? '';
-  const fogEdgeClass = isFogEdge ? 'ow-fog-edge' : '';
+  // Build a directional mask: one linear-gradient per unrevealed side, each
+  // fading the tile toward transparent only on that side. Multiple gradients
+  // are intersected (multiplied) so fades compound at corners.
+  const fogEdgeStyle = (() => {
+    if (!fogSides) return null;
+    const grads = [];
+    if (fogSides.w) grads.push('linear-gradient(to right, transparent 0%, black 35%)');
+    if (fogSides.e) grads.push('linear-gradient(to left,  transparent 0%, black 35%)');
+    if (fogSides.n) grads.push('linear-gradient(to bottom, transparent 0%, black 35%)');
+    if (fogSides.s) grads.push('linear-gradient(to top,   transparent 0%, black 35%)');
+    if (!grads.length) return null;
+    const maskImage = grads.join(', ');
+    // 'intersect' (source-in for webkit) multiplies alpha channels so each
+    // direction's fade applies independently; pixels only stay opaque where
+    // every active gradient allows it.
+    const comp  = grads.map(() => 'intersect').join(', ');
+    const wkComp = grads.map(() => 'source-in').join(', ');
+    return {
+      WebkitMaskImage: maskImage,
+      maskImage,
+      WebkitMaskComposite: wkComp,
+      maskComposite: comp,
+      boxShadow: 'inset 0 0 18px 3px rgba(0,0,0,.70)',
+    };
+  })();
   const ml = tile.manaLink;
   const tileBg = TERRAIN_BG[t.id] ?? t.color;
 
@@ -199,10 +226,15 @@ export function MapTile({ tile, isPlayer, enemy = null, isFogEdge = false, tileS
     '--ring-glow': hexToRgba(castleColor, 0.55),
   } : undefined;
 
+  const fogSideKeys = fogEdgeStyle
+    ? ['w', 'e', 'n', 's'].filter((k) => fogSides[k]).join(',')
+    : null;
+
   return (
     <div
-      className={`ow-tile ${terrainClass} ${fogEdgeClass}`}
-      style={{ background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex }}
+      className={`ow-tile ${terrainClass}`}
+      data-fog-sides={fogSideKeys ?? undefined}
+      style={{ background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex, ...(fogEdgeStyle ?? {}) }}
       onClick={() => onClick(tile)}
     >
       {/* Terrain sprites -- drawn beneath all overlays. Transparent until the
@@ -435,11 +467,8 @@ const OW_STYLES = `
 }
 .ow-fog::after { background: none; }
 
-.ow-fog-edge {
-  box-shadow: inset 0 0 18px 3px rgba(0,0,0,.70);
-  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
-}
+/* .ow-fog-edge removed: box-shadow and directional mask-image are now applied
+   inline per MapTile based on which neighbors are unrevealed. */
 
 .ow-mana {
   position: absolute;
@@ -641,10 +670,15 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                 );
               }
 
-              const isFogEdge = tile.revealed && DIRS.some(([dx, dy]) => {
-                const n = tileAt(x + dx, y + dy);
-                return n && !n.revealed;
-              });
+              // Per-direction unrevealed flags. tileAt() returns null for
+              // out-of-bounds coords; !null?.revealed === true so map edges
+              // correctly count as unrevealed for fog purposes.
+              const fogSides = tile.revealed ? {
+                w: !tileAt(x - 1, y)?.revealed,
+                e: !tileAt(x + 1, y)?.revealed,
+                n: !tileAt(x, y - 1)?.revealed,
+                s: !tileAt(x, y + 1)?.revealed,
+              } : null;
 
               // Same-group neighbor flags for feathered patch edges (WATER and
               // ISLAND count as one group). Drives the 3x3 blob sub-tile pick.
@@ -666,7 +700,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                   tile={tile}
                   isPlayer={x === playerPos.x && y === playerPos.y}
                   enemy={enemyByTile[`${x},${y}`] ?? null}
-                  isFogEdge={isFogEdge}
+                  fogSides={fogSides}
                   tileSize={tileSize}
                   rowIndex={vy}
                   onClick={onTileClick}
