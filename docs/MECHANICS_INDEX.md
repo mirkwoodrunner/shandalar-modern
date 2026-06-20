@@ -1817,6 +1817,22 @@ ACTIVE (dungeon presentation only — no state, logic, or generator changes)
 
 ---
 
+## Overworld Structure Icon Sprites (2026-06-20)
+
+TOWN, DUNGEON, CASTLE, and RUIN structure tiles on the overworld map now render
+via generated PNG icons instead of Unicode emoji inside a near-black gradient plaque.
+
+| Aspect | Detail |
+|---|---|
+| Icons | 5 static 32x32 RGBA PNGs in `src/assets/sprites/structures/`: `town.png`, `dungeon.png`, `castle.png`, `castle-defeated.png`, `ruin.png` |
+| Generator | `tools/gen-structures.py` -- same Pillow/4x-supersample/LANCZOS technique as `gen-sprites.py`; fully deterministic, CC0 |
+| Castle color | Castles no longer vary icon by controlling mage color. Icon is the same for all active castles; defeated state uses a separate pre-rendered desaturated `castle-defeated.png` (not a runtime CSS filter) |
+| Rendering | `<img>` element with `objectFit: contain`, `imageRendering: pixelated`, `filter: drop-shadow(...)`, sized to 70% of the tile. `castleColor` kept for the `ow-label` mage-name; `plaqueStyle` removed |
+| Dead code | `.ow-plaque*` CSS rules and `@keyframes castleBreath` removed from `OW_STYLES` in `WorldMap.jsx` |
+| License | Original generated art, CC0 1.0. See `src/assets/sprites/CREDITS.md` |
+
+---
+
 ## Overworld Character Sprites + Directional Walk Cycle
 
 Replaced the CSS-div/inline-SVG character renderer in `Sprite.jsx` with image-based
