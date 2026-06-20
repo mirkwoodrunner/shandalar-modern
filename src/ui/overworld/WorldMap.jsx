@@ -16,6 +16,11 @@ import {
 } from './terrainRenderer.js';
 import tilesetUrl from '../../assets/tiles/forest_tileset.png';
 import decorationsUrl from '../../assets/tiles/forest_decorations.png';
+import townIconUrl from '../../assets/sprites/structures/town.png';
+import dungeonIconUrl from '../../assets/sprites/structures/dungeon.png';
+import castleIconUrl from '../../assets/sprites/structures/castle.png';
+import castleDefeatedIconUrl from '../../assets/sprites/structures/castle-defeated.png';
+import ruinIconUrl from '../../assets/sprites/structures/ruin.png';
 
 const TILE_SIZE = 34;
 
@@ -221,10 +226,6 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
 
   const castleColor   = tile.castleData?.color ? MANA_HEX[tile.castleData.color] : '#c4a040';
   const castleDefeated = tile.castleData?.defeated ?? false;
-  const plaqueStyle   = s === 'CASTLE' ? {
-    '--ring':      castleColor,
-    '--ring-glow': hexToRgba(castleColor, 0.55),
-  } : undefined;
 
   const fogSideKeys = fogEdgeStyle
     ? ['w', 'e', 'n', 's'].filter((k) => fogSides[k]).join(',')
@@ -268,7 +269,7 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
         />
       )}
 
-      {/* Structure — plaque + label; dungeons hidden until clued */}
+      {/* Structure icon -- PNG sprite; dungeons hidden until clued */}
       {(s && (s !== 'DUNGEON' || tile.dungeonData?.clued)) && (
         <div style={{
           position: 'absolute', inset: 0,
@@ -276,22 +277,24 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
           alignItems: 'center', justifyContent: 'center',
           zIndex: 2,
         }}>
-          <div
-            className={[
-              'ow-plaque',
-              s === 'TOWN'    ? 'ow-plaque-town'    : '',
-              s === 'DUNGEON' ? 'ow-plaque-dungeon' : '',
-              s === 'CASTLE'  ? 'ow-plaque-castle'  : '',
-              s === 'CASTLE' && castleDefeated ? 'ow-plaque-castle-defeated' : '',
-              s === 'RUIN'    ? 'ow-plaque-ruin'    : '',
-            ].join(' ').trim()}
-            style={plaqueStyle}
-          >
-            {s === 'TOWN'    && '\u{1F3D8}'}
-            {s === 'DUNGEON' && '⚔'}
-            {s === 'CASTLE'  && (castleDefeated ? '\u{1F3DA}' : '\u{1F3F0}')}
-            {s === 'RUIN'    && '\u{1F3DB}'}
-          </div>
+          <img
+            src={
+              s === 'TOWN'    ? townIconUrl :
+              s === 'DUNGEON' ? dungeonIconUrl :
+              s === 'CASTLE'  ? (castleDefeated ? castleDefeatedIconUrl : castleIconUrl) :
+              s === 'RUIN'    ? ruinIconUrl :
+              undefined
+            }
+            alt={s}
+            style={{
+              width: '70%',
+              height: '70%',
+              objectFit: 'contain',
+              imageRendering: 'pixelated',
+              pointerEvents: 'none',
+              filter: 'drop-shadow(1px 2px 2px rgba(0,0,0,0.6))',
+            }}
+          />
 
           {s === 'TOWN' && tile.townData?.name && (
             <div className="ow-label">
@@ -306,7 +309,7 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
               textShadow: '0 0 3px #000',
               pointerEvents: 'none',
               zIndex: 3,
-            }}>⚔</div>
+            }}>{'⚔'}</div>
           )}
           {s === 'CASTLE' && tile.castleData?.mage && (
             <div className="ow-label" style={{ color: castleColor }}>
@@ -479,70 +482,6 @@ const OW_STYLES = `
   animation: manaPulse 3.2s ease-in-out infinite;
 }
 
-.ow-plaque {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #1a140a, #0a0604 75%);
-  box-shadow:
-    0 0 0 1.5px rgba(196,160,64,.60),
-    0 0 0 3px rgba(0,0,0,.65),
-    0 1px 3px rgba(0,0,0,.80);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  line-height: 1;
-  filter: drop-shadow(0 0 2px rgba(255,220,140,0.70));
-}
-
-.ow-plaque-dungeon {
-  background: radial-gradient(circle at 35% 30%, #2a0a0a, #100404 75%);
-  box-shadow:
-    0 0 0 1.5px rgba(200,80,80,.80),
-    0 0 0 3px rgba(0,0,0,.65),
-    0 0 6px rgba(180,60,60,.50),
-    0 1px 3px rgba(0,0,0,.80);
-  filter: drop-shadow(0 0 2px rgba(255,160,140,0.65));
-}
-
-.ow-plaque-castle {
-  width: 24px;
-  height: 24px;
-  box-shadow:
-    0 0 0 1.5px var(--ring, #c4a040),
-    0 0 0 3px rgba(0,0,0,.70),
-    0 0 10px var(--ring-glow, rgba(196,160,64,.50));
-  animation: castleBreath 4s ease-in-out infinite;
-}
-
-.ow-plaque-castle-defeated {
-  animation: none;
-  filter: grayscale(0.70) brightness(0.70);
-  box-shadow:
-    0 0 0 1.5px rgba(80,70,55,.60),
-    0 0 0 2px rgba(0,0,0,.70);
-}
-
-.ow-plaque-ruin {
-  background: radial-gradient(circle at 35% 30%, #2a2520, #0f0d0b 75%);
-  box-shadow:
-    0 0 0 1.5px rgba(180,160,120,.80),
-    0 0 0 3px rgba(0,0,0,.65),
-    0 0 6px rgba(140,120,90,.45),
-    0 1px 3px rgba(0,0,0,.80);
-  filter: drop-shadow(0 0 2px rgba(220,200,160,0.60));
-}
-
-.ow-plaque-town {
-  box-shadow:
-    0 0 0 1.5px rgba(220,180,80,.85),
-    0 0 0 3px rgba(0,0,0,.65),
-    0 0 7px rgba(200,160,60,.45),
-    0 1px 3px rgba(0,0,0,.80);
-  filter: drop-shadow(0 0 2px rgba(255,220,140,0.75));
-}
-
 .ow-label {
   position: absolute;
   bottom: 1px;
@@ -572,11 +511,6 @@ const OW_STYLES = `
 @keyframes fogDrift {
   0%,  100% { transform: translate(0,   0);  opacity: .55; }
   50%        { transform: translate(2px,-1px); opacity: .75; }
-}
-
-@keyframes castleBreath {
-  0%,  100% { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0  6px var(--ring-glow); }
-  50%        { box-shadow: 0 0 0 1.5px var(--ring), 0 0 0 3px rgba(0,0,0,.70), 0 0 16px var(--ring-glow); }
 }
 
 @media (max-width: 600px) {

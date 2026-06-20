@@ -1,5 +1,24 @@
 # Current Sprint
 
+## Overworld Structure Icons: PNG Sprites (2026-06-20)
+
+Replaced the emoji+plaque structure tile rendering in `src/ui/overworld/WorldMap.jsx`
+with static generated PNG icon sprites. No engine or state changes.
+
+| Change | Detail |
+|---|---|
+| Generator | `tools/gen-structures.py` (new file, sibling to `gen-sprites.py`). Same Pillow/4x-supersample/LANCZOS technique. Outputs 5 static 32x32 RGBA PNGs. |
+| Output assets | `src/assets/sprites/structures/{town,dungeon,castle,castle-defeated,ruin}.png` |
+| WorldMap.jsx | 5 static PNG imports added. `plaqueStyle` computation removed. Plaque+emoji block replaced with `<img>` element selecting icon by structure type. Conquered badge and `ow-label` name tags kept. |
+| Dead CSS removed | `.ow-plaque`, `.ow-plaque-town`, `.ow-plaque-dungeon`, `.ow-plaque-castle`, `.ow-plaque-castle-defeated`, `.ow-plaque-ruin` and `@keyframes castleBreath` deleted from `OW_STYLES`. |
+| Castle color | Castles no longer vary icon by controlling mage color. Single fixed palette; defeated state uses separate pre-rendered desaturated `castle-defeated.png`. |
+| Credits | `src/assets/sprites/CREDITS.md` updated with structure icon table. |
+| Tests | `tests/e2e/structure-icons.spec.ts` (new): no console errors, legacy plaque classes absent, `<img>` present with valid src, naturalWidth > 0, TOWN/RUIN assertions, asset-load degradation graceful. Both 1280x800 + 390x844 viewports. `tests/e2e/plaque-visibility.spec.ts` updated to assert legacy plaque classes are gone. |
+
+**Status:** Done
+
+---
+
 ## Overworld Fog Edge Mask + Eager Tilesheet Preload (2026-06-19)
 
 Presentation-layer bug fixes in `src/ui/overworld/WorldMap.jsx`. No engine or state changes.
