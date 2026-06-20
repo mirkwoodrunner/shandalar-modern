@@ -25,15 +25,24 @@ import ruinIconUrl from '../../assets/sprites/structures/ruin.png';
 const TILE_SIZE = 34;
 
 // --- TILESHEET LOADER --------------------------------------------------------
-// Module-level singleton: load the two PNGs once and notify subscribers when
-// both attempts settle. Until then (and if an asset fails) tiles fall back to
-// the flat TERRAIN_BG color so the map is never blank. No Math.random anywhere.
+// Module-level singleton: load the two PNGs once and notify subscribers on
+// every state change (load, retry, terminal failure). Until an image is ready
+// (and whenever a sheet has permanently failed) tiles fall back to the flat
+// TERRAIN_BG color so the map is never blank. No Math.random anywhere.
+//
+// Transient load failures (network blip, CDN hiccup) must not permanently
+// flatten every tile revealed for the rest of the session. Each sheet gets up
+// to MAX_RETRIES reload attempts with linear backoff before its failure is
+// treated as terminal. Terminal failure is logged loudly, not swallowed --
+// fail-fast: a silently-broken asset pipeline should be visible in the console,
+// not just visible as a slightly-wrong map.
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 750; // linear backoff: attempt N waits N * this
+
 const _sheets = {
-  tileset:     { img: null, ok: false },
-  decorations: { img: null, ok: false },
+  tileset:     { img: null, ok: false, attempts: 0, failedTerminal: false },
+  decorations: { img: null, ok: false, attempts: 0, failedTerminal: false },
 };
-let _loadStarted = false;
-let _loadSettled = false;
 const _subs = new Set();
 
 function getSheet(key) {
@@ -41,39 +50,71 @@ function getSheet(key) {
   return s && s.ok ? s.img : null;
 }
 
-function _startSheetLoad() {
-  if (_loadStarted || typeof Image === 'undefined') return;
-  _loadStarted = true;
-  const entries = [['tileset', tilesetUrl], ['decorations', decorationsUrl]];
-  let remaining = entries.length;
-  const done = () => {
-    remaining -= 1;
-    if (remaining === 0) {
-      _loadSettled = true;
-      _subs.forEach((fn) => fn());
-    }
+function _notify() {
+  _subs.forEach((fn) => fn());
+}
+
+function _loadOne(key, url) {
+  if (typeof Image === 'undefined') return;
+  const s = _sheets[key];
+  const img = new Image();
+  img.onload = () => {
+    s.img = img;
+    s.ok = true;
+    s.failedTerminal = false;
+    _notify();
   };
-  for (const [key, url] of entries) {
-    const img = new Image();
-    img.onload = () => { _sheets[key].img = img; _sheets[key].ok = true; done(); };
-    img.onerror = () => { _sheets[key].ok = false; done(); };
-    img.src = url;
-  }
+  img.onerror = () => {
+    s.attempts += 1;
+    if (s.attempts <= MAX_RETRIES) {
+      const delay = s.attempts * RETRY_BASE_DELAY_MS;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[WorldMap] tilesheet "${key}" failed to load (attempt ${s.attempts}/${MAX_RETRIES}). ` +
+        `Retrying in ${delay}ms.`
+      );
+      setTimeout(() => _loadOne(key, url), delay);
+      return;
+    }
+    s.ok = false;
+    s.failedTerminal = true;
+    // eslint-disable-next-line no-console
+    console.error(
+      `[WorldMap] tilesheet "${key}" permanently failed to load after ${MAX_RETRIES} ` +
+      `retries. Terrain tiles will render as flat color for the rest of this session. ` +
+      `url: ${url}`
+    );
+    _notify();
+  };
+  img.src = url;
+}
+
+let _loadStarted = false;
+function _startSheetLoad() {
+  if (_loadStarted) return;
+  _loadStarted = true;
+  _loadOne('tileset', tilesetUrl);
+  _loadOne('decorations', decorationsUrl);
 }
 // Kick off loading immediately at module evaluation time so tiles never race
 // against the load window during early exploration.
 _startSheetLoad();
 
-// Subscribes to sheet load completion; returns true once both loads settle.
+// Subscribes to sheet load/retry/failure events. Returns true once every sheet
+// has either loaded successfully or permanently failed (i.e. there is nothing
+// further to wait for). This intentionally differs from the old "settled once,
+// forever" flag -- it is recomputed on every notify so a mid-session retry
+// success still triggers a re-render via the returned boolean changing identity
+// is not required; subscribers re-render on every _notify() regardless.
 function useTilesheets() {
   const [, force] = React.useReducer((c) => c + 1, 0);
   React.useEffect(() => {
-    if (_loadSettled) return undefined;
-    _startSheetLoad();
     _subs.add(force);
     return () => { _subs.delete(force); };
   }, []);
-  return _loadSettled;
+  return _sheets.tileset.ok || _sheets.tileset.failedTerminal
+    ? _sheets.decorations.ok || _sheets.decorations.failedTerminal
+    : false;
 }
 
 function hexToRgba(hex, a) {

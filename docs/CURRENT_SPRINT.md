@@ -1,5 +1,31 @@
 # Current Sprint
 
+## Tilesheet Load Retry on Transient Failure (2026-06-20)
+
+Presentation-layer bug fix in `src/ui/overworld/WorldMap.jsx`. No engine or state changes.
+
+**Bug:** If `Image.onerror` fired during the module-level singleton load of `forest_tileset.png`
+or `forest_decorations.png` (transient network/CDN hiccup), `_sheets[key].ok` was set to `false`
+permanently and `_loadSettled` was flipped to `true` regardless. Every `MapTile` mounted
+afterward got `sheetsReady === true` from `useTilesheets()` but `getSheet()` returned `null`
+forever, causing all tiles revealed for the rest of the session to render as flat `TERRAIN_BG`
+color with no retry and no console signal.
+
+| Change | Detail |
+|---|---|
+| `_sheets` shape | Added `attempts: 0` and `failedTerminal: false` fields per key. |
+| `MAX_RETRIES` / `RETRY_BASE_DELAY_MS` | 3 retries, 750 ms linear backoff (attempt N waits N*750 ms). |
+| `_loadOne(key, url)` | New per-sheet loader function. On `onerror`: increments `attempts`; if within retry budget schedules recursive call via `setTimeout`; on exhaustion sets `failedTerminal = true` and emits `console.error`. On `onload`: sets `ok = true`, clears `failedTerminal`, calls `_notify()`. |
+| `_notify()` | Extracted helper that calls all `_subs`. Fires on every state change (load, retry schedule, terminal failure). |
+| `_startSheetLoad()` | Now calls `_loadOne` per sheet; `typeof Image` guard moved into `_loadOne`. |
+| `useTilesheets()` | Returns `true` only when both sheets have reached a final state (`ok` or `failedTerminal`); subscribes unconditionally (no early-return guard on `_loadSettled`). |
+| Console | `console.warn` on each retry attempt; `console.error` on terminal failure (with URL). |
+| Tests | 6 new Playwright assertions in `tests/e2e/overworld-tileset.spec.ts`: retry-recovery warn + sprite paint (desktop + mobile); terminal-failure error log + flat-color fallback + no uncaught exceptions (desktop + mobile); singleton parity guard. |
+
+**Status:** Done
+
+---
+
 ## Overworld Structure Icons: PNG Sprites (2026-06-20)
 
 Replaced the emoji+plaque structure tile rendering in `src/ui/overworld/WorldMap.jsx`
