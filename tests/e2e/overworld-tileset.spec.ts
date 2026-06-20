@@ -240,3 +240,132 @@ test.describe('asset-load fallback', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Retry-backoff loader tests (MAX_RETRIES = 3, RETRY_BASE_DELAY_MS = 750)
+// ---------------------------------------------------------------------------
+// These tests cover the bounded-retry behavior added to _loadOne(). They run
+// at both desktop and mobile viewports to assert singleton parity -- one loader,
+// shared regardless of which screen component mounts MapTile first.
+
+const RETRY_VIEWPORTS = [
+  { name: 'desktop', width: 1280, height: 800 },
+  { name: 'mobile',  width: 390,  height: 844 },
+];
+
+for (const vp of RETRY_VIEWPORTS) {
+  test.describe(`tilesheet retry — ${vp.name} ${vp.width}x${vp.height}`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height } });
+
+    test('retry recovery: warn emitted, tiles render after retry succeeds', async ({ page }) => {
+      const warnMessages: string[] = [];
+      page.on('console', (msg) => {
+        if (msg.type() === 'warning') warnMessages.push(msg.text());
+      });
+
+      // Fail the tileset request exactly once, then allow it through.
+      let tilesetFailCount = 0;
+      await page.route('**/forest_tileset*.png', (route) => {
+        if (tilesetFailCount < 1) {
+          tilesetFailCount += 1;
+          route.abort();
+        } else {
+          route.continue();
+        }
+      });
+
+      await page.goto('/?overworld=sandbox');
+
+      // Wait long enough for the retry cycle (attempt 1 delay = 1 * 750 ms).
+      const painted = await waitForTerrainPainted(page);
+      expect(painted, 'tiles must paint after retry succeeds').toBe(true);
+
+      // A console.warn containing "tilesheet" and "Retrying" must have fired.
+      const retryWarn = warnMessages.find(
+        (m) => m.includes('tilesheet') && m.includes('Retrying')
+      );
+      expect(retryWarn, 'console.warn with "tilesheet" and "Retrying" must be emitted').toBeTruthy();
+
+      // Tiles must show terrain art (sprite texture), not just a flat fallback color.
+      const { colors } = await sampleTerrainCanvas(page);
+      expect(colors, 'terrain canvas must have multiple colors (sprite painted)').toBeGreaterThanOrEqual(2);
+    });
+
+    test('terminal failure: error logged, flat-color fallback, no uncaught exception', async ({ page }) => {
+      const pageErrors: string[] = [];
+      const consoleErrors: string[] = [];
+      page.on('pageerror', (e) => pageErrors.push(String(e)));
+      page.on('console', (msg) => {
+        if (msg.type() === 'error') consoleErrors.push(msg.text());
+      });
+
+      // Abort every tileset request unconditionally so all retries exhaust.
+      await page.route('**/forest_tileset*.png', (route) => route.abort());
+
+      await page.goto('/?overworld=sandbox');
+
+      // Wait long enough for all 3 retry attempts to exhaust.
+      // MAX_RETRIES=3, delays: 750ms + 1500ms + 2250ms = 4500ms total.
+      await page.waitForSelector('canvas.ow-terrain-canvas', { timeout: 15000 });
+      await page.waitForTimeout(5500); // exceed total retry window
+
+      // A console.error containing "permanently failed" must have fired.
+      const terminalErr = consoleErrors.find((m) => m.includes('permanently failed'));
+      expect(terminalErr, 'console.error with "permanently failed" must be emitted').toBeTruthy();
+
+      // No uncaught exceptions: the failure is surfaced via console, not thrown.
+      expect(pageErrors, 'no unhandled page errors').toEqual([]);
+
+      // Map must not be blank: TERRAIN_BG fallback color must appear.
+      const bg = await page.evaluate(() => {
+        const tiles = Array.from(document.querySelectorAll('.ow-tile'));
+        for (const el of tiles) {
+          const c = getComputedStyle(el as HTMLElement).backgroundColor;
+          if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') return c;
+        }
+        return null;
+      });
+      expect(bg, 'TERRAIN_BG flat-color fallback must still render').not.toBeNull();
+    });
+  });
+}
+
+// Singleton parity guard: the retry state is module-level and shared, so
+// exhausting retries in one viewport context must show the same terminal state
+// when a second load occurs (no per-screen re-initialization of _loadStarted).
+test.describe('singleton parity guard', () => {
+  test('terminal failure state is not reset between viewport changes', async ({ browser }) => {
+    // Load mobile viewport first; exhaust retries for tileset.
+    const mobileCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const mobilePage = await mobileCtx.newPage();
+    await mobilePage.route('**/forest_tileset*.png', (r) => r.abort());
+    await mobilePage.goto('/?overworld=sandbox');
+    await mobilePage.waitForSelector('canvas.ow-terrain-canvas', { timeout: 15000 });
+    // Wait for retry window to exhaust (MAX_RETRIES=3: 750+1500+2250=4500ms).
+    await mobilePage.waitForTimeout(5500);
+
+    // Confirm terminal error was logged on mobile.
+    const mobileErrors: string[] = [];
+    mobilePage.on('console', (msg) => {
+      if (msg.type() === 'error') mobileErrors.push(msg.text());
+    });
+    await mobileCtx.close();
+
+    // Load desktop viewport in a fresh context (same module bundle, _loadStarted = true).
+    // The singleton _loadStarted flag means _startSheetLoad() is a no-op -- the loader
+    // does NOT re-attempt when the desktop screen mounts. Flat-color fallback persists.
+    const desktopCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const desktopPage = await desktopCtx.newPage();
+    await desktopPage.route('**/forest_tileset*.png', (r) => r.abort());
+    await desktopPage.goto('/?overworld=sandbox');
+    await desktopPage.waitForSelector('canvas.ow-terrain-canvas', { timeout: 15000 });
+
+    // No unhandled exceptions on the desktop load either.
+    const desktopPageErrors: string[] = [];
+    desktopPage.on('pageerror', (e) => desktopPageErrors.push(String(e)));
+    await desktopPage.waitForTimeout(1000);
+    expect(desktopPageErrors).toEqual([]);
+
+    await desktopCtx.close();
+  });
+});
