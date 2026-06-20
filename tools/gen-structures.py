@@ -130,50 +130,63 @@ def draw_dungeon(c):
     c.line(23, 14, 24, 22, DNG_STONE_SH, 0.5)
 
 
-# CASTLE: turreted keep with crenellations and a flag
-# Palette -- gray stone walls, dark battlements, warm red flag
-CST_WALL      = (162, 152, 138, 255)  # main stone wall
-CST_WALL_HI   = (200, 190, 174, 255) # lit stone face
-CST_WALL_SH   = (106, 96, 84, 255)  # shadow stone
-CST_DARK      = (72, 64, 55, 255)   # very dark (battlements, gate)
-CST_GATE      = (36, 28, 20, 255)   # gate opening
-CST_FLAG      = (200, 58, 38, 255)  # flag red
-CST_FLAG_SH   = (145, 35, 20, 255) # flag shadow
+# CASTLE: turreted keep with crenellations and a flag.
+# Stone palette is fixed (no per-mage tinting). Only the flag color varies.
+CST_WALL      = (162, 152, 138, 255)
+CST_WALL_HI   = (200, 190, 174, 255)
+CST_WALL_SH   = (106,  96,  84, 255)
+CST_DARK      = ( 72,  64,  55, 255)
 
-def draw_castle(c):
+# Flag color pairs (fill, shadow) for each mage color + neutral default.
+_FLAG = {
+    'default': ((200,  58,  38, 255), (145,  35,  20, 255)),  # red (neutral)
+    'W':       ((222, 215, 192, 255), (165, 158, 138, 255)),  # ivory / white
+    'U':       (( 38,  85, 195, 255), ( 20,  52, 132, 255)),  # royal blue
+    'B':       (( 55,  25,  80, 255), ( 28,  10,  50, 255)),  # deep purple
+    'R':       ((200,  58,  38, 255), (145,  35,  20, 255)),  # red
+    'G':       (( 30, 145,  38, 255), ( 16,  88,  20, 255)),  # green
+}
+
+def _draw_castle(c, flag_col, flag_sh):
     # Main tower body
     c.rect(8, 11, 24, 29, CST_WALL)
-    c.rect(8, 11, 13, 29, CST_WALL_HI)      # lit left face
-    c.rect(20, 11, 24, 29, CST_WALL_SH)     # shadow right face
-
-    # Crenellations (merlons) at top of main wall
-    c.rect(8, 7, 12, 11, CST_WALL)          # merlon left
-    c.rect(8, 7, 11, 9, CST_WALL_HI)
-    c.rect(15, 7, 19, 11, CST_WALL)         # merlon center
-    c.rect(15, 7, 18, 9, CST_WALL_HI)
-    c.rect(21, 7, 25, 11, CST_WALL)         # merlon right
-    c.rect(21, 7, 24, 9, CST_WALL_HI)
-
-    # Gate arch opening
+    c.rect(8, 11, 13, 29, CST_WALL_HI)
+    c.rect(20, 11, 24, 29, CST_WALL_SH)
+    # Crenellations
+    c.rect( 8, 7, 12, 11, CST_WALL); c.rect( 8, 7, 11,  9, CST_WALL_HI)
+    c.rect(15, 7, 19, 11, CST_WALL); c.rect(15, 7, 18,  9, CST_WALL_HI)
+    c.rect(21, 7, 25, 11, CST_WALL); c.rect(21, 7, 24,  9, CST_WALL_HI)
+    # Gate arch
     c.rect(12, 19, 20, 29, CST_DARK)
-    c.ell(12, 15, 20, 23, CST_DARK)         # arched top of gate
-
-    # Portcullis hint (horizontal bars in gate)
+    c.ell(12, 15, 20, 23, CST_DARK)
     for gy in (20, 23, 26):
         c.line(12, gy, 20, gy, CST_WALL_SH, 0.5)
-
-    # Thin side turrets (partial)
-    c.rect(3, 14, 9, 29, CST_WALL_HI)      # left turret
-    c.rect(3, 11, 7, 14, CST_WALL)         # left merlon
-    c.rect(23, 14, 29, 29, CST_WALL_SH)    # right turret
-    c.rect(25, 11, 29, 14, CST_WALL)       # right merlon
-
-    # Flag pole on center merlon
+    # Side turrets
+    c.rect( 3, 14,  9, 29, CST_WALL_HI); c.rect( 3, 11,  7, 14, CST_WALL)
+    c.rect(23, 14, 29, 29, CST_WALL_SH); c.rect(25, 11, 29, 14, CST_WALL)
+    # Flag pole + pennant
     c.line(17, 1, 17, 7, CST_DARK, 0.6)
+    c.poly([(17, 1), (17, 5), (24, 3)], flag_col)
+    c.poly([(17, 3), (17, 5), (22, 4)], flag_sh)
 
-    # Flag (pennant shape)
-    c.poly([(17, 1), (17, 5), (24, 3)], CST_FLAG)
-    c.poly([(17, 3), (17, 5), (22, 4)], CST_FLAG_SH)  # flag shadow
+def draw_castle(c):
+    _draw_castle(c, *_FLAG['default'])
+
+def draw_castle_white(c):
+    _draw_castle(c, *_FLAG['W'])
+
+def draw_castle_blue(c):
+    _draw_castle(c, *_FLAG['U'])
+
+def draw_castle_black(c):
+    _draw_castle(c, *_FLAG['B'])
+
+def draw_castle_red(c):
+    _draw_castle(c, *_FLAG['R'])
+
+def draw_castle_green(c):
+    _draw_castle(c, *_FLAG['G'])
+
 
 
 # CASTLE DEFEATED: broken silhouette -- crumbled merlon, snapped pole, cracks,
@@ -229,6 +242,63 @@ def draw_castle_defeated(c):
     c.poly([(18, 26), (21, 25), (21, 29), (17, 29)], CST_D_RUBBLE)
 
 
+# CASTLE BOSS: three-tower obsidian keep, Gothic spires, glowing evil eye,
+# forked dark war-banner. Distinct silhouette from the regular castle.
+BOSS_WALL    = ( 40,  34,  30, 255)  # obsidian stone
+BOSS_WALL_HI = ( 64,  55,  49, 255)  # lit stone face
+BOSS_WALL_SH = ( 18,  15,  12, 255)  # deep shadow
+BOSS_GATE    = (  6,   5,   4, 255)  # gate abyss
+BOSS_EYE     = (212,  32,  12, 255)  # glowing red eye
+BOSS_EYE_HI  = (255,  90,  50, 255)  # eye highlight
+BOSS_FLAG    = ( 14,   8,   8, 255)  # near-black banner
+BOSS_FLAG_AC = (165,  16,  10, 255)  # blood-red accent stripe
+
+def draw_castle_boss(c):
+    # --- Left side tower (shorter) ---
+    c.rect(1, 15, 9, 29, BOSS_WALL)
+    c.rect(1, 15, 5, 29, BOSS_WALL_HI)
+    c.rect(7, 15, 9, 29, BOSS_WALL_SH)
+    # Two pointed fangs on left tower top
+    c.poly([(1, 15), (2, 11), (4, 15)], BOSS_WALL_HI)
+    c.poly([(5, 15), (6, 11), (8, 15)], BOSS_WALL)
+
+    # --- Right side tower (shorter) ---
+    c.rect(23, 15, 31, 29, BOSS_WALL)
+    c.rect(23, 15, 27, 29, BOSS_WALL_HI)
+    c.rect(28, 15, 31, 29, BOSS_WALL_SH)
+    # Two pointed fangs on right tower top
+    c.poly([(23, 15), (25, 11), (27, 15)], BOSS_WALL)
+    c.poly([(27, 15), (29, 11), (31, 15)], BOSS_WALL_SH)
+
+    # --- Center keep (much taller) ---
+    c.rect(8, 7, 24, 29, BOSS_WALL)
+    c.rect(8, 7, 13, 29, BOSS_WALL_HI)
+    c.rect(20, 7, 24, 29, BOSS_WALL_SH)
+
+    # Three Gothic spires rising from the keep top
+    # Left spire
+    c.poly([( 8, 7), (11, 3), (14, 7)], BOSS_WALL_HI)
+    # Center spire (tallest -- reaches top of canvas)
+    c.poly([(13, 7), (16, 0), (19, 7)], BOSS_WALL)
+    c.poly([(13, 7), (16, 2), (18, 7)], BOSS_WALL_HI)   # lit left face
+    # Right spire
+    c.poly([(18, 7), (21, 3), (24, 7)], BOSS_WALL_SH)
+
+    # Wide pointed gate arch (Gothic, darker than regular castle)
+    c.rect(12, 20, 20, 29, BOSS_GATE)
+    c.poly([(12, 20), (16, 15), (20, 20)], BOSS_GATE)
+
+    # Glowing evil eye window -- drawn on the wall between spire base and gate
+    c.ell(13,  9, 19, 15, BOSS_WALL_SH)   # dark socket
+    c.ell(14, 10, 18, 14, BOSS_EYE)       # red glow fill
+    c.ell(15, 11, 17, 13, BOSS_EYE_HI)   # hot highlight center
+
+    # Dark forked war-banner at center spire tip (serpent-tongue shape)
+    c.poly([(16, 0), (16, 3), (23, 1)], BOSS_FLAG)        # upper fork
+    c.poly([(16, 2), (16, 5), (22, 5)], BOSS_FLAG)        # lower fork
+    c.poly([(17, 1), (22, 1), (20, 3), (17, 2)], BOSS_FLAG_AC)  # blood stripe
+
+
 # RUIN: crumbled stone walls, partial stubs, rubble pile
 # Palette -- worn stone, dust/debris, dark cracks; distinct from dungeon
 # Dungeon = archway entrance (intact frame, dark opening)
@@ -282,7 +352,13 @@ ICONS = {
     'town':             draw_town,
     'dungeon':          draw_dungeon,
     'castle':           draw_castle,
+    'castle-white':     draw_castle_white,
+    'castle-blue':      draw_castle_blue,
+    'castle-black':     draw_castle_black,
+    'castle-red':       draw_castle_red,
+    'castle-green':     draw_castle_green,
     'castle-defeated':  draw_castle_defeated,
+    'castle-boss':      draw_castle_boss,
     'ruin':             draw_ruin,
 }
 
