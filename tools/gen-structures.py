@@ -176,42 +176,57 @@ def draw_castle(c):
     c.poly([(17, 3), (17, 5), (22, 4)], CST_FLAG_SH)  # flag shadow
 
 
-# CASTLE DEFEATED: same composition, desaturated+darkened palette
+# CASTLE DEFEATED: broken silhouette -- crumbled merlon, snapped pole, cracks,
+# rubble at base. Desaturated+darkened palette AND altered composition so the
+# shape itself reads "fallen" at a glance (not just a recolor of the active icon).
 CST_D_WALL    = (100, 95, 88, 255)   # desaturated wall
 CST_D_WALL_HI = (128, 122, 114, 255) # desaturated lit face
-CST_D_WALL_SH = (68, 63, 57, 255)  # desaturated shadow
-CST_D_DARK    = (48, 44, 40, 255)   # dark battlements
-CST_D_GATE    = (24, 22, 20, 255)   # gate opening
-CST_D_FLAG    = (98, 84, 80, 255)  # desaturated flag (once-red, now gray-mauve)
-CST_D_FLAG_SH = (68, 58, 55, 255) # desaturated flag shadow
+CST_D_WALL_SH = (62, 58, 52, 255)   # desaturated shadow (darker than active)
+CST_D_DARK    = (42, 38, 34, 255)   # very dark crevices / gate interior
+CST_D_RUBBLE  = (82, 76, 68, 255)   # fallen stone / rubble chunks
+CST_D_CRACK   = (48, 44, 40, 255)   # crack lines
 
 def draw_castle_defeated(c):
-    # Identical layout to draw_castle(), different palette only
+    # Main tower body -- same footprint as active castle
     c.rect(8, 11, 24, 29, CST_D_WALL)
     c.rect(8, 11, 13, 29, CST_D_WALL_HI)
     c.rect(20, 11, 24, 29, CST_D_WALL_SH)
 
-    c.rect(8, 7, 12, 11, CST_D_WALL)
+    # Crenellations -- left merlon intact, center merlon BROKEN (jagged top),
+    # right merlon completely gone (wall just ends flat)
+    c.rect(8, 7, 12, 11, CST_D_WALL)            # left merlon (intact)
     c.rect(8, 7, 11, 9, CST_D_WALL_HI)
-    c.rect(15, 7, 19, 11, CST_D_WALL)
-    c.rect(15, 7, 18, 9, CST_D_WALL_HI)
-    c.rect(21, 7, 25, 11, CST_D_WALL)
-    c.rect(21, 7, 24, 9, CST_D_WALL_HI)
 
-    c.rect(12, 19, 20, 29, CST_D_DARK)
-    c.ell(12, 15, 20, 23, CST_D_DARK)
+    # Center merlon: jagged broken top -- draw body then irregular top poly
+    c.rect(15, 9, 19, 11, CST_D_WALL)           # merlon lower stub
+    c.poly([(15, 9), (15, 7), (16, 8), (17, 6), (19, 9)], CST_D_WALL)  # crumbled top
 
-    for gy in (20, 23, 26):
-        c.line(12, gy, 20, gy, CST_D_WALL_SH, 0.5)
+    # Right merlon: gone -- rubble chunk fallen outward onto right turret top
+    c.poly([(21, 11), (25, 11), (24, 14), (20, 13)], CST_D_RUBBLE)     # fallen block
 
+    # Gate -- open (portcullis destroyed), no bars, larger dark void
+    c.rect(12, 16, 20, 29, CST_D_DARK)
+    c.ell(12, 13, 20, 21, CST_D_DARK)
+
+    # Side turrets
     c.rect(3, 14, 9, 29, CST_D_WALL_HI)
     c.rect(3, 11, 7, 14, CST_D_WALL)
     c.rect(23, 14, 29, 29, CST_D_WALL_SH)
-    c.rect(25, 11, 29, 14, CST_D_WALL)
+    # Right turret top: also broken -- irregular jagged edge instead of clean merlon
+    c.poly([(23, 14), (26, 11), (27, 13), (29, 11), (29, 14)], CST_D_WALL)
 
-    c.line(17, 1, 17, 7, CST_D_DARK, 0.6)
-    c.poly([(17, 1), (17, 5), (24, 3)], CST_D_FLAG)
-    c.poly([(17, 3), (17, 5), (22, 4)], CST_D_FLAG_SH)
+    # Diagonal crack through the main wall
+    c.line(13, 13, 10, 22, CST_D_CRACK, 0.6)
+    c.line(19, 15, 22, 25, CST_D_CRACK, 0.6)
+
+    # Snapped flag pole stub -- just a short broken stump, no flag
+    c.line(17, 7, 17, 10, CST_D_CRACK, 0.7)
+    # Broken-off tip: a tiny fallen piece leaning to the side
+    c.line(17, 7, 20, 5, CST_D_CRACK, 0.6)
+
+    # Rubble at the base of the gate
+    c.poly([(11, 27), (14, 25), (16, 28), (11, 29)], CST_D_RUBBLE)
+    c.poly([(18, 26), (21, 25), (21, 29), (17, 29)], CST_D_RUBBLE)
 
 
 # RUIN: crumbled stone walls, partial stubs, rubble pile
