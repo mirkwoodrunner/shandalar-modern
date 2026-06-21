@@ -1,5 +1,22 @@
 # Current Sprint
 
+## Henchman Ambush Visibility + Chase/Vision Radius Alignment (2026-06-21)
+
+Converted the henchman ambush system from a blind move-counter dice roll with no map
+presence into a proper tracked map sprite, and aligned the enemy chase radius with the
+player's vision radius.
+
+| Change | Detail |
+|---|---|
+| `src/engine/EnemyAI.js` | `tickEnemyAI` chase trigger reduced from `dist <= 4` to `dist <= 2`, matching `revealAround`'s 5x5 box. No enemy can begin closing distance from a fogged tile. |
+| `src/hooks/useOverworldController.js` | Henchman spawn block converted from `openEncounterPopup` (blind, no sprite) to `setEnemies([...prev, henchman])` at a tile 3-5 steps away, always outside the vision radius. `isHenchman: true` flag prevents stacking. `canFlee: false` carried on enemy object, forwarded to both collision sites. `spriteForHenchman` added to import. Sandbox test globals `__overworldState`, `__overworldSetEnemies`, `__overworldSetMoves` added. |
+| `tests/e2e/henchman-visibility.spec.ts` | 10-test Playwright suite (5 tests x 2 viewports): henchman in enemies[], sprite visibility, no-flee popup, normal-enemy flee regression, chase-radius threshold. |
+| `playwright.config.js` | Added `tests/e2e/**/*.spec.ts` to testMatch so all `.spec.ts` files in that directory are picked up. |
+
+**Status:** Done
+
+---
+
 ## Tilesheet Load Retry + Race-Window Fix (2026-06-20)
 
 Presentation-layer bug fix in `src/ui/overworld/WorldMap.jsx`. No engine or state changes.

@@ -29,7 +29,9 @@ export function tickEnemyAI(enemies, playerPos, tiles, TERRAIN, graceMoves = GRA
     const dy = playerPos.y - enemy.y;
     const dist = Math.abs(dx) + Math.abs(dy);
 
-    if (dist <= 4) {
+    // Chase trigger matches revealAround()'s 5x5 box (radius 2), so an enemy
+    // can never start closing distance from a tile the player cannot see.
+    if (dist <= 2) {
       // Chase: greedy step toward player, prefer axis with greater distance (tie → horizontal)
       let newX = enemy.x;
       let newY = enemy.y;

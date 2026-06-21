@@ -1082,17 +1082,34 @@ ACTIVE (Phase 7)
 ## 3.6 Enemy Tier System
 
 ### Description
-Three tiers of random encounter enemies (HP 10/14/18), plus henchman tier (HP 24–27,
+Three tiers of random encounter enemies (HP 10/14/18), plus henchman tier (HP 24-27,
 unbribeable) that spawns after move 80. HP values match original MicroProse game.
+
+Henchmen (HENCHMAN_TABLE) now spawn as tracked, fog-gated, chaseable map sprites
+rather than triggering a blind unfleeable popup with no map presence. On spawn they
+are placed 3-5 tiles from the player (outside the radius-2 vision box) so they are
+always fogged at the moment of spawn but reachable as the player continues exploring.
+The `isHenchman: true` marker on the enemy object prevents multiple concurrent henchmen
+from stacking. `canFlee: false` is carried on the enemy object itself and is forwarded
+to `openEncounterPopup` at both collision sites.
+
+The `tickEnemyAI` chase trigger distance was reduced from 4 to 2 to match the player's
+actual vision radius (`revealAround`'s 5x5 box). No enemy can begin closing distance
+from a tile the player cannot see.
 
 ### SYSTEMS.md Reference
 Section 27 (Enemy Tier System)
 
 ### Implementation
 ```
-/src/engine/MapGenerator.js  — MONSTER_TABLE (corrected HP), HENCHMAN_TABLE (new export)
-/src/OverworldGame.jsx        — henchman spawn logic in doMove; canFlee override in
-openEncounterPopup
+/src/engine/MapGenerator.js             -- MONSTER_TABLE (corrected HP), HENCHMAN_TABLE
+/src/engine/EnemyAI.js                  -- chase threshold reduced from 4 to 2
+/src/hooks/useOverworldController.js    -- henchman spawns into enemies[] as real sprite;
+                                           canFlee threaded through both collision sites;
+                                           __overworldState/__overworldSetEnemies/
+                                           __overworldSetMoves sandbox test globals added
+/src/ui/overworld/Sprite.jsx            -- spriteForHenchman(colorLetter) export (unchanged)
+/tests/e2e/henchman-visibility.spec.ts  -- E2E regression suite (10 tests, 2 viewports)
 ```
 
 ### Monster variety (terrain-decoupled selection)

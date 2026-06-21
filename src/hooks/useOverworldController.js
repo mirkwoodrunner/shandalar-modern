@@ -17,7 +17,7 @@ import DIFFICULTIES, { generateStartingDeck } from '../data/difficulties.js';
 import RULESETS from '../data/rulesets.js';
 import { tickEnemyAI, GRACE_MOVE_THRESHOLD } from '../engine/EnemyAI.js';
 import { drawCharacters } from '../ui/overworld/OverworldCanvas.js';
-import { spriteForMonster } from '../ui/overworld/Sprite.jsx';
+import { spriteForMonster, spriteForHenchman } from '../ui/overworld/Sprite.jsx';
 import { generateDungeon, checkLOS } from '../engine/DungeonGenerator.js';
 
 // ---------------------------------------------------------------------------
@@ -679,7 +679,11 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
           openEncounterPopup(
             caught.archKey || monster.archKey,
             player.hp, 'monster', null, {},
-            { monsterName: caught.name || monster.name, tier: caught.tier }
+            {
+              monsterName: caught.name || monster.name,
+              tier: caught.tier,
+              ...(caught.canFlee !== undefined ? { canFlee: caught.canFlee } : {}),
+            }
           );
         }, 0);
         return prev.filter(e => e.id !== caught.id);
@@ -689,14 +693,47 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
 
     if (newMoves > 80 && t.terrain !== TERRAIN.WATER && Math.random() < 0.04) {
       const aliveHenchmen = HENCHMAN_TABLE.filter(h => !magesDefeated.includes(h.color));
-      if (aliveHenchmen.length) {
+      const alreadyActive = enemies.some(e => e.isHenchman);
+      if (aliveHenchmen.length && !alreadyActive) {
         const h = aliveHenchmen[Math.floor(Math.random() * aliveHenchmen.length)];
-        addLog(`⚠ ${h.name} bars your way!`, 'danger');
-        openEncounterPopup(h.archKey, player.hp, 'monster', null, {}, {
-          monsterName: h.name,
-          tier: h.tier,
-          canFlee: false,
-        });
+
+        // Spawn 3-5 tiles from player (outside the radius-2 vision box) on land
+        // without a structure, so it is fogged at spawn but reachable shortly.
+        const candidates = [];
+        for (let dy = -5; dy <= 5; dy++) {
+          for (let dx = -5; dx <= 5; dx++) {
+            const dist = Math.abs(dx) + Math.abs(dy);
+            if (dist < 3 || dist > 5) continue;
+            const sx = nx + dx, sy = ny + dy;
+            const tile = tiles[sy]?.[sx];
+            if (!tile) continue;
+            if (tile.terrain === TERRAIN.WATER) continue;
+            if (tile.structure) continue;
+            candidates.push({ x: sx, y: sy });
+          }
+        }
+
+        if (candidates.length) {
+          const spot = candidates[Math.floor(Math.random() * candidates.length)];
+          const { kind: spriteKind, color: spriteColor } = spriteForHenchman(h.color);
+          addLog(`⚠ ${h.name} has entered the field.`, 'danger');
+          setEnemies(prev => [...prev, {
+            id: mkId(),
+            x: spot.x,
+            y: spot.y,
+            tier: h.tier,
+            archKey: h.archKey,
+            name: h.name,
+            hp: h.hp,
+            terrain: tiles[spot.y][spot.x].terrain.id,
+            spriteKind,
+            spriteColor,
+            animFrame: 0,
+            dir: 'down',
+            isHenchman: true,
+            canFlee: false,
+          }]);
+        }
       }
     }
   }, [tiles, moves, manaLinks, mlEvents, magesDefeated, player.hp, foodEnabled, addLog, openEncounterPopup, checkQuestProgress, worldMagics, activeDelivery, completeDelivery]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1547,7 +1584,11 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
         setEnemies(prev => prev.filter(e => e.id !== caught.id));
         openEncounterPopup(
           caught.archKey || monster.archKey, player.hp, 'monster', null, {},
-          { monsterName: caught.name || monster.name, tier: caught.tier },
+          {
+            monsterName: caught.name || monster.name,
+            tier: caught.tier,
+            ...(caught.canFlee !== undefined ? { canFlee: caught.canFlee } : {}),
+          },
         );
         return;
       }
@@ -1617,6 +1658,19 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     });
     return () => { delete window.__overworldAnim; };
   }, [isSandbox]);
+
+  // State snapshot + setters for e2e test seeding (sandbox only).
+  useEffect(() => {
+    if (!isSandbox || typeof window === 'undefined') return undefined;
+    window.__overworldState = () => ({ enemies, moves, pos, tiles });
+    window.__overworldSetEnemies = setEnemies;
+    window.__overworldSetMoves = setMoves;
+    return () => {
+      delete window.__overworldState;
+      delete window.__overworldSetEnemies;
+      delete window.__overworldSetMoves;
+    };
+  }, [isSandbox, enemies, moves, pos, tiles]);
 
   // -------------------------------------------------------------------------
   // RETURN
