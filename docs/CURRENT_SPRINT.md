@@ -1,15 +1,23 @@
 # Current Sprint
 
-## Tilesheet Load Retry on Transient Failure (2026-06-20)
+## Tilesheet Load Retry + Race-Window Fix (2026-06-20)
 
 Presentation-layer bug fix in `src/ui/overworld/WorldMap.jsx`. No engine or state changes.
 
-**Bug:** If `Image.onerror` fired during the module-level singleton load of `forest_tileset.png`
-or `forest_decorations.png` (transient network/CDN hiccup), `_sheets[key].ok` was set to `false`
-permanently and `_loadSettled` was flipped to `true` regardless. Every `MapTile` mounted
-afterward got `sheetsReady === true` from `useTilesheets()` but `getSheet()` returned `null`
-forever, causing all tiles revealed for the rest of the session to render as flat `TERRAIN_BG`
-color with no retry and no console signal.
+**Root cause (primary):** `useEffect` fires *after* the browser paint. There is a gap between
+`useTilesheets()` reading `_sheets.tileset.ok = false` on the component's first render and the
+effect actually adding the component to `_subs`. If both images finish loading inside that gap
+(common when images are cached), `_notify()` fires into an empty `_subs` and the notification
+is permanently lost. The component stays at `sheetsReady = false` forever unless an unrelated
+prop change (e.g. `groundNeighbors` changing when a neighbor tile is revealed by walking)
+happens to trigger a re-render, at which point the canvas finally draws. This matches the
+observed symptom: tiles show flat `TERRAIN_BG` on reveal but eventually gain texture after
+walking around enough.
+
+**Root cause (secondary):** If `Image.onerror` fired, `_sheets[key].ok` was set to `false`
+permanently and `_loadSettled` was flipped to `true` regardless. Every new `MapTile` thereafter
+got `sheetsReady === true` but `getSheet()` returned `null`, permanently fixing tiles into the
+flat fallback with no retry and no console signal.
 
 | Change | Detail |
 |---|---|
