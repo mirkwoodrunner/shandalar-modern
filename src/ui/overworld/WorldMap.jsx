@@ -101,19 +101,34 @@ function _startSheetLoad() {
 _startSheetLoad();
 
 // Subscribes to sheet load/retry/failure events. Returns true once every sheet
-// has either loaded successfully or permanently failed (i.e. there is nothing
-// further to wait for). This intentionally differs from the old "settled once,
-// forever" flag -- it is recomputed on every notify so a mid-session retry
-// success still triggers a re-render via the returned boolean changing identity
-// is not required; subscribers re-render on every _notify() regardless.
+// has either loaded successfully or permanently failed.
+//
+// Race-window note: useEffect fires AFTER the browser paint, so there is a gap
+// between the component's first render (which reads module-level _sheets state)
+// and the subscription being added. If _notify() fires inside that gap (images
+// were cached and loaded before the effect ran) the notification is lost and
+// the component stays at sheetsReady=false permanently -- only recovering when
+// an unrelated prop change (groundNeighbors etc.) happens to trigger a
+// re-render. Closing the window: after subscribing, check whether both sheets
+// are already settled; if so, call force() immediately to schedule a re-render.
+// That re-render sees the loaded state and the canvas draws correctly.
 function useTilesheets() {
   const [, force] = React.useReducer((c) => c + 1, 0);
   React.useEffect(() => {
     _subs.add(force);
+    // Close the race window: if both sheets settled between our last render and
+    // now, trigger an extra render so the canvas draws without waiting for an
+    // unrelated prop change.
+    if (
+      (_sheets.tileset.ok || _sheets.tileset.failedTerminal) &&
+      (_sheets.decorations.ok || _sheets.decorations.failedTerminal)
+    ) {
+      force();
+    }
     return () => { _subs.delete(force); };
   }, []);
-  return _sheets.tileset.ok || _sheets.tileset.failedTerminal
-    ? _sheets.decorations.ok || _sheets.decorations.failedTerminal
+  return (_sheets.tileset.ok || _sheets.tileset.failedTerminal)
+    ? (_sheets.decorations.ok || _sheets.decorations.failedTerminal)
     : false;
 }
 
