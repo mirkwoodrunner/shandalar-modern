@@ -1,5 +1,24 @@
 # Current Sprint
 
+## Batch 1A: Desert / Landwalk Handler Family (2026-06-21)
+
+Five cards implemented in `src/data/cards.js` + `src/engine/DuelCore.js`; one entry added.
+
+| Card | Was | Now |
+|---|---|---|
+| `desert` | STUB | `activatedAbilities` with `desertPing` case; phase-gated to COMBAT_END |
+| `desert_nomads` | STUB | `landwalkType:"Desert"` + `preventsDesertDamage:true` |
+| `camel` | STUB | `preventsDesertDamageWhileAttacking:true` |
+| `sandals_of_abdallah` | STUB | `activated:{cost:"2,T",effect:"sandalsOfAbdallah"}` — grants islandwalk via `eotBuffs` |
+| `savaen_elves` | STUB | `activated:{cost:"GG,T",effect:"destroyLandAura"}` — handles both embedded and BF-standalone land auras |
+| `ali_from_cairo` | missing | Added as STUB (color:R / 2RR / 0/1) pending `hurt()` life-floor and banding-grant implementation |
+
+Deferred items: Ali from Cairo life floor (needs `hurt()` guard), Camel banding-group Desert prevention, Sandals "destroy when target dies" clause (no death-link hook exists).
+
+**Status:** Done
+
+---
+
 ## Henchman Ambush Visibility + Chase/Vision Radius Alignment (2026-06-21)
 
 Converted the henchman ambush system from a blind move-counter dice roll with no map

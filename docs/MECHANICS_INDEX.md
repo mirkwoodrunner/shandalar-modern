@@ -1930,4 +1930,41 @@ CLOSED
 
 ---
 
+---
+
+## Batch 1A: Desert / Landwalk Handler Family (2026-06-21)
+
+Five cards implemented; one entry added.
+
+### New effect cases in `DuelCore.js`
+
+| Case | Location | Notes |
+|---|---|---|
+| `desertPing` | `ACTIVATE_ABILITY` activatedAbilities branch | Phase-gated to `COMBAT_END`; respects `preventsDesertDamage` and `preventsDesertDamageWhileAttacking` flags |
+| `sandalsOfAbdallah` | main `resolveEff` switch | Grants islandwalk via `eotBuffs`; "destroy when target dies" clause deferred (no death-link hook exists — `warBargeTargeted` is set by `warBarge` but never consumed) |
+| `destroyLandAura` | main `resolveEff` switch | Handles both BF-standalone auras (`enchantedLandIid`) and embedded aura records in `land.enchantments[]` |
+
+### New data fields in `cards.js`
+
+| Field | Cards | Meaning |
+|---|---|---|
+| `preventsDesertDamage:true` | `desert_nomads` | Checked by `desertPing`; prevents 1-damage ping |
+| `preventsDesertDamageWhileAttacking:true` | `camel` | Checked by `desertPing` when target is attacking; banding-group extension TODO |
+| `landwalkType:"Desert"` | `desert_nomads` | Used by generic landwalk check at DuelCore.js:181 |
+| `activatedAbilities:[{id:"desert_damage",...}]` | `desert` | Array-schema activated ability for the ping |
+| `activated:{cost:"2,T",effect:"sandalsOfAbdallah"}` | `sandals_of_abdallah` | Single-ability legacy schema |
+| `activated:{cost:"GG,T",effect:"destroyLandAura"}` | `savaen_elves` | Single-ability legacy schema |
+
+### New entry
+
+`ali_from_cairo` — added as STUB (color:R, 2RR, 0/1). Life-floor requires `hurt()` guard (shared by all damage sources; deferred). `{T}: Target Camel gains banding` is a separate follow-up item.
+
+### Tests
+- Playwright: `e2e/batch1a-desert-landwalk.spec.ts` (1A, 1B, 1C; both desktop 1280x800 and mobile 390x844)
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5

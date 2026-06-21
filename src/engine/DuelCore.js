@@ -1339,6 +1339,48 @@ if (tgtC) {
 }
 break;
 }
+case "sandalsOfAbdallah": {
+// Grants islandwalk until EOT. "Destroy artifact when target dies" clause omitted:
+// no death-link hook exists in this engine (warBargeTargeted is set but never consumed).
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.ISLANDWALK.id] }], sandalsTargeted: card.iid }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gains islandwalk until end of turn.`, 'effect');
+}
+break;
+}
+case "destroyLandAura": {
+// Targets an Aura attached to a land. Two storage patterns exist:
+//   1. BF-standalone cards with enchantedLandIid (Kudzu-style) -- tgtC resolves normally.
+//   2. Embedded aura records in land.enchantments[] (Wild Growth-style) -- tgtC is null; match by iid.
+if (tgtC && tgtC.enchantedLandIid) {
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
+  ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+} else if (tgt) {
+  // Search all lands for an embedded aura record matching tgt iid.
+  let found = false;
+  for (const side of ["p", "o"]) {
+    const landIdx = ns[side].bf.findIndex(l => isLand(l) && (l.enchantments || []).some(e => e.iid === tgt));
+    if (landIdx >= 0) {
+      const land = ns[side].bf[landIdx];
+      const aura = land.enchantments.find(e => e.iid === tgt);
+      const auraOwner = aura.controller || side;
+      ns = { ...ns, [side]: { ...ns[side], bf: ns[side].bf.map((l, i) =>
+        i === landIdx ? { ...l, enchantments: l.enchantments.filter(e => e.iid !== tgt) } : l
+      ) } };
+      ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...aura.cardData }] } };
+      ns = dlog(ns, `${card.name} destroys ${aura.name}.`, "effect");
+      found = true;
+      break;
+    }
+  }
+  if (!found) ns = dlog(ns, `${card.name} fizzles -- no valid land Aura target.`, "effect");
+}
+break;
+}
 case "jadeStatue": {
 ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
   c.iid === item.card.iid
@@ -2672,6 +2714,27 @@ case "ACTIVATE_ABILITY": {
           ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] } : c) } };
       }
       return dlog(ns, `Mishra's Factory pumps target Assembly-Worker +1/+1.`, "effect");
+    }
+
+    if (ab.effect === "desertPing") {
+      if (s.phase !== PHASE.COMBAT_END) return dlog(s, "Desert's damage ability can only be activated during the end of combat step.", "info");
+      if (card.tapped) return dlog(s, "Desert is already tapped.", "info");
+      if (!tgt) return dlog(s, "No target selected for Desert.", "info");
+      const allBf = [...s.p.bf, ...s.o.bf];
+      const targetC = allBf.find(c => c.iid === tgt);
+      if (!targetC) return dlog(s, "Desert: target not found.", "info");
+      const isAttacker = (s.attackers || []).includes(tgt);
+      if (!isAttacker) return dlog(s, "Desert can only target an attacking creature.", "info");
+      const ownerSide = s.p.bf.find(c => c.iid === tgt) ? 'p' : 'o';
+      if (targetC.preventsDesertDamage) return dlog(s, `${card.name} is prevented from damaging ${targetC.name}.`, "effect");
+      if (targetC.preventsDesertDamageWhileAttacking && isAttacker) {
+        // TODO: banding-group Desert prevention not yet handled
+        return dlog(s, `${card.name} is prevented from damaging ${targetC.name} (camel protection).`, "effect");
+      }
+      let ns = { ...s, [w]: { ...s[w], bf: s[w].bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+      ns = { ...ns, [ownerSide]: { ...ns[ownerSide], bf: ns[ownerSide].bf.map(c => c.iid === tgt ? { ...c, damage: c.damage + 1 } : c) } };
+      ns = checkDeath(ns);
+      return dlog(ns, `${card.name} deals 1 damage to ${targetC.name}.`, "effect");
     }
 
     return s;
