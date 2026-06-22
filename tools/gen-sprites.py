@@ -178,24 +178,59 @@ def draw_pegasus(c, d, f):
 
 def draw_spider(c, d, f):
     dy = BOB[f]
-    wig = 1.2 if f in (1, 3) else 0.0
+    wig = 2.0 if f in (1, 3) else 0.0
     wsign = 1 if f == 1 else -1
-    cx = 16
-    for i, ly in enumerate((10, 13, 16, 19)):              # legs (accent)
-        w = wsign * wig
-        c.line(cx - 3, ly + dy, 3, ly - 3 + w, LEG, 1.1)
-        c.line(cx + 3, ly + dy, 29, ly - 3 - w, LEG, 1.1)
-    c.ell(10, 13 + dy, 22, 25 + dy, MD)                    # abdomen (mass)
-    c.ell(11, 13 + dy, 18, 20 + dy, LT)
-    c.ell(12, 8 + dy, 20, 16 + dy, DK)                     # cephalothorax (mass)
-    ex = -1.5 if d == 'left' else 1.5 if d == 'right' else 0
-    ey = -0.5 if d == 'up' else 0.5
-    # eyes: small yellow cluster with dark pupils (accent)
-    for (px, py) in ((13.6, 10), (17, 10), (15.3, 11.6)):
-        c.ell(px + ex, py + ey + dy, px + 1.7 + ex, py + 1.7 + ey + dy, EYE_Y)
-        c.ell(px + 0.4 + ex, py + 0.4 + ey + dy, px + 1.2 + ex, py + 1.2 + ey + dy, PUPIL)
-    c.rect(14.6 + ex, 13.6 + dy, 15.4 + ex, 15.2 + dy, LEG)   # fangs (accent)
-    c.rect(16.6 + ex, 13.6 + dy, 17.4 + ex, 15.2 + dy, LEG)
+
+    # Jointed legs in 4 pairs: (attach_x, attach_y, knee_x, knee_y, tip_x, tip_y)
+    # Mirrored left/right around cx=16. Alternate pairs offset for walk cycle.
+    leg_specs = [
+        (13, 10,  3,  4,  0, 10),   # pair 0 - frontmost
+        (12, 13,  2,  9,  0, 16),   # pair 1
+        (12, 16,  2, 16,  0, 22),   # pair 2
+        (13, 19,  4, 23,  1, 27),   # pair 3 - rearmost
+    ]
+    for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_specs):
+        off = (wsign * wig if i % 2 == 0 else -wsign * wig)
+        ky_a = ky + off
+        c.line(ax,      ay + dy, kx,      ky_a + dy, LEG, 1.1)
+        c.line(kx,      ky_a + dy, tx,    ty + dy,   LEG, 1.1)
+        c.line(32 - ax, ay + dy, 32 - kx, ky_a + dy, LEG, 1.1)
+        c.line(32 - kx, ky_a + dy, 32 - tx, ty + dy, LEG, 1.1)
+
+    # Abdomen (mass) - large lower oval with highlight and shadow
+    c.ell(9,  14 + dy, 23, 28 + dy, MD)
+    c.ell(10, 14 + dy, 19, 21 + dy, LT)   # highlight
+    c.ell(12, 23 + dy, 21, 27 + dy, SH)   # shadow underside
+
+    # Cephalothorax (mass) - smaller, overlaps abdomen top
+    c.ell(11, 7 + dy, 21, 17 + dy, DK)
+    c.ell(12, 7 + dy, 19, 13 + dy, MD)    # mid highlight
+    c.ell(13, 8 + dy, 18, 12 + dy, LT)   # bright crown
+
+    # Direction-offset for eyes and fangs
+    ex = -1.5 if d == 'left' else (1.5 if d == 'right' else 0.0)
+    ey =  0.5 if d != 'up'   else -1.5
+
+    if d == 'up':
+        # Rear view: darken carapace, no eyes, show spinnerets
+        c.ell(11, 7 + dy, 21, 17 + dy, SH)
+        c.ell(12, 8 + dy, 19, 13 + dy, DK)
+        c.ell(14.5, 26 + dy, 17.5, 28.5 + dy, DK)   # spinnerets
+    else:
+        # Eye cluster: 4 prominent eyes (down) or 2 (side)
+        n_eyes = 4 if d == 'down' else 2
+        eye_pos = [
+            (12.4, 9.0),   # front outer-left
+            (17.0, 8.6),   # front outer-right (mirrored by ex)
+            (14.2, 11.2),  # rear inner-left
+            (18.6, 10.6),  # rear inner-right
+        ]
+        for (px, py) in eye_pos[:n_eyes]:
+            c.ell(px + ex,       py + ey + dy, px + 2.6 + ex, py + 2.6 + ey + dy, EYE_Y)
+            c.ell(px + 0.6 + ex, py + 0.6 + ey + dy, px + 1.9 + ex, py + 1.9 + ey + dy, PUPIL)
+        # Chelicerae / fangs
+        c.rect(14.0 + ex, 14.2 + dy, 15.2 + ex, 16.4 + dy, LEG)
+        c.rect(16.8 + ex, 14.2 + dy, 18.0 + ex, 16.4 + dy, LEG)
 
 
 def draw_zombie(c, d, f):
