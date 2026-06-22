@@ -181,56 +181,116 @@ def draw_spider(c, d, f):
     wig = 2.0 if f in (1, 3) else 0.0
     wsign = 1 if f == 1 else -1
 
-    # Jointed legs in 4 pairs: (attach_x, attach_y, knee_x, knee_y, tip_x, tip_y)
-    # Mirrored left/right around cx=16. Alternate pairs offset for walk cycle.
-    leg_specs = [
-        (13, 10,  3,  4,  0, 10),   # pair 0 - frontmost
-        (12, 13,  2,  9,  0, 16),   # pair 1
-        (12, 16,  2, 16,  0, 22),   # pair 2
-        (13, 19,  4, 23,  1, 27),   # pair 3 - rearmost
-    ]
-    for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_specs):
-        off = (wsign * wig if i % 2 == 0 else -wsign * wig)
-        ky_a = ky + off
-        c.line(ax,      ay + dy, kx,      ky_a + dy, LEG, 1.1)
-        c.line(kx,      ky_a + dy, tx,    ty + dy,   LEG, 1.1)
-        c.line(32 - ax, ay + dy, 32 - kx, ky_a + dy, LEG, 1.1)
-        c.line(32 - kx, ky_a + dy, 32 - tx, ty + dy, LEG, 1.1)
-
-    # Abdomen (mass) - large lower oval with highlight and shadow
-    c.ell(9,  14 + dy, 23, 28 + dy, MD)
-    c.ell(10, 14 + dy, 19, 21 + dy, LT)   # highlight
-    c.ell(12, 23 + dy, 21, 27 + dy, SH)   # shadow underside
-
-    # Cephalothorax (mass) - smaller, overlaps abdomen top
-    c.ell(11, 7 + dy, 21, 17 + dy, DK)
-    c.ell(12, 7 + dy, 19, 13 + dy, MD)    # mid highlight
-    c.ell(13, 8 + dy, 18, 12 + dy, LT)   # bright crown
-
-    # Direction-offset for eyes and fangs
-    ex = -1.5 if d == 'left' else (1.5 if d == 'right' else 0.0)
-    ey =  0.5 if d != 'up'   else -1.5
-
-    if d == 'up':
-        # Rear view: darken carapace, no eyes, show spinnerets
-        c.ell(11, 7 + dy, 21, 17 + dy, SH)
-        c.ell(12, 8 + dy, 19, 13 + dy, DK)
-        c.ell(14.5, 26 + dy, 17.5, 28.5 + dy, DK)   # spinnerets
-    else:
-        # Eye cluster: 4 prominent eyes (down) or 2 (side)
-        n_eyes = 4 if d == 'down' else 2
-        eye_pos = [
-            (12.4, 9.0),   # front outer-left
-            (17.0, 8.6),   # front outer-right (mirrored by ex)
-            (14.2, 11.2),  # rear inner-left
-            (18.6, 10.6),  # rear inner-right
+    if d == 'down':
+        # FRONT-FACING pose (ref 1): spider looking at viewer.
+        # Body vertical, cephalothorax upper-center, abdomen below.
+        # Front leg pairs angle upward-outward; rear pairs angle downward-outward.
+        leg_pairs = [
+            # ax,   ay,   kx,  ky,   tx,   ty
+            (13.5, 10.5,  5.0,  3.5,  0.0,  8.0),  # front - sweep up then out
+            (12.5, 13.0,  3.0,  9.5,  0.0, 15.0),
+            (12.5, 16.5,  3.0, 17.0,  0.0, 22.0),
+            (13.5, 19.5,  5.0, 24.5,  1.0, 29.0),  # rear - sweep down then out
         ]
-        for (px, py) in eye_pos[:n_eyes]:
-            c.ell(px + ex,       py + ey + dy, px + 2.6 + ex, py + 2.6 + ey + dy, EYE_Y)
-            c.ell(px + 0.6 + ex, py + 0.6 + ey + dy, px + 1.9 + ex, py + 1.9 + ey + dy, PUPIL)
-        # Chelicerae / fangs
-        c.rect(14.0 + ex, 14.2 + dy, 15.2 + ex, 16.4 + dy, LEG)
-        c.rect(16.8 + ex, 14.2 + dy, 18.0 + ex, 16.4 + dy, LEG)
+        for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_pairs):
+            off = (wsign * wig if i % 2 == 0 else -wsign * wig)
+            c.line(ax,      ay + dy, kx,      ky + off + dy, LEG, 1.2)
+            c.line(kx,      ky + off + dy, tx, ty + dy,      LEG, 1.2)
+            c.line(32 - ax, ay + dy, 32 - kx, ky + off + dy, LEG, 1.2)
+            c.line(32 - kx, ky + off + dy, 32 - tx, ty + dy, LEG, 1.2)
+
+        # Abdomen below, smaller since partially occluded
+        c.ell(10, 16 + dy, 22, 28 + dy, MD)
+        c.ell(11, 16 + dy, 19, 22 + dy, LT)
+        c.ell(13, 23 + dy, 21, 27 + dy, SH)
+
+        # Cephalothorax larger/prominent since we face it
+        c.ell(10, 7 + dy, 22, 18 + dy, DK)
+        c.ell(11, 7 + dy, 20, 14 + dy, MD)
+        c.ell(12, 8 + dy, 18, 13 + dy, LT)
+
+        # 4 large eyes spread across cephalothorax
+        for (px, py) in ((11.5, 8.8), (16.5, 8.4), (13.5, 11.5), (19.0, 11.2)):
+            c.ell(px, py + dy, px + 3.0, py + 3.0 + dy, EYE_Y)
+            c.ell(px + 0.7, py + 0.7 + dy, px + 2.2, py + 2.2 + dy, PUPIL)
+
+        # Chelicerae
+        c.rect(13.5, 14.8 + dy, 15.0, 17.2 + dy, LEG)
+        c.rect(17.0, 14.8 + dy, 18.5, 17.2 + dy, LEG)
+
+    elif d == 'up':
+        # TOP-DOWN REAR pose (ref 2): spider walking away, seen from above.
+        # Abdomen dominates lower half; cephalothorax small at top.
+        # All 8 legs spread symmetrically to sides.
+        leg_pairs = [
+            (13.5,  9.5,  4.5,  4.0,  0.0,  9.0),
+            (12.5, 13.0,  3.0, 10.0,  0.0, 16.0),
+            (12.5, 17.0,  3.0, 18.0,  0.0, 23.0),
+            (13.5, 21.0,  5.0, 26.0,  1.0, 30.0),
+        ]
+        for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_pairs):
+            off = (wsign * wig if i % 2 == 0 else -wsign * wig)
+            c.line(ax,      ay + dy, kx,      ky + off + dy, LEG, 1.2)
+            c.line(kx,      ky + off + dy, tx, ty + dy,      LEG, 1.2)
+            c.line(32 - ax, ay + dy, 32 - kx, ky + off + dy, LEG, 1.2)
+            c.line(32 - kx, ky + off + dy, 32 - tx, ty + dy, LEG, 1.2)
+
+        # Abdomen - large and round, fills most of the cell
+        c.ell(8, 13 + dy, 24, 30 + dy, MD)
+        c.ell(9, 13 + dy, 20, 21 + dy, LT)
+        c.ell(10, 23 + dy, 22, 29 + dy, DK)
+        c.ell(14, 28.5 + dy, 18, 30.5 + dy, SH)   # spinnerets
+
+        # Cephalothorax - small, at top, showing carapace from above
+        c.ell(11, 5 + dy, 21, 15 + dy, SH)
+        c.ell(12, 5 + dy, 19, 11 + dy, DK)
+        c.ell(13, 6 + dy, 17, 10 + dy, MD)
+
+    else:
+        # SIDE-PROFILE pose (ref 3): left/right directions.
+        # Body horizontal: cephalothorax at left end, abdomen at right end.
+        # Legs spread above and below the horizontal body.
+        # 8 legs total: 4 upper (arching up), 4 lower (arching down).
+        side_legs = [
+            # (attach_x, attach_y, knee_x, knee_y, tip_x, tip_y)
+            # upper legs (arch upward)
+            ( 8.0, 15.0,  5.0,  9.0,  1.0,  6.0),
+            (12.0, 14.5,  9.0,  8.0,  5.0,  4.5),
+            (17.0, 14.5, 20.5,  8.0, 24.0,  4.5),
+            (22.0, 15.0, 25.5,  9.5, 30.0,  7.0),
+            # lower legs (arch downward)
+            ( 8.0, 17.0,  5.0, 22.5,  1.0, 26.0),
+            (12.0, 17.5,  9.0, 23.0,  5.0, 27.5),
+            (17.0, 17.5, 20.5, 23.0, 24.0, 27.5),
+            (22.0, 17.0, 25.5, 22.5, 30.0, 26.0),
+        ]
+        for i, (ax, ay, kx, ky, tx, ty) in enumerate(side_legs):
+            off = (wsign * wig if i % 2 == 0 else -wsign * wig)
+            ky_a = ky + (off if i < 4 else -off)
+            c.line(ax, ay + dy, kx, ky_a + dy, LEG, 1.1)
+            c.line(kx, ky_a + dy, tx, ty + dy, LEG, 1.1)
+
+        # Abdomen - right end, large oval
+        c.ell(15, 10 + dy, 29, 22 + dy, MD)
+        c.ell(16, 10 + dy, 26, 16 + dy, LT)
+        c.ell(18, 18 + dy, 27, 22 + dy, SH)
+
+        # Cephalothorax - left end, smaller
+        c.ell(4, 11 + dy, 18, 21 + dy, DK)
+        c.ell(5, 11 + dy, 16, 17 + dy, MD)
+        c.ell(6, 12 + dy, 14, 16 + dy, LT)
+
+        # 2 eyes on cephalothorax (side-facing)
+        for (px, py) in ((5.5, 12.0), (8.5, 11.0)):
+            c.ell(px, py + dy, px + 2.6, py + 2.6 + dy, EYE_Y)
+            c.ell(px + 0.6, py + 0.6 + dy, px + 1.8, py + 1.8 + dy, PUPIL)
+
+        # Fangs at left tip
+        c.rect(3.0, 14.5 + dy, 4.2, 16.5 + dy, LEG)
+        c.rect(3.0, 17.0 + dy, 4.2, 19.0 + dy, LEG)
+
+        if d == 'right':
+            c.flip_h()
 
 
 def draw_zombie(c, d, f):
