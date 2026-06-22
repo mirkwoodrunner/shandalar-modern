@@ -416,4 +416,42 @@ the UI/hook layer and are invisible to `DuelCore.js`:
 It receives `tgt: null` from `castSpell` when the player skips; that is the only
 engine-visible signal.
 
+---
+
+# 14. Activated Ability Cost-String Schema
+
+`card.activated.cost` is a comma-separated string encoding the activation cost. DuelCore parses it in the `ACTIVATE_ABILITY` case.
+
+## Recognised Tokens
+
+| Token | Meaning | When consumed |
+|---|---|---|
+| `T` | Tap the source permanent | Checked first; returns early if already tapped |
+| `sac` | Sacrifice the source permanent | Moves source to owner's graveyard via `zMove` immediately after tap; before the ability item is pushed to the stack |
+| One or more mana symbols (e.g. `G`, `R`, `2`, `1U`) | Pay the specified mana cost | Parsed by `parseMana()`; deducted from `s[w].mana` via `payMana()` |
+| `counter` | Remove a +1/+1 counter (e.g. Triskelion) | Handled per-effect-case rather than in the shared cost step |
+
+## Cost Processing Order
+
+1. Tap cost (`T` present): tap the source. Return early with a log if already tapped.
+2. Sacrifice cost (`sac` present): call `zMove(s, iid, w, w, "gy")`. Source is gone from battlefield before the ability item is created.
+3. Mana cost: strip `T`, `sac`, and commas; parse remainder with `parseMana()`; deduct with `payMana()`. Return early (log "not enough mana") if pool is insufficient.
+4. Push ability item to `s.stack` and open priority window.
+
+## MTG Rule Alignment
+
+Sacrifice is a cost (paid before the effect resolves on the stack), not part of the effect. If a legal target disappears by the time the stack resolves, the source is still sacrificed and the effect fizzles. This matches MTG rules 117.12 and 601.2g.
+
+## Example Cost Strings
+
+| Cost string | Card | Meaning |
+|---|---|---|
+| `"T,sac"` | Goblin Digging Team, Black Lotus | Tap + sacrifice |
+| `"G,T,sac"` | Scavenger Folk | Pay {G} + tap + sacrifice |
+| `"T"` | D'Avenant Archer, Royal Assassin | Tap only |
+| `"T,sac"` | Strip Mine | Tap + sacrifice |
+| `"R"` | Wall of Fire | Pay {R} |
+
+**Contract:** Adding new cost tokens requires updating both the parse logic in `ACTIVATE_ABILITY` (DuelCore.js lines ~2795-2815) and the mana-strip regex (`replace(/sac/g, "")` pattern). New tokens must be documented in this section.
+
 # End of ENGINE CONTRACT SPEC v1.0

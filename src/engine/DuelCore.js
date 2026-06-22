@@ -1410,6 +1410,70 @@ ns = dlog(ns, `${card.name}: added {${manaColor}}; ${caster} takes ${selfDmg} da
 break;
 }
 // --- END GROUP P CASES -------------------------------------------------------
+// --- BATCH 1B: Wall destruction, sacrifice-cost abilities --------------------
+case "destroyWall": {
+if (tgtC && tgtC.subtype?.includes('Wall')) {
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
+  ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- no legal Wall target.`, "effect");
+}
+break;
+}
+case "destroyArtifactSac": {
+if (tgtC && isArt(tgtC)) {
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
+  ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- no legal artifact target.`, "effect");
+}
+break;
+}
+case "pingCombatant": {
+const isAttackingC = (ns.attackers || []).includes(tgtC?.iid);
+const isBlockingC = tgtC?.blocking != null;
+if (tgtC && (isAttackingC || isBlockingC)) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } };
+  ns = checkDeath(ns);
+  ns = dlog(ns, `${card.name} deals 1 damage to ${tgtC.name}.`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- target is not attacking or blocking.`, "effect");
+}
+break;
+}
+case "cuombajjWitches": {
+// First damage: player-chosen target (creature or player).
+// SIMPLIFICATION: second damage target (opponent's choice) resolved deterministically:
+// highest-effective-toughness creature on the caster's side, or the caster player if none.
+// True opponent-choice UI is deferred to a future batch.
+if (tgt === "p" || tgt === "o") {
+  ns = hurt(ns, tgt, 1, card.name);
+  ns = dlog(ns, `${card.name} deals 1 damage to ${tgt} (player choice).`, "effect");
+} else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } };
+  ns = checkDeath(ns);
+  ns = dlog(ns, `${card.name} deals 1 damage to ${tgtC.name} (player choice).`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s first damage fizzles -- no target.`, "effect");
+}
+// Second damage: deterministic fallback for opponent's choice.
+const cwCasterCres = ns[caster].bf.filter(isCre);
+if (cwCasterCres.length > 0) {
+  const cwOppTgt = cwCasterCres.reduce((best, c) => {
+    const eff = (c.toughness || 0) + (c.counters?.P1P1 || 0) - (c.counters?.M1M1 || 0);
+    const bestEff = (best.toughness || 0) + (best.counters?.P1P1 || 0) - (best.counters?.M1M1 || 0);
+    return eff > bestEff || (eff === bestEff && c.iid < best.iid) ? c : best;
+  });
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => c.iid === cwOppTgt.iid ? { ...c, damage: c.damage + 1 } : c) } };
+  ns = checkDeath(ns);
+  ns = dlog(ns, `${card.name} deals 1 damage to ${cwOppTgt.name} (opponent's choice, deterministic).`, "effect");
+} else {
+  ns = hurt(ns, caster, 1, card.name);
+  ns = dlog(ns, `${card.name} deals 1 damage to ${caster} (opponent's choice, deterministic).`, "effect");
+}
+break;
+}
+// --- END BATCH 1B CASES ------------------------------------------------------
 case "balance": {
   const minLands = Math.min(ns.p.bf.filter(isLand).length, ns.o.bf.filter(isLand).length);
   const minCres  = Math.min(ns.p.bf.filter(isCre).length,  ns.o.bf.filter(isCre).length);
