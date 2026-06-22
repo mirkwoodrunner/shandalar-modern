@@ -1,5 +1,27 @@
 # Current Sprint
 
+## Batch 1B: Wall Destruction / Sacrifice-Cost Activated Abilities (2026-06-22)
+
+Four cards implemented; Battering Ram left stubbed (miscategorized -- trigger-based, not an activated ability).
+
+| Card | Was | Now |
+|---|---|---|
+| `goblin_digging_team` | `effect:"STUB"` | `effect:null, activated:{cost:"T,sac",effect:"destroyWall"}` |
+| `scavenger_folk` | `effect:"STUB"` | `effect:null, activated:{cost:"G,T,sac",effect:"destroyArtifactSac"}` |
+| `davenant_archer` | `effect:"STUB"` | `effect:null, activated:{cost:"T",effect:"pingCombatant"}` |
+| `cuombajj_witches` | `effect:"STUB"` | `effect:null, activated:{cost:"T",effect:"cuombajjWitches"}` |
+| `battering_ram` | `effect:"STUB"` | Remains STUB; comment updated with miscategorization note |
+
+Infrastructure: `"sac"` cost-token convention confirmed as existing (Strip Mine / Black Lotus pattern). No new token introduced.
+
+`ACTIVATE_TARGET_EFFECTS` and `PLAYER_TARGETABLE_ABILITY_EFFECTS` in `useDuelController.ts` extended for the four new effects.
+
+Deferred: Battering Ram (Group C/D trigger batch); Cuombajj Witches opponent-choice second target (needs UI prompt infra).
+
+**Status:** Done
+
+---
+
 ## Batch 1A: Desert / Landwalk Handler Family (2026-06-21)
 
 Five cards implemented in `src/data/cards.js` + `src/engine/DuelCore.js`; one entry added.

@@ -1967,4 +1967,55 @@ ACTIVE
 
 ---
 
+---
+
+## Batch 1B: Wall Destruction / Sacrifice-Cost Activated Abilities (2026-06-22)
+
+Four cards implemented; Battering Ram deferred (miscategorized). Infrastructure note: the `"sac"` cost token was already present in the engine (Strip Mine, Black Lotus) -- no new token introduced.
+
+### New effect cases in `DuelCore.js` (`resolveEff`)
+
+| Case | Cards | Notes |
+|---|---|---|
+| `destroyWall` | `goblin_digging_team` | Checks `tgtC.subtype?.includes('Wall')`; fizzles with log if no legal Wall target |
+| `destroyArtifactSac` | `scavenger_folk` | Uses `isArt(tgtC)` convention (same as `destroyArtifact`); fizzles with log if no legal artifact target |
+| `pingCombatant` | `davenant_archer` | Checks `ns.attackers.includes(tgtC.iid)` (attacking) and `tgtC.blocking != null` (blocking); fizzles with log on non-combatant |
+| `cuombajjWitches` | `cuombajj_witches` | Player-chosen first target (any: creature or player); second damage falls on highest-effective-toughness creature on caster's side (deterministic fallback -- opponent-choice UI deferred) |
+
+### Sacrifice cost token convention
+
+The engine already supports `"sac"` as a cost token in `act.cost` strings (line ~2803 of `DuelCore.js`). When `"sac"` is present, the activating permanent is moved to its owner's graveyard immediately upon activation (before the ability item is pushed to the stack), implementing the MTG rule that costs are paid before effects resolve. Cost `"T,sac"` = tap + sacrifice; `"G,T,sac"` = pay G + tap + sacrifice.
+
+### cards.js schema changes
+
+| Card | Old `effect` | New schema |
+|---|---|---|
+| `goblin_digging_team` | `"STUB"` | `effect:null, activated:{cost:"T,sac",effect:"destroyWall"}` |
+| `scavenger_folk` | `"STUB"` | `effect:null, activated:{cost:"G,T,sac",effect:"destroyArtifactSac"}` |
+| `davenant_archer` | `"STUB"` | `effect:null, activated:{cost:"T",effect:"pingCombatant"}` |
+| `cuombajj_witches` | `"STUB"` | `effect:null, activated:{cost:"T",effect:"cuombajjWitches"}` |
+| `battering_ram` | `"STUB"` | Remains STUB; miscategorization noted in comment |
+
+### useDuelController.ts
+
+`ACTIVATE_TARGET_EFFECTS` extended with: `destroyWall`, `destroyArtifactSac`, `pingCombatant`, `cuombajjWitches`.
+`PLAYER_TARGETABLE_ABILITY_EFFECTS` extended with: `cuombajjWitches` (card can target players).
+
+### AI.js
+
+Not touched. AI will not intelligently target with the new activated abilities until a future AI targeting update.
+
+### Deferred
+
+- **Battering Ram**: needs begin-of-combat trigger + blocked-by-Wall trigger (Group C/D trigger batch)
+- **Cuombajj Witches second target**: opponent-choice UI requires a pending-state prompt; deferred to a future batch
+
+### Tests
+- Playwright: `e2e/batch1b-wall-destruction-sacrifice.spec.ts` (1A through 1E; both desktop 1280x800 and mobile 390x844)
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5

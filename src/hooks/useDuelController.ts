@@ -134,11 +134,13 @@ export function getManaShortfall(
 const ACTIVATE_TARGET_EFFECTS = new Set([
   'ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying',
   'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand', 'tapTarget',
+  'destroyWall', 'destroyArtifactSac', 'pingCombatant', 'cuombajjWitches',
 ]);
 
 // Ability effects that can target players (in addition to permanents).
 const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   'ping', 'triskelionPing', 'damage1', 'damage2', 'damage3',
+  'cuombajjWitches',
 ]);
 
 function scoreLibCard(card: any, _state: any): number {
