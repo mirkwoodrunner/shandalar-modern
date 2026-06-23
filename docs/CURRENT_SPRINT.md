@@ -22,9 +22,8 @@ Two related correctness fixes for X-cost spells.
 | `src/ui/Mobile/DuelScreenMobile.tsx` | Same as desktop. |
 | `tests/e2e/power-sink-x-select.spec.js` | 7 Playwright tests (desktop 1280x800 + mobile 390x844). |
 
-**Pre-existing gap (not fixed here):** `DuelScreenMobile.tsx` does not render
-`ConditionalCounterModal` -- mobile players cannot respond to Force Spike / Power Sink
-prompts. Logged in MECHANICS_INDEX.md.
+**Mobile parity:** `DuelScreenMobile.tsx` now renders `ConditionalCounterModal`
+with the same `targetCaster === 'p'` guard as desktop (fixed in follow-up commit).
 
 **Status:** Done
 

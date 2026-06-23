@@ -1972,10 +1972,9 @@ instead of a free range; stepper jumps only between those values.
 ### Tests
 - Playwright: `tests/e2e/power-sink-x-select.spec.js` (T1-T7, both 1280x800 and 390x844 viewports)
 
-### Known gap (pre-existing, not fixed here)
-`DuelScreenMobile.tsx` does not render `ConditionalCounterModal` -- the
-player cannot respond to Force Spike / Power Sink prompts on mobile. This is
-a separate bug outside the scope of this work.
+### Mobile parity
+`DuelScreenMobile.tsx` now renders `ConditionalCounterModal` with the same
+`targetCaster === 'p'` guard as desktop (fixed 2026-06-23).
 
 ---
 

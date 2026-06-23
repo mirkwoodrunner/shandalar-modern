@@ -15,6 +15,7 @@ import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
+import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
 
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
@@ -50,6 +51,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
+    resolveConditionalCounter,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     showBop, handleBopChoose, handleBopCancel,
@@ -277,6 +279,23 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             onAdjust={adjustCastX}
             onConfirm={confirmCastX}
             onCancel={cancelCastFlow}
+          />
+        );
+      })()}
+
+      {s_state.pendingConditionalCounter && s_state.pendingConditionalCounter.targetCaster === 'p' && (() => {
+        const cc = s_state.pendingConditionalCounter;
+        const totalMana = Object.values(s_state.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+        const targeted = (s_state.stack as any[]).find((i: any) => i.id === cc.stackItemId);
+        return (
+          <ConditionalCounterModal
+            cardName={cc.cardName}
+            targetedSpellName={targeted?.card?.name ?? 'your spell'}
+            cost={cc.cost}
+            canPay={cc.canPay}
+            totalMana={totalMana}
+            isPowerSink={cc.cardId === 'power_sink'}
+            onResolve={resolveConditionalCounter}
           />
         );
       })()}
