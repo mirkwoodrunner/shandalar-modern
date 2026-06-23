@@ -1,5 +1,18 @@
 # Current Sprint
 
+## Hooded Figure Sprite Variant for Overworld Enemies (2026-06-23)
+
+Added `hoodedFigure` as a 50/50 random sprite variant for overworld enemies.
+
+| Change | Detail |
+|---|---|
+| `src/ui/overworld/Sprite.jsx` | Imported `hoodedfigure.png`; added `hoodedFigure` to `SHEET_URLS`; `spriteForMonster` now rolls `Math.random() < 0.5` at spawn time and returns `hoodedFigure` or the archetype's default kind. `color` resolution is unchanged. `spriteForHenchman` untouched. |
+| `tests/e2e/hooded-figure-sprites.spec.ts` | New Playwright suite (desktop 1280x800 + mobile 390x844): sprite-variety check (both variants present in DOM), tint-correctness check (opaque pixels on hoodedFigure canvases for all 5 archetype colors), henchman-unaffected regression. |
+
+**Status:** Done
+
+---
+
 ## Batch 1B: Wall Destruction / Sacrifice-Cost Activated Abilities (2026-06-22)
 
 Four cards implemented; Battering Ram left stubbed (miscategorized -- trigger-based, not an activated ability).

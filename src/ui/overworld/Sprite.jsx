@@ -15,6 +15,7 @@ import spiderUrl from '../../assets/sprites/spider.png';
 import zombieUrl from '../../assets/sprites/zombie.png';
 import goblinUrl from '../../assets/sprites/goblin.png';
 import fishUrl from '../../assets/sprites/fish.png';
+import hoodedFigureUrl from '../../assets/sprites/hoodedfigure.png';
 
 const CELL = 32;            // source cell size in the sheet
 const DIR_ROW = { down: 0, up: 1, left: 2, right: 3 };
@@ -41,12 +42,13 @@ function _hexToRgb(hex) {
 }
 
 const SHEET_URLS = {
-  mage:    mageUrl,
-  pegasus: pegasusUrl,
-  spider:  spiderUrl,
-  zombie:  zombieUrl,
-  goblin:  goblinUrl,
-  fish:    fishUrl,
+  mage:         mageUrl,
+  pegasus:      pegasusUrl,
+  spider:       spiderUrl,
+  zombie:       zombieUrl,
+  goblin:       goblinUrl,
+  fish:         fishUrl,
+  hoodedFigure: hoodedFigureUrl,
 };
 
 // ---------------------------------------------------------------------------
@@ -278,10 +280,10 @@ const KIND_BY_ARCH = {
 const COLOR_BY_LETTER = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green' };
 
 export function spriteForMonster(archKey, terrainId) {
-  return {
-    kind:  KIND_BY_ARCH[archKey] ?? KIND_BY_TERRAIN[terrainId] ?? 'goblin',
-    color: COLOR_BY_ARCH[archKey] ?? 'red',
-  };
+  const color = COLOR_BY_ARCH[archKey] ?? 'red';
+  const baseKind = KIND_BY_ARCH[archKey] ?? KIND_BY_TERRAIN[terrainId] ?? 'goblin';
+  const kind = Math.random() < 0.5 ? 'hoodedFigure' : baseKind;
+  return { kind, color };
 }
 
 export function spriteForHenchman(colorLetter) {
