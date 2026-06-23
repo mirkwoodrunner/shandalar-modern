@@ -98,7 +98,7 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
 
 // ── Cast/Activate flow ─────────────────────────────────────────────────────
 
-export type CastFlowMode = 'targeting' | 'mana' | null;
+export type CastFlowMode = 'xSelect' | 'targeting' | 'mana' | null;
 
 export interface CastFlowState {
   kind: 'spell' | 'ability';
@@ -109,6 +109,9 @@ export interface CastFlowState {
   requiresTarget: boolean;
   maxTargets: number;
   canTargetPlayers: boolean;
+  xVal?: number;          // locked X for this cast, set before mana/targeting
+  xMax?: number;           // max affordable X at the moment selection began
+  xLegalValues?: number[]; // for spell_blast -- explicit legal X values, omitted otherwise
 }
 
 export function needsAnyTarget(card: any): boolean {
@@ -128,6 +131,33 @@ export function getManaShortfall(
   const required = parseMana(cost) as Record<string, number>;
   if (xVal > 0) required.generic = (required.generic || 0) + xVal;
   return { needed: required, have: { ...pool } };
+}
+
+// Returns the maximum X the player can afford for a card with a free-choice
+// {X} in its cost. Returns -1 if the player cannot even pay the fixed portion.
+// Does not apply to power_sink or spell_blast.
+export function getMaxAffordableX(pool: Record<string, number>, cost: string): number {
+  const baseCost = cost.replace(/X/gi, '');
+  const baseReq = parseMana(baseCost) as Record<string, number>;
+  const remaining: Record<string, number> = { ...pool };
+  for (const c of ['W', 'U', 'B', 'R', 'G', 'C']) {
+    if ((pool[c] || 0) < (baseReq[c] || 0)) return -1;
+    remaining[c] = Math.max(0, (remaining[c] || 0) - (baseReq[c] || 0));
+  }
+  const leftover = Object.values(remaining).reduce((s, v) => s + v, 0);
+  const genericNeeded = baseReq.generic || 0;
+  return Math.max(0, leftover - genericNeeded);
+}
+
+// Spell Blast: legal X values are the distinct CMCs of spells on the opponent's
+// side of the stack (player casts Spell Blast to counter the opponent's spell).
+export function getSpellBlastLegalX(stack: any[]): number[] {
+  const values = new Set<number>();
+  for (const item of stack) {
+    if (item.caster === 'p') continue; // only opponent's spells are valid targets
+    if (typeof item.card?.cmc === 'number') values.add(item.card.cmc);
+  }
+  return Array.from(values).sort((a, b) => a - b);
 }
 
 // Effects for activated abilities that require selecting a target.
@@ -719,7 +749,9 @@ export function useDuelController(
     if (flow.kind === 'spell') {
       const card = (s.p.hand as any[]).find((c: any) => c.iid === flow.sourceIid);
       if (!card) { setCastFlow(null); return; }
-      const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
+        ? (s.xVal || 1)
+        : 0;
       const tgt = flow.selectedTargets[0] ?? null;
       if (canPay(s.p.mana, card.cost, xSpend)) {
         castSpell(flow.sourceIid, tgt, s.xVal);
@@ -786,7 +818,9 @@ export function useDuelController(
     if (castFlow.kind === 'spell') {
       const card = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
       if (!card) return;
-      const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+      const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
+        ? (s.xVal || 1)
+        : 0;
       if (canPay(s.p.mana, card.cost, xSpend)) {
         const tgt = castFlow.selectedTargets[0] ?? null;
         castSpell(castFlow.sourceIid, tgt, s.xVal);
@@ -816,6 +850,43 @@ export function useDuelController(
   const beginCastFlow = useCallback((card: any) => {
     if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
 
+    const hasX = /X/i.test(card.cost || '') && card.id !== 'power_sink';
+
+    if (hasX) {
+      if (card.id === 'spell_blast') {
+        const legal = getSpellBlastLegalX(s.stack);
+        if (!legal.length) { selectCard(null); return; }
+        setCastFlow({
+          kind: 'spell',
+          sourceIid: card.iid,
+          abilityId: null,
+          mode: 'xSelect',
+          selectedTargets: [],
+          requiresTarget: false,
+          maxTargets: 1,
+          canTargetPlayers: false,
+          xVal: legal[0],
+          xLegalValues: legal,
+        });
+        return;
+      }
+      const xMax = getMaxAffordableX(s.p.mana, card.cost);
+      if (xMax < 0) { selectCard(null); return; }
+      setCastFlow({
+        kind: 'spell',
+        sourceIid: card.iid,
+        abilityId: null,
+        mode: 'xSelect',
+        selectedTargets: [],
+        requiresTarget: false,
+        maxTargets: 1,
+        canTargetPlayers: false,
+        xVal: Math.min(1, xMax),
+        xMax,
+      });
+      return;
+    }
+
     const hasTarget = needsAnyTarget(card) || isOptionalTarget(card);
     const req = needsAnyTarget(card) && !isOptionalTarget(card);
 
@@ -834,7 +905,9 @@ export function useDuelController(
     }
 
     // No targeting — go directly to mana check.
-    const xSpend = card.cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
+    const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
+      ? (s.xVal || 1)
+      : 0;
     if (canPay(s.p.mana, card.cost, xSpend)) {
       const tgt = resolveDefaultTarget(card, s);
       castSpell(card.iid, tgt, s.xVal);
@@ -853,6 +926,39 @@ export function useDuelController(
       canTargetPlayers: false,
     });
   }, [s, castSpell, playLand, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const adjustCastX = useCallback((delta: number) => {
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'xSelect') return prev;
+      if (prev.xLegalValues) {
+        const idx = prev.xLegalValues.indexOf(prev.xVal ?? prev.xLegalValues[0]);
+        const nextIdx = Math.min(prev.xLegalValues.length - 1, Math.max(0, idx + delta));
+        return { ...prev, xVal: prev.xLegalValues[nextIdx] };
+      }
+      const next = Math.min(prev.xMax ?? 0, Math.max(0, (prev.xVal ?? 0) + delta));
+      return { ...prev, xVal: next };
+    });
+  }, []);
+
+  const confirmCastX = useCallback(() => {
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'xSelect') return prev;
+      const card = (s.p.hand as any[]).find((c: any) => c.iid === prev.sourceIid);
+      if (!card) return null;
+      dispatch({ type: 'SET_X', val: prev.xVal ?? 0 });
+      const hasTarget = needsAnyTarget(card) || isOptionalTarget(card);
+      if (hasTarget) {
+        const req = needsAnyTarget(card) && !isOptionalTarget(card);
+        return {
+          ...prev,
+          mode: 'targeting' as CastFlowMode,
+          requiresTarget: req,
+          canTargetPlayers: needsExplicitTarget(card) && !isCounterEffect(card),
+        };
+      }
+      return { ...prev, mode: 'mana' as CastFlowMode };
+    });
+  }, [s, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const beginActivateFlow = useCallback((card: any, abilityId: string | null) => {
     if (!card) return;
@@ -1020,6 +1126,8 @@ export function useDuelController(
     deselectCastTarget,
     confirmCastTargets,
     cancelCastFlow,
+    adjustCastX,
+    confirmCastX,
     getManaShortfall,
 
     // Counter mode state (BEB/REB two-mode selection)

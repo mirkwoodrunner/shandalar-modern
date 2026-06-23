@@ -1,5 +1,35 @@
 # Current Sprint
 
+## Power Sink Cost Fix + X-Select Pre-Payment UI (2026-06-23)
+
+Two related correctness fixes for X-cost spells.
+
+**Part 1 -- Power Sink:**
+
+| Change | Detail |
+|---|---|
+| `src/engine/DuelCore.js` | `xSpend` excludes `power_sink` so it costs `{U}` (not `{X}{U}`). `case "powerSink"` uses `totalMana` (defender's current pool) as `psX` instead of `xVal \|\| 1`. |
+| `src/engine/AI.js` | `selectPlayableCards` early-exits for `power_sink` before the `cmc > totalManaCeiling` filter, setting `effectiveCost = 'U'` and `effectiveCmc = 1`. |
+| `src/hooks/useDuelController.ts` | Three spell-side `xSpend` lines add `&& card.id !== 'power_sink'` guard. |
+
+**Part 2 -- X-select modal:**
+
+| Change | Detail |
+|---|---|
+| `src/hooks/useDuelController.ts` | `CastFlowMode` gains `'xSelect'`. `CastFlowState` gains `xVal`, `xMax`, `xLegalValues`. New exported helpers `getMaxAffordableX`, `getSpellBlastLegalX`. `beginCastFlow` opens `xSelect` mode for all free-choice-X spells before targeting/mana. New callbacks `adjustCastX` and `confirmCastX`. |
+| `src/ui/duel/XSelectModal.tsx` | New shared stepper modal component (+/-/Confirm/Cancel). |
+| `src/DuelScreen.tsx` | Imports and renders `XSelectModal` when `castFlow.mode === 'xSelect'`. |
+| `src/ui/Mobile/DuelScreenMobile.tsx` | Same as desktop. |
+| `tests/e2e/power-sink-x-select.spec.js` | 7 Playwright tests (desktop 1280x800 + mobile 390x844). |
+
+**Pre-existing gap (not fixed here):** `DuelScreenMobile.tsx` does not render
+`ConditionalCounterModal` -- mobile players cannot respond to Force Spike / Power Sink
+prompts. Logged in MECHANICS_INDEX.md.
+
+**Status:** Done
+
+---
+
 ## Hooded Figure Sprite Variant for Overworld Enemies (2026-06-23)
 
 Added `hoodedFigure` as a 50/50 random sprite variant for overworld enemies.

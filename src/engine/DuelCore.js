@@ -463,8 +463,8 @@ break;
 case "powerSink": {
 const top = findStackTarget(ns.stack, tgt, item.id);
 if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
-const psX = xVal || 1;
 const totalMana = Object.values(ns[top.caster].mana).reduce((acc, v) => acc + v, 0);
+const psX = totalMana;
 ns = dlog(ns, `Power Sink targets ${top.card?.name}. ${top.caster} may pay {${psX}}.`, "effect");
 return { ...ns, pendingConditionalCounter: {
   cardId: 'power_sink',
@@ -2547,7 +2547,9 @@ case "CAST_SPELL": {
       return s;
     }
   }
-  const xSpend = c.cost?.toUpperCase().includes('X') ? (action.xVal || s.xVal || 1) : 0;
+  const xSpend = (c.cost?.toUpperCase().includes('X') && c.id !== 'power_sink')
+    ? (action.xVal || s.xVal || 1)
+    : 0;
   if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
   s = { ...s, manaTapSnapshot: null };

@@ -14,6 +14,7 @@ import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker
 import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
+import { XSelectModal } from '../duel/XSelectModal';
 
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
@@ -59,6 +60,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     pendingMode, setPendingMode,
     castFlow, beginCastFlow, beginActivateFlow,
     selectCastTarget, confirmCastTargets, cancelCastFlow,
+    adjustCastX, confirmCastX,
     isGeminiThinking,
   } = useDuelController(config, onDuelEnd);
 
@@ -262,6 +264,22 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           onDecline={declineTransmutePay}
         />
       )}
+
+      {castFlow?.mode === 'xSelect' && (() => {
+        const card = (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+        if (!card) return null;
+        return (
+          <XSelectModal
+            cardName={card.name}
+            xVal={castFlow.xVal ?? 0}
+            xMax={castFlow.xMax ?? 0}
+            legalValues={castFlow.xLegalValues}
+            onAdjust={adjustCastX}
+            onConfirm={confirmCastX}
+            onCancel={cancelCastFlow}
+          />
+        );
+      })()}
 
       <Topbar
         turn={s_state.turn}
