@@ -1883,6 +1883,26 @@ ACTIVE (overworld presentation + animation wiring; no engine/combat/generator ch
 
 ---
 
+## Hooded Figure Sprite Variant (2026-06-23)
+
+Overworld monster sprites now have a 50% chance per spawn to render as the shared
+`hoodedFigure` sheet (in the monster's archetype color) instead of the archetype's
+dedicated sprite kind, for visual variety.
+
+| Aspect | Detail |
+|---|---|
+| Sheet | `src/assets/sprites/hoodedfigure.png` -- 128x128, 4x4 grid, 32x32 cells, 100% grayscale mass (tints correctly through existing `getTintedSheet()`) |
+| Roll timing | Once at spawn time inside `spriteForMonster(archKey, terrainId)`. Result baked into `spriteKind` on the enemy state object; never re-rolled on render |
+| `color` | Unchanged -- always resolved from `COLOR_BY_ARCH[archKey] ?? 'red'`, same as before |
+| `spriteForHenchman` | Unchanged -- always returns `{ kind: 'mage', ... }` |
+| Fallback | If the sheet fails to load, existing `getTintedSheet` falls back to `mage`, then to flat-square. No new fallback code needed |
+| Tests | `tests/e2e/hooded-figure-sprites.spec.ts` (1280x800 + 390x844): variety check (both kinds present), tint-correctness (opaque pixels per color), henchman-unaffected regression |
+
+### Status
+DONE
+
+---
+
 ---
 
 ## Cast/Activate Flow Redesign (2026-06-19)
