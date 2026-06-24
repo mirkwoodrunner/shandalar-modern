@@ -749,7 +749,10 @@ priority-window plumbing in isolation from planner behavior.
 
 ---
 
-## Technical Debt Log
+## Technical Debt Log (Superseded — see Cast/Activate Flow Redesign)
+
+This log predates the Cast/Activate Flow Redesign (2026-06-19) and was not fully
+updated when that redesign landed. Items are preserved for historical record only.
 
 - [TD-001] ⚠️ EXTRACTION COMPLETE — All AI loop logic (priority-window close, stack-length
   watcher, applyAiActionsWithPriority, AI main loop) was centralised in `useDuelController.ts`
@@ -757,13 +760,16 @@ priority-window plumbing in isolation from planner behavior.
   useEffect. A dedicated `useDuelAILoop.ts` hook was not created; duplication is eliminated
   without one. No further action needed unless a standalone hook is desired for organisation.
 - [TD-002] ✅ FIXED — X-spell cast log now includes resolved X value (e.g. "o casts Mind Twist (X=3).").
-- [TD-003] ✅ FIXED — `pendingCast` state in `useDuelController.ts` decouples
-  target selection from the cast action. `handleCast` in `DuelScreen.tsx`
-  queues intent and fires only when mana is satisfied. `needsExplicitTarget()`
-  exported from hook for desktop/mobile parity.
-- [TD-004] ✅ FIXED — `draw3` added to `EXPLICIT_TARGET_EFFECTS` (desktop)
-  and `needsExplicitTarget()` (mobile). Ancestral Recall now forces target
-  selection before casting on both platforms.
+- [TD-003] ✅ RESOLVED BY CAST/ACTIVATE FLOW REDESIGN — Originally recorded as a fix that added
+  `pendingCast` state to `useDuelController.ts` to decouple target selection from the cast action.
+  The entire `pendingCast` mechanism was subsequently replaced wholesale by the `castFlow`-based
+  five-step flow (see Cast/Activate Flow Redesign entry above). `pendingCast` no longer exists
+  in the codebase; `castFlow` supersedes it.
+- [TD-004] ✅ RESOLVED BY CAST/ACTIVATE FLOW REDESIGN — Originally recorded as adding `draw3` to
+  `EXPLICIT_TARGET_EFFECTS` for Ancestral Recall targeting parity. The `EXPLICIT_TARGET_EFFECTS`
+  set and `needsExplicitTarget()` helper remain in `useDuelController.ts`, but the `pendingCast`
+  mechanism they were part of has been replaced by the `castFlow` five-step flow. The targeting
+  parity goal is fully achieved in the current architecture.
 - [TD-005] ✅ FIXED — `PLAY_LAND` now rejects land plays while spells are on
   the stack (`src/engine/DuelCore.js`). Logs a rule reminder to the duel log.
 - [TD-006] ✅ FIXED — Spell cast log now includes target label
