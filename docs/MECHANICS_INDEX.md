@@ -872,6 +872,56 @@ ACTIVE (Phase 5 Completion Sprint)
 
 ---
 
+## 16.2 Duel State Persistence (Save/Resume)
+
+### Description
+Full save-and-resume for in-progress duels. When the player closes or reloads the tab
+mid-duel, the current GameState is stored under `shandalar:duel` in localStorage. On the
+next load, a `ResumeDuelModal` prompts the player to resume or start fresh. Completing a
+duel (win/lose/forfeit) automatically clears the save.
+
+### GDD Reference
+- Not in original GDD; added as a session-integrity improvement.
+
+### SYSTEMS.md Reference
+- Section 21 (Persistence System)
+
+### Implementation
+```
+src/hooks/usePersistence.ts          -- saveDuel / loadDuel / clearDuel / usePersistence(state, enabled)
+src/ui/duel/ResumeDuelModal.tsx      -- resume-or-discard modal (shared, desktop + mobile)
+src/engine/DuelCore.js               -- LOAD_STATE reducer case (exempt from s.over guard)
+src/DuelScreen.tsx                   -- resume flow wiring (desktop)
+src/ui/Mobile/DuelScreenMobile.tsx   -- resume flow wiring (mobile)
+src/hooks/__tests__/usePersistence.test.ts   -- 6 Vitest unit tests
+tests/e2e/duel-persistence.spec.ts   -- 10 Playwright e2e tests (desktop + mobile)
+```
+
+### localStorage key
+`shandalar:duel` -- stores the full JSON-serialized GameState.
+
+### Responsibilities
+- `saveDuel(state)`: serialize and write to localStorage; swallows any write error.
+- `loadDuel()`: read and JSON.parse; returns null if key absent or JSON is malformed.
+- `clearDuel()`: remove the key; swallows any error.
+- `usePersistence(state, enabled)`: useEffect that calls saveDuel on every state change
+  when `enabled` is true. `enabled` is false while the resume-decision modal is shown,
+  preventing the fresh initial state from overwriting the saved duel before the player decides.
+- `LOAD_STATE` action replaces the entire reducer state wholesale via `return action.state`.
+- `handleDuelEndWithClear` wraps `onDuelEnd` in both screen components so clearDuel() is
+  always called on any exit path (win/lose/forfeit/game-over timer).
+
+### Strict Constraints
+- Duel persistence only -- overworld state is NOT persisted here.
+- `LOAD_STATE` is the sole engine coupling; it must remain a one-liner in DuelCore.js.
+- No partial-state patching -- the entire GameState is serialized and restored as-is.
+- Fail silently on any localStorage error (private browsing, quota exceeded).
+
+### Status
+ACTIVE (Sprint 8)
+
+---
+
 ---
 
 ## §17 — Priority Window System

@@ -2417,10 +2417,12 @@ const DECLARE_ONLY_PHASES = new Set([
 // This is the ONLY place GameState mutations are valid.
 
 export function duelReducer(state, action) {
-if (state.over && action.type !== "RESET") return state;
+if (state.over && action.type !== "RESET" && action.type !== "LOAD_STATE") return state;
 let s = state;
 
 switch (action.type) {
+
+case "LOAD_STATE": return action.state;
 
 case "TAP_LAND": {
   if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot tap mana during declare phase.", "rule");

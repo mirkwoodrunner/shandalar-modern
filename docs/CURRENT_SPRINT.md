@@ -1,5 +1,34 @@
 # Current Sprint
 
+## Fix: Duel Persistence — Write-Only to Full Save/Resume (2026-06-24)
+
+**Root cause:** `usePersistence.ts` was a single write-only hook with no read path. There was no
+way to detect a saved duel on reload, no UI to offer resume, and no mechanism to clear the save
+after duel completion. Forfeiting or winning left stale data in localStorage indefinitely.
+
+**Deliberate scope boundary:** Only in-duel GameState is persisted. Overworld state (HP, gold,
+quest progress) is not saved. If the overworld is lost when the tab closes, the resumed duel
+returns to the title screen via `onDuelEnd` rather than back to the overworld. This is acceptable
+because the primary session integrity failure is mid-duel tab close, not mid-overworld.
+
+**Engine change:** Added `case 'LOAD_STATE': return action.state;` to `DuelCore.js` and exempt
+`LOAD_STATE` from the `s.over` guard. This is the minimal protected-file change that unblocks
+the hook-level resume without coupling persistence to any specific React init path.
+
+| Change | Detail |
+|---|---|
+| `src/hooks/usePersistence.ts` | Rewritten. New explicit API: `saveDuel(state)`, `loadDuel(): unknown \| null`, `clearDuel()`, `usePersistence(state, enabled)`. `loadDuel()` wraps `JSON.parse` in try/catch and returns null on any error. `enabled` flag prevents overwriting the saved state during the resume-decision window. |
+| `src/ui/duel/ResumeDuelModal.tsx` | New shared modal. Props: `onResume`, `onDiscard`. Testids: `resume-duel-modal`, `resume-duel-button`, `resume-duel-discard-button`. Matches existing popover-overlay/popover-content CSS pattern. |
+| `src/engine/DuelCore.js` | `LOAD_STATE` added to reducer: `case 'LOAD_STATE': return action.state;`. Exempt from `s.over` guard. **(ENGINE FILE EDIT APPROVED)** |
+| `src/DuelScreen.tsx` | Resume flow: lazy `useState` init calls `loadDuel()` once on first render. `handleDuelEndWithClear` wraps `onDuelEnd` with `clearDuel()`. `usePersistence(s, !resumePending)` prevents overwrite during decision window. `ResumeDuelModal` rendered when `resumePending`. Fixed: desktop Topbar `onForfeit` now uses `handleDuelEndWithClear`. |
+| `src/ui/Mobile/DuelScreenMobile.tsx` | Mirror of desktop resume flow. First time `usePersistence` is called in mobile path. `useDuelController` receives `handleDuelEndWithClear`. |
+| `src/hooks/__tests__/usePersistence.test.ts` | 6 Vitest unit tests (PERSIST-UNIT-01 through 06). localStorage mock for node environment. Tests: write key, deserialize, null-on-empty, null-on-malformed-JSON, clearDuel, round-trip with `makeState`. |
+| `tests/e2e/duel-persistence.spec.ts` | 5 Playwright tests (PERSIST-01 through 05) at desktop (1280x800, `/?duel=sandbox`) and mobile (390x844, `/?duel=sandbox-mobile`) -- 10 total. Uses `DEBUG_SET_ACTIVE` to create a distinctive save, reloads, and verifies resume/discard/clear flows. |
+
+**Status:** Done
+
+---
+
 ## Bug Fix: Force of Nature Upkeep Modal Mobile Parity (2026-06-24)
 
 **Root cause:** `ForceOfNatureUpkeepModal` was defined as a private inline function inside

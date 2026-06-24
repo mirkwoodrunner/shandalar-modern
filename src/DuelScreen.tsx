@@ -2,7 +2,7 @@
 // Assembler component for the duel UI.
 // Wires engine (useDuel / AI) to the new design system components.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
 import { isLand, isArt, isInst } from './engine/DuelCore.js';
@@ -26,6 +26,7 @@ import { StackDisplay } from './ui/Stack/StackDisplay';
 import { useFlash } from './hooks/useFlash';
 import { useTweaks } from './hooks/useTweaks';
 import { usePersistence, loadDuel, clearDuel } from './hooks/usePersistence';
+import { ResumeDuelModal } from './ui/duel/ResumeDuelModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
@@ -250,6 +251,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
 
+  // -- Resume flow -----------------------------------------------------------
+  // Check for a saved duel synchronously during first render via lazy init.
+  // savedDuelRef holds the loaded value so loadDuel() is called only once.
+  const savedDuelRef = useRef<unknown>(undefined);
+  const [resumePending, setResumePending] = useState<boolean>(() => {
+    const saved = loadDuel();
+    savedDuelRef.current = saved;
+    return saved !== null;
+  });
+
+  // Wrap onDuelEnd to clear the saved duel on any clean exit (win/lose/forfeit).
+  const handleDuelEndWithClear = useCallback((outcome: 'win' | 'lose' | 'forfeit', s: unknown) => {
+    clearDuel();
+    onDuelEnd(outcome, s);
+  }, [onDuelEnd]);
+
   // -- Shared orchestration hook ---------------------------------------------
   const {
     state, dispatch,
@@ -273,11 +290,26 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
-  } = useDuelController(config, onDuelEnd, tweaks.aiSpeed);
+  } = useDuelController(config, handleDuelEndWithClear, tweaks.aiSpeed);
 
   const s = state;
 
-  usePersistence(s, true);
+  // Disable writes while the resume modal is up so the fresh state does not
+  // overwrite the saved duel before the player has made a decision.
+  usePersistence(s, !resumePending);
+
+  // -- Resume handlers -------------------------------------------------------
+  const handleResume = useCallback(() => {
+    if (savedDuelRef.current !== null && savedDuelRef.current !== undefined) {
+      dispatch({ type: 'LOAD_STATE', state: savedDuelRef.current } as any);
+    }
+    setResumePending(false);
+  }, [dispatch]);
+
+  const handleDiscardSave = useCallback(() => {
+    clearDuel();
+    setResumePending(false);
+  }, []);
 
   const isMobile = useIsMobile();
 
@@ -474,12 +506,17 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       ...(isMobile ? { fontSize: 'clamp(10px, 2.2vw, 14px)' } : {}),
     }}>
 
+      {/* -- RESUME DUEL MODAL ----------------------------------------------- */}
+      {resumePending && (
+        <ResumeDuelModal onResume={handleResume} onDiscard={handleDiscardSave} />
+      )}
+
       {/* -- GAME OVER OVERLAY ----------------------------------------------- */}
       {s.over && (
         <GameOverModal
           outcome={s.over.winner === 'p' ? 'victory' : 'defeat'}
           stats={{ turns: s.turn, maxDamage: s.peakDamage ?? 0, cardsCast: s.totalCardsCast ?? 0 }}
-          onNewDuel={() => onDuelEnd(s.over.winner === 'p' ? 'win' : 'lose', s)}
+          onNewDuel={() => handleDuelEndWithClear(s.over.winner === 'p' ? 'win' : 'lose', s)}
         />
       )}
 
@@ -515,7 +552,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             turn={s.turn}
             active={s.active}
             phase={s.phase}
-            onForfeit={() => onDuelEnd('forfeit', s)}
+            onForfeit={() => handleDuelEndWithClear('forfeit', s)}
           />
         </div>
       ) : (
@@ -524,7 +561,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           turn={s.turn}
           active={s.active}
           phase={s.phase}
-          onForfeit={() => onDuelEnd('forfeit', s)}
+          onForfeit={() => handleDuelEndWithClear('forfeit', s)}
         />
       )}
 
