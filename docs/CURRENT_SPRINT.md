@@ -1,5 +1,26 @@
 # Current Sprint
 
+## First Strike Two-Step Combat Damage (2026-06-24)
+
+**Root cause:** `resolveCombat()` in `src/engine/DuelCore.js` resolved all
+attacker/blocker damage in a single simultaneous pass, ignoring the
+`FIRST_STRIKE` keyword entirely. First-strike creatures dealt and took damage
+at the same time as non-first-strike combatants, violating the MTG rule that
+first-strike damage resolves before regular damage and can kill before taking
+damage back.
+
+| Change | Detail |
+|---|---|
+| `src/engine/DuelCore.js` | Split the single damage-assignment loop in `resolveCombat()` into two ordered sub-passes: (1) first-strike pass -- only combatants with `FIRST_STRIKE` deal damage; (2) `checkDeath(ns)` call between passes; (3) regular pass -- only combatants without `FIRST_STRIKE` deal damage. All existing per-combatant mechanics (trample, lifelink, deathtouch, protection, Spirit Link, gaseous form, Sengir Vampire tracking) are preserved within whichever pass the combatant falls into. |
+| `tests/scenarios/combat-damage.test.js` | Added Vitest cases 4d--4i covering: FS attacker kills blocker before blocker deals back (4d), FS blocker kills non-FS attacker (4e), mutual FS simultaneous death (4f), unblocked FS attacker deals damage exactly once (4g), non-FS regression (4h), FS + lifelink no double life gain (4i). |
+| `tests/e2e/first-strike-combat.spec.ts` | New Playwright spec (desktop 1280x800 + mobile 390x844): FS-E2E-01 (FS attacker survives + log entry), FS-E2E-02 (normal mutual-lethal regression). |
+
+**Test coverage:** 9 Vitest unit tests (all pass), 4 Playwright e2e tests x2 viewports (all pass). Pre-existing 4a/4b/4c tests unaffected.
+
+**Status:** Done
+
+---
+
 ## Bug Fix: Force of Nature Upkeep Modal Mobile Parity (2026-06-24)
 
 **Root cause:** `ForceOfNatureUpkeepModal` was defined as a private inline function inside

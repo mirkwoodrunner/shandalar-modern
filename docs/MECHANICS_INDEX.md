@@ -338,6 +338,56 @@ ACTIVE
 
 ---
 
+## 4.3 First Strike -- Two-Step Combat Damage
+
+### Description
+Creatures with `FIRST_STRIKE` deal combat damage in an earlier sub-step than
+non-first-strike combatants. This allows them to kill blockers (or attackers)
+before taking damage back, which is the canonical Alpha/Beta-era MTG behavior.
+
+### SYSTEMS.md Reference
+- Section 9 (Keyword System)
+- Section 5 (Combat System)
+
+### Implementation
+```
+/src/data/keywords.js         -- FIRST_STRIKE keyword definition (id: "FIRST_STRIKE")
+/src/data/cards.js            -- 40+ cards assigned KEYWORDS.FIRST_STRIKE.id in keywords[]
+/src/engine/DuelCore.js       -- resolveCombat(): two-pass split
+```
+
+### Mechanism
+`resolveCombat()` runs two ordered passes inside its attacker loop:
+
+1. **First-strike pass** (`dlog "First strike damage."`) -- A combatant (attacker or
+   individual blocker) deals damage only if `hasKw(combatant, KEYWORDS.FIRST_STRIKE.id)`
+   is true. Trample, lifelink, Spirit Link, deathtouch, Sengir tracking all fire within
+   this pass if the dealing combatant has first strike.
+
+2. **`checkDeath(ns)`** is called between passes. Creatures killed by first-strike damage
+   are removed from the battlefield before the regular pass runs.
+
+3. **Regular pass** (`dlog "Combat damage resolving."`) -- A combatant deals damage only
+   if it does NOT have first strike. Dead creatures (null from `getBF`) are skipped via
+   the existing `if (!att) continue` guard; live blockers are re-derived from `ns[defW].bf`.
+
+No ruleset gate -- first strike applies unconditionally across CLASSIC/MODERN/CONTEMPORARY.
+`DOUBLE_STRIKE` is out of scope (no Alpha-era cards have it).
+
+### Cards
+White Knight, Black Knight, Elvish Archers, Tundra Wolves, Hornet Cobra, Cosmic Horror,
+Yawgmoth Demon, Lance (aura grants first strike), Emerald Dragonfly (gainFirstStrikeEOT
+activated ability), and others. Full list: grep `KEYWORDS.FIRST_STRIKE.id` in `cards.js`.
+
+### Test Coverage
+- `tests/scenarios/combat-damage.test.js` -- cases 4d through 4i
+- `tests/e2e/first-strike-combat.spec.ts` -- FS-E2E-01 and FS-E2E-02 (desktop + mobile)
+
+### Status
+ACTIVE (implemented 2026-06-24)
+
+---
+
 # 5. CARD SYSTEM
 
 ---
