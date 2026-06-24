@@ -1,6 +1,6 @@
 # Card Effect Implementation Audit
 > Last updated: 2026-06-04 (Group P oracle-verified)  
-> Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`, `docs/AUDIT_REPORT.md`  
+> Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`  
 > Re-run: execute the four node scripts in `card-stub-audit.md` prompt file
 
 ---
