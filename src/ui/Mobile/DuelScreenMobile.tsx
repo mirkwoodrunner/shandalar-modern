@@ -16,6 +16,7 @@ import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
 import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
+import { ForceOfNatureUpkeepModal } from '../duel/ForceOfNatureUpkeepModal';
 
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
@@ -52,6 +53,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
     resolveConditionalCounter,
+    resolveUpkeepChoice,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     showBop, handleBopChoose, handleBopCancel,
@@ -299,6 +301,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           />
         );
       })()}
+
+      {s_state.pendingUpkeepChoice && s_state.active === 'p' && (
+        <ForceOfNatureUpkeepModal
+          greenMana={s_state.p.mana?.G ?? 0}
+          onResolve={resolveUpkeepChoice}
+        />
+      )}
 
       <Topbar
         turn={s_state.turn}

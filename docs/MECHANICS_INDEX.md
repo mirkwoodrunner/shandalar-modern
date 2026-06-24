@@ -78,6 +78,7 @@ Tracking field: turnState.sengirDamagedIids  (cleared each UNTAP)
 Status: ACTIVE
 Event flow: UPKEEP forceOfNatureUpkeep case -> pendingUpkeepChoice (human) | inline resolution (AI)
 Action: UPKEEP_CHOICE_RESOLVE { choice: "PAY_GGGG" | "TAKE_DAMAGE" }
+Modal: src/ui/duel/ForceOfNatureUpkeepModal.tsx (shared desktop + mobile; desktop/mobile parity as of 2026-06-24)
 ```
 
 ### Status
