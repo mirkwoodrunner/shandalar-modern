@@ -25,7 +25,7 @@ import { StackDisplay } from './ui/Stack/StackDisplay';
 // -- New hooks -----------------------------------------------------------------
 import { useFlash } from './hooks/useFlash';
 import { useTweaks } from './hooks/useTweaks';
-import { usePersistence } from './hooks/usePersistence';
+import { usePersistence, loadDuel, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
@@ -277,7 +277,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   const s = state;
 
-  usePersistence(s);
+  usePersistence(s, true);
 
   const isMobile = useIsMobile();
 
