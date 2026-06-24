@@ -1,5 +1,26 @@
 # Current Sprint
 
+## Bug Fix: Force of Nature Upkeep Modal Mobile Parity (2026-06-24)
+
+**Root cause:** `ForceOfNatureUpkeepModal` was defined as a private inline function inside
+`src/DuelScreen.tsx`, making it inaccessible to `DuelScreenMobile.tsx`. Because
+`ADVANCE_PHASE` is blocked while `s.pendingUpkeepChoice` is set, a mobile player controlling
+Force of Nature could not resolve the tribute choice, permanently stalling the turn.
+
+**No engine changes.** The `UPKEEP_CHOICE_RESOLVE` reducer and `resolveUpkeepChoice` dispatcher
+were already correct and shared.
+
+| Change | Detail |
+|---|---|
+| `src/ui/duel/ForceOfNatureUpkeepModal.tsx` | New shared component extracted verbatim from the inline definition in `DuelScreen.tsx`. Same props (`greenMana`, `onResolve`), same JSX, same inline styles. Added `data-testid` anchors: `fon-upkeep-modal`, `fon-pay-button`, `fon-damage-button`. |
+| `src/DuelScreen.tsx` | Removed inline `ForceOfNatureUpkeepModal` function definition; added import from `./ui/duel/ForceOfNatureUpkeepModal`. Render block unchanged. |
+| `src/ui/Mobile/DuelScreenMobile.tsx` | Added import, added `resolveUpkeepChoice` to `useDuelController` destructure, added render block gated on `s_state.pendingUpkeepChoice && s_state.active === 'p'` in the modal-stacking region alongside `TutorModal`, `TransmuteSacrificeModal`, etc. |
+| `tests/e2e/force-of-nature-mobile-parity.spec.ts` | New Playwright suite: 5 test cases (FON-01 through FON-05) run at both desktop (1280x800) and mobile (390x844) using `DEBUG_SET_ACTIVE { patch }` to inject `pendingUpkeepChoice` without touching `DuelCore.js`. |
+
+**Status:** Done
+
+---
+
 ## Power Sink Cost Fix + X-Select Pre-Payment UI (2026-06-23)
 
 Two related correctness fixes for X-cost spells.
