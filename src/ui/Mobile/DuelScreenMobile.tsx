@@ -2,7 +2,7 @@
 // Mobile-compact duel layout (variant B). Renders at ≤640px viewport width.
 // Reads from useDuel — same engine as desktop DuelScreen, no fork in data layer.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
@@ -17,6 +17,8 @@ import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
 import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
 import { ForceOfNatureUpkeepModal } from '../duel/ForceOfNatureUpkeepModal';
+import { ResumeDuelModal } from '../duel/ResumeDuelModal';
+import { usePersistence, loadDuel, clearDuel } from '../../hooks/usePersistence';
 
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
@@ -42,6 +44,19 @@ interface DuelScreenMobileProps {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobileProps) {
+  // -- Resume flow -----------------------------------------------------------
+  const savedDuelRef = useRef<unknown>(undefined);
+  const [resumePending, setResumePending] = useState<boolean>(() => {
+    const saved = loadDuel();
+    savedDuelRef.current = saved;
+    return saved !== null;
+  });
+
+  const handleDuelEndWithClear = useCallback((outcome: 'win' | 'lose' | 'forfeit', st: unknown) => {
+    clearDuel();
+    onDuelEnd(outcome, st);
+  }, [onDuelEnd]);
+
   const {
     state, dispatch,
     tapLand, tapArtifactMana, playLand, castSpell,
@@ -66,9 +81,23 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     selectCastTarget, confirmCastTargets, cancelCastFlow,
     adjustCastX, confirmCastX,
     isGeminiThinking,
-  } = useDuelController(config, onDuelEnd);
+  } = useDuelController(config, handleDuelEndWithClear);
 
   const s_state = state;
+
+  usePersistence(s_state, !resumePending);
+
+  const handleResume = useCallback(() => {
+    if (savedDuelRef.current !== null && savedDuelRef.current !== undefined) {
+      dispatch({ type: 'LOAD_STATE', state: savedDuelRef.current } as any);
+    }
+    setResumePending(false);
+  }, [dispatch]);
+
+  const handleDiscardSave = useCallback(() => {
+    clearDuel();
+    setResumePending(false);
+  }, []);
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
@@ -206,6 +235,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={s.screen}>
+
+      {/* -- RESUME DUEL MODAL ----------------------------------------------- */}
+      {resumePending && (
+        <ResumeDuelModal onResume={handleResume} onDiscard={handleDiscardSave} />
+      )}
 
       {showMulligan && !s_state.over && (
         <MulliganModal
