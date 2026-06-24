@@ -2125,13 +2125,15 @@ Five cards implemented; one entry added.
 
 ### New entry
 
-`ali_from_cairo` — added as STUB (color:R, 2RR, 0/1). Life-floor requires `hurt()` guard (shared by all damage sources; deferred). `{T}: Target Camel gains banding` is a separate follow-up item.
+`ali_from_cairo` — implemented (color:R, 2RR, 0/1). Static replacement effect: `lifeFloor:1` field on the card data entry. `getLifeFloor(s, who)` helper exported from `DuelCore.js` scans `bf` for any permanent with `lifeFloor` and returns the highest value (null if none). `hurt()` clamps the post-damage life total up to that floor when `amt > 0`. General reusable hook — any future card can opt in by setting `lifeFloor:<number>` with no further engine changes. Note: the {T} banding-grant clause was removed by Oracle errata and does not exist on the current card; it was not implemented.
 
 ### Tests
 - Playwright: `e2e/batch1a-desert-landwalk.spec.ts` (1A, 1B, 1C; both desktop 1280x800 and mobile 390x844)
+- Vitest: `tests/scenarios/life-floor.test.js` (LF-01 through LF-08; getLifeFloor and hurt() floor behaviour)
+- Playwright: `tests/e2e/ali-from-cairo-life-floor.spec.ts` (ALI-01, ALI-02; both desktop 1280x800 and mobile 390x844)
 
 ### Status
-ACTIVE
+IMPLEMENTED
 
 ---
 
