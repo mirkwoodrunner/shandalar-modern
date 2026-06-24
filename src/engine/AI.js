@@ -323,6 +323,15 @@ export function selectPlayableCards(state, phase) {
       if (!BEFORE_COMBAT_DAMAGE_PHASES.has(phase)) continue;
     }
 
+    // Power Sink costs {U} to cast -- its X is the defender's obligation at resolution,
+    // not a caster-side mana selection. Bypass the X-maximizing heuristic and cmc filter.
+    if (card.id === 'power_sink') {
+      if (canPay(computeAvailableMana(state), 'U', 0)) {
+        candidates.push({ card, effectiveCost: 'U', xVal: null, effectiveCmc: 1 });
+      }
+      continue;
+    }
+
     if (card.cmc > totalManaCeiling) continue;
 
     let effectiveCost = card.cost;

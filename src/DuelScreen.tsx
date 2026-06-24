@@ -36,6 +36,7 @@ import { TutorModal } from './ui/duel/TutorModal';
 import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from './ui/duel/TransmutePayModal';
 import { ConditionalCounterModal } from './ui/duel/ConditionalCounterModal';
+import { XSelectModal } from './ui/duel/XSelectModal';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
@@ -313,6 +314,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     handleBfClick, pendingBlockerIid,
     castFlow, setCastFlow, beginCastFlow, beginActivateFlow,
     selectCastTarget, confirmCastTargets, cancelCastFlow,
+    adjustCastX, confirmCastX,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
@@ -1044,6 +1046,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onResolve={resolveUpkeepChoice}
         />
       )}
+
+      {castFlow?.mode === 'xSelect' && (() => {
+        const card = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+        if (!card) return null;
+        return (
+          <XSelectModal
+            cardName={card.name}
+            xVal={castFlow.xVal ?? 0}
+            xMax={castFlow.xMax ?? 0}
+            legalValues={castFlow.xLegalValues}
+            onAdjust={adjustCastX}
+            onConfirm={confirmCastX}
+            onCancel={cancelCastFlow}
+          />
+        );
+      })()}
 
       {s.pendingConditionalCounter && s.pendingConditionalCounter.targetCaster === 'p' && (() => {
         const cc = s.pendingConditionalCounter;

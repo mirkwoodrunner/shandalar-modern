@@ -1931,6 +1931,53 @@ ACTIVE
 
 ---
 
+## Power Sink Cost Fix + X-Select Pre-Payment UI (2026-06-23)
+
+### Power Sink cost correction
+
+Power Sink (`power_sink`) costs `{U}` to cast. Its `{X}` is not a caster-side
+mana selection -- it is the *target spell controller's total available mana* at
+resolution time (the worst-case-for-defender model of "pay any amount you choose").
+The `ConditionalCounterModal` renders for the defender exactly as it does for Force Spike.
+
+| Fix | Detail |
+|---|---|
+| `DuelCore.js` CAST_SPELL | `xSpend` excludes `power_sink` via `c.id !== 'power_sink'` guard |
+| `DuelCore.js` `case "powerSink"` | `psX = totalMana` (defender's total mana at resolution) instead of `xVal \|\| 1` |
+| `useDuelController.ts` | Three spell-side `xSpend` sites add `&& card.id !== 'power_sink'` guard |
+| `AI.js` selectPlayableCards | Early exit for `power_sink` before `cmc > totalManaCeiling` filter; `effectiveCost = 'U'`, `effectiveCmc = 1` |
+
+### X-Select pre-payment UI (`xSelect` cast-flow mode)
+
+All free-choice-X spells now open a stepper modal before targeting and mana payment.
+X is locked into `s.xVal` via `SET_X` when confirmed, so the rest of the cast-flow
+reads it correctly from `s.xVal`.
+
+Affected implemented cards: `braingeyser`, `mind_twist`, `drain_life`, `disintegrate`,
+`consume_spirit`, `howl_from_beyond`, `fireball`, `earthquake`, `stream_of_life`,
+`hurricane`, `detonate`, `rock_hydra`.
+
+Exception: `spell_blast` uses `xLegalValues` (CMCs of opponent spells on the stack)
+instead of a free range; stepper jumps only between those values.
+
+| Aspect | Detail |
+|---|---|
+| New mode | `CastFlowMode` extended with `'xSelect'` (before `'targeting'` and `'mana'`) |
+| New fields | `CastFlowState.xVal`, `xMax`, `xLegalValues` |
+| New helpers | `getMaxAffordableX(pool, cost)`, `getSpellBlastLegalX(stack)` exported from `useDuelController.ts` |
+| New callbacks | `adjustCastX(delta)`, `confirmCastX()` exported from `useDuelController` hook |
+| New component | `src/ui/duel/XSelectModal.tsx` -- shared between `DuelScreen.tsx` and `DuelScreenMobile.tsx` |
+| Spell Blast targeting | `getSpellBlastLegalX` filters `caster === 'p'` (only opponent spells are valid counter targets) |
+
+### Tests
+- Playwright: `tests/e2e/power-sink-x-select.spec.js` (T1-T7, both 1280x800 and 390x844 viewports)
+
+### Mobile parity
+`DuelScreenMobile.tsx` now renders `ConditionalCounterModal` with the same
+`targetCaster === 'p'` guard as desktop (fixed 2026-06-23).
+
+---
+
 ## Bug Fix: Fog Edge Mask + Eager Tilesheet Preload (2026-06-19)
 
 Two presentation-layer fixes in `src/ui/overworld/WorldMap.jsx`. No engine or

@@ -14,6 +14,8 @@ import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker
 import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
+import { XSelectModal } from '../duel/XSelectModal';
+import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
 
 import { Topbar } from './Topbar';
 import { Banner } from './Banner';
@@ -49,6 +51,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
+    resolveConditionalCounter,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     showBop, handleBopChoose, handleBopCancel,
@@ -59,6 +62,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     pendingMode, setPendingMode,
     castFlow, beginCastFlow, beginActivateFlow,
     selectCastTarget, confirmCastTargets, cancelCastFlow,
+    adjustCastX, confirmCastX,
     isGeminiThinking,
   } = useDuelController(config, onDuelEnd);
 
@@ -262,6 +266,39 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           onDecline={declineTransmutePay}
         />
       )}
+
+      {castFlow?.mode === 'xSelect' && (() => {
+        const card = (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+        if (!card) return null;
+        return (
+          <XSelectModal
+            cardName={card.name}
+            xVal={castFlow.xVal ?? 0}
+            xMax={castFlow.xMax ?? 0}
+            legalValues={castFlow.xLegalValues}
+            onAdjust={adjustCastX}
+            onConfirm={confirmCastX}
+            onCancel={cancelCastFlow}
+          />
+        );
+      })()}
+
+      {s_state.pendingConditionalCounter && s_state.pendingConditionalCounter.targetCaster === 'p' && (() => {
+        const cc = s_state.pendingConditionalCounter;
+        const totalMana = Object.values(s_state.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+        const targeted = (s_state.stack as any[]).find((i: any) => i.id === cc.stackItemId);
+        return (
+          <ConditionalCounterModal
+            cardName={cc.cardName}
+            targetedSpellName={targeted?.card?.name ?? 'your spell'}
+            cost={cc.cost}
+            canPay={cc.canPay}
+            totalMana={totalMana}
+            isPowerSink={cc.cardId === 'power_sink'}
+            onResolve={resolveConditionalCounter}
+          />
+        );
+      })()}
 
       <Topbar
         turn={s_state.turn}
