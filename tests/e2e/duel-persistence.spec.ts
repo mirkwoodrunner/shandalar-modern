@@ -150,6 +150,23 @@ test.describe('Duel persistence [desktop]', () => {
     // Modal must never appear when there is no saved state.
     await expect(page.locator('[data-testid="resume-duel-modal"]')).toHaveCount(0);
   });
+
+  test('PERSIST-06: malformed localStorage value is cleared and resume modal never appears', async ({ page }) => {
+    // Inject a plausible-but-invalid value before the app loads.
+    await page.goto('about:blank');
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({ garbage: true }));
+    }, STORAGE_KEY);
+
+    await page.goto(DESKTOP_URL);
+    await page.waitForSelector('[data-testid="duel-screen-wrapper"]', { timeout: 20000 });
+
+    // loadDuel() should have rejected the invalid shape and called clearDuel().
+    await expect(page.locator('[data-testid="resume-duel-modal"]')).toHaveCount(0);
+
+    const remaining = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+    expect(remaining, 'invalid save should be auto-cleared from localStorage').toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -251,5 +268,20 @@ test.describe('Duel persistence [mobile]', () => {
     await page.waitForSelector('[data-testid="duel-screen-wrapper"]', { timeout: 20000 });
 
     await expect(page.locator('[data-testid="resume-duel-modal"]')).toHaveCount(0);
+  });
+
+  test('PERSIST-06: malformed localStorage value is cleared and resume modal never appears', async ({ page }) => {
+    await page.goto('about:blank');
+    await page.evaluate((key) => {
+      localStorage.setItem(key, JSON.stringify({ garbage: true }));
+    }, STORAGE_KEY);
+
+    await page.goto(MOBILE_URL);
+    await page.waitForSelector('[data-testid="duel-screen-wrapper"]', { timeout: 20000 });
+
+    await expect(page.locator('[data-testid="resume-duel-modal"]')).toHaveCount(0);
+
+    const remaining = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+    expect(remaining, 'invalid save should be auto-cleared from localStorage').toBeNull();
   });
 });
