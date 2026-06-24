@@ -1705,12 +1705,13 @@ for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => 
 return ns;
 }
 
-ns = dlog(ns, "Combat damage resolving.", "combat");
+ns = dlog(ns, "First strike damage.", "combat");
 
 const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
 // Spirit Link: returns 1 when host has a Spirit Link aura (caller multiplies by damage dealt).
 const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink) ? 1 : 0;
 
+// First-strike pass: only combatants with FIRST_STRIKE deal their damage here.
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
 if (!att) continue;
@@ -1720,9 +1721,10 @@ const defW = actrl === "p" ? "o" : "p";
 const hasLifelink = hasKw(att, KEYWORDS.LIFELINK.id) || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
 const blockers = ns[defW].bf.filter(c => c.blocking === attId);
 const attGaseous = isGaseous(att);
+const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
 if (!blockers.length) {
-  if (!attGaseous) {
+  if (!attGaseous && attFS) {
     ns = hurt(ns, defW, ap, att.name);
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
@@ -1735,6 +1737,7 @@ if (!blockers.length) {
     const bp = getPow(bl, ns);
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
+    const blFS = hasKw(bl, KEYWORDS.FIRST_STRIKE.id);
 
     // S17.6.3: protection enforced inline, no trigger queue
     const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
@@ -1742,8 +1745,8 @@ if (!blockers.length) {
     const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
     const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
 
-    // Gaseous Form: attacker is gaseous → blocker deals 0 to it; blocker is gaseous → attacker deals 0 to it
-    if (!attackerProtectsFromBl && !attGaseous) {
+    // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
+    if (!attackerProtectsFromBl && !attGaseous && blFS) {
       ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
       if (bp > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
@@ -1753,7 +1756,7 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous) {
+    if (!blockerProtectsFromAtt && !blGaseous && attFS) {
       ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
       if (dbl > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
@@ -1763,13 +1766,84 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous) ns = hurt(ns, actrl, -dbl);
-    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -dbl);
-    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl)) ns = hurt(ns, bl.controller, -bp);
-    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && attFS) ns = hurt(ns, actrl, -dbl);
+    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl);
+    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+}
+
+}
+
+// State-based actions between first-strike and regular damage passes.
+ns = checkDeath(ns);
+
+// Regular damage pass: combatants without FIRST_STRIKE deal their damage here.
+ns = dlog(ns, "Combat damage resolving.", "combat");
+
+for (const attId of ns.attackers) {
+const att = getBF(ns, attId);
+if (!att) continue;
+const ap = getPow(att, ns);
+const actrl = att.controller;
+const defW = actrl === "p" ? "o" : "p";
+const hasLifelink = hasKw(att, KEYWORDS.LIFELINK.id) || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
+const blockers = ns[defW].bf.filter(c => c.blocking === attId);
+const attGaseous = isGaseous(att);
+const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
+
+if (!blockers.length) {
+  if (!attGaseous && !attFS) {
+    ns = hurt(ns, defW, ap, att.name);
+    if (hasLifelink) ns = hurt(ns, actrl, -ap);
+    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
+  }
+} else {
+  let rem = ap;
+  const PROT_CMAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
+  for (const bl of blockers) {
+    const blGaseous = isGaseous(bl);
+    const bp = getPow(bl, ns);
+    const bt = getTou(bl, ns);
+    const dbl = Math.min(rem, bt - bl.damage);
+    const blFS = hasKw(bl, KEYWORDS.FIRST_STRIKE.id);
+
+    // S17.6.3: protection enforced inline, no trigger queue
+    const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
+    const attProt = Array.isArray(att.protection) ? att.protection : (att.protection ? [att.protection] : []);
+    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
+    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
+
+    // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
+    if (!attackerProtectsFromBl && !attGaseous && !blFS) {
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
+      if (bp > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
+        if (bl.name === "Sengir Vampire") {
+          ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), attId] } };
+        }
+      }
+    }
+    if (!blockerProtectsFromAtt && !blGaseous && !attFS) {
+      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
+      if (dbl > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: attId, targetId: bl.iid, amount: dbl, combat: true } });
+        if (att.name === "Sengir Vampire") {
+          ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), bl.iid] } };
+        }
+      }
+    }
+    if (!blockerProtectsFromAtt && !blGaseous && !attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !attFS) ns = hurt(ns, actrl, -dbl);
+    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl);
+    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+  }
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
 }
 
 }
