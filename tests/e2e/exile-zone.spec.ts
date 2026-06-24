@@ -66,7 +66,7 @@ async function playBearThenCastSTP(page: Page): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-test.describe('Exile zone routing — desktop', () => {
+test.describe('@engine @mobile Exile zone routing — desktop', () => {
   test('Swords to Plowshares moves target to exile, not graveyard', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto(sandboxWith(`${STP_CARD_ID},${TARGET_ID}`));
@@ -100,7 +100,7 @@ test.describe('Exile zone routing — desktop', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Exile zone routing — mobile', () => {
+test.describe('@engine @mobile Exile zone routing — mobile', () => {
   test('Swords to Plowshares moves target to exile on mobile viewport', async ({ page }) => {
     await page.setViewportSize(MOBILE);
     await page.goto(sandboxWith(`${STP_CARD_ID},${TARGET_ID}`));

@@ -66,7 +66,7 @@ async function castAndResolve(page: Page, cardId: string) {
 
 // ---------------------------------------------------------------------------
 
-test.describe('Card type line — desktop', () => {
+test.describe('@engine @mobile Card type line — desktop', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
 
   test('shows em dash between type and subtype', async ({ page }) => {
@@ -99,7 +99,7 @@ test.describe('Card type line — desktop', () => {
 
 // ---------------------------------------------------------------------------
 
-test.describe('Card type line — mobile', () => {
+test.describe('@engine @mobile Card type line — mobile', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
 
   // Llanowar Elves (cost G, subtype "Elf Druid") is castable with one Forest.

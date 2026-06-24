@@ -95,7 +95,7 @@ function makeState(overrides) {
 
 // ---------------------------------------------------------------------------
 
-test.describe('Layer Engine', () => {
+test.describe('@engine Layer Engine', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForFunction(() => document.readyState === 'complete', { timeout: 15000 });

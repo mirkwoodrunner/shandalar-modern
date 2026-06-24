@@ -3,7 +3,7 @@ import { duelReducer } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import { makeState, makePlayerState, makeSpell, makeCreature, makeStackItem } from './_factory.js';
 
-describe('Counter targeting', () => {
+describe('@engine Counter targeting', () => {
   it('CT-01: counter by explicit stack id removes correct item', () => {
     const bolt = makeSpell('bolt-1', { id: 'lightning_bolt', name: 'Lightning Bolt', color: 'R', cmc: 1, cost: 'R', effect: 'damage3' });
     const counterspell = makeSpell('csp-1', { id: 'counterspell', name: 'Counterspell', color: 'U', cmc: 2, cost: 'UU', effect: 'counter' });

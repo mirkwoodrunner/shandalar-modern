@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // These tests require the overworld sandbox mode (?overworld=sandbox or the
 // sandbox start config). They trigger an encounter and verify the profile badge.
 
-test.describe('Pre-duel popup — sandbox profile badge', () => {
+test.describe('@overworld @mobile Pre-duel popup — sandbox profile badge', () => {
   test('PD-001: Profile badge visible in sandbox encounter (desktop)', async ({ page }) => {
     await page.goto('/?sandbox=1');
     await page.waitForSelector('[data-testid="overworld-canvas"], canvas', { timeout: 8000 });

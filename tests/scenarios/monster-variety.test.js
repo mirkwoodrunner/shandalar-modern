@@ -15,7 +15,7 @@ function rotatingRand(seq) {
   return () => seq[i++ % seq.length];
 }
 
-describe('pickMonster (terrain-decoupled monster variety)', () => {
+describe('@overworld pickMonster (terrain-decoupled monster variety)', () => {
   it('indexes the correct tier within a list', () => {
     // rand -> 0 always selects the first biome list (PLAINS: WHITE_WEENIE).
     const zero = () => 0;

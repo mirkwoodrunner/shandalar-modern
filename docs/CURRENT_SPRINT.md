@@ -1,5 +1,23 @@
 # Current Sprint
 
+## Test Compartmentalization — Tagging, Folder Consolidation, Audit-Run Gating (2026-06-24)
+
+The `e2e/` directory was merged into `tests/e2e/` (consolidation completed 2026-06-24).
+All Playwright specs now live under `tests/e2e/`. The prior "new/legacy" split is superseded.
+
+Every `test.describe(...)` (Playwright) and `describe(...)` (Vitest) block is now prefixed with
+one or more area tags from the six-tag taxonomy: `@engine`, `@overworld`, `@mobile`, `@gemini`,
+`@persistence`, `@premodern`.
+
+Two new npm scripts were added:
+- `npm run test:targeted -- @tag1 @tag2` — runs only the tagged subset (Vitest + Playwright)
+- `npm run test:audit -- @tag1` — picks a random non-excluded tag and runs it; exits non-zero
+  on failure with a hard STOP message requiring full-suite diagnosis before further work.
+
+**Status:** Done
+
+---
+
 ## Fix: Duel Persistence — Fail-Fast Shape Validation in loadDuel() (2026-06-24)
 
 **Root cause:** `loadDuel()` returned whatever `JSON.parse` produced with no shape check. Any
@@ -282,7 +300,7 @@ and mobile (`DuelScreenMobile.tsx`) share the same `CastFlowState` from `useDuel
 | `data-testid="cast-button"`, `data-testid="cancel-button"` on mobile cast/cancel buttons | `src/ui/Mobile/ActionBar.tsx` |
 | `data-testid="mulligan-keep"` on Keep button | `src/ui/Mulligan/MulliganModal.tsx` |
 | Vitest unit tests CAST-FLOW-01 through CAST-FLOW-08 (27 assertions) | `src/hooks/__tests__/useDuelController.castFlow.test.ts` |
-| Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 (desktop 1280x800 + mobile 390x844) | `e2e/duel-controller.spec.ts` |
+| Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 (desktop 1280x800 + mobile 390x844) | `tests/e2e/duel-controller.spec.ts` |
 | Spec | `docs/SYSTEMS.md` section 24; `docs/ENGINE_CONTRACT_SPEC.md` section 13 |
 | Traceability | `docs/MECHANICS_INDEX.md` — Cast/Activate Flow Redesign |
 
@@ -444,7 +462,7 @@ only on the controller's own upkeep.
 |---|---|
 | Added `if (w !== ns.active) break;` as first guard in `demonicHordesUpkeep` case | `src/engine/DuelCore.js` |
 | Regression tests DH-01 to DH-04 | `src/engine/__tests__/phase6.test.js` |
-| E2E tests DH-E2E-01 (desktop + mobile) | `e2e/sandbox.spec.ts` |
+| E2E tests DH-E2E-01 (desktop + mobile) | `tests/e2e/sandbox.spec.ts` |
 
 ---
 
@@ -549,7 +567,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 |-----|-----------|--------|
 | AI stuck on COMBAT_ATTACKERS | Guard in AI loop useEffect bailed on COMBAT_ATTACKERS and COMBAT_BLOCKERS unconditionally, including when active === 'o' | Added `s.active === 'p'` condition so the bail only fires when the player is declaring |
 
-**Tests:** "AI declares attackers on its turn" desktop + mobile in `e2e/duel-controller.spec.ts`
+**Tests:** "AI declares attackers on its turn" desktop + mobile in `tests/e2e/duel-controller.spec.ts`
 
 ---
 
@@ -562,7 +580,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | ActionBar: `blockerHint` prop with contextual text during player blocker declaration | `src/ui/ActionBar/ActionBar.tsx` |
 | AI `planBlock`: chump fallback for attackers with power >= threshold | `src/engine/AI.js` |
 
-**Tests:** BLK-03, BLK-04 in `e2e/sandbox.spec.ts`
+**Tests:** BLK-03, BLK-04 in `tests/e2e/sandbox.spec.ts`
 
 ---
 
@@ -595,7 +613,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | Ley Druid untaps player-chosen land | `untapLand` absent from `handleActivate`'s pending-activate set; first land in bf array was always chosen instead | `src/hooks/useDuelController.ts` |
 | AI no longer casts Berserk during main phase | `BEFORE_COMBAT_DAMAGE_PHASES` included `MAIN_1` and `COMBAT_BEGIN`; narrowed to `COMBAT_ATTACKERS` and `COMBAT_BLOCKERS` only | `src/engine/AI.js` |
 
-**Tests:** BF-01, BF-02, BF-03 in `e2e/sandbox.spec.ts`
+**Tests:** BF-01, BF-02, BF-03 in `tests/e2e/sandbox.spec.ts`
 
 ---
 
@@ -631,7 +649,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | StackDisplay: onItemClick + selectedItemId props for counter targeting | `src/ui/Stack/StackDisplay.tsx` |
 | Desktop: BEB/REB mode picker with greyed unavailable options; stack items clickable in counter mode | `src/DuelScreen.tsx`, `src/ui/duel/TargetingOverlay.jsx` |
 | Mobile: BEB/REB mode picker and stack item tap in counter mode | `src/ui/Mobile/DuelScreenMobile.tsx` |
-| Tests: CTR-01 through CTR-05 (Playwright), CT-01 through CT-04 (Vitest) | `e2e/sandbox.spec.ts`, `src/engine/__tests__/counter-targeting.test.js` |
+| Tests: CTR-01 through CTR-05 (Playwright), CT-01 through CT-04 (Vitest) | `tests/e2e/sandbox.spec.ts`, `src/engine/__tests__/counter-targeting.test.js` |
 
 **Known simplifications:**
 - Force Spike counters unconditionally (no payment prompt from targeted player).
@@ -695,7 +713,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | TransmutePayModal component | `src/ui/duel/TransmutePayModal.tsx` | [x] Done |
 | DuelScreen modal wiring | `src/DuelScreen.tsx` | [x] Done |
 | DuelScreenMobile modal wiring (parity) | `src/ui/Mobile/DuelScreenMobile.tsx` | [x] Done |
-| Playwright tests | `e2e/sandbox.spec.ts` | [x] Done |
+| Playwright tests | `tests/e2e/sandbox.spec.ts` | [x] Done |
 | Documentation | `CLAUDE.md`, `docs/SYSTEMS.md`, `docs/CURRENT_SPRINT.md`, `docs/MECHANICS_INDEX.md` | [x] Done |
 
 ---
@@ -713,7 +731,7 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | Combat triggers: Wall of Dust, Giant Badger, Murk Dwellers | `src/engine/DuelCore.js` | [x] Done |
 | hasKw removeKeywords eotBuff support | `src/engine/DuelCore.js` | [x] Done |
 | needsExplicitTarget additions | `src/ui/Mobile/DuelScreenMobile.tsx` | [x] Done |
-| Group P Playwright tests | `e2e/sandbox.spec.ts` | [x] Done |
+| Group P Playwright tests | `tests/e2e/sandbox.spec.ts` | [x] Done |
 
 ### Deferred
 - `jandors_ring` — requires last-drawn-card tracking; higher complexity group
@@ -754,8 +772,8 @@ time, returning MULLIGAN actions that are not valid priority-window responses. `
 | StackDisplay mobile collapse toggle: pill, auto-expand, collapse button | `src/ui/Stack/StackDisplay.tsx` | ✅ Done |
 | DuelScreen resolution loop + stack watcher | `src/hooks/useDuelController.ts`, `src/hooks/usePhaseAdvance.ts` | ✅ Done |
 | DuelScreenMobile AI fix + resolution loop | `src/hooks/useDuelController.ts` (centralized; mobile delegates) | ✅ Done |
-| Stack scenario e2e tests | `e2e/sandbox.spec.ts` | ✅ Done |
-| AI spell cast opens priority window (18.10) | `src/DuelScreen.tsx`, `e2e/sandbox.spec.ts` | ✅ Done |
+| Stack scenario e2e tests | `tests/e2e/sandbox.spec.ts` | ✅ Done |
+| AI spell cast opens priority window (18.10) | `src/DuelScreen.tsx`, `tests/e2e/sandbox.spec.ts` | ✅ Done |
 | Fix: stack-grow useEffect opens priority window for AI casts on AI turn (PW-AI-01) | `src/DuelScreen.tsx`, `src/ui/Mobile/DuelScreenMobile.tsx` | ✅ Done |
 | Fix B31: AI stuck in MAIN_1 on mobile after casting — close effect clears aiRef; hasCast skips inner timer; stack?.length dep added to AI loops on both platforms | `src/ui/Mobile/DuelScreenMobile.tsx`, `src/DuelScreen.tsx` | ✅ Done |
 
@@ -777,7 +795,7 @@ phase; (2) the desktop `ActionBar` had no "Done Blocking" button; (3) the mobile
 | Mobile ActionBar: fix blocker UI gate (`isPlayerTurn` → `!isPlayerTurn`) | `src/ui/Mobile/ActionBar.tsx` |
 | Wire `onDoneBlocking={advancePhase}` prop in DuelScreen | `src/DuelScreen.tsx` |
 | Add `SET_PHASE_FOR_TEST` sandbox action (clears stack, priorityWindow) | `src/engine/DuelCore.js` |
-| BLK-01 + BLK-02 regression tests | `e2e/sandbox.spec.ts` |
+| BLK-01 + BLK-02 regression tests | `tests/e2e/sandbox.spec.ts` |
 
 ### Implementation note on Change 1
 The task spec suggested replacing the `COMBAT_BLOCKERS` bail with a `playerIsAttacking`
@@ -794,7 +812,7 @@ prevents the AI from skipping past it. The comment was updated to document this 
 
 | Fix | File(s) Changed | Status |
 |-----|----------------|--------|
-| [x] Tests 5 & 6: AI cast opens priority window before stack resolves (desktop + mobile) | `e2e/duel-controller.spec.ts` | ✅ Done |
+| [x] Tests 5 & 6: AI cast opens priority window before stack resolves (desktop + mobile) | `tests/e2e/duel-controller.spec.ts` | ✅ Done |
 
 Root cause: SANDBOX_FORCE_HAND appends to AI hand. Red instants from RED_BURN
 deck (chain_lightning, lightning_bolt) satisfy handHasInstant() even without

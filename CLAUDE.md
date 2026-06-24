@@ -291,8 +291,41 @@ docs/AI.md                   — AI role definitions
 ### Unit tests (Vitest)
 ```
 npm test                     # run all unit + snapshot tests
-npm run test:e2e             # run Playwright e2e suite
+npm run test:e2e             # run Playwright e2e suite (all specs)
 npm run test:e2e:ui          # Playwright UI mode
+npm run test:targeted -- @engine @persistence   # run only tagged tests
+npm run test:audit -- @engine                   # audit a random untouched tag area
+```
+
+### Test locations
+
+All Playwright e2e specs now live in `tests/e2e/` (consolidated 2026-06-24 from the former `e2e/` split). Vitest unit tests are in `src/engine/__tests__/`, `src/hooks/__tests__/`, and `tests/scenarios/`.
+
+### Tag taxonomy
+
+Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Six tags are defined:
+
+| Tag | Coverage |
+|---|---|
+| `@engine` | Duel engine: DuelCore, AI, MCTS, phases, combat, cardHandlers, cast-flow |
+| `@overworld` | Overworld/map/dungeon/sprite/structure specs and scenario tests |
+| `@mobile` | Any describe with a mobile viewport; desktop/mobile parity pairs |
+| `@gemini` | Gemini AI toggle, wiring, and log entry tests |
+| `@persistence` | Duel state save/load/clear tests (Playwright + Vitest) |
+| `@premodern` | Premodern card pool structural integrity tests |
+
+Tags are additive prefixes: `@engine @mobile Duel persistence [mobile]` means the test belongs to both the engine and mobile areas.
+
+### Targeted and audit scripts
+
+`npm run test:targeted -- @tag1 @tag2` runs both Vitest and Playwright for the given tags (OR-combined). Use after making changes scoped to those areas.
+
+`npm run test:audit -- @tag1` picks one random tag from the five not being targeted, runs its full suite, and exits non-zero with a **STOP** message if anything fails. **An audit failure is a hard stop** -- it means the current change has a side effect outside its declared scope:
+
+```
+1. Run full suite: npm test && npm run test:e2e
+2. Diagnose and fix the regression
+3. Only then resume the original task
 ```
 
 ### Playwright setup (one-time)

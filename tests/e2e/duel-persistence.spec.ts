@@ -59,7 +59,7 @@ async function patchAndWaitForSave(page: Page, patch: Record<string, unknown>) {
 // DESKTOP (1280x800) -- DuelScreen.tsx
 // ---------------------------------------------------------------------------
 
-test.describe('Duel persistence [desktop]', () => {
+test.describe('@persistence @mobile Duel persistence [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('PERSIST-01: resume modal appears after reload when a save exists', async ({ page }) => {
@@ -173,7 +173,7 @@ test.describe('Duel persistence [desktop]', () => {
 // MOBILE (390x844) -- DuelScreenMobile.tsx  (?duel=sandbox-mobile)
 // ---------------------------------------------------------------------------
 
-test.describe('Duel persistence [mobile]', () => {
+test.describe('@persistence @mobile Duel persistence [mobile]', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('PERSIST-01: resume modal appears after reload when a save exists', async ({ page }) => {

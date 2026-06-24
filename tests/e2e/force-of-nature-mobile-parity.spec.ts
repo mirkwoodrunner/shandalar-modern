@@ -60,7 +60,7 @@ async function injectFonState(page: any, greenMana: number) {
 // ---------------------------------------------------------------------------
 // DESKTOP (1280x800)
 // ---------------------------------------------------------------------------
-test.describe('Force of Nature upkeep modal [desktop]', () => {
+test.describe('@engine @mobile Force of Nature upkeep modal [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('FON-01: modal visible when pendingUpkeepChoice is set', async ({ page }) => {
@@ -145,7 +145,7 @@ test.describe('Force of Nature upkeep modal [desktop]', () => {
 // ---------------------------------------------------------------------------
 // MOBILE (390x844)
 // ---------------------------------------------------------------------------
-test.describe('Force of Nature upkeep modal [mobile]', () => {
+test.describe('@engine @mobile Force of Nature upkeep modal [mobile]', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('FON-01: modal visible when pendingUpkeepChoice is set', async ({ page }) => {

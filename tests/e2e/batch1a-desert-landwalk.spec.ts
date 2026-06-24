@@ -220,7 +220,7 @@ function desertLandwalkTests() {
 // ---------------------------------------------------------------------------
 // Desktop suite
 // ---------------------------------------------------------------------------
-test.describe('Batch 1A Desert/Landwalk -- desktop (1280x800)', () => {
+test.describe('@engine @mobile Batch 1A Desert/Landwalk -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   desertLandwalkTests();
 });
@@ -228,7 +228,7 @@ test.describe('Batch 1A Desert/Landwalk -- desktop (1280x800)', () => {
 // ---------------------------------------------------------------------------
 // Mobile suite (same logic, same assertions -- verifies mobile/desktop parity)
 // ---------------------------------------------------------------------------
-test.describe('Batch 1A Desert/Landwalk -- mobile (390x844)', () => {
+test.describe('@engine @mobile Batch 1A Desert/Landwalk -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   desertLandwalkTests();
 });

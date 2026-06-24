@@ -12,7 +12,7 @@ const VIEWPORTS = [
 ];
 
 for (const vp of VIEWPORTS) {
-  test.describe(`structure icons [${vp.name}]`, () => {
+  test.describe(`@overworld @mobile structure icons [${vp.name}]`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test.beforeEach(async ({ page }) => {
