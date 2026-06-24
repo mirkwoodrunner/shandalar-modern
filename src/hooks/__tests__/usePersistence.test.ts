@@ -44,7 +44,7 @@ describe('saveDuel', () => {
 
 describe('loadDuel', () => {
   it('PERSIST-UNIT-02: returns the saved object deserialized correctly', () => {
-    const state = { phase: 'COMBAT_ATTACKERS', turn: 7, p: { life: 12 } };
+    const state = makeState({ turn: 7, phase: 'COMBAT_ATTACKERS' });
     localStorage.setItem(KEY, JSON.stringify(state));
     expect(loadDuel()).toEqual(state);
   });
@@ -68,7 +68,7 @@ describe('loadDuel', () => {
 
 describe('clearDuel', () => {
   it('PERSIST-UNIT-05: removes the key; subsequent loadDuel returns null', () => {
-    saveDuel({ turn: 1 });
+    saveDuel(makeState({ turn: 1 }));
     expect(loadDuel()).not.toBeNull();
     clearDuel();
     expect(loadDuel()).toBeNull();
@@ -88,5 +88,59 @@ describe('round-trip', () => {
     saveDuel(state);
     const loaded = loadDuel();
     expect(loaded).toEqual(state);
+  });
+});
+
+// -- PERSIST-UNIT-07 -----------------------------------------------------------
+
+describe('shape validation — missing top-level key', () => {
+  it('PERSIST-UNIT-07: returns null when a required top-level key is absent', () => {
+    // Missing `p`, `o`, `stack`, `log`, etc. — only `phase` is present.
+    localStorage.setItem(KEY, JSON.stringify({ phase: 'MAIN_1' }));
+    expect(loadDuel()).toBeNull();
+  });
+});
+
+// -- PERSIST-UNIT-08 -----------------------------------------------------------
+
+describe('shape validation — missing player sub-key', () => {
+  it('PERSIST-UNIT-08: returns null when a required p/o sub-key is absent', () => {
+    const state = makeState();
+    // Remove `hand` from player `p` to simulate a stale save shape.
+    const stale = { ...state, p: { life: 20, lib: [], bf: [], gy: [], exile: [], mana: {} } };
+    localStorage.setItem(KEY, JSON.stringify(stale));
+    expect(loadDuel()).toBeNull();
+  });
+});
+
+// -- PERSIST-UNIT-09 -----------------------------------------------------------
+
+describe('shape validation — non-object values', () => {
+  it('PERSIST-UNIT-09: returns null when the stored value is a JSON string', () => {
+    localStorage.setItem(KEY, JSON.stringify('hello'));
+    expect(loadDuel()).toBeNull();
+  });
+
+  it('PERSIST-UNIT-09b: returns null when the stored value is a JSON number', () => {
+    localStorage.setItem(KEY, JSON.stringify(42));
+    expect(loadDuel()).toBeNull();
+  });
+
+  it('PERSIST-UNIT-09c: returns null when the stored value is a JSON array', () => {
+    localStorage.setItem(KEY, JSON.stringify([{ phase: 'MAIN_1' }]));
+    expect(loadDuel()).toBeNull();
+  });
+});
+
+// -- PERSIST-UNIT-10 -----------------------------------------------------------
+
+describe('shape validation — auto-clear on rejection', () => {
+  it('PERSIST-UNIT-10: clears the localStorage key when an invalid value is rejected', () => {
+    localStorage.setItem(KEY, JSON.stringify({ garbage: true }));
+    expect(loadDuel()).toBeNull();
+    // Key must be gone — not just null-returning on this call but still present for next.
+    expect(localStorage.getItem(KEY)).toBeNull();
+    // Second call also returns null and does not throw.
+    expect(loadDuel()).toBeNull();
   });
 });

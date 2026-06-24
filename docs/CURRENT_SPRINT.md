@@ -1,5 +1,31 @@
 # Current Sprint
 
+## Fix: Duel Persistence — Fail-Fast Shape Validation in loadDuel() (2026-06-24)
+
+**Root cause:** `loadDuel()` returned whatever `JSON.parse` produced with no shape check. Any
+valid-JSON value in `localStorage` — a stale save from an older app version, a number, an array —
+caused `resumePending` to become `true` and the Resume modal to render. If the player clicked
+Resume, the malformed value was dispatched as `LOAD_STATE` and became the engine's `GameState`
+unconditionally, crashing deep inside unrelated functions with no clear error.
+
+**Fix:** Private `isValidDuelState()` added to `usePersistence.ts`. Checks for the minimal set of
+top-level keys every `GameState` has (`ruleset`, `phase`, `active`, `turn`, `p`, `o`, `stack`,
+`log`) plus required sub-keys on each player side (`life`, `lib`, `hand`, `bf`, `gy`, `exile`,
+`mana`). Flat presence check only — no deep type validation, no schema library. On rejection,
+`loadDuel()` immediately calls `clearDuel()` to prevent the same bad entry from being retried on
+every future page load, then returns `null`. No changes to `DuelCore.js`, `DuelScreen.tsx`, or
+`DuelScreenMobile.tsx` — `loadDuel()` was already the single choke point both callers go through.
+
+| Change | Detail |
+|---|---|
+| `src/hooks/usePersistence.ts` | `isValidDuelState()` added (private). `loadDuel()` now calls it after parse; calls `clearDuel()` and returns `null` on rejection. |
+| `src/hooks/__tests__/usePersistence.test.ts` | PERSIST-UNIT-02 and PERSIST-UNIT-05 updated to use `makeState()` (their prior partial objects would now correctly fail validation). New cases: PERSIST-UNIT-07 (missing top-level key), PERSIST-UNIT-08 (missing player sub-key), PERSIST-UNIT-09/09b/09c (string/number/array values), PERSIST-UNIT-10 (auto-clear confirmed via `localStorage.getItem`). PERSIST-UNIT-06 round-trip regression unaffected. |
+| `tests/e2e/duel-persistence.spec.ts` | PERSIST-06 added at desktop (1280x800) and mobile (390x844): injects `{garbage:true}` into localStorage before load, asserts modal never appears and key is removed. |
+
+**Status:** Done
+
+---
+
 ## Fix: Duel Persistence — Write-Only to Full Save/Resume (2026-06-24)
 
 **Root cause:** `usePersistence.ts` was a single write-only hook with no read path. There was no
