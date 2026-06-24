@@ -11,7 +11,7 @@ import AI from '../AI.js';
 // ---------------------------------------------------------------------------
 // Group A: post-fix rollout behavior (TD-003 resolved)
 // ---------------------------------------------------------------------------
-describe('Group A: rollout casts one spell per main phase (post-fix)', () => {
+describe('@engine Group A: rollout casts one spell per main phase (post-fix)', () => {
   const state = makeState({
     active: 'o',
     phase: PHASE.MAIN_1,
@@ -63,7 +63,7 @@ describe('Group A: rollout casts one spell per main phase (post-fix)', () => {
 // ---------------------------------------------------------------------------
 // Group B: rollout determinism
 // ---------------------------------------------------------------------------
-describe('Group B: rollout determinism', () => {
+describe('@engine Group B: rollout determinism', () => {
   it('produces the same winner when called twice from identical state', () => {
     const state = makeState({
       active: 'o',
@@ -84,7 +84,7 @@ describe('Group B: rollout determinism', () => {
 // ---------------------------------------------------------------------------
 // Group C: MCTS gate is KARAG-only (guard)
 // ---------------------------------------------------------------------------
-describe('Group C: MCTS gate is KARAG-only', () => {
+describe('@engine Group C: MCTS gate is KARAG-only', () => {
   // GUARD: MCTS path is gated at aggression >= 0.9. Keep this KARAG-only so the
   // Prompt 2 rollout change cannot silently alter ARZAKON/MORTIS.
 

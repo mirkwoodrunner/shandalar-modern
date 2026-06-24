@@ -69,7 +69,7 @@ async function injectEnemyMix(page, count: number) {
 // ---------------------------------------------------------------------------
 // DESKTOP (1280x800)
 // ---------------------------------------------------------------------------
-test.describe('desktop hooded-figure sprite variant', () => {
+test.describe('@overworld @mobile desktop hooded-figure sprite variant', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('sprite variety: hoodedFigure and non-hoodedFigure enemies both appear', async ({ page }) => {
@@ -215,7 +215,7 @@ test.describe('desktop hooded-figure sprite variant', () => {
 // ---------------------------------------------------------------------------
 // MOBILE (390x844) -- parity: Sprite.jsx is shared, behavior must match.
 // ---------------------------------------------------------------------------
-test.describe('mobile hooded-figure sprite variant', () => {
+test.describe('@overworld @mobile mobile hooded-figure sprite variant', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('sprite variety: hoodedFigure and non-hoodedFigure enemies both appear', async ({ page }) => {

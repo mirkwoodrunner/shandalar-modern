@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const MOBILE = { viewport: { width: 390, height: 844 } };
 
-test.describe('Mobile targeting mode', () => {
+test.describe('@engine @mobile Mobile targeting mode', () => {
   test('selecting a damage spell enters targeting mode and cast is disabled until target chosen', async ({ browser }) => {
     const ctx = await browser.newContext(MOBILE);
     const page = await ctx.newPage();
@@ -50,7 +50,7 @@ test.describe('Mobile targeting mode', () => {
   });
 });
 
-test.describe('Mobile targeting false-positive fix (Bug 1)', () => {
+test.describe('@engine @mobile Mobile targeting false-positive fix (Bug 1)', () => {
   test('Uthden Troll cast does not enter targeting mode', async ({ browser }) => {
     const ctx = await browser.newContext(MOBILE);
     const page = await ctx.newPage();
@@ -98,7 +98,7 @@ test.describe('Mobile targeting false-positive fix (Bug 1)', () => {
   });
 });
 
-test.describe('Birds of Paradise mobile wiring (Bug 2)', () => {
+test.describe('@engine @mobile Birds of Paradise mobile wiring (Bug 2)', () => {
   test('Birds of Paradise ACTIVATE_ABILITY sets pendingBop flag', async ({ browser }) => {
     const ctx = await browser.newContext(MOBILE);
     const page = await ctx.newPage();
@@ -133,7 +133,7 @@ test.describe('Birds of Paradise mobile wiring (Bug 2)', () => {
   });
 });
 
-test.describe('Mobile blocking mode', () => {
+test.describe('@engine @mobile Mobile blocking mode', () => {
   test('COMBAT_BLOCKERS phase shows Declare Blockers ActionBar with Done button', async ({ browser }) => {
     const ctx = await browser.newContext(MOBILE);
     const page = await ctx.newPage();

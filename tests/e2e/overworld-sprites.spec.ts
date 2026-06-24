@@ -12,7 +12,7 @@ const URL = '/?overworld=sandbox';
 // ---------------------------------------------------------------------------
 // DESKTOP
 // ---------------------------------------------------------------------------
-test.describe('desktop overworld sprites', () => {
+test.describe('@overworld @mobile desktop overworld sprites', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('player renders as a canvas-backed sprite (old CSS/SVG body is gone)', async ({ page }) => {
@@ -133,7 +133,7 @@ test.describe('desktop overworld sprites', () => {
 // ---------------------------------------------------------------------------
 // MOBILE -- the parity regression: tap-to-move must now set dir/moving.
 // ---------------------------------------------------------------------------
-test.describe('mobile overworld sprites', () => {
+test.describe('@overworld @mobile mobile overworld sprites', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('tap-to-move sets direction and toggles the moving flag', async ({ page }) => {

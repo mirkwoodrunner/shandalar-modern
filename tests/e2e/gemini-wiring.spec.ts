@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const DESKTOP = { viewport: { width: 1280, height: 800 } };
 
-test.describe('Gemini wiring -- heuristic fallback (no API key)', () => {
+test.describe('@gemini @mobile Gemini wiring -- heuristic fallback (no API key)', () => {
   test('Duel starts and AI takes its turn without crashing when useGemini=true but API fails', async ({ browser }) => {
     // useGemini is not yet surfaced as a URL param -- this test verifies the
     // heuristic path still works when the flag is false (default sandbox).
@@ -24,7 +24,7 @@ test.describe('Gemini wiring -- heuristic fallback (no API key)', () => {
   });
 });
 
-test.describe('Gemini wiring -- mobile parity', () => {
+test.describe('@gemini @mobile Gemini wiring -- mobile parity', () => {
   test('isGeminiThinking indicator is not visible by default in sandbox', async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
@@ -38,7 +38,7 @@ test.describe('Gemini wiring -- mobile parity', () => {
   });
 });
 
-test.describe('Gemini log entries', () => {
+test.describe('@gemini @mobile Gemini log entries', () => {
   test('GEMINI_LOG dispatch appends gemini-typed entries to state log', async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();

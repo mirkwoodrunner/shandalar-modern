@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Gemini toggle -- title screen', () => {
+test.describe('@gemini @mobile Gemini toggle -- title screen', () => {
   test('GT-001: Toggle renders on intro step (desktop)', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('button:has-text("BEGIN YOUR JOURNEY")');

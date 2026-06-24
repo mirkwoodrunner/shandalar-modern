@@ -1669,7 +1669,7 @@ Both the `__tests__` files and `tests/scenarios/` files import factories from th
 
 ## 31.3 E2E Testing Infrastructure
 
-Playwright config lives at `playwright.config.js`. E2E tests are in `e2e/` (new) and `tests/e2e/` (legacy).
+Playwright config lives at `playwright.config.js`. All E2E tests now live in `tests/e2e/`. The `e2e/` directory was consolidated into `tests/e2e/` on 2026-06-24; the prior "new/legacy" framing (e2e/ = new, tests/e2e/ = legacy) is superseded and no longer applies.
 
 Sandbox mode (`?duel=sandbox`) is the required entry point for all e2e tests.
 It loads `public/sandbox-decklist.txt` at runtime and is completely inert in
@@ -1680,15 +1680,15 @@ The `?aiSpeed=<ms>` param overrides the initial value of `tweaks.aiSpeed`
 (defined in `useTweaks.ts`). When the param is absent, `readAiSpeedParam()` returns **400 ms** (not 800 ms; 800 ms is the `useDuelController` hook-parameter default used only when the caller does not pass `tweaks.aiSpeed`). Set to 0 in all e2e tests to eliminate AI timing
 non-determinism.
 
-<!-- corrected: only e2e/sandbox.spec.ts was previously documented; additional spec files exist -->
+<!-- corrected: only tests/e2e/sandbox.spec.ts was previously documented; additional spec files exist -->
 ### E2E Spec Inventory
 
 | File | Description |
 |------|-------------|
-| `e2e/sandbox.spec.ts` | Core sandbox smoke tests |
-| `e2e/duel-controller.spec.ts` | `useDuelController` integration scenarios |
-| `e2e/enchanted-slot.spec.ts` | Enchanted-slot rendering and interaction |
-| `e2e/mobile-targeting.spec.ts` | Mobile explicit-target flow |
+| `tests/e2e/sandbox.spec.ts` | Core sandbox smoke tests |
+| `tests/e2e/duel-controller.spec.ts` | `useDuelController` integration scenarios |
+| `tests/e2e/enchanted-slot.spec.ts` | Enchanted-slot rendering and interaction |
+| `tests/e2e/mobile-targeting.spec.ts` | Mobile explicit-target flow |
 | `tests/e2e/ai-mana-tracking.spec.js` | AI virtual mana tracking across multi-spell turns |
 | `tests/e2e/difficulty.spec.js` | Difficulty system (life totals, deck generation) |
 | `tests/e2e/instant-cast-priority-window.spec.js` | Instant-speed cast priority window |
@@ -2225,6 +2225,6 @@ button.
 | `src/ui/Mobile/DuelScreenMobile.tsx` | Same wiring; removed local `targetingFor`/`pendingTarget` state |
 | `src/data/cards.js` | Added `optionalTarget: true` to Twiddle |
 | `src/hooks/__tests__/useDuelController.castFlow.test.ts` | Vitest unit tests CAST-FLOW-01 through CAST-FLOW-08 |
-| `e2e/duel-controller.spec.ts` | Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 |
+| `tests/e2e/duel-controller.spec.ts` | Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 |
 
 # End of SYSTEMS v1.5

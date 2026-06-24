@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Disintegrate', () => {
+test.describe('@engine Disintegrate', () => {
 
   test('kills a creature with lethal X', async ({ page }) => {
     await page.goto('http://localhost:5173');

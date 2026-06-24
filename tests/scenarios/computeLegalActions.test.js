@@ -6,7 +6,7 @@ import { ARCHETYPES } from '../../src/data/cards.js';
 
 const ALL_PHASES = ['MAIN_1', 'MAIN_2', 'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS', 'UPKEEP', 'END'];
 
-describe('computeLegalActions -- index 0 invariant', () => {
+describe('@engine computeLegalActions -- index 0 invariant', () => {
   const state = buildDuelState(ARCHETYPES.BOSS_RED.deck, 'BOSS_RED', RULESETS.CLASSIC);
 
   for (const phase of ALL_PHASES) {
@@ -18,7 +18,7 @@ describe('computeLegalActions -- index 0 invariant', () => {
   }
 });
 
-describe('computeLegalActions -- does not throw on empty board', () => {
+describe('@engine computeLegalActions -- does not throw on empty board', () => {
   it('handles empty hand and battlefield without throwing', () => {
     const state = buildDuelState(ARCHETYPES.BOSS_RED.deck, 'BOSS_RED', RULESETS.CLASSIC);
     const emptyState = {
@@ -33,7 +33,7 @@ describe('computeLegalActions -- does not throw on empty board', () => {
   });
 });
 
-describe('computeLegalActions -- COMBAT_BLOCKERS attacker lookup', () => {
+describe('@engine computeLegalActions -- COMBAT_BLOCKERS attacker lookup', () => {
   it('does not throw with empty attacker list', () => {
     const state = buildDuelState(ARCHETYPES.BOSS_RED.deck, 'BOSS_RED', RULESETS.CLASSIC);
     const noAttackers = { ...state, attackers: [] };

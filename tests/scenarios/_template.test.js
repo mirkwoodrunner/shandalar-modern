@@ -20,7 +20,7 @@ import { duelReducer } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand, makeSpell } from '../../src/engine/__tests__/_factory.js';
 
-describe('Scenario: <short description of what is being tested>', () => {
+describe('@engine Scenario: <short description of what is being tested>', () => {
 
   it('<observable behavior that should be true after the action sequence>', () => {
     // 1. Build the starting state using factories.

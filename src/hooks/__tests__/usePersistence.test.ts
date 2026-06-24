@@ -30,7 +30,7 @@ const KEY = 'shandalar:duel';
 
 // -- PERSIST-UNIT-01 -----------------------------------------------------------
 
-describe('saveDuel', () => {
+describe('@persistence saveDuel', () => {
   it('PERSIST-UNIT-01: writes JSON-serialized state to the correct localStorage key', () => {
     const state = { phase: 'MAIN_1', turn: 3 };
     saveDuel(state);
@@ -42,7 +42,7 @@ describe('saveDuel', () => {
 
 // -- PERSIST-UNIT-02 -----------------------------------------------------------
 
-describe('loadDuel', () => {
+describe('@persistence loadDuel', () => {
   it('PERSIST-UNIT-02: returns the saved object deserialized correctly', () => {
     const state = makeState({ turn: 7, phase: 'COMBAT_ATTACKERS' });
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -66,7 +66,7 @@ describe('loadDuel', () => {
 
 // -- PERSIST-UNIT-05 -----------------------------------------------------------
 
-describe('clearDuel', () => {
+describe('@persistence clearDuel', () => {
   it('PERSIST-UNIT-05: removes the key; subsequent loadDuel returns null', () => {
     saveDuel(makeState({ turn: 1 }));
     expect(loadDuel()).not.toBeNull();
@@ -78,7 +78,7 @@ describe('clearDuel', () => {
 
 // -- PERSIST-UNIT-06 -----------------------------------------------------------
 
-describe('round-trip', () => {
+describe('@persistence round-trip', () => {
   it('PERSIST-UNIT-06: saveDuel then loadDuel returns a deep-equal copy of a realistic GameState', () => {
     const state = makeState({
       turn: 4,
@@ -93,7 +93,7 @@ describe('round-trip', () => {
 
 // -- PERSIST-UNIT-07 -----------------------------------------------------------
 
-describe('shape validation — missing top-level key', () => {
+describe('@persistence shape validation — missing top-level key', () => {
   it('PERSIST-UNIT-07: returns null when a required top-level key is absent', () => {
     // Missing `p`, `o`, `stack`, `log`, etc. — only `phase` is present.
     localStorage.setItem(KEY, JSON.stringify({ phase: 'MAIN_1' }));
@@ -103,7 +103,7 @@ describe('shape validation — missing top-level key', () => {
 
 // -- PERSIST-UNIT-08 -----------------------------------------------------------
 
-describe('shape validation — missing player sub-key', () => {
+describe('@persistence shape validation — missing player sub-key', () => {
   it('PERSIST-UNIT-08: returns null when a required p/o sub-key is absent', () => {
     const state = makeState();
     // Remove `hand` from player `p` to simulate a stale save shape.
@@ -115,7 +115,7 @@ describe('shape validation — missing player sub-key', () => {
 
 // -- PERSIST-UNIT-09 -----------------------------------------------------------
 
-describe('shape validation — non-object values', () => {
+describe('@persistence shape validation — non-object values', () => {
   it('PERSIST-UNIT-09: returns null when the stored value is a JSON string', () => {
     localStorage.setItem(KEY, JSON.stringify('hello'));
     expect(loadDuel()).toBeNull();
@@ -134,7 +134,7 @@ describe('shape validation — non-object values', () => {
 
 // -- PERSIST-UNIT-10 -----------------------------------------------------------
 
-describe('shape validation — auto-clear on rejection', () => {
+describe('@persistence shape validation — auto-clear on rejection', () => {
   it('PERSIST-UNIT-10: clears the localStorage key when an invalid value is rejected', () => {
     localStorage.setItem(KEY, JSON.stringify({ garbage: true }));
     expect(loadDuel()).toBeNull();

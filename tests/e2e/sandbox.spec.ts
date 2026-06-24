@@ -9,7 +9,7 @@ async function waitForDuel(page: Page) {
 }
 
 // ---------------------------------------------------------------------------
-test.describe('Sandbox boot', () => {
+test.describe('@engine @mobile Sandbox boot', () => {
   test('lands on duel screen without title interaction', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -34,7 +34,7 @@ test.describe('Sandbox boot', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Action bar controls', () => {
+test.describe('@engine @mobile Action bar controls', () => {
   test('Pass Priority button is present', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -55,7 +55,7 @@ test.describe('Action bar controls', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('window.__duelDispatch escape hatch', () => {
+test.describe('@engine @mobile window.__duelDispatch escape hatch', () => {
   test('dispatch and state are exposed in sandbox mode', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -75,7 +75,7 @@ test.describe('window.__duelDispatch escape hatch', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('?cards= injection', () => {
+test.describe('@engine @mobile ?cards= injection', () => {
   async function getHandIds(page: Page): Promise<string[]> {
     await page.waitForFunction(() => {
       const s = (window as any).__duelState?.();
@@ -160,7 +160,7 @@ async function tapAllLands(page: Page): Promise<number> {
 
 // ---------------------------------------------------------------------------
 
-test.describe('Universal stack priority', () => {
+test.describe('@engine @mobile Universal stack priority', () => {
   test('7A: Sorcery lands on stack, does not resolve immediately', async ({ page }) => {
     // lightning_bolt is an instant, use a sorcery. fireball works.
     await page.goto(sandboxWith('fireball'));
@@ -362,7 +362,7 @@ test('7G: Mobile -- stack pill collapses and re-expands on tap', async ({ page }
 });
 
 // ---------------------------------------------------------------------------
-test.describe('AI spell priority window', () => {
+test.describe('@engine @mobile AI spell priority window', () => {
   test('8A: AI cast lands spell on stack; priorityWindow opens before resolution', async ({ page }) => {
     await page.goto(sandboxWith('grizzly_bears'));
     await waitForDuel(page);
@@ -525,7 +525,7 @@ test.describe('AI spell priority window', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Combat blockers', () => {
+test.describe('@engine @mobile Combat blockers', () => {
   async function waitForPlayerMain1(page: Page) {
     await page.waitForFunction(() => {
       const s = (window as any).__duelState?.();
@@ -592,7 +592,7 @@ test.describe('Combat blockers', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('TD-002: X-spell cast log', () => {
+test.describe('@engine @mobile TD-002: X-spell cast log', () => {
   test('TD-002: X-spell cast log includes resolved X value', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
@@ -731,7 +731,7 @@ test.describe('TD-002: X-spell cast log', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('TD-006: spell cast log includes target', () => {
+test.describe('@engine @mobile TD-006: spell cast log includes target', () => {
   test('TD-006a: cast targeting opponent player logs "targeting Opponent"', async ({ page }) => {
     // Inject lightning_bolt via URL so it is in hand at game init (synchronous)
     await page.goto(sandboxWith('lightning_bolt'));
@@ -864,7 +864,7 @@ test.describe('TD-006: spell cast log includes target', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('TD-003: tap-before-targeting fix', () => {
+test.describe('@engine @mobile TD-003: tap-before-targeting fix', () => {
   test('TD-003: target selection survives mana tap on desktop', async ({ page }) => {
     await page.goto('/?duel=sandbox');
     await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
@@ -974,7 +974,7 @@ test.describe('TD-003: tap-before-targeting fix', () => {
   });
 });
 
-test.describe('TD-004 — Ancestral Recall explicit targeting', () => {
+test.describe('@engine @mobile TD-004 — Ancestral Recall explicit targeting', () => {
   test('TD-004: Ancestral Recall prompts for target on mobile (draw3 explicit target)', async ({ page }) => {
     // Use the mobile route if available, otherwise standard sandbox
     await page.goto('/?duel=sandbox&mobile=1');
@@ -1036,7 +1036,7 @@ test.describe('TD-004 — Ancestral Recall explicit targeting', () => {
   });
 });
 
-test.describe('TD-004-B -- Desktop player target click', () => {
+test.describe('@engine @mobile TD-004-B -- Desktop player target click', () => {
   test('Ancestral Recall: opponent banner becomes clickable when card selected', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/?duel=sandbox');
@@ -1133,7 +1133,7 @@ test.describe('TD-004-B -- Desktop player target click', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Layers audit fixes', () => {
+test.describe('@engine @mobile Layers audit fixes', () => {
   test('Keldon Warlord counts itself and all non-Wall creatures', async ({ page }) => {
     await page.goto(sandboxWith('keldon_warlord,grizzly_bears'));
     await waitForDuel(page);
@@ -1244,7 +1244,7 @@ test.describe('Layers audit fixes', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Enchant creature auras — walkland, web, ward cycle', () => {
+test.describe('@engine @mobile Enchant creature auras — walkland, web, ward cycle', () => {
   test('Fishliver Oil grants islandwalk via layers', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -1391,7 +1391,7 @@ test.describe('Enchant creature auras — walkland, web, ward cycle', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Group P handler tests', () => {
+test.describe('@engine @mobile Group P handler tests', () => {
   test('Group P -- morale pumps attackers only', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -1623,7 +1623,7 @@ test('Transmute pay modal: confirm enabled when mana tapped meets requirement', 
 });
 
 // Mobile viewport parity
-test.describe('tutor modal — mobile viewport', () => {
+test.describe('@engine @mobile tutor modal — mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile: tutor modal opens, card selectable, decline works', async ({ page }) => {
@@ -1660,7 +1660,7 @@ test.describe('tutor modal — mobile viewport', () => {
 
 // ─── TransmutePayModal ───────────────────────────────────────────────────────
 
-test.describe('TransmutePayModal', () => {
+test.describe('@engine @mobile TransmutePayModal', () => {
 
   test('modal is a compact top banner -- does not cover full screen', async ({ page }) => {
     await page.goto(SANDBOX_URL);
@@ -1791,7 +1791,7 @@ test.describe('TransmutePayModal', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Counter-spell targeting (CTR)', () => {
+test.describe('@engine @mobile Counter-spell targeting (CTR)', () => {
 
   // CTR-01: Player counters opponent's Lightning Bolt with Counterspell
   test('CTR-01: player counters opponent spell -- target removed from stack', async ({ page }) => {
@@ -2015,7 +2015,7 @@ test.describe('Counter-spell targeting (CTR)', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('AI Regrowth targeting — mobile parity', () => {
+test.describe('@engine @mobile AI Regrowth targeting — mobile parity', () => {
   test('AI-REGROWTH-01 mobile: AI Regrowth produces no targeting log entry', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(sandboxWith('regrowth'));
@@ -2063,7 +2063,7 @@ test.describe('AI Regrowth targeting — mobile parity', () => {
   });
 });
 
-test.describe('Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
+test.describe('@engine @mobile Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
 
   test('BF-01: Llanowar Elves taps for green mana (not colorless)', async ({ page }) => {
     await page.goto(sandboxWith('llanowar_elves,forest'));
@@ -2131,7 +2131,7 @@ test.describe('Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
 
 // ── Fix: P/T Display ──────────────────────────────────────────────────────────
 
-test.describe('P/T display', () => {
+test.describe('@engine @mobile P/T display', () => {
   test('PT-01: pump ability updates displayed P/T (eotBuffs)', async ({ page }) => {
     // Frozen Shade starts 0/1. After activating B once it should show 1/2 in UI.
     await page.goto(sandboxWith('frozen_shade,swamp'));
@@ -2200,7 +2200,7 @@ test.describe('P/T display', () => {
 
 // ── Fix: P/T Display (mobile viewport) ───────────────────────────────────────
 
-test.describe('P/T display (mobile)', () => {
+test.describe('@engine @mobile P/T display (mobile)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('PT-01-mobile: pump ability updates displayed P/T on mobile', async ({ page }) => {
@@ -2232,7 +2232,7 @@ test.describe('P/T display (mobile)', () => {
 
 // ── Fix: Counterspell Stack ───────────────────────────────────────────────────
 
-test.describe('Counterspell stack visibility', () => {
+test.describe('@engine @mobile Counterspell stack visibility', () => {
   test('CS-01: AI Counterspell appears on stack before resolving', async ({ page }) => {
     // Give player a Lightning Bolt. Inject Counterspell + UU mana into AI hand.
     await page.goto(sandboxWith('lightning_bolt,mountain'));
@@ -2297,7 +2297,7 @@ test.describe('Counterspell stack visibility', () => {
 
 // ── Fix: Desktop Blocker UI ───────────────────────────────────────────────────
 
-test.describe('Blocker UI', () => {
+test.describe('@engine @mobile Blocker UI', () => {
   test('BLK-03: pending blocker highlighted on desktop during COMBAT_BLOCKERS', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(sandboxWith('grizzly_bears,forest'));
@@ -2346,7 +2346,7 @@ test.describe('Blocker UI', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Combat priority windows (B33) — desktop 1280x800', () => {
+test.describe('@engine @mobile Combat priority windows (B33) — desktop 1280x800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('CBT-PW-01: Done Attacking advances to COMBAT_AFTER_ATTACKERS', async ({ page }) => {
@@ -2468,7 +2468,7 @@ test.describe('Combat priority windows (B33) — desktop 1280x800', () => {
 });
 
 // ---------------------------------------------------------------------------
-test.describe('Mobile combat priority windows — 390x844', () => {
+test.describe('@engine @mobile Mobile combat priority windows — 390x844', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('CBT-MOB-01: Done Attacking advances phase on mobile', async ({ page }) => {
@@ -2532,7 +2532,7 @@ async function setPendingConditionalCounter(page: any, overrides: object) {
   }, overrides);
 }
 
-test.describe('Conditional Counter Modal (Force Spike / Power Sink)', () => {
+test.describe('@engine @mobile Conditional Counter Modal (Force Spike / Power Sink)', () => {
   test('Force Spike: pendingConditionalCounter set when it resolves vs player spell', async ({ page }) => {
     await page.goto('/?duel=sandbox&aiSpeed=0');
     await page.waitForFunction(() => (window as any).__duelState !== undefined);
@@ -2718,7 +2718,7 @@ async function runDHE2ETest(page: Page) {
   expect(stateAfterOwnUpkeep.p.life).toBe(17); // 3 damage dealt
 }
 
-test.describe('DH-E2E-01: Demonic Hordes upkeep active-player guard', () => {
+test.describe('@engine @mobile DH-E2E-01: Demonic Hordes upkeep active-player guard', () => {
   test('desktop (1280x800): guard suppresses drawback on opponent upkeep; fires on own upkeep', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await runDHE2ETest(page);

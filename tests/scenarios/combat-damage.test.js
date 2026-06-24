@@ -7,7 +7,7 @@ import { duelReducer } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('Combat damage', () => {
+describe('@engine Combat damage', () => {
 
   it('4a: unblocked attacker deals damage to the defending player', () => {
     // Opponent controls a 2/2, active player in COMBAT_ATTACKERS.

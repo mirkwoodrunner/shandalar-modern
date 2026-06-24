@@ -48,7 +48,7 @@ function runSimGame(initialState, maxSteps = 2000) {
 
 // --- Tests -------------------------------------------------------------------
 
-describe('AI simulation — game termination', () => {
+describe('@engine AI simulation — game termination', () => {
   // Fix MCTS to a deterministic iteration count so tests are not sensitive to
   // wall-clock variance between runs. Production uses the time-budget path.
   beforeAll(() => setMCTSIterCap(20));

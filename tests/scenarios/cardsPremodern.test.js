@@ -30,7 +30,7 @@ const SPOT_CHECK_LEGAL = [
   'Llanowar Elves',
 ];
 
-describe('CARD_DB_PREMODERN structural integrity', () => {
+describe('@premodern CARD_DB_PREMODERN structural integrity', () => {
   it('exports a non-empty array', () => {
     expect(Array.isArray(CARD_DB_PREMODERN)).toBe(true);
     expect(CARD_DB_PREMODERN.length).toBeGreaterThan(0);

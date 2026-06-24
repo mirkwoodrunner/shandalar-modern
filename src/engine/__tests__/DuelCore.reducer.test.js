@@ -8,7 +8,7 @@ import { makePlayerState, makeState, makeCreature, makeLand } from './_factory.j
 
 // --- TAP_LAND ----------------------------------------------------------------
 
-describe('TAP_LAND', () => {
+describe('@engine TAP_LAND', () => {
   it('taps an untapped land in bf and adds mana', () => {
     const land = makeLand('land-1');
     const state = makeState({ pBf: [land] });
@@ -41,7 +41,7 @@ describe('TAP_LAND', () => {
 
 // --- PLAY_LAND ---------------------------------------------------------------
 
-describe('PLAY_LAND', () => {
+describe('@engine PLAY_LAND', () => {
   it('moves land from hand to bf and increments landsPlayed', () => {
     const land = makeLand('land-h1', { controller: 'p' });
     const state = makeState({ pHand: [land], phase: PHASE.MAIN_1, active: 'p' });
@@ -83,7 +83,7 @@ describe('PLAY_LAND', () => {
 
 // --- ADVANCE_PHASE -----------------------------------------------------------
 
-describe('ADVANCE_PHASE', () => {
+describe('@engine ADVANCE_PHASE', () => {
   it('advances from MAIN_1 to the next phase in sequence', () => {
     const state = makeState({ phase: PHASE.MAIN_1 });
     const expectedNext = PHASE_SEQUENCE[PHASE_SEQUENCE.indexOf(PHASE.MAIN_1) + 1];
@@ -104,7 +104,7 @@ describe('ADVANCE_PHASE', () => {
 
 // --- state.over guard --------------------------------------------------------
 
-describe('state.over guard', () => {
+describe('@engine state.over guard', () => {
   it('returns state unchanged for any action when over is already set', () => {
     const overState = makeState({ over: { winner: 'p', reason: 'test' } });
 
@@ -124,7 +124,7 @@ describe('state.over guard', () => {
 
 // --- Channel -----------------------------------------------------------------
 
-describe('Channel', () => {
+describe('@engine Channel', () => {
   it('sets channelActive when channel sorcery resolves off the stack', () => {
     const channelCard = {
       iid: 'chan-1', id: 'channel', name: 'Channel', type: 'Sorcery',

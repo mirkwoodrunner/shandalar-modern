@@ -11,7 +11,9 @@
     "test:e2e": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers ./node_modules/.bin/playwright test",
     "test:e2e:ui": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers ./node_modules/.bin/playwright test --ui",
     "oracle:sync": "node scryfall/sync-oracle-text.js",
-    "oracle:apply": "node scryfall/apply-oracle-patch.js"
+    "oracle:apply": "node scryfall/apply-oracle-patch.js",
+    "test:targeted": "node scripts/run-targeted.js",
+    "test:audit": "node scripts/run-audit.js"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",

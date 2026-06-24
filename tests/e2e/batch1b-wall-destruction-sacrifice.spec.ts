@@ -263,7 +263,7 @@ function batch1bTests() {
 // ---------------------------------------------------------------------------
 // Desktop suite
 // ---------------------------------------------------------------------------
-test.describe('Batch 1B Wall/Sacrifice -- desktop (1280x800)', () => {
+test.describe('@engine @mobile Batch 1B Wall/Sacrifice -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   batch1bTests();
 });
@@ -271,7 +271,7 @@ test.describe('Batch 1B Wall/Sacrifice -- desktop (1280x800)', () => {
 // ---------------------------------------------------------------------------
 // Mobile suite (same logic -- verifies mobile/desktop parity)
 // ---------------------------------------------------------------------------
-test.describe('Batch 1B Wall/Sacrifice -- mobile (390x844)', () => {
+test.describe('@engine @mobile Batch 1B Wall/Sacrifice -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   batch1bTests();
 });
