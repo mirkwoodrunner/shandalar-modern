@@ -160,6 +160,16 @@ Mobile `handleCast` uses `resolveDefaultTarget(card, state)` (module-level helpe
 | Target dispatch | `selectTarget('o')` or `selectTarget('p')` via `useDuelController` | `selectTarget('o')` or `selectTarget('p')` via `useDuelController` |
 | `handleCast` guard | `if (needsExplicitTarget(card)) { const tgt = s.selTgt ?? null; if (!tgt) return; ... }` | Same guard |
 
+### Gemini thinking indicator
+
+| Mechanism | Desktop (`DuelScreen.tsx`) | Mobile (`DuelScreenMobile.tsx`) |
+|---|---|---|
+| State source | `isGeminiThinking` destructured from `useDuelController` | Same |
+| Render element | `<div className="gemini-thinking">` (global CSS class) | `<div className={s.geminiThinking}>` (CSS module) |
+| Placement | Below opponent `Banner`, above battlefield area | Below opponent `Banner`, above battlefield area |
+| Style | `src/styles/global.css` `.gemini-thinking` rule | `src/ui/Mobile/styles.module.css` `.geminiThinking` rule |
+| Parity status | **Present on both screens as of 2026-06-25** | Present since original mobile implementation |
+
 ---
 
 ## OverworldGame -- Layout Architecture
