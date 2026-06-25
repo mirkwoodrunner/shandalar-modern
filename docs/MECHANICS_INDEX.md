@@ -2250,6 +2250,18 @@ ACTIVE
 
 **Tests:** 12/12 `usePersistence.test.ts` unit tests pass. Playwright: PERSIST-04/05/06/07 × desktop + mobile.
 
+## Bug Fix: Castle boss-deck routing (CASTLE-BOSS-1) — 2026-06-25
+
+**Problem:** `handleChallenge` in `useOverworldController.js` passed `MAGE_ARCHS[col]` (a generic color archetype such as `WHITE_WEENIE`) to `openEncounterPopup` for castle encounters. The five `BOSS_*` archetypes (with unique 40-card decks and `profileId` fields) were never reached; every castle fight used a generic deck instead of the intended boss deck.
+
+**Fix:** Added `MAGE_BOSS_ARCHS` (`{ W:"BOSS_WHITE", U:"BOSS_BLUE", ... }`) to `src/engine/MapGenerator.js` directly below `MAGE_ARCHS`. Swapped the import and call site in `useOverworldController.js` so `handleChallenge` passes `MAGE_BOSS_ARCHS[col]` to `openEncounterPopup`. `MAGE_ARCHS` is retained for non-castle encounters.
+
+**Files changed:**
+- `src/engine/MapGenerator.js` — added `export const MAGE_BOSS_ARCHS`
+- `src/hooks/useOverworldController.js` — import swap + call-site swap
+
+**Tests:** `tests/scenarios/castle-boss-routing.test.js` — 3/3 unit tests pass (`@overworld`). Playwright E2E ejected: no `__overworldSetPos` global exists to deterministically navigate to a castle tile; a follow-up should add this global and the E2E spec.
+
 ---
 
 # End of MECHANICS INDEX v1.5

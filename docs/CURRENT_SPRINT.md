@@ -1,9 +1,8 @@
 # Current Sprint — 2026-06-25
 
 ## Focus (priority order)
-1. **P0 — Castle fights route to `BOSS_*` decks.** Correctness bug. `handleChallenge` in `useOverworldController.js` passes `MAGE_ARCHS[col]` (generic archetype) instead of the boss deck. Fix via `MAGE_BOSS_ARCHS` map. Prompt: `prompt-castle-boss-deck-routing.md`.
-2. **P1 — Gemini "thinking" indicator desktop parity.** `isGeminiThinking` renders on mobile only; add to `DuelScreen.tsx`. Prompt: `prompt-gemini-desktop-thinking-parity.md`.
-3. **P2 — Per-mage Gemini system prompts (2-3 profiles).** `GeminiAdvisor.js` uses one global instruction; add `MAGE_PROMPTS` + `selectSystemInstruction` with base-prompt fallback. Prompt: `prompt-gemini-per-mage-prompts.md`.
+1. **P1 — Gemini "thinking" indicator desktop parity.** `isGeminiThinking` renders on mobile only; add to `DuelScreen.tsx`. Prompt: `prompt-gemini-desktop-thinking-parity.md`.
+2. **P2 — Per-mage Gemini system prompts (2-3 profiles).** `GeminiAdvisor.js` uses one global instruction; add `MAGE_PROMPTS` + `selectSystemInstruction` with base-prompt fallback. Prompt: `prompt-gemini-per-mage-prompts.md`.
 
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.
@@ -22,5 +21,6 @@
 - **BLOCK-GUARD-1** -- COMBAT_BLOCKERS AI auto-advance: Added `if (s.phase === 'COMBAT_BLOCKERS') return;` guard in the AI driver useEffect in `useDuelController.ts`. Human defender's blocker-declaration window is no longer skipped when the AI is the attacking player. See `docs/MECHANICS_INDEX.md` -- Bug Fix: COMBAT_BLOCKERS AI auto-advance.
 - **LAXA-PSIONIC-1** -- Lava Axe / Psionic Blast targeting crash: `damage5` defensive fallback + `psionicBlast` creature-damage branch added to `DuelCore.js`; `PLAYER_ONLY_TARGET_EFFECTS` guard added to `useDuelController.ts`, `DuelScreen.tsx`, `DuelScreenMobile.tsx`. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Lava Axe / Psionic Blast creature-targeting crash.
 - **RESUME-REMOVE-1** -- Resume-duel modal removed: `ResumeDuelModal.tsx` deleted; resume flow wiring removed from both screen files; autosave retained as crash-recovery; `LOAD_STATE` reducer left as dead code for future safe-phases-only checkpoint design. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Resume-duel modal removed.
+- **CASTLE-BOSS-1** -- Castle challenges now route to `BOSS_*` decks. `MAGE_BOSS_ARCHS` added to `src/engine/MapGenerator.js`; `handleChallenge` in `useOverworldController.js` swapped from `MAGE_ARCHS[col]` to `MAGE_BOSS_ARCHS[col]`. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Castle boss-deck routing.
 
 See `docs/SPRINT_ARCHIVE_2026-06-24.md` for the prior sprint's completed work.

@@ -7,7 +7,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 
 import {
   generateMap, findPath, revealAround,
-  TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_ARCHS, CASTLE_MODIFIERS,
+  TERRAIN, COLORS, MAGE_NAMES, MAGE_TITLES, MAGE_BOSS_ARCHS, CASTLE_MODIFIERS,
   MANA_SYM, DUNGEON_ARCHETYPES, pickMonster, HENCHMAN_TABLE, MAP_W, MAP_H,
   WORLD_MAGICS,
 } from '../engine/MapGenerator.js';
@@ -1400,7 +1400,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     addLog(`⚔ You challenge ${MAGE_NAMES[col]}! Castle modifier: ${mod.name}.`, 'event');
     setModal(null);
     const bossLife = difficulty.bossBase + magesDefeated.length * difficulty.bossPerKill;
-    openEncounterPopup(MAGE_ARCHS[col], player.hp, 'castle', mod, { castleColor: col, oppLife: bossLife });
+    openEncounterPopup(MAGE_BOSS_ARCHS[col], player.hp, 'castle', mod, { castleColor: col, oppLife: bossLife });
   }, [activeTile, player.hp, openEncounterPopup, addLog, difficulty, magesDefeated]);
 
   // -------------------------------------------------------------------------
