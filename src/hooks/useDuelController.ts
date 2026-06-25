@@ -79,6 +79,18 @@ export function needsExplicitTarget(card: any): boolean {
   return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
 }
 
+// Effects whose oracle text restricts the target to player/planeswalker only.
+// Distinct from EXPLICIT_TARGET_EFFECTS, which only controls whether players
+// are an *additional* legal target alongside creatures. Effects in this set
+// must never allow a creature click to register as the target.
+export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
+  'damage5', // Lava Axe -- "deals 5 damage to target player or planeswalker"
+]);
+
+export function isPlayerOnlyTarget(card: any): boolean {
+  return PLAYER_ONLY_TARGET_EFFECTS.has(card?.effect);
+}
+
 export function isCounterEffect(card: any): boolean {
   return ['counter', 'counterCreature', 'powerSink'].includes(card?.effect);
 }
@@ -463,6 +475,11 @@ export function useDuelController(
 
     if (s.active !== 'o' || aiRef.current) return;
     if (s.active === 'p' && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS')) return;
+    // COMBAT_BLOCKERS always belongs to the defending player's action, even
+    // when the AI ('o') is the active/attacking player. Without this guard,
+    // the AI driver runs planBlock against the wrong side and auto-advances
+    // the phase before the human gets a chance to declare blockers.
+    if (s.phase === 'COMBAT_BLOCKERS') return;
 
     // ── Gemini path (sandbox + useGemini only) ────────────────────────────
     const GEMINI_PHASES = new Set(['MAIN_1', 'MAIN_2', 'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS']);
