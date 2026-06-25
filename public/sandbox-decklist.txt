@@ -1,46 +1,10 @@
-# Sandbox Decklist
-# Edit this file to change the starting deck in sandbox mode.
-# Format: Card Name x<quantity>
-# Card names must match exactly (case-insensitive).
-
-# Sandbox — Stack & Block Stress Test (U/B)
-# Covers: conditional counter modals (Force Spike, Power Sink), priority windows,
-#         triggered abilities (Sengir, ETB removal), upkeep choice (Lord of the Pit),
-#         activated abilities at instant speed (Icy Manipulator, Royal Assassin),
-#         regeneration (Drudge Skeletons), AI land destruction (Demonic Hordes)
-
-# --- Fast mana ---
-Dark Ritual x4
-
-# --- Conditional counters ---
-Force Spike x4
-Power Sink x3
-
-# --- Hard counter (baseline) ---
-Counterspell x3
-
-# --- ETB removal / triggered abilities ---
-Nekrataal x4
-Sengir Vampire x2
-
-# --- Activated abilities (instant speed) ---
-Royal Assassin x4
-Icy Manipulator x2
-
-# --- Upkeep choice ---
-Lord of the Pit x2
-
-# --- AI land destruction targeting ---
-Demonic Hordes x2
-
-# --- Regeneration ---
-Drudge Skeletons x4
-
-# --- Fast mana (artifacts) ---
-Mox Sapphire x2
-Mox Jet x2
-
-# --- Mana base (U/B, dual-producing) ---
-Underground Sea x3
-Island x4
-Swamp x4
+Ali from Cairo x4
+Pestilence x4
+Black Vise x4
+Lava Axe x4
+Badlands x4
+Swamp x2
+Mox Jet x4
+Mountain x2
+Mox Ruby x4
+Black Lotus x4
