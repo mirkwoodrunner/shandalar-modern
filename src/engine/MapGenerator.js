@@ -32,6 +32,7 @@ W:"☀", U:"💧", B:"💀", R:"🔥", G:"🌿",
 export const MAGE_NAMES   = { W:"Delenia", U:"Xylos",  B:"Mortis", R:"Karag",  G:"Sylvara" };
 export const MAGE_TITLES  = { W:"the White Tyrant", U:"the Blue Schemer", B:"the Black Necromancer", R:"the Red Warlord", G:"the Green Ancient" };
 export const MAGE_ARCHS   = { W:"WHITE_WEENIE", U:"BLUE_CONTROL", B:"BLACK_REANIMATOR", R:"RED_BURN", G:"GREEN_STOMPY" };
+export const MAGE_BOSS_ARCHS = { W:"BOSS_WHITE", U:"BOSS_BLUE", B:"BOSS_BLACK", R:"BOSS_RED", G:"BOSS_GREEN" };
 export const CASTLE_NAMES = { W:"White Keep", U:"Azure Tower", B:"Shadow Spire", R:"Fire Citadel", G:"Root Throne" };
 export const COLORS = ["W","U","B","R","G"];
 
