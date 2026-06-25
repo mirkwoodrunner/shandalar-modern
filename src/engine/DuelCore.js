@@ -49,6 +49,18 @@ export function hasKw(c, kw, state = null) {
          ch.protection.some(() => kw === KEYWORDS.PROTECTION.id);
 }
 
+// Returns the most restrictive active life-floor value for player `who`, or null
+// if no permanent they control currently grants one. General hook: any card can
+// opt in by setting `lifeFloor: <number>` in its card-data entry; no further
+// engine changes are needed for future cards using this pattern.
+export function getLifeFloor(s, who) {
+  const floors = (s[who]?.bf || [])
+    .map(c => c.lifeFloor)
+    .filter(f => typeof f === 'number');
+  if (!floors.length) return null;
+  return Math.max(...floors);
+}
+
 // --- CARD INSTANTIATION -------------------------------------------------------
 
 export function makeCardInstance(id, controller) {
@@ -204,7 +216,9 @@ return { ...s, log: [...s.log.slice(-100), { text, type, turn: s.turn }] };
 }
 
 export function hurt(s, who, amt, src = "") {
-const nl = s[who].life - amt;
+const floor = amt > 0 ? getLifeFloor(s, who) : null;
+const rawNl = s[who].life - amt;
+const nl = (floor !== null && rawNl < floor) ? floor : rawNl;
 let ns = { ...s, [who]: { ...s[who], life: nl, lifeAnim: amt > 0 ? "damage" : "heal" } };
 if (amt > 0) ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
