@@ -433,9 +433,20 @@ if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name);
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 3 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case "damage5":    ns = hurt(ns, tgt || opp, 5, card.name); break;
+case "damage5":    { const t5 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t5, 5, card.name); break; }
 case "damageX":    { const t2 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t2, xVal, card.name); break; }
-case "psionicBlast": ns = hurt(hurt(ns, tgt || opp, 4, card.name), caster, 2, "Psionic Blast"); break;
+case "psionicBlast": {
+if (tgt === "p" || tgt === "o") {
+  ns = hurt(ns, tgt, 4, card.name);
+} else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 4 } : c) } };
+  ns = checkDeath(ns);
+} else {
+  ns = hurt(ns, opp, 4, card.name);
+}
+ns = hurt(ns, caster, 2, "Psionic Blast");
+break;
+}
 case "counter": {
 const top = findStackTarget(ns.stack, tgt, item.id);
 if (!top) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }

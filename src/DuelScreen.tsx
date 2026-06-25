@@ -2,7 +2,7 @@
 // Assembler component for the duel UI.
 // Wires engine (useDuel / AI) to the new design system components.
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
 import { isLand, isArt, isInst } from './engine/DuelCore.js';
@@ -25,11 +25,10 @@ import { StackDisplay } from './ui/Stack/StackDisplay';
 // -- New hooks -----------------------------------------------------------------
 import { useFlash } from './hooks/useFlash';
 import { useTweaks } from './hooks/useTweaks';
-import { usePersistence, loadDuel, clearDuel } from './hooks/usePersistence';
-import { ResumeDuelModal } from './ui/duel/ResumeDuelModal';
+import { usePersistence, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -251,16 +250,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
 
-  // -- Resume flow -----------------------------------------------------------
-  // Check for a saved duel synchronously during first render via lazy init.
-  // savedDuelRef holds the loaded value so loadDuel() is called only once.
-  const savedDuelRef = useRef<unknown>(undefined);
-  const [resumePending, setResumePending] = useState<boolean>(() => {
-    const saved = loadDuel();
-    savedDuelRef.current = saved;
-    return saved !== null;
-  });
-
   // Wrap onDuelEnd to clear the saved duel on any clean exit (win/lose/forfeit).
   const handleDuelEndWithClear = useCallback((outcome: 'win' | 'lose' | 'forfeit', s: unknown) => {
     clearDuel();
@@ -294,22 +283,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
   const s = state;
 
-  // Disable writes while the resume modal is up so the fresh state does not
-  // overwrite the saved duel before the player has made a decision.
-  usePersistence(s, !resumePending);
-
-  // -- Resume handlers -------------------------------------------------------
-  const handleResume = useCallback(() => {
-    if (savedDuelRef.current !== null && savedDuelRef.current !== undefined) {
-      dispatch({ type: 'LOAD_STATE', state: savedDuelRef.current } as any);
-    }
-    setResumePending(false);
-  }, [dispatch]);
-
-  const handleDiscardSave = useCallback(() => {
-    clearDuel();
-    setResumePending(false);
-  }, []);
+  usePersistence(s, true);
 
   const isMobile = useIsMobile();
 
@@ -372,6 +346,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
     // During an active cast/activate targeting step, all bf clicks route to selectCastTarget.
     if (castFlow?.mode === 'targeting' && (zone === 'pBf' || zone === 'oBf')) {
+      const castingCard = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      if (isPlayerOnlyTarget(castingCard)) return; // creature click is illegal for player-only effects
       selectCastTarget(card.iid);
       return;
     }
@@ -505,11 +481,6 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       color: 'var(--ink-muted)',
       ...(isMobile ? { fontSize: 'clamp(10px, 2.2vw, 14px)' } : {}),
     }}>
-
-      {/* -- RESUME DUEL MODAL ----------------------------------------------- */}
-      {resumePending && (
-        <ResumeDuelModal onResume={handleResume} onDiscard={handleDiscardSave} />
-      )}
 
       {/* -- GAME OVER OVERLAY ----------------------------------------------- */}
       {s.over && (

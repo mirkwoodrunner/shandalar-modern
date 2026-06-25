@@ -2188,4 +2188,68 @@ ACTIVE
 
 ---
 
+## Bug Fix: COMBAT_BLOCKERS AI auto-advance (BLOCK-GUARD-1) — 2026-06-25
+
+**Problem:** When the AI was the active/attacking player and the phase reached `COMBAT_BLOCKERS`, the AI driver `useEffect` in `useDuelController.ts` treated `COMBAT_BLOCKERS` as the AI's own turn to act. It called `planBlock` against `state.o.bf`, found zero available blockers (all AI creatures had `attacking: true`), and fell through to `requestPhaseAdvance()` — skipping the human defender's blocker-declaration window entirely.
+
+**Fix:** Added `if (s.phase === 'COMBAT_BLOCKERS') return;` guard in the AI driver effect in `useDuelController.ts`, immediately after the `active !== 'o'` check. `COMBAT_BLOCKERS` is always the defending player's action window regardless of who is the active player.
+
+**Files changed:**
+- `src/hooks/useDuelController.ts` — guard added to AI driver useEffect
+
+**Tests:**
+- Vitest: `src/hooks/__tests__/ai-driver-blockers-gating.test.ts` (BLOCK-01/02/03)
+- Playwright: `tests/e2e/combat-blockers-priority.spec.ts` (BLOCK-E2E-01/02/03 × desktop + mobile)
+
+**Known related issue (not fixed here):** The Gemini path in `useDuelController.ts` includes `COMBAT_BLOCKERS` in `GEMINI_PHASES` — same bug gated behind `config.useGemini && config.sandbox`. Deferred to a separate fix batch.
+
+---
+
+## Bug Fix: Lava Axe / Psionic Blast creature-targeting crash (LAXA-PSIONIC-1) — 2026-06-25
+
+**Problem:**
+- `damage5` (Lava Axe): `hurt()` received a creature `iid` instead of `'p'`/`'o'`, causing a crash when the player clicked a creature during targeting mode.
+- `psionicBlast` (Psionic Blast): had no creature-damage branch; clicking a creature caused the same crash.
+
+**Fix:**
+- `DuelCore.js` — `damage5` case: added defensive fallback `const t5 = tgt === "p" || tgt === "o" ? tgt : opp;` — invalid targets fall back to opponent damage, no crash.
+- `DuelCore.js` — `psionicBlast` case: replaced one-liner with full creature-aware branch; creature targets mark `damage + 4` on the creature and call `checkDeath`, player/`'o'` targets use `hurt()`, caster always takes 2.
+- `useDuelController.ts` — added `PLAYER_ONLY_TARGET_EFFECTS` set (`'damage5'`) and `isPlayerOnlyTarget(card)` export.
+- `DuelScreen.tsx` — battlefield click handler: `if (isPlayerOnlyTarget(castingCard)) return;` guard rejects creature clicks during Lava Axe targeting.
+- `DuelScreenMobile.tsx` — same guard in mobile battlefield click handler.
+
+**Files changed:**
+- `src/engine/DuelCore.js`
+- `src/hooks/useDuelController.ts`
+- `src/DuelScreen.tsx`
+- `src/ui/Mobile/DuelScreenMobile.tsx`
+
+**Tests:**
+- Vitest: `src/engine/__tests__/lava-axe-psionic-blast.test.js` (LAVA-AXE-01/02, PSIONIC-01 through PSIONIC-05)
+- Playwright: `tests/e2e/lava-axe-targeting.spec.ts` (LAVA-E2E-01/02 × desktop + mobile)
+
+---
+
+## Bug Fix: Resume-duel modal removed (RESUME-REMOVE-1) — 2026-06-25
+
+**Problem:** `LOAD_STATE` is an unreconciled state swap — unsafe for mid-stack or mid-priority saves. The resume-duel UI (`ResumeDuelModal`) offered to reload a partially-resolved duel state, which could put the engine into an inconsistent state.
+
+**Fix:** Removed the resume UI entirely. Autosave (`usePersistence`/`saveDuel`/`clearDuel`) is retained as crash-recovery infrastructure; it saves every state transition and is cleared on clean exit (forfeit, game over). The `LOAD_STATE` reducer case is left in place as dead code for a future checkpoint-gated resume design (empty stack, safe phases only).
+
+- `src/ui/duel/ResumeDuelModal.tsx` — deleted.
+- `src/DuelScreen.tsx` — removed `ResumeDuelModal` import, `savedDuelRef`, `resumePending`/`setResumePending`, `loadDuel` import, `handleResume`, `handleDiscardSave`, JSX block; `usePersistence(s, true)` always enabled.
+- `src/ui/Mobile/DuelScreenMobile.tsx` — same removals; `usePersistence(s_state, true)`.
+- `tests/e2e/duel-persistence.spec.ts` — removed PERSIST-01/02/03 (resume modal tests); reworked PERSIST-06 (malformed save: duel mounts normally); added PERSIST-07 (stale mid-stack save does not resume, new game starts fresh).
+
+**Files changed:**
+- `src/ui/duel/ResumeDuelModal.tsx` (deleted)
+- `src/DuelScreen.tsx`
+- `src/ui/Mobile/DuelScreenMobile.tsx`
+- `src/hooks/useDuelController.ts` (autosave gate removed)
+- `tests/e2e/duel-persistence.spec.ts`
+
+**Tests:** 12/12 `usePersistence.test.ts` unit tests pass. Playwright: PERSIST-04/05/06/07 × desktop + mobile.
+
+---
+
 # End of MECHANICS INDEX v1.5
