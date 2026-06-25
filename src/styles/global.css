@@ -232,3 +232,14 @@ html, body, #root {
     --banner-life-size: clamp(20px, 5vh, 32px);
   }
 }
+
+/* ── Gemini thinking indicator (desktop) ────────────── */
+.gemini-thinking {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #7ab8e8;
+  text-align: center;
+  padding: 2px 0;
+  opacity: 0.8;
+}

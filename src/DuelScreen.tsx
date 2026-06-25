@@ -279,6 +279,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
+    isGeminiThinking,
   } = useDuelController(config, handleDuelEndWithClear, tweaks.aiSpeed);
 
   const s = state;
@@ -592,6 +593,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 : undefined
             }
           />
+
+          {isGeminiThinking && (
+            <div className="gemini-thinking">Gemini is thinking{'\u2026'}</div>
+          )}
 
           {/* Battlefield: opp + phase ribbon + you */}
           <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>

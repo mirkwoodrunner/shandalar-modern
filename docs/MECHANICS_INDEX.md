@@ -2264,4 +2264,19 @@ ACTIVE
 
 ---
 
+## Bug Fix: Gemini thinking indicator desktop parity (GEMINI-THINK-DESKTOP-1) -- 2026-06-25
+
+**Problem:** `isGeminiThinking` was produced by `useDuelController` and rendered in `DuelScreenMobile.tsx` but never destructured or rendered in `DuelScreen.tsx`. Desktop players received no visual feedback while the Gemini AI opponent was deciding.
+
+**Fix:** Added `isGeminiThinking` to the `useDuelController` destructure in `DuelScreen.tsx`. Renders `<div className="gemini-thinking">Gemini is thinking{'…'}</div>` immediately below the opponent Banner (the same structural position as the mobile indicator). Added `.gemini-thinking` CSS rule to `src/styles/global.css` mirroring the mobile `geminiThinking` intent (muted blue, small caps, centered).
+
+**Files changed:**
+- `src/DuelScreen.tsx` -- destructure + JSX render (desktop only)
+- `src/styles/global.css` -- `.gemini-thinking` rule added
+- `tests/e2e/gemini-thinking-parity.spec.ts` -- new spec (`@gemini @mobile`); covers not-visible default state for both desktop and mobile viewports. Thinking=true state cannot be forced deterministically without a live Gemini API call; noted as a spec limitation.
+
+**Mobile impact:** None. Mobile files (`DuelScreenMobile.tsx`, `styles.module.css`) are unchanged. The new global class name (`gemini-thinking`, hyphenated) is distinct from the mobile CSS-module class (`geminiThinking`, camelCase scoped).
+
+---
+
 # End of MECHANICS INDEX v1.5

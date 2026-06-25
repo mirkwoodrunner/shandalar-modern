@@ -1,7 +1,7 @@
 # Current Sprint — 2026-06-25
 
 ## Focus (priority order)
-1. **P1 — Gemini "thinking" indicator desktop parity.** `isGeminiThinking` renders on mobile only; add to `DuelScreen.tsx`. Prompt: `prompt-gemini-desktop-thinking-parity.md`.
+1. ~~**P1 — Gemini "thinking" indicator desktop parity.**~~ **DONE.** `isGeminiThinking` destructured in `DuelScreen.tsx`; `.gemini-thinking` indicator rendered below opponent Banner; CSS rule added to `src/styles/global.css`. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Gemini thinking indicator desktop parity.
 2. **P2 — Per-mage Gemini system prompts (2-3 profiles).** `GeminiAdvisor.js` uses one global instruction; add `MAGE_PROMPTS` + `selectSystemInstruction` with base-prompt fallback. Prompt: `prompt-gemini-per-mage-prompts.md`.
 
 ## Up Next (backlog, not scheduled)
