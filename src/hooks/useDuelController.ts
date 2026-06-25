@@ -13,6 +13,7 @@ import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
 import { fetchGeminiMove } from '../engine/GeminiAdvisor.js';
 import { computeLegalActions } from '../engine/LegalActions.js';
+import { ARCHETYPES } from '../data/cards.js';
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -521,7 +522,9 @@ export function useDuelController(
 
       setIsGeminiThinking(true);
 
-      fetchGeminiMove(serializedState).then((result) => {
+      const oppProfileId = (ARCHETYPES as any)[config.oppArchKey]?.profileId ?? null;
+
+      fetchGeminiMove(serializedState, oppProfileId).then((result) => {
         setIsGeminiThinking(false);
 
         if (result === null) {

@@ -38,6 +38,30 @@ test.describe('@gemini @mobile Gemini wiring -- mobile parity', () => {
   });
 });
 
+test.describe('@gemini per-mage profileId wiring -- no regression', () => {
+  test('sandbox duel loads without error after per-mage profileId change', async ({ browser }) => {
+    // Regression guard: verifies that threading oppProfileId through fetchGeminiMove
+    // does not crash the heuristic-fallback path used by sandbox (no API key).
+    const ctx = await browser.newContext(DESKTOP);
+    const page = await ctx.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', e => errors.push(e.message));
+
+    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.waitForFunction(() => (window as any).__duelState?.(), { timeout: 15000 });
+
+    // Let the AI take a few turns on the heuristic path
+    for (let i = 0; i < 5; i++) {
+      await page.waitForTimeout(300);
+    }
+
+    // No JS errors unrelated to GeminiAdvisor API (expected -- no key in sandbox)
+    const unrelated = errors.filter(e => !e.includes('GeminiAdvisor') && !e.includes('API'));
+    expect(unrelated).toHaveLength(0);
+    await ctx.close();
+  });
+});
+
 test.describe('@gemini @mobile Gemini log entries', () => {
   test('GEMINI_LOG dispatch appends gemini-typed entries to state log', async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });

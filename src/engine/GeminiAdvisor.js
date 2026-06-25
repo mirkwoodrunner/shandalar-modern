@@ -17,18 +17,12 @@
 //   On any failure or out-of-bounds return, this module defaults to index 0.
 
 import { GoogleGenAI, Type } from '@google/genai';
+import { selectSystemInstruction } from './geminiPrompts.js';
 
 // computeLegalActions is imported by callers (useDuelController.ts) before calling
 // fetchGeminiMove. GeminiAdvisor itself does not import LegalActions -- it only
 // receives the already-serialized state payload.
 const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-
-const SYSTEM_INSTRUCTION = [
-  'You are a competitive Magic: The Gathering AI playing in the Shandalar roguelike.',
-  'The game uses Alpha/Beta rules. Analyze the game state JSON provided and select the',
-  'single best tactical action index from the legalActions array.',
-  'Prioritize removing threats, advancing board state, and dealing lethal damage.',
-].join(' ');
 
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -50,10 +44,12 @@ const RESPONSE_SCHEMA = {
  *
  * @param {object} serializedState - Token-optimized game state snapshot.
  *   Must include a legalActions array where index 0 is always a pass/passive action.
+ * @param {string|null} [profileId=null] - Opponent's profileId for mage-specific prompting.
+ *   Unknown or missing ids fall back to the base SYSTEM_INSTRUCTION.
  * @returns {Promise<{index: number, reasoning: string, sentPayload: object}|null>}
  *   Resolved decision, or null if the call fails or should fall back to heuristic AI.
  */
-export async function fetchGeminiMove(serializedState) {
+export async function fetchGeminiMove(serializedState, profileId = null) {
   const actions = serializedState?.legalActions;
 
   if (!actions || actions.length === 0) {
@@ -73,7 +69,7 @@ export async function fetchGeminiMove(serializedState) {
         { role: 'user', parts: [{ text: JSON.stringify(serializedState) }] },
       ],
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: selectSystemInstruction(profileId),
         responseMimeType: 'application/json',
         responseSchema: RESPONSE_SCHEMA,
       },
