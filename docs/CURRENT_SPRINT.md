@@ -2,7 +2,7 @@
 
 ## Focus (priority order)
 1. ~~**P1 — Gemini "thinking" indicator desktop parity.**~~ **DONE.** `isGeminiThinking` destructured in `DuelScreen.tsx`; `.gemini-thinking` indicator rendered below opponent Banner; CSS rule added to `src/styles/global.css`. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Gemini thinking indicator desktop parity.
-2. **P2 — Per-mage Gemini system prompts (2-3 profiles).** `GeminiAdvisor.js` uses one global instruction; add `MAGE_PROMPTS` + `selectSystemInstruction` with base-prompt fallback. Prompt: `prompt-gemini-per-mage-prompts.md`.
+2. ~~**P2 — Per-mage Gemini system prompts (2-3 profiles).**~~ **DONE.** Starter roster: DELENIA (white aggro), XYLOS (blue control), MORTIS (black attrition). Logic split into `src/engine/geminiPrompts.js` for testability; `fetchGeminiMove` gains optional `profileId` param; `useDuelController.ts` resolves and passes `oppProfileId` from `ARCHETYPES`. Base-prompt fallback for all other opponents. See `docs/MECHANICS_INDEX.md` -- GEMINI-MAGE-PROMPTS-1.
 
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.

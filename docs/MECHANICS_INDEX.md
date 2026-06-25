@@ -2279,4 +2279,29 @@ ACTIVE
 
 ---
 
+## Per-Mage Gemini System Prompts (GEMINI-MAGE-PROMPTS-1) -- 2026-06-25
+
+**Feature:** `GeminiAdvisor.fetchGeminiMove` previously used a single global `SYSTEM_INSTRUCTION` for every opponent. This adds per-mage strategic personalities for a starter roster of 2-3 bosses, with a base-prompt fallback for all other opponents.
+
+**Implementation:**
+- `MAGE_PROMPTS` table (keyed by `profileId`) and `selectSystemInstruction(profileId)` pure selector live in a new sibling module `src/engine/geminiPrompts.js`. Separated from `GeminiAdvisor.js` to allow unit testing without the `@google/genai` client being instantiated.
+- `fetchGeminiMove(serializedState, profileId = null)` accepts an optional `profileId` argument. Internally calls `selectSystemInstruction(profileId)` to pick the mage-specific or base instruction. All other behavior (empty-actions guard, single-action shortcut, out-of-bounds handling, null fallback) is unchanged.
+- `useDuelController.ts` resolves `oppProfileId` from `ARCHETYPES[config.oppArchKey]?.profileId ?? null` and passes it as the second argument to `fetchGeminiMove`. Non-boss opponents (no `profileId` on the archetype) and unknown ids both yield `null`, which degrades to the base instruction.
+
+**Mage roster (starter pass):**
+- `DELENIA` -- white aggro-control: deploy early, protect creatures, push damage
+- `XYLOS` -- blue control: hold counterspells, trade resources, win the long game
+- `MORTIS` -- black attrition: life-for-advantage, one-for-one removal, resource denial
+
+**Files changed:**
+- `src/engine/geminiPrompts.js` -- new sibling module (`SYSTEM_INSTRUCTION`, `MAGE_PROMPTS`, `selectSystemInstruction`)
+- `src/engine/GeminiAdvisor.js` -- imports from `geminiPrompts.js`; `fetchGeminiMove` gains optional `profileId` parameter
+- `src/hooks/useDuelController.ts` -- imports `ARCHETYPES`; resolves `oppProfileId`; passes it to `fetchGeminiMove`
+- `tests/scenarios/gemini-mage-prompts.test.js` -- 6/6 unit tests (`@gemini`)
+- `tests/e2e/gemini-wiring.spec.ts` -- added no-regression E2E block (`@gemini`)
+
+**Fallback contract:** `selectSystemInstruction` is total -- it never throws. A non-string, null, undefined, or unknown `profileId` returns `SYSTEM_INSTRUCTION` unchanged. The remaining four bosses (KARAG, SYLVARA, and the generic/Arzakon archetypes) continue to use the base prompt until a future expansion pass.
+
+---
+
 # End of MECHANICS INDEX v1.5
