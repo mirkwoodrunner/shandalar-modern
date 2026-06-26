@@ -230,6 +230,10 @@ Updating a doc when its trigger condition is not met is as wrong as skipping it 
 | `docs/gdd.md` | A phase completes or design intent formally changes. Routine card work does not warrant a changelog entry. |
 | `docs/COMPONENT_REGISTRY.md` | A new component is added, renamed, or removed. |
 
+### Milestone doc (outside the per-prompt cadence)
+
+`docs/ROADMAP.md` — milestone-level planning doc. Updated only at milestone boundaries (not per-feature, per-card-batch, or per-sprint). Not part of the Tier 1/2/3 per-prompt update cadence.
+
 ### Quick Reference for Card Implementation Prompts
 
 Card implementation prompts (handler groups, stub fills, missing card entries) should typically
