@@ -38,6 +38,7 @@ import { TransmutePayModal } from './ui/duel/TransmutePayModal';
 import { ConditionalCounterModal } from './ui/duel/ConditionalCounterModal';
 import { XSelectModal } from './ui/duel/XSelectModal';
 import { ForceOfNatureUpkeepModal } from './ui/duel/ForceOfNatureUpkeepModal';
+import { SphereTriggerModal } from './ui/duel/SphereTriggerModal';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
@@ -262,7 +263,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     tapLand, tapArtifactMana, playLand, castSpell, resolveStack,
     advancePhase, selectCard, selectTarget,
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
-    resolveUpkeepChoice, resolveConditionalCounter, openPriorityWindow, passPriority, useChannel,
+    resolveUpkeepChoice, resolveConditionalCounter, resolveSphereTrigger, openPriorityWindow, passPriority, useChannel,
     undoManaTaps, requestPhaseAdvance,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
@@ -1014,6 +1015,18 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onResolve={resolveUpkeepChoice}
         />
       )}
+
+      {s.pendingSphereTrigger && s.pendingSphereTrigger.controller === 'p' && (() => {
+        const st = s.pendingSphereTrigger;
+        const totalMana = Object.values(s.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+        return (
+          <SphereTriggerModal
+            sphereCardName={st.sphereCardName}
+            totalMana={totalMana}
+            onResolve={resolveSphereTrigger}
+          />
+        );
+      })()}
 
       {castFlow?.mode === 'xSelect' && (() => {
         const card = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);

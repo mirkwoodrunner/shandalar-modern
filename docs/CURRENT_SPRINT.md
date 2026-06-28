@@ -9,6 +9,10 @@
 - Additional Gemini mage prompts beyond the P2 starter roster.
 - **Gemini path COMBAT_BLOCKERS bug**: `GEMINI_PHASES` in `useDuelController.ts` includes `COMBAT_BLOCKERS`, reproducing the same AI auto-advance bug on the Gemini code path. Gated behind `config.useGemini && config.sandbox`; deferred as separate fix.
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
+- Roadmap Milestone A remaining: A1 (layer 1-3), A2, A3, A5+ batches.
+
+## Completed (2026-06-28)
+- **Batch A4 — Sphere Lifegain Cycle**: Crystal Rod, Iron Star, Ivory Cup, Wooden Sphere implemented. `pendingSphereTrigger` state field and `SPHERE_TRIGGER_RESOLVE` action added to `DuelCore.js`. `SphereTriggerModal.tsx` shared modal on both screen variants. AI auto-resolves (always pay if able). Trigger fires at cast time, includes caster's own spells. See `docs/SYSTEMS.md` Section 25 and `docs/MECHANICS_INDEX.md` Sphere Lifegain Cycle entry.
 
 ## Verified complete during 2026-06-25 planning (pulled from prior backlog/horizon)
 - `ali_from_cairo` life floor -- `lifeFloor` field, `getLifeFloor()` + `hurt()` clamp in `DuelCore.js`.

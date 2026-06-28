@@ -389,6 +389,10 @@ export function useDuelController(
     openPriorityWindow();
   }
 
+  const resolveSphereTrigger = useCallback((paid: boolean) => {
+    dispatch({ type: 'SPHERE_TRIGGER_RESOLVE', paid });
+  }, [dispatch]);
+
   // ── AI main loop ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (s.over) return;
@@ -471,6 +475,13 @@ export function useDuelController(
       } else {
         declineTransmutePay();
       }
+      return;
+    }
+
+    // AI resolves sphere trigger: always pay if able (no downside to paying).
+    if (s.pendingSphereTrigger && s.pendingSphereTrigger.controller === 'o') {
+      const totalMana = Object.values(s.o.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+      resolveSphereTrigger(totalMana >= 1);
       return;
     }
 
@@ -1097,6 +1108,7 @@ export function useDuelController(
     resolveChoice,
     resolveUpkeepChoice,
     resolveConditionalCounter,
+    resolveSphereTrigger,
     openPriorityWindow,
     passPriority,
     useChannel,

@@ -2501,6 +2501,7 @@ manaTapSnapshot: null,
 pendingTutor: null,
 pendingTransmuteSacrifice: null,
 pendingTransmutePay: null,
+pendingSphereTrigger: null,
 };
 }
 
@@ -2683,11 +2684,33 @@ case "CAST_SPELL": {
     if (stackItem) return ` targeting ${stackItem.card?.name ?? 'stack spell'}`;
     return '';
   })();
-  return dlog(
+  const castState = dlog(
     { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null },
     `${w} casts ${c.name}${xSuffix}${tgtLabel}.`,
     "play"
   );
+  // Sphere lifegain cycle: scan battlefields for matching artifact triggers.
+  // Fires on cast (not resolution), includes caster's own spells per oracle text.
+  const SPHERE_COLOR_MAP = { crystal_rod: 'U', iron_star: 'R', ivory_cup: 'W', wooden_sphere: 'G' };
+  const castColor = c.color;
+  if (castColor) {
+    const triggers = [];
+    for (const who of ['p', 'o']) {
+      for (const perm of castState[who].bf) {
+        if (SPHERE_COLOR_MAP[perm.id] === castColor) {
+          const totalMana = Object.values(castState[who].mana).reduce((acc, v) => acc + v, 0);
+          if (totalMana >= 1) {
+            triggers.push({ sphereCardId: perm.id, sphereCardName: perm.name, controller: who });
+          }
+        }
+      }
+    }
+    if (triggers.length > 0) {
+      const [first, ...rest] = triggers;
+      return { ...castState, pendingSphereTrigger: { sphereCardId: first.sphereCardId, sphereCardName: first.sphereCardName, controller: first.controller, queue: rest } };
+    }
+  }
+  return castState;
 }
 
 case "RESOLVE_STACK": {
@@ -2797,6 +2820,7 @@ case "ADVANCE_PHASE": {
   }
   if (s.pendingUpkeepChoice) return s;
   if (s.pendingConditionalCounter) return s;
+  if (s.pendingSphereTrigger) return s;
   s = { ...s, manaTapSnapshot: null };
   return advPhase(s);
 }
@@ -3320,6 +3344,31 @@ case "CONDITIONAL_COUNTER_CHOICE": {
       }};
       ns = dlog(ns, `Power Sink taps all ${targetCaster}'s lands and drains their mana pool.`, "effect");
     }
+  }
+  return ns;
+}
+
+case "SPHERE_TRIGGER_RESOLVE": {
+  if (!s.pendingSphereTrigger) return s;
+  const { sphereCardId: _scid, sphereCardName, controller, queue } = s.pendingSphereTrigger;
+  const nextTrigger = queue && queue.length > 0
+    ? { sphereCardId: queue[0].sphereCardId, sphereCardName: queue[0].sphereCardName, controller: queue[0].controller, queue: queue.slice(1) }
+    : null;
+  let ns = { ...s, pendingSphereTrigger: nextTrigger };
+  if (action.paid) {
+    let remaining = 1;
+    const pool = { ...ns[controller].mana };
+    for (const col of ['C','G','R','B','U','W']) {
+      if (remaining <= 0) break;
+      const take = Math.min(pool[col] || 0, remaining);
+      pool[col] = (pool[col] || 0) - take;
+      remaining -= take;
+    }
+    ns = { ...ns, [controller]: { ...ns[controller], mana: pool } };
+    ns = dlog(ns, `${controller} pays {1} for ${sphereCardName}.`, "effect");
+    ns = hurt(ns, controller, -1, sphereCardName);
+  } else {
+    ns = dlog(ns, `${controller} declines ${sphereCardName} trigger.`, "effect");
   }
   return ns;
 }
