@@ -17,6 +17,7 @@ import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
 import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
 import { ForceOfNatureUpkeepModal } from '../duel/ForceOfNatureUpkeepModal';
+import { SphereTriggerModal } from '../duel/SphereTriggerModal';
 import { usePersistence, clearDuel } from '../../hooks/usePersistence';
 
 import { Topbar } from './Topbar';
@@ -60,6 +61,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     confirmTransmutePay, declineTransmutePay,
     resolveConditionalCounter,
     resolveUpkeepChoice,
+    resolveSphereTrigger,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     showBop, handleBopChoose, handleBopCancel,
@@ -318,6 +320,18 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           onResolve={resolveUpkeepChoice}
         />
       )}
+
+      {s_state.pendingSphereTrigger && s_state.pendingSphereTrigger.controller === 'p' && (() => {
+        const st = s_state.pendingSphereTrigger;
+        const totalMana = Object.values(s_state.p.mana as Record<string, number>).reduce((a, v) => a + v, 0);
+        return (
+          <SphereTriggerModal
+            sphereCardName={st.sphereCardName}
+            totalMana={totalMana}
+            onResolve={resolveSphereTrigger}
+          />
+        );
+      })()}
 
       <Topbar
         turn={s_state.turn}

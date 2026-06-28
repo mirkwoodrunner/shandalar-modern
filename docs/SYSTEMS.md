@@ -2227,4 +2227,69 @@ button.
 | `src/hooks/__tests__/useDuelController.castFlow.test.ts` | Vitest unit tests CAST-FLOW-01 through CAST-FLOW-08 |
 | `tests/e2e/duel-controller.spec.ts` | Playwright e2e tests E2E-CAST-01 through E2E-CAST-08 |
 
+---
+
+# Section 25 — Cast-Triggered Optional Payment (pendingSphereTrigger)
+
+## Overview
+
+Batch A4 establishes a reusable pattern for artifacts that trigger an optional payment
+whenever a spell of a specific color is cast by either player. This is distinct from
+`pendingConditionalCounter` (which triggers on stack resolution for Force Spike/Power Sink)
+because the trigger fires at cast time, before the spell resolves or is countered.
+
+## State Shape
+
+```
+pendingSphereTrigger: {
+  sphereCardId:   string,   // e.g. 'crystal_rod'
+  sphereCardName: string,   // display name
+  controller:     'p'|'o', // whose optional pay it is
+  queue:          Array<{ sphereCardId, sphereCardName, controller }>,
+}
+```
+
+Multiple spheres may trigger off the same cast (e.g. both players own Crystal Rod and a
+blue spell is cast). The first trigger is in `pendingSphereTrigger`; the rest are in `queue`.
+Resolving the first dequeues the next, and so on until the queue is empty (`null`).
+
+## Trigger Site
+
+`CAST_SPELL` reducer in `DuelCore.js`, after the spell item is pushed to the stack and
+the priority window is opened. The scan covers both `s.p.bf` and `s.o.bf` in that order.
+A sphere controller with 0 total mana is silently skipped (no decision to present).
+
+## Resolution Action
+
+`SPHERE_TRIGGER_RESOLVE { paid: boolean }` — handled in `DuelCore.js`.
+- `paid: true`: deducts 1 generic mana from the trigger controller; gains 1 life via `hurt(ns, controller, -1, name)`.
+- `paid: false`: no state change beyond clearing the trigger.
+
+## Phase-Advance Gate
+
+`ADVANCE_PHASE` is blocked while `pendingSphereTrigger` is set, parallel to the
+`pendingUpkeepChoice` and `pendingConditionalCounter` guards.
+
+## Human/AI Resolution
+
+- Human controller (`'p'`): `SphereTriggerModal.tsx` renders on both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx` (shared component, identical `data-testid`).
+- AI controller (`'o'`): Auto-resolved in the `useDuelController.ts` AI main loop.
+  Heuristic: always pay if able. No downside to paying, so no bluff-aware logic needed.
+
+## Implemented Cards
+
+| Card | Trigger Color | Card ID |
+|---|---|---|
+| Crystal Rod | Blue (U) | `crystal_rod` |
+| Iron Star | Red (R) | `iron_star` |
+| Ivory Cup | White (W) | `ivory_cup` |
+| Wooden Sphere | Green (G) | `wooden_sphere` |
+
+## Compatibility with Other Pending States
+
+`pendingSphereTrigger` is set during `CAST_SPELL`. `pendingConditionalCounter` is set during
+`RESOLVE_STACK`. `pendingUpkeepChoice` is set during upkeep. These three states cannot be
+simultaneously active in a legal game sequence and do not conflict.
+
 # End of SYSTEMS v1.5

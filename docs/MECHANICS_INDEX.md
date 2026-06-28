@@ -81,6 +81,24 @@ Action: UPKEEP_CHOICE_RESOLVE { choice: "PAY_GGGG" | "TAKE_DAMAGE" }
 Modal: src/ui/duel/ForceOfNatureUpkeepModal.tsx (shared desktop + mobile; desktop/mobile parity as of 2026-06-24)
 ```
 
+#### Sphere Lifegain Cycle — Crystal Rod / Iron Star / Ivory Cup / Wooden Sphere (cast-triggered optional pay)
+```
+Status: ACTIVE (Batch A4, 2026-06-28)
+Cards: crystal_rod (U), iron_star (R), ivory_cup (W), wooden_sphere (G)
+Trigger site: CAST_SPELL reducer in DuelCore.js, fires on cast (not resolution)
+State field: pendingSphereTrigger { sphereCardId, sphereCardName, controller, queue[] }
+Action: SPHERE_TRIGGER_RESOLVE { paid: boolean }
+  paid=true:  deducts 1 generic mana, gains 1 life via hurt(ns, controller, -1, name)
+  paid=false: no effect
+Human resolution: SphereTriggerModal.tsx (shared desktop + mobile; data-testid="sphere-trigger-modal")
+AI resolution: useDuelController.ts AI main loop; always pays if able (no downside)
+Multiple spheres: queued in pendingSphereTrigger.queue[], resolved serially
+ADVANCE_PHASE gate: blocked while pendingSphereTrigger is set
+Spec: docs/SYSTEMS.md Section 25
+Tests: src/engine/__tests__/sphereCycle.test.js (SPHERE-01 through SPHERE-06 + per-color + queue)
+       tests/e2e/batch-a4-sphere-cycle.spec.ts (A4-E01 through A4-E04, dual viewport)
+```
+
 ### Status
 ACTIVE (Phase 5 Completion Sprint)
 
