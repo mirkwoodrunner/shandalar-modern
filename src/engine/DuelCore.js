@@ -284,8 +284,8 @@ while (changed) {
   for (const w of ["p","o"]) {
     const dead = ns[w].bf.filter(c =>
       isCre(c) && (
-        getTou(c, ns) <= 0 ||                           // SBE S5.4 ? toughness ? 0
-        (c.damage >= getTou(c, ns) && getTou(c, ns) > 0) // SBE S5.5 ? lethal damage
+        getTou(c, ns) <= 0 ||                           // SBE S5.4 — toughness <= 0 (indestructible does not save)
+        (c.damage >= getTou(c, ns) && getTou(c, ns) > 0 && !hasKw(c, KEYWORDS.INDESTRUCTIBLE.id, ns)) // SBE S5.5
       )
     );
     for (const c of dead) {
@@ -316,7 +316,50 @@ while (changed) {
     }
   }
 }
+ns = checkControlGrants(ns);
 return ns;
+}
+
+// Moves a conditionally-controlled permanent back to its original controller.
+// Called when a controlGrant condition is no longer satisfied.
+function revertControlGrant(state, stolenIid) {
+  const stolen = getBF(state, stolenIid);
+  if (!stolen || !stolen.controlGrant) return state;
+  const { grantorController } = stolen.controlGrant;
+  const currentCtrl = stolen.controller;
+  const { controlGrant: _cg, tapped: _t, summoningSick: _ss, attacking: _atk, blocking: _bl, ...rest } = stolen;
+  const reverted = { ...rest, controller: grantorController, tapped: false, summoningSick: false, attacking: false, blocking: null };
+  let ns = { ...state, [currentCtrl]: { ...state[currentCtrl], bf: state[currentCtrl].bf.filter(c => c.iid !== stolenIid) } };
+  ns = { ...ns, [grantorController]: { ...ns[grantorController], bf: [...ns[grantorController].bf, reverted] } };
+  return dlog(ns, `${reverted.name} reverts to ${grantorController} (control grant ended).`, 'effect');
+}
+
+// Evaluates all active controlGrant conditions and reverts any that are no longer satisfied.
+// Called after checkDeath so that Aladdin leaving the battlefield is already processed.
+function checkControlGrants(state) {
+  let ns = state;
+  const allBf = [...ns.p.bf, ...ns.o.bf];
+  for (const card of allBf) {
+    if (!card.controlGrant) continue;
+    const grant = card.controlGrant;
+
+    if (grant.condition === 'whileGrantorControlled') {
+      // Revert if the grantor is no longer on either player's battlefield.
+      const grantorOnBf = ns.p.bf.some(c => c.iid === grant.grantorIid) ||
+                          ns.o.bf.some(c => c.iid === grant.grantorIid);
+      if (!grantorOnBf) {
+        ns = revertControlGrant(ns, card.iid);
+      }
+    } else if (grant.condition === 'whileTappedAndPowerLte') {
+      // Revert if grantor left bf, grantor is untapped, or stolen creature's power exceeded maxPower.
+      // (Real-time power recheck simplified to SBE pass — see completion notes.)
+      const grantor = getBF(ns, grant.grantorIid);
+      if (!grantor || !grantor.tapped || getPow(card, ns) > grant.maxPower) {
+        ns = revertControlGrant(ns, card.iid);
+      }
+    }
+  }
+  return ns;
 }
 
 export function burnMana(s, who, ruleset) {
@@ -532,11 +575,17 @@ if (ok) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns =
 break;
 }
 case "destroyArtifact": {
-if (tgtC && isArt(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+if (tgtC && isArt(tgtC)) {
+  if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) { ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect'); break; }
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+}
 break;
 }
 case "destroyArtOrEnch": {
-if (tgtC && (isArt(tgtC) || isEnch(tgtC))) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+if (tgtC && (isArt(tgtC) || isEnch(tgtC))) {
+  if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) { ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect'); break; }
+  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+}
 break;
 }
 case "destroyTargetLand": {
@@ -770,6 +819,11 @@ if (tgtC && card.mod) {
   // Animate Wall: Wall-only target guard -- reject before attaching.
   if (card.mod.enchantWallOnly && !tgtC.subtype?.includes('Wall')) {
     return dlog(s, `${card.name} can only enchant Walls.`, 'info');
+  }
+  // Guardian Beast: noncreature artifacts you control can't be enchanted (new auras only --
+  // existing auras already attached are unaffected per card text).
+  if (isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped)) {
+    return dlog(s, `Guardian Beast prevents ${card.name} from enchanting ${tgtC.name}.`, 'effect');
   }
   const auraRecord = {
     iid:        card.iid,
@@ -1084,7 +1138,7 @@ break;
 }
 case "destroyAllArtifacts": {
 for (const w of ['p', 'o']) {
-  const arts = [...ns[w].bf.filter(isArt)];
+  const arts = [...ns[w].bf.filter(a => isArt(a) && !hasKw(a, KEYWORDS.INDESTRUCTIBLE.id, ns))];
   for (const a of arts) {
     ns = zMove(ns, a.iid, w, w, 'gy');
   }
@@ -1447,8 +1501,12 @@ break;
 }
 case "destroyArtifactSac": {
 if (tgtC && isArt(tgtC)) {
-  ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
-  ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+  if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) {
+    ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect');
+  } else {
+    ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
+    ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect");
+  }
 } else {
   ns = dlog(ns, `${card.name}'s ability fizzles -- no legal artifact target.`, "effect");
 }
@@ -1592,6 +1650,95 @@ case "stealCreature": {
     ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, stolen] }};
     ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, "effect");
   }
+  break;
+}
+case "copyPermanentCharacteristics": {
+  // Layer 1: Copy Artifact. Copies printed (copiable) values from the target artifact's
+  // CARD_DB entry -- not the live battlefield object, which may carry counters/auras.
+  if (!tgtC || !isArt(tgtC)) break; // no legal artifact target; Copy Artifact stays inert
+  const staticDef = CARD_DB.find(c => c.id === tgtC.id);
+  if (!staticDef) throw new Error(`copyPermanentCharacteristics: no CARD_DB entry for id="${tgtC.id}"`);
+  const baseType = staticDef.type ?? '';
+  const newType = baseType.includes('Enchantment') ? baseType : (baseType ? baseType + ' Enchantment' : 'Enchantment');
+  const newPerm = {
+    name: staticDef.name, cost: staticDef.cost, cmc: staticDef.cmc, color: staticDef.color,
+    type: newType, subtype: staticDef.subtype, power: staticDef.power, toughness: staticDef.toughness,
+    text: staticDef.text, keywords: [...(staticDef.keywords ?? [])], effect: staticDef.effect,
+    rarity: staticDef.rarity, id: staticDef.id, layerDef: staticDef.layerDef,
+    activated: staticDef.activated, upkeep: staticDef.upkeep, mod: staticDef.mod,
+    iid: card.iid, controller: caster, enterTs: ns.layerClock ?? 0,
+    tapped: false, summoningSick: true, attacking: false, blocking: null,
+    damage: 0, counters: {}, eotBuffs: [], enchantments: [], tokens: [], exerted: false,
+  };
+  // Push newPerm directly to bf -- RESOLVE_STACK's alreadyOnBf guard will skip adding pArr.
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, newPerm] } };
+  ns = dlog(ns, `${card.name} enters as a copy of ${staticDef.name}.`, 'effect');
+  break;
+}
+case "aladdinsSteal": {
+  // Layer 2: Aladdin activated ability. Control change conditional on Aladdin staying in play.
+  // Guardian Beast prevents control of noncreature artifacts.
+  if (tgtC && isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped)) {
+    ns = dlog(ns, `Guardian Beast prevents ${card.name} from stealing ${tgtC.name}.`, 'effect');
+    break;
+  }
+  if (!tgtC || !isArt(tgtC)) break;
+  const alOrigCtrl = tgtC.controller;
+  ns = { ...ns, [alOrigCtrl]: { ...ns[alOrigCtrl], bf: ns[alOrigCtrl].bf.filter(c => c.iid !== tgtC.iid) } };
+  const alStolen = { ...tgtC, controller: caster, summoningSick: true, tapped: false, attacking: false, blocking: null,
+    controlGrant: { grantorIid: card.iid, grantorController: alOrigCtrl, condition: 'whileGrantorControlled' } };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, alStolen] } };
+  ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, 'effect');
+  break;
+}
+case "oldManSteal": {
+  // Layer 2: Old Man of the Sea activated ability. Control conditional on Old Man staying tapped
+  // and stolen creature's power remaining <= Old Man's power at activation time.
+  if (!tgtC || !isCre(tgtC)) break;
+  const oldMan = ns[caster].bf.find(c => c.iid === card.iid);
+  if (!oldMan) break;
+  const oldManPow = getPow(oldMan, ns);
+  if (getPow(tgtC, ns) > oldManPow) {
+    ns = dlog(ns, `${card.name}: ${tgtC.name} has too much power — fizzles.`, 'effect');
+    break;
+  }
+  const omOrigCtrl = tgtC.controller;
+  ns = { ...ns, [omOrigCtrl]: { ...ns[omOrigCtrl], bf: ns[omOrigCtrl].bf.filter(c => c.iid !== tgtC.iid) } };
+  const omStolen = { ...tgtC, controller: caster, summoningSick: true, tapped: false, attacking: false, blocking: null,
+    controlGrant: { grantorIid: card.iid, grantorController: omOrigCtrl, condition: 'whileTappedAndPowerLte', maxPower: oldManPow } };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, omStolen] } };
+  ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, 'effect');
+  break;
+}
+case "textSwapColor": {
+  // Layer 3: Sleight of Mind. Baked-in field mutation so direct .color reads in the engine
+  // and AI see the substituted value immediately.
+  if (!tgtC) break;
+  const fromColor = item.fromColor;
+  const toColor = item.toColor;
+  if (!fromColor || !toColor) { ns = dlog(ns, `${card.name}: no color substitution specified.`, 'info'); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, color: c.color === fromColor ? toColor : c.color,
+          textSwap: { type: 'color', from: fromColor, to: toColor, enterTs: ns.layerClock ?? 0 } }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${fromColor} -> ${toColor} on ${tgtC.name}.`, 'effect');
+  break;
+}
+case "textSwapLandtype": {
+  // Layer 3: Magical Hack. Baked-in keyword swap so hasKw / AI reads the substituted value.
+  if (!tgtC) break;
+  const fromKw = item.fromKw;
+  const toKw = item.toKw;
+  if (!fromKw || !toKw) { ns = dlog(ns, `${card.name}: no land-type substitution specified.`, 'info'); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid
+      ? { ...c, keywords: (c.keywords ?? []).map(kw => kw === fromKw ? toKw : kw),
+          textSwap: { type: 'landtype', from: fromKw, to: toKw, enterTs: ns.layerClock ?? 0 } }
+      : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${fromKw} -> ${toKw} on ${tgtC.name}.`, 'effect');
   break;
 }
 case "addCounterSelf": {
@@ -2059,6 +2206,20 @@ const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
 const winterOrbOut = allBF_s.some(x => x.id === "winter_orb" && !x.tapped);
 const smokeOut     = allBF_s.some(x => x.id === "smoke");
 let landsUntapped = 0, cresUntapped = 0;
+// Old Man of the Sea: revert stolen creatures before Old Man untaps.
+// If Old Man would untap this step (not blocked by Meekstone/Paralyze), any creature
+// stolen under whileTappedAndPowerLte reverts first, then Old Man untaps normally.
+for (const om of ns[ns.active].bf.filter(c => c.id === 'old_man_of_the_sea' && c.tapped)) {
+  const meekBlocked = meekstoneOut && getPow(om, ns) >= 3;
+  const paralyzed = om.paralyzed || om.enchantments?.some(e => e.mod?.paralyzed);
+  if (!meekBlocked && !paralyzed) {
+    for (const stolen of [...ns.p.bf, ...ns.o.bf]) {
+      if (stolen.controlGrant?.grantorIid === om.iid && stolen.controlGrant?.condition === 'whileTappedAndPowerLte') {
+        ns = revertControlGrant(ns, stolen.iid);
+      }
+    }
+  }
+}
 ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
 const base = { ...c, summoningSick:false, damage:0 };
 if (isLand(c)) {
@@ -2668,7 +2829,8 @@ case "CAST_SPELL": {
     manaAfterPay = xmp;
   }
   s = { ...s, [w]: { ...s[w], mana: manaAfterPay, hand: s[w].hand.filter(x => x.iid !== action.iid) } };
-  const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1 };
+  const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1,
+    fromColor: action.fromColor, toColor: action.toColor, fromKw: action.fromKw, toKw: action.toKw };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
   const xSuffix = xSpend > 0 ? ` (X=${xSpend})` : '';
@@ -2721,17 +2883,22 @@ case "RESOLVE_STACK": {
   s = { ...s, stack: s.stack.slice(0, -1), priorityWindow: false, priorityPasser: null };
   s = resolveEff(s, top);
   if (isPerm(top.card) && !isLand(top.card) && !top.isAbility) {
-    const pArr = {
-      ...top.card,
-      controller: top.caster,
-      tapped: false,
-      summoningSick: !hasKw(top.card, KEYWORDS.HASTE.id),
-      attacking: false,
-      blocking: null,
-      damage: 0,
-      counters: { ...(top.card.etbCounters || {}) },
-    };
-    s = { ...s, [top.caster]: { ...s[top.caster], bf: [...s[top.caster].bf, pArr] } };
+    // Guard: if resolveEff already placed the permanent on the bf (e.g. copyPermanentCharacteristics),
+    // skip the normal ETB push so we don't double-add the original card object.
+    const alreadyOnBf = s[top.caster].bf.some(c => c.iid === top.card.iid);
+    if (!alreadyOnBf) {
+      const pArr = {
+        ...top.card,
+        controller: top.caster,
+        tapped: false,
+        summoningSick: !hasKw(top.card, KEYWORDS.HASTE.id),
+        attacking: false,
+        blocking: null,
+        damage: 0,
+        counters: { ...(top.card.etbCounters || {}) },
+      };
+      s = { ...s, [top.caster]: { ...s[top.caster], bf: [...s[top.caster].bf, pArr] } };
+    }
     if (CARD_HANDLERS[top.card.name]?.onResolve) {
       const pOnBf = s[top.caster].bf.find(x => x.iid === top.card.iid) || pArr;
       const result = CARD_HANDLERS[top.card.name].onResolve(s, pOnBf, top.targets || [], top.xVal);
