@@ -2322,4 +2322,74 @@ ACTIVE
 
 ---
 
+---
+
+## Batch A1 -- Layer System Completion (Layers 1, 2, 3) -- 2026-06-29
+
+Implements three CR 613 layer mechanisms for six Alpha-era cards. All six were previously `effect:"STUB"`.
+
+See `docs/SYSTEMS.md` Sections 18.6, 18.7, 18.8 for authoritative specs.
+
+**Files changed:**
+- `src/data/cards.js` -- six card entries updated (effect strings, activated objects)
+- `src/engine/DuelCore.js` -- resolveEff cases + revertControlGrant + checkControlGrants + checkDeath indestructible guard + RESOLVE_STACK alreadyOnBf guard + Old Man pre-untap hook
+- `src/engine/layers.js` -- Layer 3 block in computeCharacteristics; Guardian Beast scan and textSwap collection in collectEffects
+- `tests/scenarios/layer1-copy-artifact.test.js` -- 5 tests (@engine)
+- `tests/scenarios/layer2-control-change.test.js` -- 9 tests (@engine)
+- `tests/scenarios/layer3-text-substitution.test.js` -- 4 tests (@engine)
+
+### copy_artifact
+
+**Effect:** `copyPermanentCharacteristics` (Layer 1 -- copiable-values snapshot)
+
+**Handler:** `resolveEff` case `"copyPermanentCharacteristics"` in `DuelCore.js`. Looks up the target artifact's static definition via `CARD_DB.find(c => c.id === tgtC.id)` and builds a new permanent from printed values only (no counters, no enchantments, no eotBuffs). Adds `"Enchantment"` to the type string. Pushed directly onto caster's bf; `RESOLVE_STACK`'s `alreadyOnBf` guard skips the normal ETB push so the original card object is never double-added. Fizzles (inert enchantment) when no legal artifact target exists. Throws if the target artifact has no CARD_DB entry.
+
+**cards.js entry:** `effect: "copyPermanentCharacteristics"`
+
+### sleight_of_mind
+
+**Effect:** `textSwapColor` (Layer 3 -- color-word substitution)
+
+**Handler:** `resolveEff` case `"textSwapColor"` in `DuelCore.js`. Stack item carries `fromColor` and `toColor`. If `tgtC.color === fromColor`, mutates `tgtC.color = toColor` in state (baked-in field mutation so AI.js and direct `.color` reads see the substituted value). Stores `textSwap: { type:'color', from, to, enterTs }` on the target card for layer tracking. `collectEffects` in `layers.js` reads `card.textSwap` and pushes `{ layer:3, ...textSwap }`. Layer 3 block in `computeCharacteristics` re-applies the substitution (idempotent). Recorded even when `fromColor` does not match (substitution persists; color just happened not to match).
+
+**cards.js entry:** `effect: "textSwapColor"`
+
+### magical_hack
+
+**Effect:** `textSwapLandtype` (Layer 3 -- land-type-word substitution)
+
+**Handler:** `resolveEff` case `"textSwapLandtype"` in `DuelCore.js`. Stack item carries `fromKw` and `toKw` (keyword ids). Bakes in: replaces `fromKw` with `toKw` in `tgtC.keywords` array. Stores `textSwap: { type:'landtype', from:fromKw, to:toKw, enterTs }` on the target card. `collectEffects` and Layer 3 block in `computeCharacteristics` re-apply the substitution (idempotent). Non-target keywords are unaffected.
+
+**cards.js entry:** `effect: "textSwapLandtype"`
+
+### aladdin
+
+**Effect:** `aladdinsSteal` (Layer 2 -- conditional control change)
+
+**Handler:** `resolveEff` case `"aladdinsSteal"` in `DuelCore.js`. Activated ability (`cost: "1RR,T"`). Checks Guardian Beast protection first: if the target is a noncreature artifact and the original controller has an untapped Guardian Beast on the battlefield, the ability fizzles. Otherwise removes the artifact from the original controller's bf and pushes it to the caster's bf with `controlGrant: { grantorIid: card.iid, grantorController: origCtrl, condition:'whileGrantorControlled' }`. Revert triggered by `checkControlGrants` (called at the end of every `checkDeath` pass): if the grantor iid is not found on any bf, `revertControlGrant` moves the artifact back, resets `tapped/summoningSick/attacking/blocking`, and strips `controlGrant`.
+
+**cards.js entry:** `effect: null, activated: { cost: "1RR,T", effect: "aladdinsSteal", requiresTarget: true }`
+
+### guardian_beast
+
+**Effect:** `guardianBeast` (Layer 2 static prevention + Layer 6 indestructible grant)
+
+**Handler (can't-be-controlled):** In `resolveEff` cases `"aladdinsSteal"` and `"oldManSteal"`, a check runs before the steal: if the target is a noncreature artifact and the original controller has an untapped Guardian Beast, the effect fizzles. Also enforced in `resolveEff` case `"enchantCreature"` (can't-be-enchanted guard for noncreature artifacts). In `collectEffects` in `layers.js`, the allBf loop checks `src.effect === 'guardianBeast'`: if the source is untapped and the subject card is a noncreature artifact of the same controller, pushes `{ layer:6, addKeywords:[INDESTRUCTIBLE] }`. `computeCharacteristics` Layer 6 block adds this keyword. `checkDeath` enforces indestructible by skipping lethal-damage death for cards with the INDESTRUCTIBLE keyword.
+
+**cards.js entry:** `effect: "guardianBeast"`
+
+### old_man_of_the_sea
+
+**Effect:** `oldManSteal` (Layer 2 -- conditional control change with power gate)
+
+**Handler:** `resolveEff` case `"oldManSteal"` in `DuelCore.js`. Activated ability (`cost: "T"`). Compares `getPow(tgtC, ns)` to `getPow(oldManCard, ns)`. If target power exceeds Old Man's power, the ability fizzles. Otherwise steals: removes target from original controller's bf, pushes to caster's bf with `controlGrant: { grantorIid, grantorController, condition:'whileTappedAndPowerLte', maxPower:oldManPow }`.
+
+**Revert (SBE pass):** `checkControlGrants` evaluates: if grantor not found OR grantor not tapped, call `revertControlGrant`. Also checks `getPow(stolen, ns) > grant.maxPower` and reverts if exceeded (SBE-pass simplification -- real-time mid-turn recheck not implemented; fires at the next `checkDeath` call).
+
+**Revert (pre-untap):** Before the untap `.map()` in the ADVANCE_PHASE -> UNTAP block, a loop finds all Old Man instances in the active player's bf that are tapped and would untap (not blocked by Meekstone or Paralyze). For each, any permanents with a matching `controlGrant.grantorIid` are reverted before the untap occurs. **Note:** the optional "choose not to untap" clause is not implemented (no UI mechanism); Old Man untaps normally.
+
+**cards.js entry:** `effect: null, activated: { cost: "T", effect: "oldManSteal", requiresTarget: true }`
+
+---
+
 # End of MECHANICS INDEX v1.5

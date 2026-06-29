@@ -1832,9 +1832,104 @@ To implement a card that modifies characteristics:
 ## 18.5 Constraints
 
 - `layers.js` is a pure module: no GameState mutation, no side effects.
-- `layers.js` imports `isLand`, `isCre` from `DuelCore.js` (circular import, safe).
+- `layers.js` imports `isLand`, `isCre`, `isArt` from `DuelCore.js` (circular import, safe).
 - `DuelCore.js` imports `computeCharacteristics` from `layers.js`.
 - No other file imports from `layers.js` directly; go through `getPow`/`getTou`/`hasKw`.
+
+## 18.6 Layer 1 — Copiable-Values Snapshot (Copy Artifact)
+
+Layer 1 (copy effects) is handled at resolution time in `DuelCore.js`, not as a continuous
+pass in `computeCharacteristics`. When Copy Artifact resolves:
+
+- `resolveEff` looks up the target artifact's static record in `CARD_DB` by `id`.
+- A `newPerm` object is built from the CARD_DB entry (printed values only: name, cost, cmc,
+  color, type, subtype, power, toughness, text, keywords, effect, layerDef, activated, mod).
+  Live battlefield state (counters, auras/enchantments[], eotBuffs) is NOT copied.
+- The type string is extended to include "Enchantment" (Copy Artifact retains its Enchantment
+  type in addition to the copied types).
+- `newPerm` is placed on the bf directly from `resolveEff`. RESOLVE_STACK's normal ETB push
+  is skipped by the `alreadyOnBf` guard added in Sprint A1.
+- If no legal artifact target exists, Copy Artifact enters as a plain inert Enchantment.
+
+## 18.7 Layer 2 — Conditional Control Change (Aladdin, Old Man of the Sea, Guardian Beast)
+
+Layer 2 (control-changing effects) uses a `controlGrant` field stored directly on the
+stolen permanent (not in `eotBuffs`, which expire at cleanup).
+
+### controlGrant shape
+
+```js
+controlGrant: {
+  grantorIid:        string,   // iid of the granting permanent (Aladdin or Old Man)
+  grantorController: string,   // 'p' | 'o' -- original owner, target of revert
+  condition:         string,   // 'whileGrantorControlled' | 'whileTappedAndPowerLte'
+  maxPower?:         number,   // Old Man only: power of Old Man at activation time
+}
+```
+
+### revertControlGrant(state, stolenIid)
+
+Module-level helper in DuelCore.js. Moves the permanent back to `grantorController`'s bf,
+strips `controlGrant`, resets `tapped:false, summoningSick:false, attacking:false, blocking:null`.
+
+### checkControlGrants(state)
+
+Called at the end of every `checkDeath` pass. Evaluates each bf permanent with a
+`controlGrant`:
+- `whileGrantorControlled`: if the grantor is no longer on any bf, revert.
+- `whileTappedAndPowerLte`: if the grantor is not tapped, or if the stolen creature's
+  computed power exceeds `maxPower`, revert. (Real-time P/T recheck simplified to SBE-pass
+  only -- no hook for mid-turn P/T mutations.)
+
+### Old Man of the Sea pre-untap hook
+
+Before the untap `.map()` in the UNTAP phase block (DuelCore.js), a loop checks if Old Man
+would untap this step (not blocked by Meekstone or Paralyze). If so, any creatures stolen
+under `whileTappedAndPowerLte` are reverted first, then Old Man untaps normally.
+The optional "choose not to untap" clause is not implemented (no UI mechanism).
+
+### Guardian Beast (static prevention)
+
+`effect:"guardianBeast"` on the card causes `collectEffects` in `layers.js` to grant
+`INDESTRUCTIBLE` (Layer 6) to all same-controller noncreature artifacts while it is untapped.
+
+In `DuelCore.js`:
+- `aladdinsSteal` case: fizzles if the target is a noncreature artifact protected by an
+  untapped Guardian Beast controlled by the same player.
+- `enchantCreature` case: returns early if the target is a noncreature artifact protected
+  by an untapped Guardian Beast. The pre-existing-aura exception is handled by this being an
+  "at-enchant-time" check only; auras already attached before Guardian Beast entered are
+  unaffected.
+
+## 18.8 Layer 3 — Persistent Text Substitution (Sleight of Mind, Magical Hack)
+
+Layer 3 effects use **baked-in field mutation** at resolve time so that direct `.color` and
+`.keywords` reads in DuelCore.js and AI.js see the substituted value without going through
+`computeCharacteristics`.
+
+### Sleight of Mind (color substitution)
+
+At resolution: mutates `card.color` in state if `card.color === fromColor`. Stores
+`textSwap: { type:'color', from, to, enterTs }` on the card for layer tracking.
+
+### Magical Hack (land-type substitution)
+
+At resolution: replaces `fromKw` with `toKw` in `card.keywords[]`. Stores
+`textSwap: { type:'landtype', from, to, enterTs }` on the card.
+
+### Layer 3 in computeCharacteristics
+
+`collectEffects` reads `card.textSwap` and pushes a `{ layer:3, ... }` entry.
+`computeCharacteristics` re-applies the substitution from `textSwap` (idempotent on an
+already-mutated field; ensures correct computed output for all callers using the layer
+pipeline). `from/to color` are processed in Layer 3 before Layer 5, and `from/to landtype`
+keyword swaps are processed in Layer 3 before Layer 6.
+
+### Passing from/to values through the stack
+
+`CAST_SPELL` stores `fromColor`, `toColor`, `fromKw`, `toKw` from the dispatch action onto
+the stack item so `resolveEff` can read them. The UI is responsible for populating these
+fields when the player selects the substitution targets.
 
 ---
 

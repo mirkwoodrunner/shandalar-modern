@@ -9,10 +9,14 @@
 //     5 (color) -> 6 (ability) -> 7a (CDA) -> 7b (set P/T) -> 7c (modify P/T)
 //     -> 7d (switch P/T)
 //   - Within each layer, effects apply in enterTs order (613.7d).
-//   - Only layers 4, 5, 6, 7 are relevant to this codebase right now.
-//     Layers 1-3 are stubs that return the input unchanged.
+//   - Layer 1 (copy): applied in DuelCore.js at resolution time (copyPermanentCharacteristics),
+//     not as a continuous pass here -- a frozen copy is a fact about base identity, not continuous.
+//   - Layer 2 (control): tracked via controlGrant on permanents + revertControlGrant in DuelCore.js.
+//     By the time computeCharacteristics runs, the permanent is already under its current controller.
+//   - Layer 3 (text substitution): implemented -- textSwap field on permanents, applied below.
 
-import { isLand, isCre } from './DuelCore.js';
+import { isLand, isCre, isArt } from './DuelCore.js';
+import KEYWORDS from '../data/keywords.js';
 
 // Map from color name to color char, used for lord target matching.
 const COLOR_MAP = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' };
@@ -87,6 +91,18 @@ function collectEffects(card, state) {
         });
       }
     }
+
+    // Guardian Beast: while untapped, grants INDESTRUCTIBLE to noncreature artifacts
+    // controlled by the same player (Layer 6 keyword grant).
+    if (src.effect === 'guardianBeast' && !src.tapped && src.controller === card.controller) {
+      if (isArt(card) && !isCre(card)) {
+        effects.push({
+          layer: 6,
+          addKeywords: [KEYWORDS.INDESTRUCTIBLE.id],
+          enterTs: src.enterTs ?? 0,
+        });
+      }
+    }
   }
 
   // 3. Attached auras
@@ -142,7 +158,12 @@ function collectEffects(card, state) {
     effects.push({ layer: '7c', power: p1p1 - m1m1, toughness: p1p1 - m1m1, enterTs: 0 });
   }
 
-  // 6. Holy Ground (Option B): suppress landwalk keywords when opponent controls Holy Ground.
+  // 6. textSwap: persistent text-word substitution (Sleight of Mind, Magical Hack).
+  if (card.textSwap) {
+    effects.push({ layer: 3, ...card.textSwap, enterTs: card.textSwap.enterTs ?? 0 });
+  }
+
+  // 7. Holy Ground (Option B): suppress landwalk keywords when opponent controls Holy Ground.
   //    Applied last in Layer 6 via MAX_SAFE_INTEGER timestamp so lord-granted walks are also suppressed.
   if (card.controller) {
     const opp = card.controller === 'p' ? 'o' : 'p';
@@ -173,6 +194,19 @@ export function computeCharacteristics(card, state) {
   let protection = [...(Array.isArray(rawProt) ? rawProt : rawProt ? [rawProt] : [])];
 
   const effects = collectEffects(card, state);
+
+  // Layer 3: Text-word substitution (Sleight of Mind, Magical Hack).
+  // Applied to base values before layers 4-7; baked-in field mutation ensures all
+  // direct .color / .keywords reads outside computeCharacteristics also see the change.
+  const l3 = effects.filter(e => e.layer === 3).sort((a, b) => getTs(a) - getTs(b));
+  for (const eff of l3) {
+    if (eff.type === 'color' && color === eff.from) {
+      color = eff.to;
+    }
+    if (eff.type === 'landtype') {
+      keywords = keywords.map(kw => kw === eff.from ? eff.to : kw);
+    }
+  }
 
   // Layer 4: Type-changing effects
   const l4 = effects.filter(e => e.layer === 4).sort((a, b) => getTs(a) - getTs(b));
