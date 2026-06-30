@@ -12,6 +12,7 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-06-30)
+- **TINT-BLEND-DITHER-1** -- Cross-blended tint boundary dithering for overworld biome seams. `getTintCells()` in `terrainRenderer.js` replaces the old flat per-tile `fillRect` tint with a dithered band that cross-blends each tile's tint with its neighbor's (or grass if untinted) along each differing edge. Both tiles on either side of a seam dither symmetrically using world-aligned `hashTile()` hashes (no `Math.random()`). Tunables: `TINT_CELL_PX=4`, `TINT_BAND_CELLS=3`. Interior tiles hit the cheap path (pixel-identical to prior flat fill). Distinct from the WATER/SWAMP ground autotile (`blobSubOffset`/`getGroundLayers`), which was not touched. See `docs/MECHANICS_INDEX.md` -- Feature: Cross-Blended Tint Boundary Dithering.
 - **END-TURN-SKIP-1** -- End Turn now skips ahead to the opponent's turn instead of advancing one phase per click. `endTurn()`/`endTurnPending` added to `useDuelController.ts`, driving the existing `passPriority`/`requestPhaseAdvance` dispatchers in a loop until a new turn, game-over, or a player-choice pending state is hit. Desktop and mobile `ActionBar` both show a disabled "Ending Turn..." state while the loop runs. See `docs/MECHANICS_INDEX.md` -- Feature: End Turn skip-ahead.
 
 ## Completed (2026-06-29)

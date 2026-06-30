@@ -330,6 +330,234 @@ for (const vp of RETRY_VIEWPORTS) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Cross-Blended Tint Boundary Dithering (TINT-BLEND-DITHER-1)
+// ---------------------------------------------------------------------------
+// Verifies the getTintCells() dithering system in terrainRenderer.js.
+// Tests import the pure module dynamically and query window.__overworldState()
+// for real tile data -- no pixel-art texture noise, no canvas sampling.
+// WorldMap has no viewport branch, so both viewports must pass identically;
+// a pass at one and fail at the other is a hard fail for this feature.
+
+for (const vp of VIEWPORTS) {
+  test.describe(`@overworld @mobile tint-blend dithering ${vp.name} ${vp.width}x${vp.height}`, () => {
+    test.use({ viewport: { width: vp.width, height: vp.height } });
+
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/?overworld=sandbox');
+      await page.waitForFunction(
+        () => typeof (window as any).__overworldState === 'function',
+        { timeout: 10000 }
+      );
+      await waitForTerrainPainted(page);
+    });
+
+    // Spec test 1: boundary tile -> more than 1 instruction from getTintCells
+    // (the old flat-fill produced at most 1 fillRect instruction; the dithered
+    // path produces 1 base-fill + TINT_BAND_CELLS * cellsPerSide band cells).
+    test('boundary tile: getTintCells returns dithered band cells beyond base fill', async ({ page }) => {
+      const result = await page.evaluate(async () => {
+        const state = (window as any).__overworldState();
+        const mod = await import('/src/ui/overworld/terrainRenderer.js');
+        const { getTintCells, getTint } = mod;
+
+        // tiles is a 2D array [y][x]; flatten to a 1D list for iteration.
+        const allTiles: any[] = (state.tiles as any[][]).flat();
+        const tileMap = new Map<string, any>();
+        for (const t of allTiles) {
+          if (t) tileMap.set(`${t.x},${t.y}`, t);
+        }
+
+        function nIds(tile: any) {
+          return {
+            n: tileMap.get(`${tile.x},${tile.y - 1}`)?.terrain?.id ?? null,
+            s: tileMap.get(`${tile.x},${tile.y + 1}`)?.terrain?.id ?? null,
+            e: tileMap.get(`${tile.x + 1},${tile.y}`)?.terrain?.id ?? null,
+            w: tileMap.get(`${tile.x - 1},${tile.y}`)?.terrain?.id ?? null,
+          };
+        }
+
+        function tintsDiffer(a: any, b: any): boolean {
+          if (!a && !b) return false;
+          if (!a || !b) return true;
+          return a.r !== b.r || a.g !== b.g || a.b !== b.b;
+        }
+
+        for (const tile of allTiles) {
+          if (!tile?.terrain) continue;
+          const ownTint = getTint(tile.terrain.id);
+          const ids = nIds(tile);
+          const hasDiffNeighbor = (['n','s','e','w'] as const).some(
+            (side) => tintsDiffer(ownTint, getTint(ids[side]))
+          );
+          if (!hasDiffNeighbor) continue;
+
+          const cells = getTintCells(tile.terrain.id, tile.x, tile.y, ids, 34);
+          if (cells.length > 1) {
+            return { found: true, cellCount: cells.length, terrainId: tile.terrain.id };
+          }
+        }
+        return { found: false, cellCount: 0, terrainId: null };
+      });
+
+      expect(result.found, 'no boundary tile found with blended band cells in map').toBe(true);
+      expect(result.cellCount).toBeGreaterThan(1);
+    });
+
+    // Spec test 2: interior tile -> cheap path (0 or 1 instruction, not a full band).
+    // Confirms the fast path still fires for same-tint-all-sides tiles so interior
+    // biome regions look identical to the pre-change flat fill.
+    test('interior tile: getTintCells uses cheap path (at most 1 instruction)', async ({ page }) => {
+      const result = await page.evaluate(async () => {
+        const state = (window as any).__overworldState();
+        const mod = await import('/src/ui/overworld/terrainRenderer.js');
+        const { getTintCells, getTint } = mod;
+
+        // tiles is a 2D array [y][x]; flatten to a 1D list for iteration.
+        const allTiles: any[] = (state.tiles as any[][]).flat();
+        const tileMap = new Map<string, any>();
+        for (const t of allTiles) {
+          if (t) tileMap.set(`${t.x},${t.y}`, t);
+        }
+
+        const DIRS: Array<{ side: string; dx: number; dy: number }> = [
+          { side: 'n', dx: 0,  dy: -1 },
+          { side: 's', dx: 0,  dy:  1 },
+          { side: 'e', dx: 1,  dy:  0 },
+          { side: 'w', dx: -1, dy:  0 },
+        ];
+
+        function tintSame(a: any, b: any): boolean {
+          if (!a && !b) return true;
+          if (!a || !b) return false;
+          return a.r === b.r && a.g === b.g && a.b === b.b;
+        }
+
+        for (const tile of allTiles) {
+          if (!tile?.terrain) continue;
+          const ownTint = getTint(tile.terrain.id);
+          const neighbors = DIRS.map(({ dx, dy }) => tileMap.get(`${tile.x + dx},${tile.y + dy}`));
+          // Interior: all 4 adjacent tiles exist and have the same tint as this tile.
+          const isInterior = neighbors.every((n) => n?.terrain && tintSame(ownTint, getTint(n.terrain.id)));
+          if (!isInterior) continue;
+
+          const ids = {
+            n: tileMap.get(`${tile.x},${tile.y - 1}`)?.terrain?.id ?? null,
+            s: tileMap.get(`${tile.x},${tile.y + 1}`)?.terrain?.id ?? null,
+            e: tileMap.get(`${tile.x + 1},${tile.y}`)?.terrain?.id ?? null,
+            w: tileMap.get(`${tile.x - 1},${tile.y}`)?.terrain?.id ?? null,
+          };
+          const cells = getTintCells(tile.terrain.id, tile.x, tile.y, ids, 34);
+          return { found: true, cellCount: cells.length, tinted: ownTint !== null };
+        }
+        return { found: false, cellCount: -1, tinted: false };
+      });
+
+      expect(result.found, 'no interior tile found with all-same-tint neighbors in map').toBe(true);
+      // Cheap path: untinted interior -> 0; tinted interior -> 1 (full-tile base fill).
+      // More than 1 means band cells were incorrectly emitted for a uniform interior.
+      expect(result.cellCount).toBeLessThanOrEqual(1);
+    });
+
+    // Spec test 3: symmetry -- both tiles on either side of a seam produce band cells.
+    // Confirms the dithering is not one-sided (old flat fill was per-tile only).
+    test('seam symmetry: both tiles bordering a boundary produce dithered band cells', async ({ page }) => {
+      const result = await page.evaluate(async () => {
+        const state = (window as any).__overworldState();
+        const mod = await import('/src/ui/overworld/terrainRenderer.js');
+        const { getTintCells, getTint } = mod;
+
+        // tiles is a 2D array [y][x]; flatten to a 1D list for iteration.
+        const allTiles: any[] = (state.tiles as any[][]).flat();
+        const tileMap = new Map<string, any>();
+        for (const t of allTiles) {
+          if (t) tileMap.set(`${t.x},${t.y}`, t);
+        }
+
+        function nIds(tile: any) {
+          return {
+            n: tileMap.get(`${tile.x},${tile.y - 1}`)?.terrain?.id ?? null,
+            s: tileMap.get(`${tile.x},${tile.y + 1}`)?.terrain?.id ?? null,
+            e: tileMap.get(`${tile.x + 1},${tile.y}`)?.terrain?.id ?? null,
+            w: tileMap.get(`${tile.x - 1},${tile.y}`)?.terrain?.id ?? null,
+          };
+        }
+
+        function tintsDiffer(a: any, b: any): boolean {
+          if (!a && !b) return false;
+          if (!a || !b) return true;
+          return a.r !== b.r || a.g !== b.g || a.b !== b.b;
+        }
+
+        const AXES: Array<[number, number]> = [[1, 0], [0, 1]];
+        for (const tile of allTiles) {
+          if (!tile?.terrain) continue;
+          const ownTint = getTint(tile.terrain.id);
+          for (const [dx, dy] of AXES) {
+            const neighbor = tileMap.get(`${tile.x + dx},${tile.y + dy}`);
+            if (!neighbor?.terrain) continue;
+            const neighborTint = getTint(neighbor.terrain.id);
+            if (!tintsDiffer(ownTint, neighborTint)) continue;
+
+            const cellsA = getTintCells(tile.terrain.id, tile.x, tile.y, nIds(tile), 34);
+            const cellsB = getTintCells(neighbor.terrain.id, neighbor.x, neighbor.y, nIds(neighbor), 34);
+            if (cellsA.length > 1 && cellsB.length > 1) {
+              return {
+                symmetric: true,
+                cellsA: cellsA.length,
+                cellsB: cellsB.length,
+                idA: tile.terrain.id,
+                idB: neighbor.terrain.id,
+              };
+            }
+          }
+        }
+        return { symmetric: false, cellsA: 0, cellsB: 0, idA: null, idB: null };
+      });
+
+      expect(result.symmetric, 'no symmetric boundary pair found in map').toBe(true);
+      expect(result.cellsA, 'tile A (left/top of seam) must have band cells').toBeGreaterThan(1);
+      expect(result.cellsB, 'tile B (right/bottom of seam) must have band cells').toBeGreaterThan(1);
+    });
+
+    // Spec test 4: determinism -- same args produce identical output every call.
+    // Guards against any Math.random() or non-seeded randomness in getTintCells.
+    test('determinism: getTintCells returns byte-identical results on repeated calls', async ({ page }) => {
+      const result = await page.evaluate(async () => {
+        const state = (window as any).__overworldState();
+        const mod = await import('/src/ui/overworld/terrainRenderer.js');
+        const { getTintCells } = mod;
+
+        // tiles is a 2D array [y][x]; flatten to a 1D list for iteration.
+        const allTiles: any[] = (state.tiles as any[][]).flat();
+        const tileMap = new Map<string, any>();
+        for (const t of allTiles) {
+          if (t) tileMap.set(`${t.x},${t.y}`, t);
+        }
+
+        // Use first tile with valid terrain as a stable target.
+        const tile = allTiles.find((t: any) => t?.terrain);
+        if (!tile) return { identical: false, reason: 'no tile found' };
+
+        const ids = {
+          n: tileMap.get(`${tile.x},${tile.y - 1}`)?.terrain?.id ?? null,
+          s: tileMap.get(`${tile.x},${tile.y + 1}`)?.terrain?.id ?? null,
+          e: tileMap.get(`${tile.x + 1},${tile.y}`)?.terrain?.id ?? null,
+          w: tileMap.get(`${tile.x - 1},${tile.y}`)?.terrain?.id ?? null,
+        };
+
+        // Call three times; all must match.
+        const run1 = JSON.stringify(getTintCells(tile.terrain.id, tile.x, tile.y, ids, 34));
+        const run2 = JSON.stringify(getTintCells(tile.terrain.id, tile.x, tile.y, ids, 34));
+        const run3 = JSON.stringify(getTintCells(tile.terrain.id, tile.x, tile.y, ids, 34));
+        return { identical: run1 === run2 && run2 === run3, reason: '' };
+      });
+
+      expect(result.identical, result.reason || 'repeated getTintCells calls returned different results').toBe(true);
+    });
+  });
+}
+
 // Singleton parity guard: the retry state is module-level and shared, so
 // exhausting retries in one viewport context must show the same terminal state
 // when a second load occurs (no per-screen re-initialization of _loadStarted).

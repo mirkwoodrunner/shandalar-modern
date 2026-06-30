@@ -165,6 +165,98 @@ export function getTint(terrainId) {
   return TINTS[terrainId] ?? null;
 }
 
+// --- cross-blended tint boundary dithering -----------------------------------
+// Per-biome tint used to be a single flat fillRect per tile, which made a hard
+// rectangular seam wherever two differently-tinted (or tinted/untinted) biomes
+// sit side by side. getTintCells replaces that with a small dithered band along
+// each differing edge, cross-blending this tile's tint with the neighbor's (or
+// with "no tint" / grass, for an untinted neighbor) so the boundary reads as a
+// gradient instead of a line. Both tiles on either side of a seam dither
+// symmetrically -- this function is called once per tile, from that tile's own
+// point of view.
+//
+// Tunables -- first things to adjust if the blend reads too soft or too noisy:
+export const TINT_CELL_PX = 4;     // dither cell size, tile-local px
+export const TINT_BAND_CELLS = 3;  // cell-rows deep the blend band extends inward
+// Distinct hash streams per edge direction so each side's dither pattern is
+// independent (deliberately not mirrored edge-to-edge -- see getTintCells doc).
+export const TINT_SIDE_SEED = Object.freeze({ n: 11, s: 22, e: 33, w: 44 });
+
+function tintsEqual(a, b) {
+  if (a === b) return true; // both null, or same reference
+  if (!a || !b) return false;
+  return a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a;
+}
+
+// Returns an array of { sx, sy, w, h, tint } fill instructions, tile-local
+// pixel coordinates, in draw order. No DOM/canvas references -- pure data, per
+// this module's header contract.
+//
+// neighborTerrainIds: { n, s, e, w }, each a terrain id string or null (out of
+// bounds / unrevealed neighbor -- treated as "no tint").
+//
+// Cheap path: a uniform tinted region (or uniform untinted region) returns []
+// or a single full-tile rect, identical output to the old flat fillRect.
+//
+// Blended path: full-tile own-tint fill (if any) as a base, then a dithered
+// band painted along each edge whose neighbor tint differs from this tile's.
+// Each band cell rolls a deterministic hash seeded by world-aligned edge
+// position (so the cell grid lines up with the neighbor tile's own call for
+// the same seam) and a side-specific seed (so n/s and e/w bands are
+// independent streams, not mirrors of each other). Corner overlaps are
+// resolved by draw order n, e, s, w -- a known simplification, not true
+// 2-axis corner blending.
+export function getTintCells(terrainId, x, y, neighborTerrainIds, tileSize) {
+  const ownTint = getTint(terrainId);
+  const sides = ['n', 'e', 's', 'w'];
+  const neighborTints = {};
+  for (const side of sides) {
+    const nId = neighborTerrainIds ? neighborTerrainIds[side] : null;
+    neighborTints[side] = getTint(nId);
+  }
+
+  const allSame = sides.every((side) => tintsEqual(neighborTints[side], ownTint));
+  if (allSame) {
+    return ownTint ? [{ sx: 0, sy: 0, w: tileSize, h: tileSize, tint: ownTint }] : [];
+  }
+
+  const cellsPerSide = Math.max(1, Math.round(tileSize / TINT_CELL_PX));
+  const cellPx = tileSize / cellsPerSide;
+
+  const instructions = [];
+  if (ownTint) {
+    instructions.push({ sx: 0, sy: 0, w: tileSize, h: tileSize, tint: ownTint });
+  }
+
+  for (const side of sides) {
+    const neighborTint = neighborTints[side];
+    if (tintsEqual(neighborTint, ownTint)) continue; // no boundary on this side
+
+    const axisCoord = (side === 'n' || side === 's') ? x : y;
+
+    for (let d = 0; d < TINT_BAND_CELLS; d++) {
+      const cutoff = 50 + d * (50 / TINT_BAND_CELLS);
+      for (let i = 0; i < cellsPerSide; i++) {
+        const worldEdgeIndex = axisCoord * cellsPerSide + i;
+        const roll = hashTile(worldEdgeIndex, d, TINT_SIDE_SEED[side]) % 100;
+        const cellTint = roll < cutoff ? ownTint : neighborTint;
+        if (!cellTint) continue; // grass/decoration layers show through
+
+        let sx;
+        let sy;
+        if (side === 'n') { sx = i * cellPx; sy = d * cellPx; }
+        else if (side === 's') { sx = i * cellPx; sy = tileSize - (d + 1) * cellPx; }
+        else if (side === 'e') { sx = tileSize - (d + 1) * cellPx; sy = i * cellPx; }
+        else { sx = d * cellPx; sy = i * cellPx; } // w
+
+        instructions.push({ sx, sy, w: cellPx, h: cellPx, tint: cellTint });
+      }
+    }
+  }
+
+  return instructions;
+}
+
 // --- deterministic decoration scatter ----------------------------------------
 // density is a 0..1 chance the primary decoration appears on a tile.
 const DECOR_POOLS = Object.freeze({
@@ -260,5 +352,9 @@ export default {
   terrainGroup,
   getGroundLayers,
   getTint,
+  getTintCells,
+  TINT_CELL_PX,
+  TINT_BAND_CELLS,
+  TINT_SIDE_SEED,
   getDecorations,
 };
