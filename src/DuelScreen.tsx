@@ -264,7 +264,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     advancePhase, selectCard, selectTarget,
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
     resolveUpkeepChoice, resolveConditionalCounter, resolveSphereTrigger, openPriorityWindow, passPriority, useChannel,
-    undoManaTaps, requestPhaseAdvance,
+    undoManaTaps, requestPhaseAdvance, endTurn, endTurnPending,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
@@ -310,7 +310,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       }
       // If priorityWindow is open and player already passed: no-op (waiting for AI)
     },
-    onEndTurn: requestPhaseAdvance,
+    onEndTurn: endTurn,
     onCancel: () => { if (castFlow) { cancelCastFlow(); } else { setPendingActivate(null); selectCard(null); selectTarget(null); } },
     onQuickCast: (idx: number) => { const c = s.p.hand[idx]; if (c) selectCard(c.iid); },
     isIdle,
@@ -745,7 +745,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 : null
             }
             onCancel={() => { if (castFlow) { cancelCastFlow(); } else { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); } }}
-            onEndTurn={requestPhaseAdvance}
+            onEndTurn={endTurn}
+            endTurnPending={endTurnPending}
           />
 
           {/* Player hand */}

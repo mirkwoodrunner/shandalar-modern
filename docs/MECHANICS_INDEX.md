@@ -2392,4 +2392,23 @@ See `docs/SYSTEMS.md` Sections 18.6, 18.7, 18.8 for authoritative specs.
 
 ---
 
+## Feature: End Turn skip-ahead (END-TURN-SKIP-1) — 2026-06-30
+
+**Problem:** End Turn only advanced the duel by a single phase step per click, requiring repeated clicks (and manual Pass Priority presses) to actually finish a turn with no further player actions.
+
+**Fix:** Added `endTurn()` to `useDuelController.ts`: sets `endTurnPending` and drives an effect loop that repeatedly calls the existing `passPriority('p')` (when the player owes priority) or `requestPhaseAdvance()` (otherwise), stopping the instant `s.turn` changes, `s.over` is set, or the engine raises a pending player choice (`pendingUpkeepChoice`, `pendingConditionalCounter`, `pendingSphereTrigger`, `pendingChoice`, `pendingTutor`, `pendingTransmuteSacrifice`, `pendingTransmutePay`, `pendingLotus`, `pendingBop`). It does not call any new dispatcher and does not touch `DuelCore.js` -- the opponent AI still acts exactly when it already does today via the existing priority-window and AI-loop effects. Declaring no attackers before pressing End Turn relies on the existing `advPhase` "Issue B14" auto-skip of empty-attacker combat sub-phases.
+
+Both `DuelScreen.tsx` (desktop) and `DuelScreenMobile.tsx` (mobile) wire their End Turn button through `endTurn`/`endTurnPending` from the shared hook. While `endTurnPending` is true, `ActionBar` (`src/ui/ActionBar/ActionBar.tsx` and `src/ui/Mobile/ActionBar.tsx`) renders a disabled "Ending Turn..." bar in place of the normal Cast/Activate/Pass Priority/Done Attacking/Done Blocking/End Turn controls, so nothing can interleave with the auto-pass loop.
+
+**Files changed:**
+- `src/hooks/useDuelController.ts` — added `endTurn`, `endTurnPending` (state + driving effect); exported alongside `requestPhaseAdvance`
+- `src/DuelScreen.tsx` — keyboard shortcut and `ActionBar` `onEndTurn` rewired to `endTurn`; `endTurnPending` passed through
+- `src/ui/Mobile/DuelScreenMobile.tsx` — non-combat branch of `ActionBar`'s `onEnd` rewired to `endTurn`; `endTurnPending` passed through
+- `src/ui/ActionBar/ActionBar.tsx` — `endTurnPending` prop; disabled "Ending Turn..." bar
+- `src/ui/Mobile/ActionBar.tsx` — `endTurnPending` prop; disabled "Ending Turn..." bar
+
+**Tests:** `tests/e2e/end-turn-skip-ahead.spec.ts` -- END-TURN-01 through 05, desktop (1280x800) + mobile (390x844).
+
+---
+
 # End of MECHANICS INDEX v1.5

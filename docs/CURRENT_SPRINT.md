@@ -11,6 +11,9 @@
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
+## Completed (2026-06-30)
+- **END-TURN-SKIP-1** -- End Turn now skips ahead to the opponent's turn instead of advancing one phase per click. `endTurn()`/`endTurnPending` added to `useDuelController.ts`, driving the existing `passPriority`/`requestPhaseAdvance` dispatchers in a loop until a new turn, game-over, or a player-choice pending state is hit. Desktop and mobile `ActionBar` both show a disabled "Ending Turn..." state while the loop runs. See `docs/MECHANICS_INDEX.md` -- Feature: End Turn skip-ahead.
+
 ## Completed (2026-06-29)
 - **Batch A1 -- Layer System Completion (Layers 1, 2, 3)**: Copy Artifact (Layer 1 copiable-values snapshot), Aladdin + Old Man of the Sea + Guardian Beast (Layer 2 conditional control-change with revert), Sleight of Mind + Magical Hack (Layer 3 persistent text-word substitution). `revertControlGrant` + `checkControlGrants` helpers; Old Man pre-untap hook; indestructible enforcement in `checkDeath` and artifact-destroy call sites; `alreadyOnBf` guard in RESOLVE_STACK. See `docs/SYSTEMS.md` Sections 18.6/18.7/18.8 and `docs/MECHANICS_INDEX.md` Batch A1 entry. 18 new tests.
 

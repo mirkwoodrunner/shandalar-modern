@@ -21,6 +21,7 @@ interface ActionBarProps {
   canUndo?: boolean;
   onUndo?: () => void;
   blockerHint?: string | null;
+  endTurnPending?: boolean;
 }
 
 export function ActionBar({
@@ -41,6 +42,7 @@ export function ActionBar({
   canUndo,
   onUndo,
   blockerHint,
+  endTurnPending = false,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
@@ -50,6 +52,25 @@ export function ActionBar({
   // PP remains enabled on AI turn when a priority window IS open — the player
   // must still pass for 'p' to close the window (PASS_PRIORITY requires both sides).
   const passPriorityDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
+
+  if (endTurnPending) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: compact ? 6 : 10,
+        padding: compact ? '6px 10px' : '10px 16px',
+        background: 'linear-gradient(180deg, var(--bg-panel-hi) 0%, #0c0806 100%)',
+        borderTop: '1px solid rgba(180,140,70,.25)',
+        borderBottom: '1px solid rgba(180,140,70,.25)',
+        boxShadow: 'inset 0 1px 0 rgba(180,140,70,.1), 0 2px 8px rgba(0,0,0,.6)',
+        position: 'relative',
+        flexShrink: 0,
+      }}>
+        <ActionButton variant="end" disabled data-testid="end-turn-button">
+          Ending Turn...
+        </ActionButton>
+      </div>
+    );
+  }
 
   return (
     <div style={{
