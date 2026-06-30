@@ -25,11 +25,34 @@ interface ActionBarProps {
   pendingTarget?: string | null;
   pendingBlocker?: string | null;
   blockers?: Record<string, string>;
+  endTurnPending?: boolean;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers, endTurnPending = false }: ActionBarProps) {
   const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
   const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
+
+  if (endTurnPending) {
+    return (
+      <div data-testid="action-bar" className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
+        <button
+          className={s.actionBtn}
+          disabled
+          data-testid="end-turn-button"
+          style={{
+            flex: 1,
+            background: 'rgba(30,30,30,.6)',
+            border: '1px solid rgba(80,80,80,.35)',
+            color: '#555555',
+            opacity: 0.55,
+            cursor: 'not-allowed',
+          }}
+        >
+          Ending Turn...
+        </button>
+      </div>
+    );
+  }
 
   if (targetingFor) {
     const hasTarget = !!pendingTarget;

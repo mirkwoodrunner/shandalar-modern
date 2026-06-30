@@ -273,9 +273,73 @@ export function useDuelController(
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
   const [pendingMode, setPendingMode] = useState<'counter' | 'destroy' | null>(null);
   const [isGeminiThinking, setIsGeminiThinking] = useState(false);
+  const [endTurnPending, setEndTurnPending] = useState(false);
+  const endTurnStartTurn = useRef<number | null>(null);
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
+
+  // ── End Turn (skip-ahead) ───────────────────────────────────────────────────
+  // Repeatedly drives the duel forward on the player's behalf: auto-passes the
+  // player's own priority and steps the phase using the existing single-step
+  // dispatchers. Stops the moment a new turn begins, the game ends, or the
+  // engine needs a choice only the player can make. Does not touch DuelCore.js
+  // or phases.js -- it only calls dispatchers that already exist.
+  const endTurn = useCallback(() => {
+    if (endTurnPending) return;
+    endTurnStartTurn.current = s.turn;
+    setEndTurnPending(true);
+  }, [endTurnPending, s.turn]);
+
+  useEffect(() => {
+    if (!endTurnPending) return;
+
+    if (s.over) {
+      setEndTurnPending(false);
+      return;
+    }
+
+    if (endTurnStartTurn.current !== null && s.turn !== endTurnStartTurn.current) {
+      setEndTurnPending(false);
+      endTurnStartTurn.current = null;
+      return;
+    }
+
+    // Any player-required choice pauses the loop. The existing modal UI resolves
+    // these; once cleared, this effect re-fires (state changed) and resumes.
+    if (
+      s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
+      s.pendingChoice || s.pendingTutor || s.pendingTransmuteSacrifice ||
+      s.pendingTransmutePay || s.pendingLotus || s.pendingBop
+    ) {
+      return;
+    }
+
+    // Non-empty stack: the existing stack-resolution effects own this, not us.
+    if (s.stack && s.stack.length > 0) return;
+
+    if (s.priorityWindow) {
+      if (s.priorityPasser !== 'p') passPriority('p');
+      // Else: player already passed, waiting on the AI side -- do nothing, the
+      // existing priority-window-close effect will advance once both pass.
+      return;
+    }
+
+    // The render where priorityWindow just flipped true -> false is owned by the
+    // existing priority-window-close effect (it calls resolveStack()/advancePhase()
+    // for that exact transition). Calling requestPhaseAdvance() here too would race
+    // it -- if hand still holds an instant, requestPhaseAdvance() reopens a window
+    // before the close effect's advancePhase() dispatch is processed, so it gets
+    // rejected by DuelCore and the loop never progresses. Wait for the next render.
+    if (prevPriorityWindow.current === true) return;
+
+    requestPhaseAdvance();
+  }, [
+    endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
+    s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
+    s.pendingChoice, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
+    s.pendingLotus, s.pendingBop, passPriority, requestPhaseAdvance,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────
   useEffect(() => {
@@ -1123,6 +1187,8 @@ export function useDuelController(
 
     // Phase advance
     requestPhaseAdvance,
+    endTurn,
+    endTurnPending,
 
     // Mulligan UI state
     showMulligan,

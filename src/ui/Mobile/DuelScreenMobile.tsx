@@ -56,6 +56,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     passPriority, undoManaTaps,
     advancePhase,
     requestPhaseAdvance,
+    endTurn, endTurnPending,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
@@ -535,8 +536,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           (s_state.phase === 'COMBAT_ATTACKERS' && s_state.active === 'p') ||
           (s_state.phase === 'COMBAT_BLOCKERS' && s_state.active !== 'p')
             ? advancePhase
-            : requestPhaseAdvance
+            : endTurn
         }
+        endTurnPending={endTurnPending}
         isPlayerTurn={isPlayerTurn}
         isWaitingForAI={isWaitingForAI}
         priorityWindowOpen={s_state.priorityWindow === true}
