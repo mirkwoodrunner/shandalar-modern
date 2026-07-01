@@ -21,13 +21,6 @@ async function waitForMain1(page: Page) {
     const s = (window as any).__duelState?.();
     return s && s.phase === 'MAIN_1' && s.active === 'p';
   }, { timeout: 20_000 });
-  // The opponent's opening-hand mulligan decision (driven by the normal AI
-  // loop at game start, turn 1) must settle before any test flips `active` to
-  // 'o' or force-injects the opponent's hand -- otherwise the AI's own
-  // mulligan can race with SANDBOX_FORCE_HAND and reshuffle an injected card
-  // away. SET_PHASE_FOR_TEST does not itself drive the AI loop, so waiting
-  // for this signal only works here, right after the natural game start.
-  await page.waitForFunction(() => (window as any).__duelState?.().o?.mulliganDecided === true, { timeout: 10_000 });
 }
 
 // __duelState()/__duelDispatch() reflect a dispatch only after React has
@@ -109,6 +102,45 @@ async function clearSummoningSick(page: Page, iid: string) {
   }, iid);
 }
 
+// Places a card directly on `who`'s battlefield via LOAD_STATE, bypassing
+// CAST_SPELL/PLAY_LAND entirely. Casting or playing a land for the opponent
+// requires making 'o' the active player (CAST_SPELL/PLAY_LAND both gate
+// sorcery-speed actions on `s.active === w`), but flipping active on turn 1
+// with an empty battlefield trips the AI driver's own turn-1 mulligan
+// decision, which can race unpredictably with the rest of the test. This
+// helper sidesteps that entire class of flakiness for tests that only need
+// a card *present* on the opponent's battlefield, not an actual cast/play.
+async function placeOnBattlefield(page: Page, who: 'p' | 'o', cardId: string): Promise<string> {
+  await page.evaluate(({ w, id }) => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: w, cardIds: [id], mana: {} });
+  }, { w: who, id: cardId });
+  await page.waitForFunction(({ w, id }) => {
+    const s = (window as any).__duelState?.();
+    return (s?.[w]?.hand as any[])?.some((c: any) => c.id === id);
+  }, { w: who, id: cardId }, { timeout: 5_000 });
+
+  const iid = await page.evaluate(({ w, id }) => {
+    const s = (window as any).__duelState();
+    const card = (s[w].hand as any[]).find((c: any) => c.id === id);
+    const bfCard = {
+      ...card, controller: w, tapped: false, summoningSick: false,
+      attacking: false, blocking: null, damage: 0, counters: {},
+      eotBuffs: [], enchantments: [],
+    };
+    const newState = {
+      ...s,
+      [w]: { ...s[w], hand: s[w].hand.filter((c: any) => c.iid !== card.iid), bf: [...s[w].bf, bfCard] },
+    };
+    (window as any).__duelDispatch({ type: 'LOAD_STATE', state: newState });
+    return card.iid;
+  }, { w: who, id: cardId });
+  await page.waitForFunction(({ w, iid: cardIid }) => {
+    const s = (window as any).__duelState?.();
+    return (s?.[w]?.bf as any[])?.some((c: any) => c.iid === cardIid);
+  }, { w: who, iid }, { timeout: 5_000 });
+  return iid;
+}
+
 function batchTests() {
   // ── 1. Exorcist: activated removal restricted to black creatures ──────────
   test('Exorcist destroys a targeted black creature; fizzles on a non-black creature', async ({ page }) => {
@@ -120,15 +152,7 @@ function batchTests() {
     const exorcistIid = await castAndResolve(page, 'exorcist');
     await clearSummoningSick(page, exorcistIid);
 
-    // CAST_SPELL only allows sorcery-speed casts (creatures included) by the
-    // active player -- make the opponent active before casting their creatures.
-    await page.evaluate(() => {
-      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
-    });
-    await page.waitForFunction(() => (window as any).__duelState?.().active === 'o', null, { timeout: 5_000 });
-
-    await forceHand(page, 'o', ['sengir_vampire'], { B: 5 });
-    const vampireIid = await castAndResolve(page, 'sengir_vampire', 'o');
+    const vampireIid = await placeOnBattlefield(page, 'o', 'sengir_vampire');
 
     await activateAndResolve(page, exorcistIid, vampireIid);
     await page.waitForFunction((iid) => {
@@ -154,8 +178,7 @@ function batchTests() {
     });
     await page.waitForFunction(() => (window as any).__duelState?.().p?.mana?.W === 2, null, { timeout: 5_000 });
 
-    await forceHand(page, 'o', ['grizzly_bears'], { G: 2 });
-    const bearsIid = await castAndResolve(page, 'grizzly_bears', 'o');
+    const bearsIid = await placeOnBattlefield(page, 'o', 'grizzly_bears');
     await activateAndResolve(page, exorcistIid, bearsIid);
 
     // No gy change expected for the fizzle case -- wait on the Exorcist's own
@@ -210,23 +233,7 @@ function batchTests() {
     const stoneIid = await castAndResolve(page, 'fellwar_stone');
     await clearSummoningSick(page, stoneIid);
 
-    // PLAY_LAND only allows the active player to play a land -- make the
-    // opponent active before playing theirs.
-    await page.evaluate(() => {
-      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
-    });
-    await page.waitForFunction(() => (window as any).__duelState?.().active === 'o', null, { timeout: 5_000 });
-
-    await forceHand(page, 'o', ['island'], {});
-    await page.evaluate(() => {
-      const s = (window as any).__duelState();
-      const land = (s.o.hand as any[]).find((c: any) => c.id === 'island');
-      (window as any).__duelDispatch({ type: 'PLAY_LAND', who: 'o', iid: land.iid });
-    });
-    await page.waitForFunction(() => {
-      const s = (window as any).__duelState?.();
-      return (s?.o?.bf as any[])?.some((c: any) => c.id === 'island');
-    }, null, { timeout: 5_000 });
+    await placeOnBattlefield(page, 'o', 'island');
 
     await page.evaluate((iid) => {
       (window as any).__duelDispatch({ type: 'ACTIVATE_ABILITY', who: 'p', iid });
