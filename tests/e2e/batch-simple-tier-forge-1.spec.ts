@@ -53,7 +53,11 @@ async function castAndResolve(page: Page, cardId: string, who: 'p' | 'o' = 'p'):
 // For non-permanent spells (Instant/Sorcery): casts and resolves, then waits
 // for the card to leave hand (it goes to the graveyard, never the battlefield).
 async function castNonPermanentAndResolve(page: Page, cardId: string, tgt: string | null, who: 'p' | 'o' = 'p') {
-  await page.evaluate(({ id, w, tgtArg }) => {
+  // Tracks the specific iid rather than "a card with this id" -- the sandbox
+  // ?cards= URL param prepends an extra copy into the natural deck, so more
+  // than one card can share the same CARD_DB id (e.g. one already drawn into
+  // the opening hand alongside one injected via SANDBOX_FORCE_HAND).
+  const iid = await page.evaluate(({ id, w, tgtArg }) => {
     const s = (window as any).__duelState();
     const dispatch = (window as any).__duelDispatch;
     const card = (s[w].hand as any[]).find((c: any) => c.id === id);
@@ -62,11 +66,12 @@ async function castNonPermanentAndResolve(page: Page, cardId: string, tgt: strin
     dispatch({ type: 'PASS_PRIORITY', who: 'p' });
     dispatch({ type: 'PASS_PRIORITY', who: 'o' });
     dispatch({ type: 'RESOLVE_STACK' });
+    return card.iid;
   }, { id: cardId, w: who, tgtArg: tgt });
-  await page.waitForFunction(({ id, w }) => {
+  await page.waitForFunction(({ iid: cardIid, w }) => {
     const s = (window as any).__duelState?.();
-    return !(s?.[w]?.hand as any[])?.some((c: any) => c.id === id);
-  }, { id: cardId, w: who }, { timeout: 10_000 });
+    return (s?.[w]?.gy as any[])?.some((c: any) => c.iid === cardIid);
+  }, { iid, w: who }, { timeout: 10_000 });
 }
 
 async function activateAndResolve(page: Page, iid: string, tgt: string | null) {
@@ -107,6 +112,13 @@ function batchTests() {
     await forceHand(page, 'p', ['exorcist'], { W: 4 });
     const exorcistIid = await castAndResolve(page, 'exorcist');
     await clearSummoningSick(page, exorcistIid);
+
+    // CAST_SPELL only allows sorcery-speed casts (creatures included) by the
+    // active player -- make the opponent active before casting their creatures.
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.().active === 'o', null, { timeout: 5_000 });
 
     await forceHand(page, 'o', ['sengir_vampire'], { B: 5 });
     const vampireIid = await castAndResolve(page, 'sengir_vampire', 'o');
@@ -190,6 +202,13 @@ function batchTests() {
     await forceHand(page, 'p', ['fellwar_stone'], { C: 2 });
     const stoneIid = await castAndResolve(page, 'fellwar_stone');
     await clearSummoningSick(page, stoneIid);
+
+    // PLAY_LAND only allows the active player to play a land -- make the
+    // opponent active before playing theirs.
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'MAIN_1', active: 'o' });
+    });
+    await page.waitForFunction(() => (window as any).__duelState?.().active === 'o', null, { timeout: 5_000 });
 
     await forceHand(page, 'o', ['island'], {});
     await page.evaluate(() => {
