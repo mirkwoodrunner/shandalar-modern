@@ -58,4 +58,9 @@ Requires Node 18+. Open `http://localhost:5173` in a browser.
 
 ## License
 
-MIT — see `LICENSE` for details.
+This project is licensed under the GNU General Public License v3.0 (or later);
+see `LICENSE` for the full text.
+
+Some card-effect implementations and AI evaluation logic are adapted from
+[Card-Forge/forge](https://github.com/Card-Forge/forge) (GPL-3.0), used under
+license. See `THIRD_PARTY_NOTICES.md` for a full attribution ledger.
