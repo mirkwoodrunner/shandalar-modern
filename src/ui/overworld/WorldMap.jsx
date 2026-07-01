@@ -8,7 +8,7 @@ import { Sprite, SpriteStyles, spriteForMonster, spriteForHenchman } from './Spr
 import {
   getGroundLayers,
   getDecorations,
-  getTint,
+  getTintCells,
   terrainGroup,
   SHEET_TILESET,
   TILE_PX,
@@ -176,7 +176,7 @@ function getTileVariantClass(terrainId, x, y) {
   return variants[idx];
 }
 
-export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null, playerAnim = null, enemyAnim = 0 }) {
+export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSize = 34, rowIndex = 0, onClick, groundNeighbors = null, neighborTerrainIds = null, playerAnim = null, enemyAnim = 0 }) {
   const t = tile.terrain;
   const s = tile.structure;
 
@@ -189,6 +189,14 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
   const gnS = groundNeighbors ? groundNeighbors.s : true;
   const gnE = groundNeighbors ? groundNeighbors.e : true;
   const gnW = groundNeighbors ? groundNeighbors.w : true;
+
+  // Neighbor terrain ids drive tint-boundary dithering (getTintCells). Kept as
+  // primitive deps (not the object itself) so the draw effect doesn't redraw
+  // every render -- the parent loop builds a new object each pass.
+  const ntN = neighborTerrainIds ? neighborTerrainIds.n : null;
+  const ntS = neighborTerrainIds ? neighborTerrainIds.s : null;
+  const ntE = neighborTerrainIds ? neighborTerrainIds.e : null;
+  const ntW = neighborTerrainIds ? neighborTerrainIds.w : null;
 
   React.useEffect(() => {
     const cv = terrainCanvasRef.current;
@@ -222,11 +230,17 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
       if (img) ctx.drawImage(img, l.sx, l.sy, TILE_PX, TILE_PX, 0, 0, tileSize, tileSize);
     }
 
-    // Subtle per-biome tint over the grass base (land biomes only).
-    const tint = getTint(t.id);
-    if (tint) {
-      ctx.fillStyle = `rgba(${tint.r},${tint.g},${tint.b},${tint.a})`;
-      ctx.fillRect(0, 0, tileSize, tileSize);
+    // Subtle per-biome tint over the grass base, dithered along edges where
+    // the neighbor's tint differs so biomes bleed into each other instead of
+    // meeting at a hard rectangular seam (land biomes only).
+    const tintCells = getTintCells(
+      t.id, tile.x, tile.y,
+      { n: ntN, s: ntS, e: ntE, w: ntW },
+      tileSize,
+    );
+    for (const c of tintCells) {
+      ctx.fillStyle = `rgba(${c.tint.r},${c.tint.g},${c.tint.b},${c.tint.a})`;
+      ctx.fillRect(c.sx, c.sy, c.w, c.h);
     }
 
     // Decorations (may overflow upward into the OVERFLOW_TOP band).
@@ -239,7 +253,7 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
     }
 
     ctx.restore();
-  }, [t.id, tile.x, tile.y, tileSize, sheetsReady, gnN, gnS, gnE, gnW]);
+  }, [t.id, tile.x, tile.y, tileSize, sheetsReady, gnN, gnS, gnE, gnW, ntN, ntS, ntE, ntW]);
 
   if (!tile.revealed) {
     return (
@@ -684,6 +698,15 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                 w: sameG(-1, 0),
               };
 
+              // Actual neighbor terrain ids (distinct from groundNeighbors'
+              // same/different booleans) drive tint-boundary dithering.
+              const neighborTerrainIds = {
+                n: tileAt(x, y - 1)?.terrain.id ?? null,
+                s: tileAt(x, y + 1)?.terrain.id ?? null,
+                e: tileAt(x + 1, y)?.terrain.id ?? null,
+                w: tileAt(x - 1, y)?.terrain.id ?? null,
+              };
+
               return (
                 <MapTile
                   key={`${x}-${y}`}
@@ -695,6 +718,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
                   rowIndex={vy}
                   onClick={onTileClick}
                   groundNeighbors={groundNeighbors}
+                  neighborTerrainIds={neighborTerrainIds}
                   playerAnim={playerAnim}
                   enemyAnim={enemyAnim}
                 />

@@ -2411,4 +2411,30 @@ Both `DuelScreen.tsx` (desktop) and `DuelScreenMobile.tsx` (mobile) wire their E
 
 ---
 
+## Feature: Cross-Blended Tint Boundary Dithering (TINT-BLEND-DITHER-1) -- 2026-06-30
+
+**Problem:** Biome tints (forest green, mountain grey, island blue, swamp olive) were applied as a single flat `fillRect` per tile, producing hard rectangular seams wherever two differently-tinted (or tinted/untinted) biomes met. Both tiles on either side of a seam rendered independently with no awareness of their neighbor, so the boundary read as a sudden color jump.
+
+**Fix:** Replaced the flat tint `fillRect` with `getTintCells()`, a pure-data function added to `terrainRenderer.js`. It returns an array of `{ sx, sy, w, h, tint }` fill instructions (tile-local pixel coordinates, draw-order safe) that `WorldMap.jsx` applies via `ctx.fillRect`.
+
+Algorithm: each tile first lays down a full-tile base fill for its own tint (if any). Then for each edge whose neighbor tint differs, it paints a dithered band `TINT_BAND_CELLS` cell-rows deep inward. Each band cell rolls `hashTile(worldEdgeIndex, d, TINT_SIDE_SEED[side]) % 100` against a cutoff that increases with depth (100% own-tint at the inner row, mixed near the seam). Because `worldEdgeIndex` is computed from the tile's world coordinate along the shared axis, both tiles bordering a seam compute identical cell hashes -- the dither pattern interlocks, not drifts. The dithering is symmetric: both tiles produce blended band cells independently.
+
+**Two tunables** (first things to adjust if the blend reads too soft or too noisy):
+- `TINT_CELL_PX = 4` -- dither cell size in tile-local pixels
+- `TINT_BAND_CELLS = 3` -- cell-rows deep the blend band extends inward
+
+**Cheap path:** when all 4 neighbor tints equal the tile's own tint, `getTintCells` short-circuits to `[]` (untinted) or `[{sx:0,sy:0,w:tileSize,h:tileSize,tint}]` (tinted), producing pixel-identical output to the old flat `fillRect` for interior biome tiles (95%+ of the map).
+
+**Distinct from WATER/SWAMP ground autotile:** `blobSubOffset` and `getGroundLayers` handle the WATER/SWAMP feathered-edge ground patch rendering and were not touched. Tint dithering operates on a separate canvas layer (the rgba fill pass) and does not interact with the ground sprite selection.
+
+**Corner overlap simplification:** band draw order is n, e, s, w -- later side wins corner cells. This is not true 2-axis corner blending; corners may show a slight directional bias. Flagged as a known simplification.
+
+**Files changed:**
+- `src/ui/overworld/terrainRenderer.js` -- added `getTintCells()`, constants `TINT_CELL_PX`, `TINT_BAND_CELLS`, `TINT_SIDE_SEED` (all named exports), helper `tintsEqual()`; updated default export object
+- `src/ui/overworld/WorldMap.jsx` -- import swapped from `getTint` to `getTintCells`; `MapTile` receives new `neighborTerrainIds` prop (separate from `groundNeighbors`); draw effect replaces flat `getTint`+`fillRect` block with a loop over `getTintCells(...)` instructions; `ntN/ntS/ntE/ntW` primitive deps added to effect dependency array
+
+**Tests:** `tests/e2e/overworld-tileset.spec.ts` -- four tint-blend dithering tests per viewport (desktop 1280x800 + mobile 390x844): boundary tile produces band cells, interior tile hits cheap path, seam symmetry (both sides dither), determinism (repeated calls identical).
+
+---
+
 # End of MECHANICS INDEX v1.5
