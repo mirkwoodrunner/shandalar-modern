@@ -216,6 +216,23 @@ Updating a doc when its trigger condition is not met is as wrong as skipping it 
 | `docs/SYSTEMS.md` | A new mechanical system is added, or an existing system's behavior is formally changed. Not for individual card implementations or bug fixes. |
 | `docs/ENGINE_CONTRACT_SPEC.md` | System boundary contracts between DuelCore, AI, or UI layers change. |
 
+### License & Third-Party Provenance Policy
+
+This project is GPL-3.0-or-later. The following rules are binding for all future prompts:
+
+1. Any code adapted, translated, or closely derived from a GPL-3.0 source
+   (currently: Card-Forge/forge) must carry a comment at the point of
+   adaptation identifying the source, e.g.:
+   `// Adapted from Card-Forge/forge (<path>), GPL-3.0. See THIRD_PARTY_NOTICES.md.`
+2. Every such adaptation must have a corresponding entry added to
+   `THIRD_PARTY_NOTICES.md` in the same prompt that introduces it — not
+   deferred to a later cleanup pass.
+3. Card oracle text/rules correctness is still governed exclusively by
+   Scryfall's current oracle text (existing project rule, unchanged). Forge
+   source is a reference for implementation *pattern* only — Forge's own
+   `Oracle:` annotations can be stale and must never be trusted as the
+   authoritative effect text.
+
 ### Tier 2 — Update on most feature work
 
 | Doc | Update when... |
