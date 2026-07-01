@@ -26,6 +26,7 @@ export default defineConfig({
         'tests/e2e/ability-stack-bugs.spec.ts',
         'tests/e2e/batch1a-desert-landwalk.spec.ts',
         'tests/e2e/batch1b-wall-destruction-sacrifice.spec.ts',
+        'tests/e2e/batch-simple-tier-forge-1.spec.ts',
         'tests/e2e/card-type-line.spec.ts',
         'tests/e2e/duel-controller.spec.ts',
         'tests/e2e/duel-persistence.spec.ts',

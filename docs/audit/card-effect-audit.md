@@ -2,6 +2,40 @@
 > Last updated: 2026-06-04 (Group P oracle-verified)  
 > Source data: `docs/audit/stub-status.txt`, `docs/audit/gap-report.txt`  
 > Re-run: execute the four node scripts in `card-stub-audit.md` prompt file
+>
+> This snapshot predates several later batches (1A, 1B, A1, A4, and the batch below);
+> its Summary counts and per-card rows below have not been regenerated since. Treat
+> `docs/CURRENT_SPRINT.md` and `docs/MECHANICS_INDEX.md` as the current source of
+> truth for implementation status; re-run the audit scripts before trusting the
+> numbers in this file for planning.
+
+---
+
+## Batch Completion Log
+
+### 2026-07-01 — Simple-Tier Stub Cards (Card-Forge/forge reference, GPL-3.0)
+
+47 of the 50 targeted cards below are now implemented (no longer `effect:"STUB"` in
+`cards.js`); rows are left in place below for historical reference rather than
+edited row-by-row. Implemented: `ali_baba`, `amnesia`, `argivian_archaeologist`,
+`argivian_blacksmith`, `army_of_allah`, `artifact_blast`, `carrion_ants`, `castle`,
+`chaoslace`, `coal_golem`, `conservator`, `deathlace`, `desert_twister`, `exorcist`,
+`feldonss_cane`, `fellwar_stone`, `fortified_area`, `fountain_of_youth`,
+`ghosts_of_the_damned`, `glasses_of_urza`, `grapeshot_catapult`, `hell_swarm`,
+`hyperion_blacksmith`, `jandorss_ring`, `lifelace`, `marsh_gas`, `miracle_worker`,
+`mishrass_workshop`, `moat`, `natural_selection`, `obelisk_of_undoing`,
+`orcish_mechanics`, `piety`, `pradesh_gypsies`, `purelace`, `reconstruction`,
+`repentant_blacksmith`, `reset`, `riptide`, `singing_tree`, `sisters_of_the_flame`,
+`the_hive` (deferred, see below), `thoughtlace`, `tunnel`, `untamed_wilds`,
+`urzass_avenger` (deferred), `water_wurm`, `weakstone`, `wyluli_wolf`.
+
+Deferred (still `effect:"STUB"`, with a comment explaining why): `serpent_generator`
+and `the_hive` (no token-creation mechanic exists anywhere in this engine yet);
+`urzass_avenger` (needs a new "choose one of N keywords" picker UI; no existing
+generalized choice-picker beyond the fixed 5-color mana pickers).
+
+See `docs/MECHANICS_INDEX.md` -- Batch: Simple-Tier Stub Cards (Forge Reference) and
+`docs/CURRENT_SPRINT.md` (2026-07-01) for the full effect-id list.
 
 ---
 

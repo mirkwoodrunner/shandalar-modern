@@ -5,3 +5,50 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 
 | Date | Component | Adapted From | Source Path | License |
 |------|-----------|--------------|--------------|---------|
+| 2026-07-01 | Ali Baba (`tapTargetWall`, DuelCore.js) | Card-Forge/forge | a/ali_baba.txt | GPL-3.0 |
+| 2026-07-01 | Amnesia (`discardAllNonland`, DuelCore.js) | Card-Forge/forge | a/amnesia.txt | GPL-3.0 |
+| 2026-07-01 | Argivian Archaeologist (`returnArtifactFromGYToHand`, DuelCore.js) | Card-Forge/forge | a/argivian_archaeologist.txt | GPL-3.0 |
+| 2026-07-01 | Argivian Blacksmith (`preventDamage2ArtifactCreature`, DuelCore.js) | Card-Forge/forge | a/argivian_blacksmith.txt | GPL-3.0 |
+| 2026-07-01 | Army of Allah (`pumpAttackersPower2EOT`, DuelCore.js) | Card-Forge/forge | a/army_of_allah.txt | GPL-3.0 |
+| 2026-07-01 | Artifact Blast (`counterArtifact`, DuelCore.js) | Card-Forge/forge | a/artifact_blast.txt | GPL-3.0 |
+| 2026-07-01 | Carrion Ants (reused `pumpSelf`, DuelCore.js) | Card-Forge/forge | c/carrion_ants.txt | GPL-3.0 |
+| 2026-07-01 | Castle (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | c/castle.txt | GPL-3.0 |
+| 2026-07-01 | Chaoslace (`colorLace`, DuelCore.js) | Card-Forge/forge | c/chaoslace.txt | GPL-3.0 |
+| 2026-07-01 | Coal Golem (`addMana3Red`, DuelCore.js) | Card-Forge/forge | c/coal_golem.txt | GPL-3.0 |
+| 2026-07-01 | Conservator (`preventDamage2Self`, DuelCore.js) | Card-Forge/forge | c/conservator.txt | GPL-3.0 |
+| 2026-07-01 | Deathlace (`colorLace`, DuelCore.js) | Card-Forge/forge | d/deathlace.txt | GPL-3.0 |
+| 2026-07-01 | Desert Twister (reused `destroy`, DuelCore.js) | Card-Forge/forge | d/desert_twister.txt | GPL-3.0 |
+| 2026-07-01 | Exorcist (`destroyBlackCreature`, DuelCore.js) | Card-Forge/forge | e/exorcist.txt | GPL-3.0 |
+| 2026-07-01 | Feldon's Cane (`shuffleGYIntoLibrary` + `exile` cost token, DuelCore.js) | Card-Forge/forge | f/feldons_cane.txt | GPL-3.0 |
+| 2026-07-01 | Fellwar Stone (`addManaReflected`, DuelCore.js) | Card-Forge/forge | f/fellwar_stone.txt | GPL-3.0 |
+| 2026-07-01 | Fortified Area (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | f/fortified_area.txt | GPL-3.0 |
+| 2026-07-01 | Fountain of Youth (reused `gainLife1`, DuelCore.js) | Card-Forge/forge | f/fountain_of_youth.txt | GPL-3.0 |
+| 2026-07-01 | Ghosts of the Damned (reused `debuffTargetPower1EOT`, DuelCore.js) | Card-Forge/forge | g/ghosts_of_the_damned.txt | GPL-3.0 |
+| 2026-07-01 | Glasses of Urza (`revealHand`, DuelCore.js) | Card-Forge/forge | g/glasses_of_urza.txt | GPL-3.0 |
+| 2026-07-01 | Grapeshot Catapult (`damage1Flying`, DuelCore.js) | Card-Forge/forge | g/grapeshot_catapult.txt | GPL-3.0 |
+| 2026-07-01 | Hell Swarm (reused `globalDebuffPower1EOT`, DuelCore.js) | Card-Forge/forge | h/hell_swarm.txt | GPL-3.0 |
+| 2026-07-01 | Hyperion Blacksmith (`tapOrUntapArtifact`, DuelCore.js) | Card-Forge/forge | h/hyperion_blacksmith.txt | GPL-3.0 |
+| 2026-07-01 | Jandor's Ring (reused `draw1` + `discardLastDrawn` cost token, DuelCore.js) | Card-Forge/forge | j/jandors_ring.txt | GPL-3.0 |
+| 2026-07-01 | Lifelace (`colorLace`, DuelCore.js) | Card-Forge/forge | l/lifelace.txt | GPL-3.0 |
+| 2026-07-01 | Marsh Gas (`globalDebuffPower2EOT`, DuelCore.js) | Card-Forge/forge | m/marsh_gas.txt | GPL-3.0 |
+| 2026-07-01 | Miracle Worker (`destroyAuraOnOwnCreature`, DuelCore.js) | Card-Forge/forge | m/miracle_worker.txt | GPL-3.0 |
+| 2026-07-01 | Mishra's Workshop (`applyOvergrowthTap` amount override, DuelCore.js) | Card-Forge/forge | m/mishras_workshop.txt | GPL-3.0 |
+| 2026-07-01 | Moat (DECLARE_ATTACKER legality gate, DuelCore.js) | Card-Forge/forge | m/moat.txt | GPL-3.0 |
+| 2026-07-01 | Natural Selection (`scryTop3Reveal`, DuelCore.js) | Card-Forge/forge | n/natural_selection.txt | GPL-3.0 |
+| 2026-07-01 | Obelisk of Undoing (`bouncePermanentControlled`, DuelCore.js) | Card-Forge/forge | o/obelisk_of_undoing.txt | GPL-3.0 |
+| 2026-07-01 | Orcish Mechanics (`damage2Any` + `sacArt` cost token, DuelCore.js) | Card-Forge/forge | o/orcish_mechanics.txt | GPL-3.0 |
+| 2026-07-01 | Piety (`pumpBlockersToughness3EOT`, DuelCore.js) | Card-Forge/forge | p/piety.txt | GPL-3.0 |
+| 2026-07-01 | Pradesh Gypsies (`debuffTargetPower2EOT`, DuelCore.js) | Card-Forge/forge | p/pradesh_gypsies.txt | GPL-3.0 |
+| 2026-07-01 | Purelace (`colorLace`, DuelCore.js) | Card-Forge/forge | p/purelace.txt | GPL-3.0 |
+| 2026-07-01 | Reconstruction (reused `returnArtifactFromGYToHand`, DuelCore.js) | Card-Forge/forge | r/reconstruction.txt | GPL-3.0 |
+| 2026-07-01 | Repentant Blacksmith (static protection keyword, cards.js) | Card-Forge/forge | r/repentant_blacksmith.txt | GPL-3.0 |
+| 2026-07-01 | Reset (`untapAllOwnLands` + CAST_SPELL cast-timing restriction, DuelCore.js) | Card-Forge/forge | r/reset.txt | GPL-3.0 |
+| 2026-07-01 | Riptide (`tapAllBlueCreatures`, DuelCore.js) | Card-Forge/forge | r/riptide.txt | GPL-3.0 |
+| 2026-07-01 | Singing Tree (`setAttackerPower0EOT`, DuelCore.js) | Card-Forge/forge | s/singing_tree.txt | GPL-3.0 |
+| 2026-07-01 | Sisters of the Flame (reused `addMana`, DuelCore.js) | Card-Forge/forge | s/sisters_of_the_flame.txt | GPL-3.0 |
+| 2026-07-01 | Thoughtlace (`colorLace`, DuelCore.js) | Card-Forge/forge | t/thoughtlace.txt | GPL-3.0 |
+| 2026-07-01 | Tunnel (reused `destroyWall`, DuelCore.js) | Card-Forge/forge | t/tunnel.txt | GPL-3.0 |
+| 2026-07-01 | Untamed Wilds (`fetchBasicToBf`, DuelCore.js) | Card-Forge/forge | u/untamed_wilds.txt | GPL-3.0 |
+| 2026-07-01 | Water Wurm (`waterWurmToughness` CDA, layers.js) | Card-Forge/forge | w/water_wurm.txt | GPL-3.0 |
+| 2026-07-01 | Weakstone (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | w/weakstone.txt | GPL-3.0 |
+| 2026-07-01 | Wyluli Wolf (reused `pumpCreature` via card.mod, DuelCore.js) | Card-Forge/forge | w/wyluli_wolf.txt | GPL-3.0 |

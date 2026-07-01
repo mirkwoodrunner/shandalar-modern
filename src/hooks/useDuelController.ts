@@ -74,6 +74,11 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'psionicBlast',
   'chainLightning',
   'draw3',   // Ancestral Recall — "target player draws three cards"
+  // Simple-tier Forge batch (see THIRD_PARTY_NOTICES.md):
+  'discardAllNonland', // Amnesia -- "target player reveals hand and discards all nonland cards"
+  'colorLace',          // Chaoslace/Deathlace/Lifelace/Purelace/Thoughtlace -- "target spell or permanent"
+  'scryTop3Reveal',     // Natural Selection -- "look at top three of target player's library"
+  'returnArtifactFromGYToHand', // Reconstruction -- "target artifact card in your graveyard"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -86,6 +91,8 @@ export function needsExplicitTarget(card: any): boolean {
 // must never allow a creature click to register as the target.
 export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
   'damage5', // Lava Axe -- "deals 5 damage to target player or planeswalker"
+  'discardAllNonland', // Amnesia -- "target player reveals hand..."
+  'scryTop3Reveal',    // Natural Selection -- "top three cards of target player's library"
 ]);
 
 export function isPlayerOnlyTarget(card: any): boolean {
@@ -93,7 +100,9 @@ export function isPlayerOnlyTarget(card: any): boolean {
 }
 
 export function isCounterEffect(card: any): boolean {
-  return ['counter', 'counterCreature', 'powerSink'].includes(card?.effect);
+  // 'counterArtifact' (Artifact Blast, simple-tier Forge batch) targets a spell
+  // on the stack exactly like the other counter effects -- same stack-click flow.
+  return ['counter', 'counterCreature', 'powerSink', 'counterArtifact'].includes(card?.effect);
 }
 
 export function isBebRebEffect(card: any): boolean {
@@ -106,6 +115,11 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
   if (!card) return false;
   if (isCounterEffect(card)) return true;
   if (isBebRebEffect(card) && pendingMode === 'counter') return true;
+  // colorLace (Chaoslace/Deathlace/Lifelace/Purelace/Thoughtlace, simple-tier Forge
+  // batch): "target spell or permanent" -- same action either way, so a stack item
+  // is always a legal click target alongside the permanent click path already
+  // enabled via EXPLICIT_TARGET_EFFECTS (no mode toggle needed, unlike BEB/REB).
+  if (card?.effect === 'colorLace') return true;
   return false;
 }
 
@@ -178,12 +192,20 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying',
   'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand', 'tapTarget',
   'destroyWall', 'destroyArtifactSac', 'pingCombatant', 'cuombajjWitches',
+  // Simple-tier Forge batch (see THIRD_PARTY_NOTICES.md):
+  'tapTargetWall', 'preventDamage2ArtifactCreature', 'destroyBlackCreature',
+  'damage1Flying', 'tapOrUntapArtifact', 'returnArtifactFromGYToHand',
+  'destroyAuraOnOwnCreature', 'setAttackerPower0EOT', 'debuffTargetPower2EOT',
+  'damage2Any', 'bouncePermanentControlled', 'revealHand',
 ]);
 
 // Ability effects that can target players (in addition to permanents).
 const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   'ping', 'triskelionPing', 'damage1', 'damage2', 'damage3',
   'cuombajjWitches',
+  // Simple-tier Forge batch (see THIRD_PARTY_NOTICES.md):
+  'damage2Any', // Orcish Mechanics -- "deals 2 damage to any target"
+  'revealHand', // Glasses of Urza -- "target player's hand" (player only)
 ]);
 
 function scoreLibCard(card: any, _state: any): number {
