@@ -44,6 +44,14 @@ export const CDA_EVALUATORS = {
     }
     return state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0;
   },
+  // Water Wurm: gets +0/+1 as long as an opponent controls an Island.
+  // Adapted from Card-Forge/forge (w/water_wurm.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  waterWurmToughness: (card, state) => {
+    const base = typeof card.toughness === 'number' ? card.toughness : 0;
+    const opp = card.controller === 'p' ? 'o' : 'p';
+    const oppHasIsland = state[opp]?.bf.some(x => isLand(x) && x.subtype?.includes('Island'));
+    return base + (oppHasIsland ? 1 : 0);
+  },
 };
 
 function getTs(eff) {
@@ -170,6 +178,28 @@ function collectEffects(card, state) {
     if (state[opp]?.bf.some(h => h.name === 'Holy Ground')) {
       effects.push({ layer: 6, removeKeywords: WALK_KW_IDS, enterTs: Number.MAX_SAFE_INTEGER });
     }
+  }
+
+  // 8. Castle: "Untapped creatures you control get +0/+2." Name-based static check,
+  //    same pattern as Holy Ground above (no dedicated permanent-effect layer exists
+  //    for "creatures you control" filtered by tapped state).
+  //    Adapted from Card-Forge/forge (c/castle.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && !card.tapped && state[card.controller]?.bf.some(h => h.name === 'Castle')) {
+    effects.push({ layer: '7c', toughness: 2, enterTs: 0 });
+  }
+
+  // 9. Fortified Area: "Wall creatures you control get +1/+0 and have banding."
+  //    Adapted from Card-Forge/forge (f/fortified_area.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.subtype?.includes('Wall') && state[card.controller]?.bf.some(h => h.name === 'Fortified Area')) {
+    effects.push({ layer: '7c', power: 1, enterTs: 0 });
+    effects.push({ layer: 6, addKeywords: [KEYWORDS.BANDING.id], enterTs: 0 });
+  }
+
+  // 10. Weakstone: "Attacking creatures get -1/-0." Controller-blind, unlike Castle/
+  //     Fortified Area above -- applies to any attacking creature on either side.
+  //     Adapted from Card-Forge/forge (w/weakstone.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.attacking && [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])].some(h => h.name === 'Weakstone')) {
+    effects.push({ layer: '7c', power: -1, enterTs: 0 });
   }
 
   return effects;

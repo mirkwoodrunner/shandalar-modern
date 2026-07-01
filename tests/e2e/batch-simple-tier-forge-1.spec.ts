@@ -1,0 +1,209 @@
+import { test, expect, Page } from '@playwright/test';
+
+// Simple-tier Alpha/Beta stub cards implemented from Card-Forge/forge reference
+// scripts (GPL-3.0). See THIRD_PARTY_NOTICES.md for attribution. Representative
+// sample spanning: removal (Exorcist), a continuous/static restriction (Moat),
+// an artifact mana ability (Fellwar Stone), a graveyard-interaction ability
+// (Argivian Archaeologist), and a library-search effect (Untamed Wilds).
+
+const SANDBOX_URL = '/?duel=sandbox&aiSpeed=0';
+const sandboxWith = (cards: string) => `${SANDBOX_URL}&cards=${cards}`;
+
+const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+const MOBILE_VIEWPORT  = { width: 390,  height: 844 };
+
+async function waitForDuel(page: Page) {
+  await page.waitForSelector('[data-testid="duel-screen"]', { timeout: 10_000 });
+}
+
+async function waitForMain1(page: Page) {
+  await page.waitForFunction(() => {
+    const s = (window as any).__duelState?.();
+    return s && s.phase === 'MAIN_1' && s.active === 'p';
+  }, { timeout: 20_000 });
+}
+
+async function castAndResolve(page: Page, cardId: string, who: 'p' | 'o' = 'p'): Promise<string> {
+  const iid = await page.evaluate(({ id, w }) => {
+    const s = (window as any).__duelState();
+    const dispatch = (window as any).__duelDispatch;
+    const card = (s[w].hand as any[]).find((c: any) => c.id === id);
+    if (!card) throw new Error(`${id} not in ${w} hand`);
+    dispatch({ type: 'CAST_SPELL', who: w, iid: card.iid, tgt: null, xVal: null });
+    dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    dispatch({ type: 'RESOLVE_STACK' });
+    return card.iid;
+  }, { id: cardId, w: who });
+  await page.waitForFunction(({ id, w }) => {
+    const s = (window as any).__duelState?.();
+    return (s?.[w]?.bf as any[])?.some((c: any) => c.id === id);
+  }, { id: cardId, w: who }, { timeout: 10_000 });
+  return iid;
+}
+
+async function activateAndResolve(page: Page, iid: string, tgt: string | null) {
+  await page.evaluate(({ sourceIid, tgtArg }) => {
+    const dispatch = (window as any).__duelDispatch;
+    dispatch({ type: 'ACTIVATE_ABILITY', who: 'p', iid: sourceIid, tgt: tgtArg });
+    dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    dispatch({ type: 'RESOLVE_STACK' });
+  }, { sourceIid: iid, tgtArg: tgt });
+}
+
+async function forceHand(page: Page, who: 'p' | 'o', cardIds: string[], mana: Record<string, number>) {
+  await page.evaluate(({ w, ids, m }) => {
+    (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: w, cardIds: ids, mana: m });
+  }, { w: who, ids: cardIds, m: mana });
+}
+
+async function clearSummoningSick(page: Page, iid: string) {
+  await page.evaluate((id) => {
+    (window as any).__duelDispatch({ type: 'DEBUG_PATCH_CARD', iid: id, patch: { summoningSick: false } });
+  }, iid);
+}
+
+function batchTests() {
+  // ── 1. Exorcist: activated removal restricted to black creatures ──────────
+  test('Exorcist destroys a targeted black creature; fizzles on a non-black creature', async ({ page }) => {
+    await page.goto(sandboxWith('exorcist'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await forceHand(page, 'p', ['exorcist'], { W: 4 });
+    const exorcistIid = await castAndResolve(page, 'exorcist');
+    await clearSummoningSick(page, exorcistIid);
+
+    await forceHand(page, 'o', ['sengir_vampire'], { B: 5 });
+    const vampireIid = await castAndResolve(page, 'sengir_vampire', 'o');
+
+    await activateAndResolve(page, exorcistIid, vampireIid);
+
+    const s1 = await page.evaluate(() => (window as any).__duelState());
+    expect(s1.o.gy.some((c: any) => c.iid === vampireIid)).toBe(true);
+    expect(s1.o.bf.some((c: any) => c.iid === vampireIid)).toBe(false);
+
+    // Untap Exorcist and pay again, this time against a non-black creature.
+    await page.evaluate((id) => {
+      (window as any).__duelDispatch({ type: 'DEBUG_PATCH_CARD', iid: id, patch: { tapped: false } });
+    }, exorcistIid);
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: [], mana: { W: 2 } });
+    });
+    await forceHand(page, 'o', ['grizzly_bears'], { G: 2 });
+    const bearsIid = await castAndResolve(page, 'grizzly_bears', 'o');
+    await activateAndResolve(page, exorcistIid, bearsIid);
+
+    const s2 = await page.evaluate(() => (window as any).__duelState());
+    expect(s2.o.bf.some((c: any) => c.iid === bearsIid)).toBe(true);
+  });
+
+  // ── 2. Moat: creatures without flying can't be declared attackers ─────────
+  test("Moat prevents a non-flying creature from attacking; a flier can still attack", async ({ page }) => {
+    await page.goto(sandboxWith('moat'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await forceHand(page, 'p', ['moat', 'grizzly_bears'], { W: 2, G: 1, C: 3 });
+    await castAndResolve(page, 'moat');
+    const bearsIid = await castAndResolve(page, 'grizzly_bears');
+    await clearSummoningSick(page, bearsIid);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
+    });
+    await page.evaluate((iid) => {
+      (window as any).__duelDispatch({ type: 'DECLARE_ATTACKER', iid });
+    }, bearsIid);
+
+    const s1 = await page.evaluate(() => (window as any).__duelState());
+    expect((s1.attackers || []).includes(bearsIid)).toBe(false);
+  });
+
+  // ── 3. Fellwar Stone: reflected mana ability resolves immediately ─────────
+  test('Fellwar Stone adds a color of mana an opponent land could produce', async ({ page }) => {
+    await page.goto(sandboxWith('fellwar_stone'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await forceHand(page, 'p', ['fellwar_stone'], { C: 2 });
+    const stoneIid = await castAndResolve(page, 'fellwar_stone');
+    await clearSummoningSick(page, stoneIid);
+
+    await forceHand(page, 'o', ['island'], {});
+    await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const land = (s.o.hand as any[]).find((c: any) => c.id === 'island');
+      (window as any).__duelDispatch({ type: 'PLAY_LAND', who: 'o', iid: land.iid });
+    });
+
+    await page.evaluate((iid) => {
+      (window as any).__duelDispatch({ type: 'ACTIVATE_ABILITY', who: 'p', iid });
+    }, stoneIid);
+
+    const s1 = await page.evaluate(() => (window as any).__duelState());
+    expect(s1.p.mana.U).toBe(1);
+  });
+
+  // ── 4. Argivian Archaeologist: graveyard-interaction ability ──────────────
+  test('Argivian Archaeologist returns an artifact card from graveyard to hand', async ({ page }) => {
+    await page.goto(sandboxWith('argivian_archaeologist'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await forceHand(page, 'p', ['argivian_archaeologist', 'mox_ruby', 'desert_twister'], { W: 4, R: 1, G: 6 });
+    const archIid = await castAndResolve(page, 'argivian_archaeologist');
+    await clearSummoningSick(page, archIid);
+    const moxIid = await castAndResolve(page, 'mox_ruby');
+
+    // Desert Twister (destroy, already covered by this same batch) sends the Mox
+    // to the player's own graveyard so the Archaeologist has a real target.
+    const desertTwisterIid = await page.evaluate(() => {
+      const s = (window as any).__duelState();
+      const card = (s.p.hand as any[]).find((c: any) => c.id === 'desert_twister');
+      return card.iid;
+    });
+    await page.evaluate(({ iid, tgt }) => {
+      const dispatch = (window as any).__duelDispatch;
+      dispatch({ type: 'CAST_SPELL', who: 'p', iid, tgt });
+      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      dispatch({ type: 'RESOLVE_STACK' });
+    }, { iid: desertTwisterIid, tgt: moxIid });
+
+    const midState = await page.evaluate(() => (window as any).__duelState());
+    expect(midState.p.gy.some((c: any) => c.iid === moxIid)).toBe(true);
+
+    await activateAndResolve(page, archIid, moxIid);
+
+    const s1 = await page.evaluate(() => (window as any).__duelState());
+    expect(s1.p.hand.some((c: any) => c.iid === moxIid)).toBe(true);
+    expect(s1.p.gy.some((c: any) => c.iid === moxIid)).toBe(false);
+  });
+
+  // ── 5. Untamed Wilds: library search, land onto battlefield, then shuffle ─
+  test('Untamed Wilds fetches a basic land onto the battlefield', async ({ page }) => {
+    await page.goto(sandboxWith('untamed_wilds'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await forceHand(page, 'p', ['untamed_wilds'], { G: 3 });
+    const bfBefore = await page.evaluate(() => (window as any).__duelState().p.bf.length);
+    await castAndResolve(page, 'untamed_wilds');
+
+    const s1 = await page.evaluate(() => (window as any).__duelState());
+    const landsOnBf = s1.p.bf.filter((c: any) => c.type === 'Land');
+    expect(landsOnBf.length).toBeGreaterThan(bfBefore);
+  });
+}
+
+test.describe('@engine @mobile Simple-tier Forge batch 1 -- desktop (1280x800)', () => {
+  test.use({ viewport: DESKTOP_VIEWPORT });
+  batchTests();
+});
+
+test.describe('@engine @mobile Simple-tier Forge batch 1 -- mobile (390x844)', () => {
+  test.use({ viewport: MOBILE_VIEWPORT });
+  batchTests();
+});

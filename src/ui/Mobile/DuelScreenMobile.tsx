@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react';
 import { isLand } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, isBebRebEffect, isCounterEffect, isPlayerOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
+import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -514,7 +514,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         const sourceCard = castFlow
           ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
           : null;
-        const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && isCounterEffect(sourceCard);
+        const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && needsStackTarget(sourceCard, pendingMode);
         return (
           <StackDisplay
             stack={s_state.stack}

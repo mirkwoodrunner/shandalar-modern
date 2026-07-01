@@ -2437,4 +2437,90 @@ Algorithm: each tile first lays down a full-tile base fill for its own tint (if 
 
 ---
 
+## Batch: Simple-Tier Stub Cards (Forge Reference) -- 2026-07-01
+
+47 of 50 targeted Alpha/Beta stub cards implemented, adapted from Card-Forge/forge (GPL-3.0) implementation-pattern reference scripts; Scryfall oracle text (verified against `scryfall/shandalar-card-pool.json`) is the sole authority for effect text, and matched every Forge `Oracle:` line in this batch with no discrepancies. See `THIRD_PARTY_NOTICES.md` for the full per-card attribution table.
+
+### New effect cases in `DuelCore.js` (`resolveEff`)
+
+| Case | Cards | Notes |
+|---|---|---|
+| `tapTargetWall` | `ali_baba` | Restricts tap to `subtype.includes('Wall')` |
+| `discardAllNonland` | `amnesia` | Target player keeps lands in hand, discards the rest to gy |
+| `returnArtifactFromGYToHand` | `argivian_archaeologist` (ability), `reconstruction` (spell) | Shared case; defaults to most-recent artifact in gy if no explicit `tgt` (Regrowth-style fallback) |
+| `preventDamage2ArtifactCreature` | `argivian_blacksmith` | Sets `damageShield += 2`, restricted to artifact creatures. Note: `damageShield` is set by this and the pre-existing `preventDamage1Any`/`preventDamage1Creature` cases but is never actually consumed/decremented anywhere in the engine (cleared to 0 at end of turn only) -- a pre-existing gap this batch inherits, not introduces |
+| `pumpAttackersPower2EOT` | `army_of_allah` | Loops both `bf`, filters `ns.attackers.includes(c.iid)` |
+| `counterArtifact` | `artifact_blast` | Mirrors `counterCreature` with `isArt(top.card)` check |
+| `addMana3Red` | `coal_golem` | Routed through the general (stack-based) activated-ability flow rather than the immediate-mana-ability branch, since its cost (`3,sac`) needs generic-mana + sacrifice cost payment that the immediate branch doesn't handle |
+| `preventDamage2Self` | `conservator` | No target -- always the caster |
+| `colorLace` | `chaoslace`, `deathlace`, `lifelace`, `purelace`, `thoughtlace` | Shared case parameterized by `card.laceColor`. Mutates `.color` directly (permanent branch) or `stack[i].card.color` (spell branch) -- matches this codebase's existing convention of reading `.color` as a raw field everywhere (`canBlockDuel`, BEB/REB checks) rather than through a Layer 5 pipeline, which currently has no producers |
+| `destroyBlackCreature` | `exorcist` | Existing `destroyBlack` case has no `isCre` check; this one does |
+| `shuffleGYIntoLibrary` | `feldonss_cane` | Uses existing `shuffle()` helper (no new `Math.random()`) |
+| `addManaReflected` | `fellwar_stone` | True mana ability (rule 605.3b) -- added to the immediate-resolve branch in `ACTIVATE_ABILITY` alongside `addMana`/`addManaAny`/`addMana3Any`. SIMPLIFICATION: deterministic first color in WUBRG order among colors an opponent's lands could produce, rather than a player-facing picker (no restricted-subset color-choice UI exists; `DualLandColorPicker`/`BopColorPicker` are either GameState-detached or hardcoded to all 5 colors) |
+| `revealHand` | `glasses_of_urza` | Logged reveal, no modal |
+| `damage1Flying` | `grapeshot_catapult` | Restricted to `hasKw(tgtC, FLYING)` |
+| (reused `globalDebuffPower1EOT`) | `hell_swarm` | Oracle text is an exact match for the existing case |
+| `tapOrUntapArtifact` | `hyperion_blacksmith` | Toggles `tapped`; restricted to `tgtC.controller !== caster` |
+| (reused `draw1`) | `jandorss_ring` | See `discardLastDrawn` cost token below |
+| `globalDebuffPower2EOT` | `marsh_gas` | Mirrors `globalDebuffPower1EOT` at -2/-0 |
+| `destroyAuraOnOwnCreature` | `miracle_worker` | Mirrors the existing `destroyLandAura` embedded-aura-record search pattern, restricted to `ns[caster].bf` creatures |
+| `scryTop3Reveal` | `natural_selection` | SIMPLIFICATION: reveals top 3 in the log; leaves library order unchanged (a legal choice of "any order") and offers no shuffle (also legal, since "may" permits declining) -- no reorder/shuffle-choice UI exists |
+| `bouncePermanentControlled` | `obelisk_of_undoing` | SIMPLIFICATION: this engine has no separate owner-vs-controller tracking, so "you both own and control" is modeled as "a permanent you control" |
+| `damage2Any` | `orcish_mechanics` | See `sacArt` cost token below |
+| `pumpBlockersToughness3EOT` | `piety` | Filters `c.blocking != null`, both sides |
+| `debuffTargetPower2EOT` | `pradesh_gypsies` | Mirrors existing `debuffTargetPower1EOT` at -2 |
+| (reused `destroy`) | `desert_twister` | Existing case already has no restriction when `card.restriction` is unset |
+| `untapAllOwnLands` | `reset` | Paired with a `CAST_SPELL` cast-timing restriction, see below |
+| `tapAllBlueCreatures` | `riptide` | Filters `isCre(c) && c.color === 'U'`, both sides |
+| `setAttackerPower0EOT` | `singing_tree` | Pushes an `eotBuff` with `layerDef: { layer: '7b', setPower: 0 }` (Layer 7b already supports `setPower`); restricted to `ns.attackers.includes(tgtC.iid)` |
+| (reused `addMana`) | `sisters_of_the_flame` | `activated:{cost:"T",effect:"addMana",mana:"R"}`, same shape as `llanowar_elves` |
+| (reused `destroyWall`) | `tunnel` | "Can't be regenerated" is already true for every existing `destroy*` case -- none of them consult the `regenerating` flag (only damage-based SBE in `checkDeath` does) |
+| `fetchBasicToBf` | `untamed_wilds` | Deterministic first basic land found in library order (mirrors the existing `landTax` upkeep case's fetch pattern), `zMove`'d to `bf`, then `shuffle()`s the remainder |
+| (reused `pumpCreature`) | `wyluli_wolf` | `activated:{cost:"T",effect:"pumpCreature"}` + top-level `mod:{power:1,toughness:1}` on the card entry -- reuses the existing data-driven `pumpCreature` case unchanged |
+
+### New ACTIVATE_ABILITY cost tokens
+
+Extends the existing `T` / `sac` cost-token convention (Batch 1B) in `DuelCore.js`:
+- `sacArt` -- sacrifice an artifact you control (not necessarily the activating permanent itself). SIMPLIFICATION: no UI to choose which; sacrifices the first one found. Preflight-checked before any cost is paid (see Bug Fix note below).
+- `exile` -- exile the activating permanent as a cost (Feldon's Cane).
+- `discardLastDrawn` -- discard "the last card you drew this turn" (Jandor's Ring). SIMPLIFICATION: approximated as the last element of the `hand` array (draws are append-only), not a dedicated per-turn tracked field. Preflight-checked (hand non-empty) before any cost is paid.
+
+**Bug fix during implementation:** the initial `sacArt`/`discardLastDrawn` cost blocks were placed after the unconditional tap-cost application, so a failed activation (no artifact / empty hand) still left the permanent tapped. Fixed with a preflight check (`act.cost.includes('sacArt') && !s[w].bf.some(isArt)`, similarly for `discardLastDrawn`) before any cost -- including tap -- is paid. Covered by `simple-tier-forge-batch-abilities.test.js` ("Orcish Mechanics: cannot activate with no artifact to sacrifice").
+
+### New continuous/static effects
+
+- **Castle**, **Fortified Area**, **Weakstone** (`layers.js` `collectEffects`): name-based checks mirroring the pre-existing Holy Ground pattern (`state[opp]?.bf.some(h => h.name === '...')`), pushing Layer 6/7c effects. Castle and Fortified Area are controller-scoped (`state[card.controller]`); Weakstone is controller-blind (`[...state.p.bf, ...state.o.bf]`), matching its oracle text ("Attacking creatures get -1/-0" with no "you control").
+- **Moat**: implemented as a `DECLARE_ATTACKER` legality gate (mirrors the existing Defender-keyword check in the same reducer case), not a layers.js characteristic -- attack-legality isn't part of `computeCharacteristics`'s output.
+- **Water Wurm**: new `waterWurmToughness` CDA evaluator in `layers.js`, following the exact `kird_ape` pattern (`layerDef: { layer: '7a', toughnessFn: '...' }`).
+- **Mishra's Workshop**: `applyOvergrowthTap` gained a per-card `amount` override (`c.id === 'mishrass_workshop' ? 3 : ...`), following the pre-existing hardcoded-by-id bonus pattern already used there for Tron pieces, Mana Flare, Wild Growth, and Sunglasses of Urza. SIMPLIFICATION: the "spend this mana only on artifact spells" restriction isn't enforced -- this engine's mana pool has no per-mana spend-restriction tagging (no other card enforces one either).
+
+### `useDuelController.ts` UI-targeting wiring
+
+- `EXPLICIT_TARGET_EFFECTS` extended: `discardAllNonland`, `colorLace`, `scryTop3Reveal`, `returnArtifactFromGYToHand`.
+- `PLAYER_ONLY_TARGET_EFFECTS` extended: `discardAllNonland`, `scryTop3Reveal`.
+- `ACTIVATE_TARGET_EFFECTS` extended: `tapTargetWall`, `preventDamage2ArtifactCreature`, `destroyBlackCreature`, `damage1Flying`, `tapOrUntapArtifact`, `returnArtifactFromGYToHand`, `destroyAuraOnOwnCreature`, `setAttackerPower0EOT`, `debuffTargetPower2EOT`, `damage2Any`, `bouncePermanentControlled`, `revealHand`.
+- `PLAYER_TARGETABLE_ABILITY_EFFECTS` extended: `damage2Any`, `revealHand`.
+- `isCounterEffect` extended: `counterArtifact` (targets a stack item exactly like `counter`/`counterCreature`/`powerSink`).
+- `needsStackTarget` extended: `colorLace` returns `true` unconditionally (no BEB/REB-style mode toggle needed, since recoloring is the same action whether the target is a permanent or a stack item).
+- `DuelScreen.tsx` (desktop) and `DuelScreenMobile.tsx`: the stack-item-click condition for the cast flow was `isCounterEffect(sourceCard)`; both now use `needsStackTarget(sourceCard, pendingMode)` so `colorLace`'s dual permanent-or-stack targeting works identically on both viewports (mobile's *ability*-targeting stack display already used `needsStackTarget`; only the *cast*-flow stack display needed the swap).
+
+### cards.js schema changes
+
+47 cards had `effect:"STUB"` replaced with the effect ids above (or an `activated:{cost, effect}` block, or a bare static/keyword entry for `castle`/`moat`/`weakstone`/`fortified_area`/`repentant_blacksmith`/`water_wurm`, matching existing precedent for cards whose logic lives entirely in `layers.js`/`DECLARE_ATTACKER` rather than `resolveEff`).
+
+### Deferred (still `effect:"STUB"`, comment updated to explain why)
+
+- **`serpent_generator`, `the_hive`**: no token-creation mechanic exists anywhere in this engine (verified: no `isToken`/token fields, no CARD_DB-independent battlefield-object support). Building one is dedicated engine infrastructure (persistence, art lookup, CARD_DB-independent bf entries), not a per-card implementation task.
+- **`urzass_avenger`**: needs a "choose one of N keywords" player-facing choice UI. The only existing choice-picker precedent (`BopColorPicker`/`DualLandColorPicker`) is hardcoded to WUBRG mana colors and doesn't generalize; building a real one means new pending-choice state plus new modal components on both screens.
+
+### Tests
+
+- Vitest: `tests/scenarios/lace-cycle.test.js` (color-lace cycle), `tests/scenarios/simple-tier-forge-batch-effects.test.js` (spell-level cases), `tests/scenarios/simple-tier-forge-batch-abilities.test.js` (activated-ability cases, including the new cost tokens), `tests/scenarios/simple-tier-forge-batch-static.test.js` (Castle/Fortified Area/Weakstone/Moat/Water Wurm)
+- Playwright: `tests/e2e/batch-simple-tier-forge-1.spec.ts` (Exorcist, Moat, Fellwar Stone, Argivian Archaeologist, Untamed Wilds), added to the `mobile-chrome` project's `testMatch` allowlist in `playwright.config.js`
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5

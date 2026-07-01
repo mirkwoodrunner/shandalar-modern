@@ -618,7 +618,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               const sourceCard = castFlow
                 ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
                 : null;
-              const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && isCounterEffect(sourceCard);
+              const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && needsStackTarget(sourceCard, pendingMode);
               return (
                 <StackDisplay
                   stack={s.stack}

@@ -401,7 +401,12 @@ export function applyOvergrowthTap(s, who, iid, mana) {
 const c = s[who].bf.find(x => x.iid === iid);
 if (!c || c.tapped || !isLand(c)) return s;
 const m = mana || c.produces?.[0] || "C";
-const amount = s.castleMod?.name === "Overgrowth" ? 2 : 1;
+// Mishra's Workshop: {T}: Add {C}{C}{C}.
+// Adapted from Card-Forge/forge (m/mishras_workshop.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+// SIMPLIFICATION: the "spend this mana only to cast artifact spells" restriction
+// isn't enforced -- this engine's mana pool doesn't track per-mana spend
+// restrictions (no existing card enforces one either).
+const amount = c.id === "mishrass_workshop" ? 3 : (s.castleMod?.name === "Overgrowth" ? 2 : 1);
 let ns = { ...s,
 [who]: { ...s[who],
 bf: s[who].bf.map(x => x.iid === iid ? { ...x, tapped: true } : x),
@@ -1859,6 +1864,271 @@ case "lordEffect": {
   break;
 }
 case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, "effect"); break;
+// --- BATCH: SIMPLE-TIER STUB CARDS (Forge reference batch, GPL-3.0) ----------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "tapTargetWall": {
+  // Adapted from Card-Forge/forge (a/ali_baba.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && tgtC.subtype?.includes('Wall')) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+    ns = dlog(ns, `${card.name} taps ${tgtC.name}.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name}'s ability fizzles -- no legal Wall target.`, "effect");
+  }
+  break;
+}
+case "discardAllNonland": {
+  // Adapted from Card-Forge/forge (a/amnesia.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const dWho = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const nonland = ns[dWho].hand.filter(c => !isLand(c));
+  const landCards = ns[dWho].hand.filter(isLand);
+  ns = { ...ns, [dWho]: { ...ns[dWho], hand: landCards, gy: [...ns[dWho].gy, ...nonland] } };
+  ns = dlog(ns, `${card.name}: ${dWho} reveals hand and discards ${nonland.length} nonland card(s).`, "effect");
+  break;
+}
+case "returnArtifactFromGYToHand": {
+  // Adapted from Card-Forge/forge (a/argivian_archaeologist.txt, r/reconstruction.txt), GPL-3.0.
+  // See THIRD_PARTY_NOTICES.md.
+  const gyArt = tgt ? ns[caster].gy.find(c => c.iid === tgt && isArt(c)) : ns[caster].gy.filter(isArt).slice(-1)[0];
+  if (gyArt) {
+    ns = zMove(ns, gyArt.iid, caster, caster, "hand");
+    ns = dlog(ns, `${card.name} returns ${gyArt.name} to hand.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name}'s ability fizzles -- no artifact card in graveyard.`, "effect");
+  }
+  break;
+}
+case "preventDamage2ArtifactCreature": {
+  // Adapted from Card-Forge/forge (a/argivian_blacksmith.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isArt(tgtC) && isCre(tgtC)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + 2 } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} has 2 damage prevented this turn.`, "effect");
+  }
+  break;
+}
+case "pumpAttackersPower2EOT": {
+  // Adapted from Card-Forge/forge (a/army_of_allah.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+      (ns.attackers || []).includes(c.iid) ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 2 }] } : c
+    ) } };
+  }
+  ns = dlog(ns, `${card.name}: attacking creatures get +2/+0 until end of turn.`, "effect");
+  break;
+}
+case "counterArtifact": {
+  // Adapted from Card-Forge/forge (a/artifact_blast.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const artTop = findStackTarget(ns.stack, tgt, item.id);
+  if (!artTop) { ns = dlog(ns, `${card.name} fizzles -- no target on stack.`, "effect"); break; }
+  if (!isArt(artTop.card)) { ns = dlog(ns, `${card.name} fizzles -- target is not an artifact spell.`, "effect"); break; }
+  ns = { ...ns, stack: ns.stack.filter(i => i.id !== artTop.id),
+    [artTop.caster]: { ...ns[artTop.caster], gy: [...ns[artTop.caster].gy, { ...artTop.card }] } };
+  ns = dlog(ns, `${card.name} counters ${artTop.card?.name}.`, "effect");
+  break;
+}
+case "addMana3Red": {
+  // Adapted from Card-Forge/forge (c/coal_golem.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const cgMp = { ...ns[caster].mana }; cgMp.R = (cgMp.R || 0) + 3;
+  ns = { ...ns, [caster]: { ...ns[caster], mana: cgMp } };
+  ns = dlog(ns, `${card.name} adds {R}{R}{R}.`, "mana");
+  break;
+}
+case "preventDamage2Self": {
+  // Adapted from Card-Forge/forge (c/conservator.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  ns = { ...ns, [caster]: { ...ns[caster], damageShield: (ns[caster].damageShield || 0) + 2 } };
+  ns = dlog(ns, `${card.name}: ${caster} has 2 damage prevented this turn.`, "effect");
+  break;
+}
+case "colorLace": {
+  // Adapted from Card-Forge/forge (c/chaoslace.txt, d/deathlace.txt, l/lifelace.txt,
+  // p/purelace.txt, t/thoughtlace.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const laceTo = card.laceColor;
+  if (!laceTo) break;
+  const permTarget = tgt ? (ns.p.bf.find(c => c.iid === tgt) || ns.o.bf.find(c => c.iid === tgt)) : null;
+  if (permTarget) {
+    ns = { ...ns, [permTarget.controller]: { ...ns[permTarget.controller], bf: ns[permTarget.controller].bf.map(c =>
+      c.iid === permTarget.iid ? { ...c, color: laceTo } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${permTarget.name} becomes ${laceTo}.`, "effect");
+    break;
+  }
+  const laceStackTarget = tgt ? ns.stack.find(i => i.id === tgt) : null;
+  if (laceStackTarget) {
+    ns = { ...ns, stack: ns.stack.map(i => i.id === laceStackTarget.id ? { ...i, card: { ...i.card, color: laceTo } } : i) };
+    ns = dlog(ns, `${card.name}: ${laceStackTarget.card?.name} becomes ${laceTo}.`, "effect");
+    break;
+  }
+  ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+  break;
+}
+case "destroyBlackCreature": {
+  // Adapted from Card-Forge/forge (e/exorcist.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && tgtC.color === "B") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+  break;
+}
+case "shuffleGYIntoLibrary": {
+  // Adapted from Card-Forge/forge (f/feldons_cane.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const gyCards = ns[caster].gy;
+  ns = { ...ns, [caster]: { ...ns[caster], gy: [], lib: shuffle([...ns[caster].lib, ...gyCards]) } };
+  ns = dlog(ns, `${card.name}: ${caster} shuffles their graveyard into their library.`, "effect");
+  break;
+}
+case "addManaReflected": {
+  // Adapted from Card-Forge/forge (f/fellwar_stone.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no color-choice UI wired for reflected mana; deterministic
+  // first color in WUBRG order rather than a player-facing picker.
+  const reflectColors = new Set();
+  for (const l of ns[opp].bf.filter(isLand)) for (const p of (l.produces || [])) if ("WUBRG".includes(p)) reflectColors.add(p);
+  const reflectPick = ["W", "U", "B", "R", "G"].find(cl => reflectColors.has(cl)) || "C";
+  const fwMp = { ...ns[caster].mana }; fwMp[reflectPick] = (fwMp[reflectPick] || 0) + 1;
+  ns = { ...ns, [caster]: { ...ns[caster], mana: fwMp } };
+  ns = dlog(ns, `${card.name} adds 1${reflectPick} (reflected).`, "mana");
+  break;
+}
+case "revealHand": {
+  // Adapted from Card-Forge/forge (g/glasses_of_urza.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const revWho = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const names = ns[revWho].hand.map(c => c.name).join(', ') || '(empty hand)';
+  ns = dlog(ns, `${card.name}: ${revWho}'s hand is ${names}.`, "effect");
+  break;
+}
+case "damage1Flying": {
+  // Adapted from Card-Forge/forge (g/grapeshot_catapult.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } };
+    ns = checkDeath(ns);
+    ns = dlog(ns, `${card.name} deals 1 damage to ${tgtC.name}.`, "effect");
+  }
+  break;
+}
+case "tapOrUntapArtifact": {
+  // Adapted from Card-Forge/forge (h/hyperion_blacksmith.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isArt(tgtC) && tgtC.controller !== caster) {
+    const wasTapped = tgtC.tapped;
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: !c.tapped } : c) } };
+    ns = dlog(ns, `${card.name} ${wasTapped ? 'untaps' : 'taps'} ${tgtC.name}.`, "effect");
+  }
+  break;
+}
+case "globalDebuffPower2EOT": {
+  // Adapted from Card-Forge/forge (m/marsh_gas.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => isCre(c) ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -2 }] } : c) } };
+  }
+  ns = dlog(ns, `${card.name}: all creatures get -2/-0 until end of turn.`, "effect");
+  break;
+}
+case "destroyAuraOnOwnCreature": {
+  // Adapted from Card-Forge/forge (m/miracle_worker.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  let mwFound = false;
+  for (const c of ns[caster].bf.filter(isCre)) {
+    const aura = (c.enchantments || []).find(e => e.iid === tgt);
+    if (aura) {
+      const auraOwner = aura.controller || caster;
+      ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(x => x.iid === c.iid ? { ...x, enchantments: x.enchantments.filter(e => e.iid !== tgt) } : x) } };
+      ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...aura.cardData }] } };
+      ns = dlog(ns, `${card.name} destroys ${aura.name}.`, "effect");
+      mwFound = true;
+      break;
+    }
+  }
+  if (!mwFound) ns = dlog(ns, `${card.name}'s ability fizzles -- no valid Aura target.`, "effect");
+  break;
+}
+case "scryTop3Reveal": {
+  // Adapted from Card-Forge/forge (n/natural_selection.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no reorder UI. Cards are revealed in the log then left in their
+  // original order (a legal choice of "any order"); no shuffle offered (also legal --
+  // "you may" -- since declining is always an option). True reorder/shuffle-choice UI
+  // deferred to a future batch.
+  const nsWho = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const top3 = ns[nsWho].lib.slice(0, 3);
+  const top3Names = top3.map(c => c.name).join(', ') || '(empty library)';
+  ns = dlog(ns, `${card.name}: top of ${nsWho}'s library is ${top3Names} (order unchanged).`, "effect");
+  break;
+}
+case "bouncePermanentControlled": {
+  // Adapted from Card-Forge/forge (o/obelisk_of_undoing.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: this engine doesn't track permanent "owner" separately from
+  // "controller" (no Control Magic-style theft persists across ownership), so
+  // "you both own and control" is modeled as "a permanent you control."
+  if (tgtC && tgtC.controller === caster) {
+    ns = zMove(ns, tgtC.iid, caster, caster, "hand");
+    ns = dlog(ns, `${card.name} returns ${tgtC.name} to hand.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name}'s ability fizzles -- no legal target.`, "effect");
+  }
+  break;
+}
+case "damage2Any": {
+  // Adapted from Card-Forge/forge (o/orcish_mechanics.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgt === "p" || tgt === "o") { ns = hurt(ns, tgt, 2, card.name); }
+  else if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 2 } : c) } };
+    ns = checkDeath(ns);
+  }
+  ns = dlog(ns, `${card.name} deals 2 damage${tgtC ? ` to ${tgtC.name}` : (tgt ? ` to ${tgt}` : '')}.`, "effect");
+  break;
+}
+case "pumpBlockersToughness3EOT": {
+  // Adapted from Card-Forge/forge (p/piety.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.blocking != null ? { ...c, eotBuffs: [...(c.eotBuffs || []), { toughness: 3 }] } : c) } };
+  }
+  ns = dlog(ns, `${card.name}: blocking creatures get +0/+3 until end of turn.`, "effect");
+  break;
+}
+case "debuffTargetPower2EOT": {
+  // Adapted from Card-Forge/forge (p/pradesh_gypsies.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: -2 }] } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} gets -2/-0 until end of turn.`, "effect");
+  }
+  break;
+}
+case "untapAllOwnLands": {
+  // Adapted from Card-Forge/forge (r/reset.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => isLand(c) ? { ...c, tapped: false } : c) } };
+  ns = dlog(ns, `${card.name}: ${caster} untaps all lands.`, "effect");
+  break;
+}
+case "tapAllBlueCreatures": {
+  // Adapted from Card-Forge/forge (r/riptide.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (isCre(c) && c.color === 'U') ? { ...c, tapped: true } : c) } };
+  }
+  ns = dlog(ns, `${card.name}: all blue creatures tapped.`, "effect");
+  break;
+}
+case "setAttackerPower0EOT": {
+  // Adapted from Card-Forge/forge (s/singing_tree.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && (ns.attackers || []).includes(tgtC.iid)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { layerDef: { layer: '7b', setPower: 0 } }] } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} has base power 0 until end of turn.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name}'s ability fizzles -- target is not attacking.`, "effect");
+  }
+  break;
+}
+case "fetchBasicToBf": {
+  // Adapted from Card-Forge/forge (u/untamed_wilds.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const basic = ns[caster].lib.find(c => isLand(c) && c.subtype?.startsWith("Basic"));
+  if (basic) {
+    ns = zMove(ns, basic.iid, caster, caster, "bf");
+    ns = { ...ns, [caster]: { ...ns[caster], lib: shuffle(ns[caster].lib) } };
+    ns = dlog(ns, `${card.name}: ${caster} fetches ${basic.name} onto the battlefield.`, "effect");
+  } else {
+    ns = { ...ns, [caster]: { ...ns[caster], lib: shuffle(ns[caster].lib) } };
+    ns = dlog(ns, `${card.name}: no basic land found; library shuffled.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: SIMPLE-TIER STUB CARDS ---------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -2810,6 +3080,18 @@ case "CAST_SPELL": {
       return s;
     }
   }
+  // Reset: "Cast this spell only during an opponent's turn after their upkeep step."
+  // Adapted from Card-Forge/forge (r/reset.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (c.id === 'reset') {
+    if (s.active === w) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Reset can only be cast during an opponent's turn`);
+      return s;
+    }
+    if (s.phase === PHASE.UNTAP || s.phase === PHASE.UPKEEP) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Reset can only be cast after the upkeep step`);
+      return s;
+    }
+  }
   const xSpend = (c.cost?.toUpperCase().includes('X') && c.id !== 'power_sink')
     ? (action.xVal || s.xVal || 1)
     : 0;
@@ -2917,6 +3199,11 @@ case "DECLARE_ATTACKER": {
   if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, KEYWORDS.HASTE.id, s))) return s;
   if (hasKw(c, KEYWORDS.DEFENDER.id, s)) return dlog(s, `${c.name} has defender and cannot attack.`, "rule");
   if (c.cantAttackTurn && c.cantAttackTurn >= s.turn) return dlog(s, `${c.name} can't attack this turn (Wall of Dust effect).`, 'rule');
+  // Moat: "Creatures without flying can't attack."
+  // Adapted from Card-Forge/forge (m/moat.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if ([...s.p.bf, ...s.o.bf].some(m => m.name === 'Moat') && !hasKw(c, KEYWORDS.FLYING.id, s)) {
+    return dlog(s, `${c.name} can't attack -- Moat allows only creatures with flying to attack.`, 'rule');
+  }
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
@@ -3145,9 +3432,30 @@ case "ACTIVATE_ABILITY": {
     s = resolveEff(s, manaItem);
     return dlog(s, `${card.name} adds mana.`, "mana");
   }
+  // Fellwar Stone: T: Add one mana of any color a land an opponent controls could
+  // produce. A mana ability (rule 605.3b) -- resolves immediately, same as addMana.
+  // Adapted from Card-Forge/forge (f/fellwar_stone.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (act.effect === "addManaReflected") {
+    if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+    const reflectedItem = { id: makeId(), card: { ...card, effect: act.effect }, caster: "p", targets: [], xVal: 1 };
+    s = resolveEff(s, reflectedItem);
+    return s;
+  }
 
   // ── Non-mana activated abilities: pay cost, push to stack, open priority window ──
   // From here on the case is who-aware (w) to support AI ('o') activation.
+
+  // 0. Additional-cost preflight: reject activation before paying ANY cost if a
+  // required additional cost cannot be paid (e.g. Orcish Mechanics: "sacrifice an
+  // artifact" with none available). Must run before the tap/mana cost below so a
+  // failed activation leaves the permanent untouched.
+  if (act.cost.includes("sacArt") && !s[w].bf.some(c => isArt(c))) {
+    return dlog(s, `${card.name}: no artifact available to sacrifice.`, "info");
+  }
+  if (act.cost.includes("discardLastDrawn") && !s[w].hand.length) {
+    return dlog(s, `${card.name}: no card to discard.`, "info");
+  }
 
   // 1. Tap cost
   if (act.cost.includes("T")) {
@@ -3158,13 +3466,48 @@ case "ACTIVATE_ABILITY": {
   // 2. Sacrifice cost (e.g. Strip Mine: "T,sac"). Sacrifices the activating
   // permanent itself. Must happen before pushing to the stack so the source
   // is already gone by the time the ability resolves.
-  if (act.cost.includes("sac")) {
+  if (act.cost.includes("sac") && !act.cost.includes("sacArt")) {
     s = zMove(s, iid, w, w, "gy");
     s = dlog(s, `${card.name} sacrificed to activate its ability.`, "info");
   }
 
-  // 3. Mana cost -- strip 'T', 'sac', and commas, parse remainder
-  const manaPart = act.cost.replace(/T/g, "").replace(/sac/g, "").replace(/,/g, "").trim();
+  // 2b. Sacrifice an artifact you control, not necessarily the activating
+  // permanent itself (e.g. Orcish Mechanics: "T, Sacrifice an artifact:").
+  // Adapted from Card-Forge/forge (o/orcish_mechanics.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no UI to choose which artifact; sacrifices the first one found.
+  if (act.cost.includes("sacArt")) {
+    const art = s[w].bf.find(c => isArt(c));
+    s = zMove(s, art.iid, w, w, "gy");
+    s = dlog(s, `${art.name} sacrificed to activate ${card.name}.`, "info");
+  }
+
+  // 2c. Exile this permanent as a cost (e.g. Feldon's Cane: "T, Exile this artifact:").
+  // Adapted from Card-Forge/forge (f/feldons_cane.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (act.cost.includes("exile")) {
+    s = zMove(s, iid, w, w, "exile");
+    s = dlog(s, `${card.name} exiled to activate its ability.`, "info");
+  }
+
+  // 2d. Discard the last card drawn this turn as a cost (Jandor's Ring).
+  // Adapted from Card-Forge/forge (j/jandors_ring.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: approximated as "the last card in the hand array" (hand is
+  // append-only on draw) rather than tracking a dedicated per-turn lastDrawn field.
+  if (act.cost.includes("discardLastDrawn")) {
+    const h = s[w].hand;
+    const last = h[h.length - 1];
+    s = { ...s, [w]: { ...s[w], hand: h.slice(0, -1), gy: [...s[w].gy, last] } };
+    s = dlog(s, `${card.name}: ${w} discards ${last.name}.`, "info");
+  }
+
+  // 3. Mana cost -- strip 'T', 'sac'-family tokens, and commas, parse remainder
+  const manaPart = act.cost
+    .replace(/discardLastDrawn/g, "")
+    .replace(/sacArt/g, "")
+    .replace(/exile/g, "")
+    .replace(/T/g, "")
+    .replace(/sac/g, "")
+    .replace(/,/g, "")
+    .trim();
   // Counter-cost abilities (e.g. Triskelion): cost is paid by removing a counter,
   // not by spending mana. The effect handler validates and removes the counter.
   if (manaPart && manaPart !== 'counter') {
