@@ -21,6 +21,13 @@ async function waitForMain1(page: Page) {
     const s = (window as any).__duelState?.();
     return s && s.phase === 'MAIN_1' && s.active === 'p';
   }, { timeout: 20_000 });
+  // The opponent's opening-hand mulligan decision (driven by the normal AI
+  // loop at game start, turn 1) must settle before any test flips `active` to
+  // 'o' or force-injects the opponent's hand -- otherwise the AI's own
+  // mulligan can race with SANDBOX_FORCE_HAND and reshuffle an injected card
+  // away. SET_PHASE_FOR_TEST does not itself drive the AI loop, so waiting
+  // for this signal only works here, right after the natural game start.
+  await page.waitForFunction(() => (window as any).__duelState?.().o?.mulliganDecided === true, { timeout: 10_000 });
 }
 
 // __duelState()/__duelDispatch() reflect a dispatch only after React has
