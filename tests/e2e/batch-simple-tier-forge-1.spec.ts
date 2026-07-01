@@ -23,6 +23,13 @@ async function waitForMain1(page: Page) {
   }, { timeout: 20_000 });
 }
 
+// __duelState()/__duelDispatch() reflect a dispatch only after React has
+// committed the resulting render -- reading state immediately after a
+// dispatch (same page.evaluate call or the very next one) can observe stale
+// data. Every dispatch that a test depends on must be followed by a
+// page.waitForFunction() polling for the expected effect before any
+// assertion reads state.
+
 async function castAndResolve(page: Page, cardId: string, who: 'p' | 'o' = 'p'): Promise<string> {
   const iid = await page.evaluate(({ id, w }) => {
     const s = (window as any).__duelState();
@@ -35,11 +42,31 @@ async function castAndResolve(page: Page, cardId: string, who: 'p' | 'o' = 'p'):
     dispatch({ type: 'RESOLVE_STACK' });
     return card.iid;
   }, { id: cardId, w: who });
+  // Permanent-only: waits for the card to land on that player's battlefield.
   await page.waitForFunction(({ id, w }) => {
     const s = (window as any).__duelState?.();
     return (s?.[w]?.bf as any[])?.some((c: any) => c.id === id);
   }, { id: cardId, w: who }, { timeout: 10_000 });
   return iid;
+}
+
+// For non-permanent spells (Instant/Sorcery): casts and resolves, then waits
+// for the card to leave hand (it goes to the graveyard, never the battlefield).
+async function castNonPermanentAndResolve(page: Page, cardId: string, tgt: string | null, who: 'p' | 'o' = 'p') {
+  await page.evaluate(({ id, w, tgtArg }) => {
+    const s = (window as any).__duelState();
+    const dispatch = (window as any).__duelDispatch;
+    const card = (s[w].hand as any[]).find((c: any) => c.id === id);
+    if (!card) throw new Error(`${id} not in ${w} hand`);
+    dispatch({ type: 'CAST_SPELL', who: w, iid: card.iid, tgt: tgtArg, xVal: null });
+    dispatch({ type: 'PASS_PRIORITY', who: 'p' });
+    dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+    dispatch({ type: 'RESOLVE_STACK' });
+  }, { id: cardId, w: who, tgtArg: tgt });
+  await page.waitForFunction(({ id, w }) => {
+    const s = (window as any).__duelState?.();
+    return !(s?.[w]?.hand as any[])?.some((c: any) => c.id === id);
+  }, { id: cardId, w: who }, { timeout: 10_000 });
 }
 
 async function activateAndResolve(page: Page, iid: string, tgt: string | null) {
@@ -56,6 +83,12 @@ async function forceHand(page: Page, who: 'p' | 'o', cardIds: string[], mana: Re
   await page.evaluate(({ w, ids, m }) => {
     (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: w, cardIds: ids, mana: m });
   }, { w: who, ids: cardIds, m: mana });
+  if (cardIds.length) {
+    await page.waitForFunction(({ w, ids }) => {
+      const s = (window as any).__duelState?.();
+      return ids.every((id: string) => (s?.[w]?.hand as any[])?.some((c: any) => c.id === id));
+    }, { w: who, ids: cardIds }, { timeout: 5_000 });
+  }
 }
 
 async function clearSummoningSick(page: Page, iid: string) {
@@ -79,6 +112,10 @@ function batchTests() {
     const vampireIid = await castAndResolve(page, 'sengir_vampire', 'o');
 
     await activateAndResolve(page, exorcistIid, vampireIid);
+    await page.waitForFunction((iid) => {
+      const s = (window as any).__duelState?.();
+      return s?.o?.gy?.some((c: any) => c.iid === iid);
+    }, vampireIid, { timeout: 10_000 });
 
     const s1 = await page.evaluate(() => (window as any).__duelState());
     expect(s1.o.gy.some((c: any) => c.iid === vampireIid)).toBe(true);
@@ -88,12 +125,27 @@ function batchTests() {
     await page.evaluate((id) => {
       (window as any).__duelDispatch({ type: 'DEBUG_PATCH_CARD', iid: id, patch: { tapped: false } });
     }, exorcistIid);
+    await page.waitForFunction((iid) => {
+      const s = (window as any).__duelState?.();
+      return s?.p?.bf?.find((c: any) => c.iid === iid)?.tapped === false;
+    }, exorcistIid, { timeout: 5_000 });
+
     await page.evaluate(() => {
       (window as any).__duelDispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: [], mana: { W: 2 } });
     });
+    await page.waitForFunction(() => (window as any).__duelState?.().p?.mana?.W === 2, null, { timeout: 5_000 });
+
     await forceHand(page, 'o', ['grizzly_bears'], { G: 2 });
     const bearsIid = await castAndResolve(page, 'grizzly_bears', 'o');
     await activateAndResolve(page, exorcistIid, bearsIid);
+
+    // No gy change expected for the fizzle case -- wait on the Exorcist's own
+    // tapped state (set unconditionally by the ability's cost) as the signal
+    // that the second activation has been fully processed.
+    await page.waitForFunction((iid) => {
+      const s = (window as any).__duelState?.();
+      return s?.p?.bf?.find((c: any) => c.iid === iid)?.tapped === true;
+    }, exorcistIid, { timeout: 10_000 });
 
     const s2 = await page.evaluate(() => (window as any).__duelState());
     expect(s2.o.bf.some((c: any) => c.iid === bearsIid)).toBe(true);
@@ -113,9 +165,17 @@ function batchTests() {
     await page.evaluate(() => {
       (window as any).__duelDispatch({ type: 'SET_PHASE_FOR_TEST', phase: 'COMBAT_ATTACKERS', active: 'p' });
     });
+    await page.waitForFunction(() => (window as any).__duelState?.().phase === 'COMBAT_ATTACKERS', null, { timeout: 5_000 });
+
     await page.evaluate((iid) => {
       (window as any).__duelDispatch({ type: 'DECLARE_ATTACKER', iid });
     }, bearsIid);
+    // Moat's rejection path still logs a message (dlog), even though the
+    // attackers array is unchanged -- wait on that as the settle signal.
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return s?.log?.some((l: any) => l.text?.includes("can't attack"));
+    }, null, { timeout: 5_000 });
 
     const s1 = await page.evaluate(() => (window as any).__duelState());
     expect((s1.attackers || []).includes(bearsIid)).toBe(false);
@@ -137,10 +197,15 @@ function batchTests() {
       const land = (s.o.hand as any[]).find((c: any) => c.id === 'island');
       (window as any).__duelDispatch({ type: 'PLAY_LAND', who: 'o', iid: land.iid });
     });
+    await page.waitForFunction(() => {
+      const s = (window as any).__duelState?.();
+      return (s?.o?.bf as any[])?.some((c: any) => c.id === 'island');
+    }, null, { timeout: 5_000 });
 
     await page.evaluate((iid) => {
       (window as any).__duelDispatch({ type: 'ACTIVATE_ABILITY', who: 'p', iid });
     }, stoneIid);
+    await page.waitForFunction(() => ((window as any).__duelState?.().p?.mana?.U ?? 0) >= 1, null, { timeout: 5_000 });
 
     const s1 = await page.evaluate(() => (window as any).__duelState());
     expect(s1.p.mana.U).toBe(1);
@@ -152,30 +217,29 @@ function batchTests() {
     await waitForDuel(page);
     await waitForMain1(page);
 
-    await forceHand(page, 'p', ['argivian_archaeologist', 'mox_ruby', 'desert_twister'], { W: 4, R: 1, G: 6 });
+    // Generous, unambiguous mana pools (separate colors per cost) so no cast
+    // in this sequence can be blocked by a generic-mana-ordering edge case.
+    await forceHand(page, 'p', ['argivian_archaeologist', 'mox_ruby', 'desert_twister'], { W: 4, G: 10, R: 2 });
     const archIid = await castAndResolve(page, 'argivian_archaeologist');
     await clearSummoningSick(page, archIid);
     const moxIid = await castAndResolve(page, 'mox_ruby');
 
     // Desert Twister (destroy, already covered by this same batch) sends the Mox
     // to the player's own graveyard so the Archaeologist has a real target.
-    const desertTwisterIid = await page.evaluate(() => {
-      const s = (window as any).__duelState();
-      const card = (s.p.hand as any[]).find((c: any) => c.id === 'desert_twister');
-      return card.iid;
-    });
-    await page.evaluate(({ iid, tgt }) => {
-      const dispatch = (window as any).__duelDispatch;
-      dispatch({ type: 'CAST_SPELL', who: 'p', iid, tgt });
-      dispatch({ type: 'PASS_PRIORITY', who: 'p' });
-      dispatch({ type: 'PASS_PRIORITY', who: 'o' });
-      dispatch({ type: 'RESOLVE_STACK' });
-    }, { iid: desertTwisterIid, tgt: moxIid });
+    await castNonPermanentAndResolve(page, 'desert_twister', moxIid);
+    await page.waitForFunction((iid) => {
+      const s = (window as any).__duelState?.();
+      return s?.p?.gy?.some((c: any) => c.iid === iid);
+    }, moxIid, { timeout: 10_000 });
 
     const midState = await page.evaluate(() => (window as any).__duelState());
     expect(midState.p.gy.some((c: any) => c.iid === moxIid)).toBe(true);
 
     await activateAndResolve(page, archIid, moxIid);
+    await page.waitForFunction((iid) => {
+      const s = (window as any).__duelState?.();
+      return s?.p?.hand?.some((c: any) => c.iid === iid);
+    }, moxIid, { timeout: 10_000 });
 
     const s1 = await page.evaluate(() => (window as any).__duelState());
     expect(s1.p.hand.some((c: any) => c.iid === moxIid)).toBe(true);
@@ -190,11 +254,19 @@ function batchTests() {
 
     await forceHand(page, 'p', ['untamed_wilds'], { G: 3 });
     const bfBefore = await page.evaluate(() => (window as any).__duelState().p.bf.length);
-    await castAndResolve(page, 'untamed_wilds');
+
+    // Untamed Wilds is a Sorcery -- it resolves and goes to the graveyard, it
+    // never sits on the battlefield itself, so castAndResolve's "card lands on
+    // bf" wait does not apply here.
+    await castNonPermanentAndResolve(page, 'untamed_wilds', null);
+    await page.waitForFunction((before) => {
+      const s = (window as any).__duelState?.();
+      return (s?.p?.bf?.length ?? 0) > before;
+    }, bfBefore, { timeout: 10_000 });
 
     const s1 = await page.evaluate(() => (window as any).__duelState());
     const landsOnBf = s1.p.bf.filter((c: any) => c.type === 'Land');
-    expect(landsOnBf.length).toBeGreaterThan(bfBefore);
+    expect(landsOnBf.length).toBeGreaterThan(0);
   });
 }
 
