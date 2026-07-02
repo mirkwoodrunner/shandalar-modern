@@ -2763,4 +2763,87 @@ ACTIVE
 
 ---
 
+## Batch: Trigger-Event Expansion + Damage Source Infrastructure (Deferral Sweep 1) -- 2026-07-02
+
+### New engine mechanisms
+
+- **Four new trigger event types** (`src/engine/DuelCore.js`): `ON_ATTACKS_DECLARED`
+  (advPhase, leaving `COMBAT_ATTACKERS`), `ON_SPELL_CAST` (`CAST_SPELL`, after
+  the spell is pushed to the stack), `ON_PERMANENT_LEAVES_BF` (`zMove()`, the
+  single choke point for every bf -> gy/exile/hand move -- fires alongside, not
+  instead of, `ON_CREATURE_DIES`), `ON_END_STEP` (advPhase, entering `PHASE.END`).
+  See `docs/SYSTEMS.md` Section 17.3.5-17.3.8 for full payload/condition contracts.
+- **New `evaluateCondition()` condition types**: `selfIsAttacker`,
+  `permanentWasLand`, `ownArtifactLeftBf`, `ownArtifactDiedNotSacrificed`,
+  `spellColorIncludes`, `spellIsArtifact`, `opponentCastArtifactSpell`.
+- **`turnState.sacrificedIids`**: per-turn sacrifice tracking (see SYSTEMS.md
+  17.3.7.1), needed for Urza's Miter's "if it wasn't sacrificed" clause.
+- **`turnState.creaturesDiedThisTurn`**: per-turn creature-death iid tracking,
+  populated inside `zMove()` alongside the `ON_PERMANENT_LEAVES_BF` emission.
+  Powers Khabál Ghoul.
+- **`hurt(s, who, amt, src, meta)`**: optional 5th `meta` param
+  (`{ sourceIid, sourceType, combat, unblocked }`), backward compatible with
+  all pre-existing string-only call sites. See SYSTEMS.md Section 17.9 for the
+  full contract (call sites tagged, `damageBySourceType` tracking, and the
+  `damageRedirect` hook).
+- **New `resolveTriggeredEffect()` cases**: `pumpSelfEOT`, `payGenericNoEffect`,
+  `dealFixedDamageToController`, `damagePermanentControllerFromArtifact`,
+  `addCounterEqualToCreatureDeaths`, `payGenericDrawCard`.
+- **New `resolveEff()` cases**: `grantMountainwalkTarget`, `reversePolarityGain`.
+- **`damageRedirect` static card-data flag**: opt-in flag (same pattern as
+  `lifeFloor`/`preventsDesertDamage`), consulted inside `hurt()`.
+
+### Cards implemented (12)
+
+| Card | Mechanism used |
+|---|---|
+| Cave People | `ON_ATTACKS_DECLARED` + `pumpSelfEOT`; `grantMountainwalkTarget` activated ability |
+| Hasran Ogress | `ON_ATTACKS_DECLARED` + `requiresChoice` (`payGenericNoEffect`/`dealFixedDamageToController`) |
+| Citanul Druid | `ON_SPELL_CAST` + `opponentCastArtifactSpell` condition, reused `addCounter` |
+| Throne of Bone | `ON_SPELL_CAST` + `spellColorIncludes` condition, reused `payGenericGainLife`/`noop` (Soul Net pattern) |
+| Urza's Chalice | `ON_SPELL_CAST` + `spellIsArtifact` condition, reused `payGenericGainLife`/`noop` |
+| Dingus Egg | `ON_PERMANENT_LEAVES_BF` + `permanentWasLand` condition, `damagePermanentControllerFromArtifact` |
+| Tablet of Epityr | `ON_PERMANENT_LEAVES_BF` + `ownArtifactLeftBf` condition, reused `payGenericGainLife`/`noop` |
+| Urza's Miter | `ON_PERMANENT_LEAVES_BF` + `ownArtifactDiedNotSacrificed` condition, `payGenericDrawCard` |
+| Khabál Ghoul | `ON_END_STEP`, `addCounterEqualToCreatureDeaths` |
+| Reverse Polarity | `reversePolarityGain` (reads `turnState.damageBySourceType`) |
+| Martyrs of Korlis | `damageRedirect: { from: 'artifacts' }` static flag |
+| Veteran Bodyguard | `damageRedirect: { from: 'unblockedCreatures' }` static flag |
+
+All 12 use the existing declarative `triggeredAbilities`/`requiresChoice`/
+`options` pipeline (Soul Net precedent) or the existing `damageRedirect`/static
+flag pattern -- no new engine-side UI was needed; the existing generic
+`ChoiceModal` (`DuelScreen.tsx`/`DuelScreenMobile.tsx`) renders any
+`pendingChoice.options` array unmodified.
+
+### Sweep of remaining DEFERRED cards
+
+Every other `DEFERRED:` comment in `cards.js` was checked against the four new
+event types and the `hurt()` meta/redirect infrastructure. None matched
+exactly: Ashnod's Battle Gear / Tawnos's Weaponry (optional-untap UI gap,
+unrelated), Blood Moon / Evil Presence / Kormus Bell / Living Lands
+(type-changing/layers gap, unrelated), Haunting Wind / Powerleech ("artifact
+becomes tapped" trigger -- a different event this batch didn't add), Marsh
+Viper / Pit Scorpion (poison/infect, deliberately out of scope per SYSTEMS.md),
+Sacrifice (additional-cost-to-cast, unrelated), Alchor's Tomb (color-choice UI,
+unrelated), Darkpact / Demonic Attorney (ante zone, unrelated), Knights of
+Thorn (banding damage-assignment, unrelated), Blaze of Glory (blocking-model
+limitation, unrelated). No additional cards were unblocked by this batch.
+
+### Tests
+
+- Vitest: `tests/scenarios/trigger-events-expansion.test.js` (event-type
+  contract: firing conditions, negative cases, APNAP ordering),
+  `tests/scenarios/damage-source-meta.test.js` (`hurt()` backward
+  compatibility, `damageBySourceType` accumulation/reset, `damageRedirect` for
+  both flag shapes including lethal redirect), `tests/scenarios/deferral-sweep-1-cards.test.js`
+  (per-card coverage for all 12).
+- Playwright: `tests/e2e/deferral-sweep-1.spec.ts`, added to the
+  `mobile-chrome` project's `testMatch` allowlist.
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5

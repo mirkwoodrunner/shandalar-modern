@@ -944,6 +944,86 @@ Payload: `{ attackerId, blockerId }`
 
 Used by: Protection enforcement (validation phase)
 
+### 17.3.5 ON_ATTACKS_DECLARED
+
+Emitted once when the active player commits attackers, at the transition out of
+`PHASE.COMBAT_ATTACKERS` (the same boundary the B14 skip logic uses to count
+declared attackers). Not emitted when zero attackers were declared.
+
+Payload: `{ attackerIids: CardID[], attackingPlayer: PlayerID }`
+
+`trigger.scope: 'self'` is NOT usable with this event (that scope value only
+resolves against `dyingCardId`, which is `ON_CREATURE_DIES`-specific). Cards that
+need "whenever this creature attacks" must use `condition: { type: 'selfIsAttacker' }`,
+which checks `payload.attackerIids.includes(card.iid)`.
+
+Used by: Cave People, Hasran Ogress.
+
+### 17.3.6 ON_SPELL_CAST
+
+Emitted in the `CAST_SPELL` reducer after the spell is legally placed on the
+stack (not at resolution). Fires for both players' spells.
+
+Payload: `{ casterId: PlayerID, cardIid: CardID, cardType: string, isArtifact: boolean, isCreature: boolean, colors: string[] }`
+
+`colors` splits the card's single-string `color` field (e.g. `"UB"` for
+multicolor) into an array so `condition: { type: 'spellColorIncludes', color: 'B' }`
+can test membership. `condition: { type: 'spellIsArtifact' }` and
+`condition: { type: 'opponentCastArtifactSpell' }` (artifact spell AND
+`payload.casterId !== card.controller`) are also supported.
+
+Used by: Citanul Druid, Throne of Bone, Urza's Chalice.
+
+### 17.3.7 ON_PERMANENT_LEAVES_BF
+
+A generic leaves-the-battlefield event. `zMove()` (`src/engine/DuelCore.js`) is
+the single choke point for every battlefield -> graveyard/exile/hand move, so
+this event is emitted from inside `zMove()` itself whenever the origin zone is
+`'bf'` and the destination zone is not `'bf'` (control changes, which move
+bf -> bf, do not emit it). This covers lands, artifacts, enchantments, and
+creatures in one shot -- no per-card-effect call sites needed.
+
+**Fires alongside `ON_CREATURE_DIES`, not instead of it.** `ON_CREATURE_DIES`
+continues to be emitted separately by `checkDeath()` and the Venom combat-end
+special case; both events fire for a creature's death.
+
+Payload: `{ cardIid: CardID, previousController: PlayerID, wasLand: boolean, wasArtifact: boolean, wasCreature: boolean, destination: 'gy'|'exile'|'hand' }`
+
+Condition helpers (all require `payload.destination === 'gy'` in addition to
+their named check, matching "put into a graveyard" Oracle phrasing):
+- `{ type: 'permanentWasLand' }` -- Dingus Egg.
+- `{ type: 'ownArtifactLeftBf' }` -- artifact you control died -- Tablet of Epityr.
+- `{ type: 'ownArtifactDiedNotSacrificed' }` -- as above, plus the permanent's iid
+  is absent from `turnState.sacrificedIids` (see 17.3.7.1) -- Urza's Miter.
+
+Used by: Dingus Egg, Tablet of Epityr, Urza's Miter.
+
+#### 17.3.7.1 Sacrifice tracking (`turnState.sacrificedIids`)
+
+Urza's Miter's Oracle text ("if it wasn't sacrificed") requires distinguishing
+a sacrifice from any other graveyard-bound zone change. `turnState.sacrificedIids`
+is an array of card iids sacrificed during the current turn, reset at CLEANUP
+alongside the other per-turn tracking arrays. It is populated immediately
+before the corresponding `zMove(..., "gy")` call at every explicit sacrifice
+site: the generic `sac`/`sacArt`/`sacCre` activated-ability cost handling in
+`ACTIVATE_ABILITY`, Lord of the Pit's upkeep devour, Ball Lightning's
+`sacrificeSelf` upkeep effect, the `sacrificeForMana` spell effect, and Ashnod's
+Transmogrant's `CONFIRM_TRANSMUTE_SACRIFICE` handler. Marking happens on the
+state passed into `zMove()`, so it is already present by the time `zMove()`
+emits `ON_PERMANENT_LEAVES_BF`.
+
+### 17.3.8 ON_END_STEP
+
+Emitted at the `next === PHASE.END` block, after the existing beginning-of-end-step
+delayed-effect processing (Rakalite return-to-hand, Xenic Poltergeist revert).
+Unscoped, following the same "single event per turn cycle, `activePlayer` payload"
+simplification as `ON_UPKEEP_START` (this engine has one `END` phase per turn, not
+a separate end step per player).
+
+Payload: `{ activePlayer: PlayerID }`
+
+Used by: Khabál Ghoul.
+
 ---
 
 ## 17.4 Trigger Queue and Resolution Order
@@ -1077,6 +1157,86 @@ All three fields are cleared / reset at UNTAP (sengirDamagedIids, powerSurgeUnta
 - No race conditions or timing dependencies
 - Fully reproducible given identical inputs
 - Strict phase blocking until all triggers and choices resolve
+
+---
+
+## 17.9 hurt() Damage-Source Meta and Redirection
+
+`hurt(s, who, amt, src = "", meta = null)` in `src/engine/DuelCore.js` optionally
+accepts a structured `meta` object describing the damage source, in addition to
+the pre-existing display-string `src`. All 81 pre-existing call sites omit `meta`
+and are unaffected -- `meta` defaults to `null` and every consumer of it is
+optional-chained or null-checked.
+
+### 17.9.1 meta shape
+
+```js
+{ sourceIid: CardID, sourceType: 'creature' | 'artifact' | 'spell' | 'ability' | null, combat: boolean, unblocked?: boolean }
+```
+
+`sourceType` is the only field consulted by damage tracking or redirection;
+`sourceIid` is informational.
+
+### 17.9.2 Call sites that pass meta
+
+- **Combat damage** (`resolveCombat()`): the four `hurt()` calls that deal
+  attacker damage to a defending player (unblocked-attacker damage and trample
+  overflow, in both the first-strike and regular damage passes) pass
+  `{ sourceIid, sourceType: 'creature', combat: true, unblocked }`. `unblocked`
+  is `true` only for the `!blockers.length` branch; trample overflow (attacker
+  was blocked) passes `unblocked: false`. Lifelink/Spirit Link self-heal calls
+  and Wall-of-Dust/Giant-Badger/Murk-Dwellers pump effects are unaffected.
+- **Artifact-sourced damage in `resolveEff()`**: a single `srcMeta` is computed
+  once per call (`isArt(card) ? { sourceIid: card.iid, sourceType: 'artifact', combat: false } : null`)
+  and passed to the `"ping"`, `"damage1"`, `"damage2"`, and `"damage4Any"` cases.
+  Because it's keyed off `isArt(card)` rather than a hardcoded card list, any
+  future artifact reusing one of these effect keys is automatically tagged;
+  non-artifact cards reusing the same keys (Witch Hunter, Prodigal Sorcerer,
+  Pirate Ship's `"ping"`) are unaffected since `isArt()` is false for them.
+- **Dingus Egg** (`damagePermanentControllerFromArtifact` triggered effect) and
+  **Hasran Ogress** (`dealFixedDamageToController` triggered effect) pass meta
+  directly at their own new call sites.
+
+**Not tagged (explicit scope limit):** upkeep-switch artifact damage (e.g.
+Black Vise) is a separate dispatch path from `resolveEff`/`resolveTriggeredEffect`
+and was out of scope for this pass. Reverse Polarity and Martyrs of Korlis will
+not see/redirect Black Vise's damage.
+
+### 17.9.3 damageBySourceType tracking (Reverse Polarity)
+
+`turnState.damageBySourceType: { p: { artifact: number, creature: number, ... }, o: {...} }`
+is incremented inside `hurt()` whenever `amt > 0` and `meta?.sourceType` is
+present, and reset to `{}` at CLEANUP alongside `damageTakenThisTurn`. Reverse
+Polarity reads `turnState.damageBySourceType[caster]?.artifact ?? 0`.
+
+Redirected damage (17.9.4) does NOT increment this tracker -- a replacement
+effect changes what event occurs, so the player was never actually dealt that
+damage (CR 616).
+
+### 17.9.4 damageRedirect hook
+
+Before applying life loss, `hurt()` scans `s[who].bf` for an **untapped**
+permanent with a `damageRedirect` flag matching `meta`. If found, the damage is
+applied to that permanent as creature damage (`c.damage += amt`) instead of
+player life loss, and `checkDeath()` runs immediately so lethal redirected
+damage kills the redirect target within the same `hurt()` call.
+
+Two flag shapes are supported (this is a targeted, minimal hook -- not a
+general replacement-effect framework):
+
+```js
+damageRedirect: { from: 'artifacts' }            // Martyrs of Korlis
+damageRedirect: { from: 'unblockedCreatures' }    // Veteran Bodyguard
+```
+
+`from: 'artifacts'` matches `meta.sourceType === 'artifact'`. `from: 'unblockedCreatures'`
+matches `meta.sourceType === 'creature' && meta.combat && meta.unblocked`. Both
+cards' Oracle text reads "as long as this creature is untapped", so the redirect
+target is filtered to `!c.tapped` before either shape is checked; a card can opt
+out simply by being tapped.
+
+Set directly as a static field on the card-data entry (same pattern as
+`lifeFloor`/`preventsDesertDamage`) -- no `triggeredAbilities` registration needed.
 
 ---
 

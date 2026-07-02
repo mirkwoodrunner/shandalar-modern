@@ -30,6 +30,7 @@ export default defineConfig({
         'tests/e2e/batch-moderate-tier-forge-2.spec.ts',
         'tests/e2e/batch-simple-tier-forge-1.spec.ts',
         'tests/e2e/card-type-line.spec.ts',
+        'tests/e2e/deferral-sweep-1.spec.ts',
         'tests/e2e/duel-controller.spec.ts',
         'tests/e2e/duel-persistence.spec.ts',
         'tests/e2e/dungeon-tileset.spec.ts',
