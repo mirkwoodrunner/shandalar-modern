@@ -87,3 +87,14 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Mountain Yeti (static keywords, cards.js) | Card-Forge/forge | m/mountain_yeti.txt | GPL-3.0 |
 | 2026-07-02 | Thunder Spirit (static keywords, cards.js) | Card-Forge/forge | t/thunder_spirit.txt | GPL-3.0 |
 | 2026-07-02 | Wall of Light (static keywords, cards.js) | Card-Forge/forge | w/wall_of_light.txt | GPL-3.0 |
+| 2026-07-02 | Angelic Voices (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | a/angelic_voices.txt | GPL-3.0 |
+| 2026-07-02 | Beasts of Bogardan (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | b/beasts_of_bogardan.txt | GPL-3.0 |
+| 2026-07-02 | Brainwash (`cantAttackUnlessPay` aura mod + DECLARE_ATTACKER gate, DuelCore.js) | Card-Forge/forge | b/brainwash.txt | GPL-3.0 |
+| 2026-07-02 | Eternal Warrior (reused `enchantCreature` keyword grant, cards.js) | Card-Forge/forge | e/eternal_warrior.txt | GPL-3.0 |
+| 2026-07-02 | Gaea's Avenger (`gaeasAvengerPT` CDA, layers.js) | Card-Forge/forge | g/gaeas_avenger.txt | GPL-3.0 |
+| 2026-07-02 | Kobold Drill Sergeant (`lordControllerOnly` lordEffect extension, layers.js) | Card-Forge/forge | k/kobold_drill_sergeant.txt | GPL-3.0 |
+| 2026-07-02 | Kobold Overlord (`lordControllerOnly` lordEffect extension, layers.js) | Card-Forge/forge | k/kobold_overlord.txt | GPL-3.0 |
+| 2026-07-02 | Kobold Taskmaster (`lordControllerOnly` lordEffect extension, layers.js) | Card-Forge/forge | k/kobold_taskmaster.txt | GPL-3.0 |
+| 2026-07-02 | Orcish Oriflamme (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | o/orcish_oriflamme.txt | GPL-3.0 |
+| 2026-07-02 | People of the Woods (`peopleOfTheWoodsToughness` CDA, layers.js) | Card-Forge/forge | p/people_of_the_woods.txt | GPL-3.0 |
+| 2026-07-02 | Seeker (`blockRestrictionArtifactOrWhite` aura mod + canBlockDuel gate, DuelCore.js) | Card-Forge/forge | s/seeker.txt | GPL-3.0 |

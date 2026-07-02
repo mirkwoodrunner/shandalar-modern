@@ -189,6 +189,10 @@ if (atInvisible && !bl.subtype?.includes('Wall')) return false;
 if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
 // Unblockable EOT grant (e.g. Tawnos's Wand).
 if (at.eotBuffs?.some(b => b.unblockable)) return false;
+// Seeker: "Enchanted creature can't be blocked except by artifact creatures
+// and/or white creatures."
+// Adapted from Card-Forge/forge (s/seeker.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (at.enchantments?.some(e => e.mod?.blockRestrictionArtifactOrWhite) && bl.color !== "W" && !isArt(bl)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional -- skipped if not provided).
 if (hasKw(at, KEYWORDS.LANDWALK.id, state) && at.landwalkType && defBf) {
@@ -3481,6 +3485,21 @@ case "DECLARE_ATTACKER": {
   if ([...s.p.bf, ...s.o.bf].some(m => m.name === 'Moat') && !hasKw(c, KEYWORDS.FLYING.id, s)) {
     return dlog(s, `${c.name} can't attack -- Moat allows only creatures with flying to attack.`, 'rule');
   }
+  // Brainwash: "Enchanted creature can't attack unless its controller pays {3}."
+  // SIMPLIFICATION: no "decline to pay" UI -- auto-pays if able (same convention
+  // as Demonic Hordes' "unless you pay" upkeep cost), otherwise blocks the attack.
+  // Adapted from Card-Forge/forge (b/brainwash.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const brainwashAura = c.enchantments?.find(e => e.mod?.cantAttackUnlessPay);
+  let sPay = s;
+  if (brainwashAura) {
+    const cost = brainwashAura.mod.cantAttackUnlessPay;
+    if (!canPay(sPay[side].mana, String(cost))) {
+      return dlog(sPay, `${c.name} can't attack -- ${side} can't pay {${cost}} (Brainwash).`, 'rule');
+    }
+    sPay = { ...sPay, [side]: { ...sPay[side], mana: payMana(sPay[side].mana, String(cost)) } };
+    sPay = dlog(sPay, `${side} pays {${cost}} so ${c.name} can attack (Brainwash).`, 'mana');
+  }
+  s = sPay;
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
