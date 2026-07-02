@@ -52,6 +52,17 @@ export const CDA_EVALUATORS = {
     const oppHasIsland = state[opp]?.bf.some(x => isLand(x) && x.subtype?.includes('Island'));
     return base + (oppHasIsland ? 1 : 0);
   },
+  // Gaea's Avenger: power and toughness are each equal to 1 plus the number of
+  // artifacts your opponents control.
+  // Adapted from Card-Forge/forge (g/gaeas_avenger.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  gaeasAvengerPT: (card, state) => {
+    const opp = card.controller === 'p' ? 'o' : 'p';
+    return 1 + (state[opp]?.bf.filter(x => isArt(x)).length ?? 0);
+  },
+  // People of the Woods: toughness is equal to the number of Forests you control.
+  // Adapted from Card-Forge/forge (p/people_of_the_woods.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  peopleOfTheWoodsToughness: (card, state) =>
+    state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0,
 };
 
 function getTs(eff) {
@@ -74,6 +85,11 @@ function collectEffects(card, state) {
     if (src.iid === card.iid) continue;
 
     if (src.effect === 'lordEffect' || src.effect === 'globalPump') {
+      // Kobold lords (Drill Sergeant/Overlord/Taskmaster): "you control" scoping,
+      // unlike symmetric anthems such as Goblin King/Crusade/Bad Moon.
+      // Adapted from Card-Forge/forge (k/kobold_drill_sergeant.txt, k/kobold_overlord.txt,
+      // k/kobold_taskmaster.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+      if (src.lordControllerOnly && src.controller !== card.controller) continue;
       const t = src.targets?.toLowerCase();
       if (!t) continue;
       const matches = COLOR_TARGETS.has(t)
@@ -200,6 +216,31 @@ function collectEffects(card, state) {
   //     Adapted from Card-Forge/forge (w/weakstone.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (isCre(card) && card.attacking && [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])].some(h => h.name === 'Weakstone')) {
     effects.push({ layer: '7c', power: -1, enterTs: 0 });
+  }
+
+  // 11. Angelic Voices: "Creatures you control get +1/+1 as long as you control
+  //     no nonartifact, nonwhite creatures."
+  //     Adapted from Card-Forge/forge (a/angelic_voices.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.controller && state[card.controller]?.bf.some(h => h.name === 'Angelic Voices')) {
+    const hasOffColor = state[card.controller].bf.some(x => isCre(x) && x.color !== 'W' && !isArt(x));
+    if (!hasOffColor) effects.push({ layer: '7c', power: 1, toughness: 1, enterTs: 0 });
+  }
+
+  // 12. Beasts of Bogardan: "This creature gets +1/+1 as long as an opponent
+  //     controls a nontoken white permanent." No token tracking exists in this
+  //     engine yet, so every permanent is treated as nontoken (SIMPLIFICATION).
+  //     Adapted from Card-Forge/forge (b/beasts_of_bogardan.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (card.name === 'Beasts of Bogardan' && card.controller) {
+    const opp = card.controller === 'p' ? 'o' : 'p';
+    if (state[opp]?.bf.some(h => h.color === 'W')) {
+      effects.push({ layer: '7c', power: 1, toughness: 1, enterTs: 0 });
+    }
+  }
+
+  // 13. Orcish Oriflamme: "Attacking creatures you control get +1/+0."
+  //     Adapted from Card-Forge/forge (o/orcish_oriflamme.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.attacking && card.controller && state[card.controller]?.bf.some(h => h.name === 'Orcish Oriflamme')) {
+    effects.push({ layer: '7c', power: 1, enterTs: 0 });
   }
 
   return effects;
