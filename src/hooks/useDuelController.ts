@@ -79,6 +79,14 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'colorLace',          // Chaoslace/Deathlace/Lifelace/Purelace/Thoughtlace -- "target spell or permanent"
   'scryTop3Reveal',     // Natural Selection -- "look at top three of target player's library"
   'returnArtifactFromGYToHand', // Reconstruction -- "target artifact card in your graveyard"
+  // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
+  'destroyArtifactGainCMC',        // Divine Offering -- "target artifact"
+  'restoreArtifactsFromGYToLibrary', // Drafna's Restoration -- "target player"
+  'pumpToughnessByTargetCMC',      // Great Defender -- "target creature"
+  'damageByWhiteCardsInHand',      // Inquisition -- "target player"
+  'scryTop5Reveal',                // Visions -- "target player"
+  'tapXCreatures',                 // Word of Binding -- "X target creatures"
+  'gainAndDealDamageThisTurn',     // Simulacrum -- "target creature you control"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -93,6 +101,10 @@ export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
   'damage5', // Lava Axe -- "deals 5 damage to target player or planeswalker"
   'discardAllNonland', // Amnesia -- "target player reveals hand..."
   'scryTop3Reveal',    // Natural Selection -- "top three cards of target player's library"
+  // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
+  'restoreArtifactsFromGYToLibrary', // Drafna's Restoration -- "target player"
+  'damageByWhiteCardsInHand',        // Inquisition -- "target player"
+  'scryTop5Reveal',                  // Visions -- "target player"
 ]);
 
 export function isPlayerOnlyTarget(card: any): boolean {
@@ -197,6 +209,10 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'damage1Flying', 'tapOrUntapArtifact', 'returnArtifactFromGYToHand',
   'destroyAuraOnOwnCreature', 'setAttackerPower0EOT', 'debuffTargetPower2EOT',
   'damage2Any', 'bouncePermanentControlled', 'revealHand',
+  // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
+  'counterAndArtifactType', 'skipNextUntap', 'damage1AnySelf1', 'untapXLands',
+  'tapNonFlyingTarget', 'destroyArtifact', 'cantRegenTarget',
+  'unblockableTargetPowerLE2', 'preventDamage1AnyReturnEnd', 'animateArtifactUntilEnd',
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -206,6 +222,9 @@ const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   // Simple-tier Forge batch (see THIRD_PARTY_NOTICES.md):
   'damage2Any', // Orcish Mechanics -- "deals 2 damage to any target"
   'revealHand', // Glasses of Urza -- "target player's hand" (player only)
+  // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
+  'damage1AnySelf1',          // Brothers of Fire -- "deals 1 damage to any target"
+  'preventDamage1AnyReturnEnd', // Rakalite -- "prevent... damage to any target"
 ]);
 
 function scoreLibCard(card: any, _state: any): number {

@@ -187,6 +187,8 @@ if (blProt.some(q => (PROT_MAP[q] || q) === at.color)) return false;
 const atInvisible = at.enchantments?.some(e => e.mod?.invisibility);
 if (atInvisible && !bl.subtype?.includes('Wall')) return false;
 if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
+// Unblockable EOT grant (e.g. Tawnos's Wand).
+if (at.eotBuffs?.some(b => b.unblockable)) return false;
 // LANDWALK: unblockable if defending player controls a land of the attacker's walk type.
 // defBf is the defending player's battlefield (optional -- skipped if not provided).
 if (hasKw(at, KEYWORDS.LANDWALK.id, state) && at.landwalkType && defBf) {
@@ -220,7 +222,11 @@ const floor = amt > 0 ? getLifeFloor(s, who) : null;
 const rawNl = s[who].life - amt;
 const nl = (floor !== null && rawNl < floor) ? floor : rawNl;
 let ns = { ...s, [who]: { ...s[who], life: nl, lifeAnim: amt > 0 ? "damage" : "heal" } };
-if (amt > 0) ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
+if (amt > 0) {
+  // Tracks total damage taken by each player this turn (Simulacrum). Reset at CLEANUP.
+  ns = { ...ns, turnState: { ...ns.turnState, damageTakenThisTurn: { ...ns.turnState.damageTakenThisTurn, [who]: (ns.turnState.damageTakenThisTurn?.[who] || 0) + amt } } };
+  ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
+}
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
 if (who === "p" && amt > 0) ns = { ...ns, peakDamage: Math.max(ns.peakDamage || 0, amt) };
 if (nl <= 0 && !ns.over) ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} reached 0 life` } };
@@ -290,7 +296,8 @@ while (changed) {
     );
     for (const c of dead) {
       // Regenerate: tap, clear damage, remove flag — creature survives.
-      if (c.regenerating) {
+      // Hurr Jackal: cantRegenerateThisTurn prevents the shield from saving it.
+      if (c.regenerating && !c.cantRegenerateThisTurn) {
         ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
           x.iid === c.iid ? { ...x, damage: 0, tapped: true, regenerating: false } : x
         )}};
@@ -307,10 +314,13 @@ while (changed) {
           ns = dlog(ns, `Creature Bond deals ${tou} damage to ${w}.`, 'damage');
         }
       }
+      // Abu Ja'far: capture combat partners BEFORE zMove clears blocking/attacking fields.
+      const blockingId = dyingCard.blocking || null;
+      const blockedByIds = [...ns.p.bf, ...ns.o.bf].filter(x => x.blocking === dyingCard.iid).map(x => x.iid);
       // Disintegrate exile override: if exileNextDeath is set, exile instead of GY.
       ns = zMove(ns, c.iid, w, w, ns.exileNextDeath ? "exile" : "gy");
       ns = dlog(ns, `${c.name} is ${ns.exileNextDeath ? "exiled" : "destroyed"}.`, "death");
-      ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w } });
+      ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w, blockingId, blockedByIds } });
       ns = processTriggerQueue(ns);
       changed = true;
     }
@@ -2129,6 +2139,234 @@ case "fetchBasicToBf": {
   break;
 }
 // --- END BATCH: SIMPLE-TIER STUB CARDS ---------------------------------------
+// --- BEGIN BATCH: MODERATE-TIER STUB CARDS (M1 -- activated abilities/spells) --
+case "counterAndArtifactType": {
+  // Adapted from Card-Forge/forge (a/ashnods_transmogrant.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && !isArt(tgtC)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid
+      ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + 1 }, type: c.type.includes('Artifact') ? c.type : `Artifact ${c.type}` }
+      : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} gets a +1/+1 counter and becomes an artifact.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no legal nonartifact creature target.`, "effect");
+  }
+  break;
+}
+case "skipNextUntap": {
+  // Adapted from Card-Forge/forge (b/barls_cage.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, skipNextUntap: true } : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} won't untap during its controller's next untap step.`, "effect");
+  }
+  break;
+}
+case "damage1AnySelf1": {
+  // Adapted from Card-Forge/forge (b/brothers_of_fire.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+  else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } }; ns = checkDeath(ns); }
+  ns = hurt(ns, caster, 1, card.name);
+  break;
+}
+case "untapXLands": {
+  // Adapted from Card-Forge/forge (c/candelabra_of_tawnos.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no multi-target picker UI for X targets; auto-fills any
+  // remaining slots with the activating player's own tapped lands.
+  const explicitLands = (item.targets || []).filter(id => isLand(getBF(ns, id) || {}));
+  const autoLands = ns[caster].bf.filter(c => isLand(c) && c.tapped && !explicitLands.includes(c.iid)).slice(0, Math.max(0, xVal - explicitLands.length)).map(c => c.iid);
+  const toUntap = [...explicitLands, ...autoLands].slice(0, xVal);
+  for (const lid of toUntap) {
+    const owner = ns.p.bf.some(c => c.iid === lid) ? 'p' : 'o';
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === lid ? { ...c, tapped: false } : c) } };
+  }
+  ns = dlog(ns, `${card.name} untaps ${toUntap.length} land(s).`, "effect");
+  break;
+}
+case "destroyArtifactGainCMC": {
+  // Adapted from Card-Forge/forge (d/divine_offering.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isArt(tgtC)) {
+    if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) { ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect'); break; }
+    const cmcGain = tgtC.cmc || 0;
+    ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
+    ns = hurt(ns, caster, -cmcGain, card.name);
+    ns = dlog(ns, `${card.name} destroys ${tgtC.name}; ${caster} gains ${cmcGain} life.`, "effect");
+  }
+  break;
+}
+case "restoreArtifactsFromGYToLibrary": {
+  // Adapted from Card-Forge/forge (d/drafnas_restoration.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no multi-select/reorder UI for "any number ... in any order";
+  // returns all of the target player's artifact cards from their graveyard to the
+  // top of their library, in their existing graveyard order.
+  const explicitGYCard = tgt ? (ns.p.gy.find(c => c.iid === tgt) || ns.o.gy.find(c => c.iid === tgt)) : null;
+  const drWho = tgt === 'p' || tgt === 'o' ? tgt
+              : explicitGYCard ? (ns.p.gy.some(c => c.iid === tgt) ? 'p' : 'o')
+              : opp;
+  const arts = ns[drWho].gy.filter(isArt);
+  if (arts.length) {
+    ns = { ...ns, [drWho]: { ...ns[drWho], gy: ns[drWho].gy.filter(c => !isArt(c)), lib: [...arts, ...ns[drWho].lib] } };
+    ns = dlog(ns, `${card.name}: ${arts.length} artifact card(s) go to the top of ${drWho}'s library.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no artifact cards in ${drWho}'s graveyard.`, "effect");
+  }
+  break;
+}
+case "tapNonFlyingTarget": {
+  // Adapted from Card-Forge/forge (f/flood.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && !hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+    ns = dlog(ns, `${card.name} taps ${tgtC.name}.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target has flying or is not a creature.`, "effect");
+  }
+  break;
+}
+case "pumpToughnessByTargetCMC": {
+  // Adapted from Card-Forge/forge (g/great_defender.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC) {
+    const cmcBonus = tgtC.cmc || 0;
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { toughness: cmcBonus }] } : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} gets +0/+${cmcBonus} until end of turn.`, "effect");
+  }
+  break;
+}
+case "cantRegenTarget": {
+  // Adapted from Card-Forge/forge (h/hurr_jackal.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, cantRegenerateThisTurn: true } : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} can't be regenerated this turn.`, "effect");
+  }
+  break;
+}
+case "damageByWhiteCardsInHand": {
+  // Adapted from Card-Forge/forge (i/inquisition.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const revWho2 = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const whiteCount = ns[revWho2].hand.filter(c => c.color === 'W').length;
+  const names2 = ns[revWho2].hand.map(c => c.name).join(', ') || '(empty hand)';
+  ns = dlog(ns, `${card.name}: ${revWho2} reveals hand (${names2}).`, "effect");
+  if (whiteCount > 0) ns = hurt(ns, revWho2, whiteCount, card.name);
+  break;
+}
+case "drawThenDiscardOwn": {
+  // Adapted from Card-Forge/forge (j/jalum_tome.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no UI to choose which card to discard; discards the most
+  // recently drawn card (same convention as forced cleanup discards).
+  ns = drawD(ns, caster, 1);
+  if (ns[caster].hand.length) {
+    const disc2 = ns[caster].hand[ns[caster].hand.length - 1];
+    ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0, -1), gy: [...ns[caster].gy, disc2] } };
+    ns = dlog(ns, `${card.name}: ${caster} discards ${disc2.name}.`, "effect");
+  }
+  break;
+}
+case "gainLifeSacrificedToughness": {
+  // Adapted from Card-Forge/forge (l/life_chisel.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const tou2 = item.sacrificedCard?.toughness || 0;
+  if (tou2 > 0) ns = hurt(ns, caster, -tou2, card.name);
+  ns = dlog(ns, `${card.name}: ${caster} gains ${tou2} life.`, "effect");
+  break;
+}
+case "addBBySacrificedCmc": {
+  // Adapted from Card-Forge/forge (p/priest_of_yawgmoth.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const cmcAmt = item.sacrificedCard?.cmc || 0;
+  if (cmcAmt > 0) {
+    const mp4 = { ...ns[caster].mana }; mp4.B = (mp4.B || 0) + cmcAmt;
+    ns = { ...ns, [caster]: { ...ns[caster], mana: mp4 } };
+  }
+  ns = dlog(ns, `${card.name} adds ${cmcAmt}B.`, "mana");
+  break;
+}
+case "preventDamage1AnyReturnEnd": {
+  // Adapted from Card-Forge/forge (r/rakalite.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgt === 'p' || tgt === 'o') {
+    ns = { ...ns, [tgt]: { ...ns[tgt], damageShield: (ns[tgt].damageShield || 0) + 1 } };
+  } else if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + 1 } : c) } };
+  }
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => c.iid === card.iid ? { ...c, returnToHandNextEnd: true } : c) } };
+  ns = dlog(ns, `${card.name}: prevents 1 damage; returns to hand at the next end step.`, "effect");
+  break;
+}
+case "gainAndDealDamageThisTurn": {
+  // Adapted from Card-Forge/forge (s/simulacrum.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const dmgAmt = ns.turnState.damageTakenThisTurn?.[caster] || 0;
+  ns = hurt(ns, caster, -dmgAmt, card.name);
+  if (tgtC && tgtC.controller === caster && dmgAmt > 0) {
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + dmgAmt } : c) } };
+    ns = checkDeath(ns);
+  }
+  ns = dlog(ns, `${card.name}: ${caster} gains ${dmgAmt} life; deals ${dmgAmt} to ${tgtC?.name || 'target'}.`, "effect");
+  break;
+}
+case "drawRevealDiscardIfNonland": {
+  // Adapted from Card-Forge/forge (s/sindbad.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const beforeLen = ns[caster].hand.length;
+  ns = drawD(ns, caster, 1);
+  if (ns[caster].hand.length > beforeLen) {
+    const drawn = ns[caster].hand[ns[caster].hand.length - 1];
+    ns = dlog(ns, `${card.name}: ${caster} reveals ${drawn.name}.`, "effect");
+    if (!isLand(drawn)) {
+      ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0, -1), gy: [...ns[caster].gy, drawn] } };
+      ns = dlog(ns, `${card.name}: ${drawn.name} isn't a land -- discarded.`, "effect");
+    }
+  }
+  break;
+}
+case "unblockableTargetPowerLE2": {
+  // Adapted from Card-Forge/forge (t/tawnoss_wand.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && getPow(tgtC, ns) <= 2) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { unblockable: true }] } : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} can't be blocked this turn.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target has power greater than 2.`, "effect");
+  }
+  break;
+}
+case "scryTop5Reveal": {
+  // Adapted from Card-Forge/forge (v/visions.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no shuffle-choice UI (same convention as scryTop3Reveal /
+  // Natural Selection); "you may shuffle" defaults to declining, which is always
+  // a legal choice.
+  const nsWho2 = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const top5 = ns[nsWho2].lib.slice(0, 5);
+  const top5Names = top5.map(c => c.name).join(', ') || '(empty library)';
+  ns = dlog(ns, `${card.name}: top of ${nsWho2}'s library is ${top5Names} (order unchanged).`, "effect");
+  break;
+}
+case "tapXCreatures": {
+  // Adapted from Card-Forge/forge (w/word_of_binding.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no multi-target picker UI for X targets; auto-fills any
+  // remaining slots with untapped creatures, preferring the opponent's.
+  const explicitCres = (item.targets || []).filter(id => { const c = getBF(ns, id); return c && isCre(c) && !c.tapped; });
+  const pool = [...ns[opp].bf, ...ns[caster].bf].filter(c => isCre(c) && !c.tapped && !explicitCres.includes(c.iid));
+  const autoCres = pool.slice(0, Math.max(0, xVal - explicitCres.length)).map(c => c.iid);
+  const toTap = [...explicitCres, ...autoCres].slice(0, xVal);
+  for (const cid of toTap) {
+    const owner2 = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
+    ns = { ...ns, [owner2]: { ...ns[owner2], bf: ns[owner2].bf.map(c => c.iid === cid ? { ...c, tapped: true } : c) } };
+  }
+  ns = dlog(ns, `${card.name} taps ${toTap.length} creature(s).`, "effect");
+  break;
+}
+case "animateArtifactUntilEnd": {
+  // Adapted from Card-Forge/forge (x/xenic_poltergeist.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: "until your next upkeep" approximated as "until the end of
+  // this turn" -- no delayed-duration infrastructure spans an opponent's turn
+  // boundary. layers.js's type-changing layer isn't consulted by isCre/checkDeath/
+  // combat eligibility (those read card.type directly), so the change must be a
+  // direct, revertible field mutation rather than a layer-4 effect.
+  if (tgtC && isArt(tgtC) && !isCre(tgtC)) {
+    const amt2 = tgtC.cmc || 0;
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid
+      ? { ...c, type: c.type.includes('Creature') ? c.type : `${c.type} Creature`, power: amt2, toughness: amt2,
+          revertAnimateAtEnd: { type: c.type, power: c.power, toughness: c.toughness } }
+      : c) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} becomes a ${amt2}/${amt2} artifact creature until end of turn.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target is not a noncreature artifact.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: MODERATE-TIER STUB CARDS (M1) --------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -2433,6 +2671,20 @@ if (next === PHASE.COMBAT_END) {
   ns = checkDeath(ns);
 }
 
+// Beginning-of-end-step delayed effects: Rakalite returns to hand, Xenic
+// Poltergeist's animated artifact reverts.
+if (next === PHASE.END) {
+  for (const w of ['p', 'o']) {
+    for (const c of [...ns[w].bf].filter(x => x.returnToHandNextEnd)) {
+      ns = zMove(ns, c.iid, w, w, 'hand');
+      ns = dlog(ns, `${c.name} returns to its owner's hand.`, 'effect');
+    }
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.revertAnimateAtEnd
+      ? { ...c, type: c.revertAnimateAtEnd.type, power: c.revertAnimateAtEnd.power, toughness: c.revertAnimateAtEnd.toughness, revertAnimateAtEnd: undefined }
+      : c) } };
+  }
+}
+
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
 for (const iid of ns.turnState.mustAttackEligible ?? []) {
@@ -2498,6 +2750,8 @@ landsUntapped++;
 return { ...base, tapped:false };
 }
 if (isCre(c)) {
+// Barl's Cage: skip this creature's untap once, then clear the flag.
+if (c.skipNextUntap) return { ...base, skipNextUntap: false };
 if (meekstoneOut && getPow(c, ns) >= 3) return base;
 if (smokeOut && cresUntapped >= 1) return base;
 // Paralyze: creature never untaps while the aura is attached
@@ -2669,7 +2923,7 @@ if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: d
 }
 
 if (next === PHASE.CLEANUP) {
-ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [] } };
+ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, activatedOnceIids: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -2678,6 +2932,10 @@ ns = { ...ns, [ac]: { ...ns[ac], hand: ns[ac].hand.slice(0,-1), gy: [...ns[ac].g
 // Expire all EOT buffs on all permanents. SYSTEMS.md S3.1
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c, eotBuffs: [] } : c) } };
+}
+// Hurr Jackal: "can't be regenerated" restriction only lasts the turn it's activated.
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.cantRegenerateThisTurn ? { ...c, cantRegenerateThisTurn: false } : c) } };
 }
 // Revert animated lands (e.g. Mishra's Factory) at end of turn.
 for (const w of ["p","o"]) {
@@ -2921,7 +3179,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, activatedOnceIids: [] },
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
@@ -3318,6 +3576,9 @@ case "ACTIVATE_ABILITY": {
   const w = action.who || 'p';
   const card = s[w].bf.find(c => c.iid === iid);
   if (!card) return s;
+  // X-cost activated abilities (e.g. Candelabra of Tawnos: "{X}, {T}: ..."), same
+  // xVal source CAST_SPELL uses for X spells.
+  const xValPaid = action.xVal ?? s.xVal ?? 1;
 
   // Handle cards with activatedAbilities array (e.g. Mishra's Factory).
   if (card.activatedAbilities && abilityId) {
@@ -3380,6 +3641,15 @@ case "ACTIVATE_ABILITY": {
       ns = { ...ns, [ownerSide]: { ...ns[ownerSide], bf: ns[ownerSide].bf.map(c => c.iid === tgt ? { ...c, damage: c.damage + 1 } : c) } };
       ns = checkDeath(ns);
       return dlog(ns, `${card.name} deals 1 damage to ${targetC.name}.`, "effect");
+    }
+
+    if (ab.effect === "grantWalkSelfDamage2") {
+      // Adapted from Card-Forge/forge (w/wormwood_treefolk.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+      if (!canPay(s[w].mana, ab.mana)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+      let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, ab.mana) } };
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [ab.walkKeyword] }] } : c) } };
+      ns = hurt(ns, w, 2, card.name);
+      return dlog(ns, `${card.name} gains ${ab.walkName} until end of turn.`, "effect");
     }
 
     return s;
@@ -3453,9 +3723,25 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("sacArt") && !s[w].bf.some(c => isArt(c))) {
     return dlog(s, `${card.name}: no artifact available to sacrifice.`, "info");
   }
+  if (act.cost.includes("sacCre") && !s[w].bf.some(c => isCre(c))) {
+    return dlog(s, `${card.name}: no creature available to sacrifice.`, "info");
+  }
   if (act.cost.includes("discardLastDrawn") && !s[w].hand.length) {
     return dlog(s, `${card.name}: no card to discard.`, "info");
   }
+  // Gate to Phyrexia / Life Chisel: "Activate only during your upkeep".
+  if (act.myUpkeepOnly && (s.phase !== PHASE.UPKEEP || s.active !== w)) {
+    return dlog(s, `${card.name} can only be activated during your upkeep.`, "info");
+  }
+  // Gate to Phyrexia: "and only once each turn".
+  if (act.onceEachTurn && (s.turnState.activatedOnceIids || []).includes(iid)) {
+    return dlog(s, `${card.name} has already been activated this turn.`, "info");
+  }
+
+  // Sacrificed-card capture (Priest of Yawgmoth, Life Chisel): the resolving
+  // effect needs the sacrificed permanent's stats, so it's threaded through
+  // the ability item rather than re-derived after zMove strips it.
+  let sacrificedCard = null;
 
   // 1. Tap cost
   if (act.cost.includes("T")) {
@@ -3477,8 +3763,28 @@ case "ACTIVATE_ABILITY": {
   // SIMPLIFICATION: no UI to choose which artifact; sacrifices the first one found.
   if (act.cost.includes("sacArt")) {
     const art = s[w].bf.find(c => isArt(c));
+    sacrificedCard = art;
     s = zMove(s, art.iid, w, w, "gy");
     s = dlog(s, `${art.name} sacrificed to activate ${card.name}.`, "info");
+  }
+
+  // 2b'. Sacrifice a creature you control, not necessarily the activating
+  // permanent itself (e.g. Gate to Phyrexia, Life Chisel: "Sacrifice a creature:").
+  // SIMPLIFICATION: no UI to choose which creature; sacrifices the first one found.
+  if (act.cost.includes("sacCre")) {
+    const cre = s[w].bf.find(c => isCre(c));
+    sacrificedCard = cre;
+    s = zMove(s, cre.iid, w, w, "gy");
+    s = dlog(s, `${cre.name} sacrificed to activate ${card.name}.`, "info");
+  }
+
+  // 2e. Pay life as an additional cost (Book of Rass, Greed: "Pay 2 life:").
+  if (act.cost.includes("payLife2")) {
+    if (s[w].life < 2) return dlog(s, `${card.name}: not enough life to pay the cost.`, "info");
+    const newLife = s[w].life - 2;
+    s = { ...s, [w]: { ...s[w], life: newLife } };
+    s = dlog(s, `${w} pays 2 life to activate ${card.name}.`, "info");
+    if (newLife <= 0 && !s.over) s = { ...s, over: { winner: w === 'p' ? 'o' : 'p', reason: `${w} paid life down to 0` } };
   }
 
   // 2c. Exile this permanent as a cost (e.g. Feldon's Cane: "T, Exile this artifact:").
@@ -3499,14 +3805,18 @@ case "ACTIVATE_ABILITY": {
     s = dlog(s, `${card.name}: ${w} discards ${last.name}.`, "info");
   }
 
-  // 3. Mana cost -- strip 'T', 'sac'-family tokens, and commas, parse remainder
+  // 3. Mana cost -- strip 'T', 'sac'-family tokens, and commas, parse remainder.
+  // Any literal "X" is replaced with the paid xVal (Candelabra of Tawnos).
   const manaPart = act.cost
     .replace(/discardLastDrawn/g, "")
     .replace(/sacArt/g, "")
+    .replace(/sacCre/g, "")
+    .replace(/payLife2/g, "")
     .replace(/exile/g, "")
     .replace(/T/g, "")
     .replace(/sac/g, "")
     .replace(/,/g, "")
+    .replace(/X/g, String(xValPaid))
     .trim();
   // Counter-cost abilities (e.g. Triskelion): cost is paid by removing a counter,
   // not by spending mana. The effect handler validates and removes the counter.
@@ -3534,10 +3844,14 @@ case "ACTIVATE_ABILITY": {
     card: { ...card, effect: effectOverride, mana: act.mana },
     caster: w,
     targets: tgt ? [tgt] : [],
-    xVal: 1,
+    xVal: act.cost.includes("X") ? xValPaid : 1,
     chosenColor,
     isAbility: true,
+    sacrificedCard,
   };
+  if (act.onceEachTurn) {
+    s = { ...s, turnState: { ...s.turnState, activatedOnceIids: [...(s.turnState.activatedOnceIids || []), iid] } };
+  }
   s = { ...s, stack: [...s.stack, abilityItem], priorityWindow: true, priorityPasser: null };
   return dlog(s, `${card.name}: activated ${act.effect}.`, "effect");
 }

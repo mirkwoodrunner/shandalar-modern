@@ -53,3 +53,31 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-01 | Weakstone (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | w/weakstone.txt | GPL-3.0 |
 | 2026-07-01 | Wyluli Wolf (reused `pumpCreature` via card.mod, DuelCore.js) | Card-Forge/forge | w/wyluli_wolf.txt | GPL-3.0 |
 | 2026-07-02 | Creature valuation algorithm (`evaluateCreatureValue`, AI.js) | Card-Forge/forge | forge-ai/src/main/java/forge/ai/CreatureEvaluator.java | GPL-3.0 |
+| 2026-07-02 | Ashnod's Transmogrant (`counterAndArtifactType` + `sac` cost, DuelCore.js) | Card-Forge/forge | a/ashnods_transmogrant.txt | GPL-3.0 |
+| 2026-07-02 | Barl's Cage (`skipNextUntap`, DuelCore.js) | Card-Forge/forge | b/barls_cage.txt | GPL-3.0 |
+| 2026-07-02 | Bazaar of Baghdad (reused `bazaarActivate`, DuelCore.js) | Card-Forge/forge | b/bazaar_of_baghdad.txt | GPL-3.0 |
+| 2026-07-02 | Book of Rass (reused `draw1` + `payLife2` cost token, DuelCore.js) | Card-Forge/forge | b/book_of_rass.txt | GPL-3.0 |
+| 2026-07-02 | Brothers of Fire (`damage1AnySelf1`, DuelCore.js) | Card-Forge/forge | b/brothers_of_fire.txt | GPL-3.0 |
+| 2026-07-02 | Candelabra of Tawnos (`untapXLands` + X-cost activated abilities, DuelCore.js) | Card-Forge/forge | c/candelabra_of_tawnos.txt | GPL-3.0 |
+| 2026-07-02 | Divine Offering (`destroyArtifactGainCMC`, DuelCore.js) | Card-Forge/forge | d/divine_offering.txt | GPL-3.0 |
+| 2026-07-02 | Drafna's Restoration (`restoreArtifactsFromGYToLibrary`, DuelCore.js) | Card-Forge/forge | d/drafnas_restoration.txt | GPL-3.0 |
+| 2026-07-02 | Flood (`tapNonFlyingTarget`, DuelCore.js) | Card-Forge/forge | f/flood.txt | GPL-3.0 |
+| 2026-07-02 | Gate to Phyrexia (reused `destroyArtifact` + `sacCre`/`myUpkeepOnly`/`onceEachTurn`, DuelCore.js) | Card-Forge/forge | g/gate_to_phyrexia.txt | GPL-3.0 |
+| 2026-07-02 | Great Defender (`pumpToughnessByTargetCMC`, DuelCore.js) | Card-Forge/forge | g/great_defender.txt | GPL-3.0 |
+| 2026-07-02 | Greed (reused `draw1` + `payLife2` cost token, DuelCore.js) | Card-Forge/forge | g/greed.txt | GPL-3.0 |
+| 2026-07-02 | Hurr Jackal (`cantRegenTarget`, DuelCore.js) | Card-Forge/forge | h/hurr_jackal.txt | GPL-3.0 |
+| 2026-07-02 | Inquisition (`damageByWhiteCardsInHand`, DuelCore.js) | Card-Forge/forge | i/inquisition.txt | GPL-3.0 |
+| 2026-07-02 | Jalum Tome (`drawThenDiscardOwn`, DuelCore.js) | Card-Forge/forge | j/jalum_tome.txt | GPL-3.0 |
+| 2026-07-02 | Life Chisel (`gainLifeSacrificedToughness` + `sacCre`/`myUpkeepOnly`, DuelCore.js) | Card-Forge/forge | l/life_chisel.txt | GPL-3.0 |
+| 2026-07-02 | Priest of Yawgmoth (`addBBySacrificedCmc`, DuelCore.js) | Card-Forge/forge | p/priest_of_yawgmoth.txt | GPL-3.0 |
+| 2026-07-02 | Rakalite (`preventDamage1AnyReturnEnd` + PHASE.END delayed bounce, DuelCore.js) | Card-Forge/forge | r/rakalite.txt | GPL-3.0 |
+| 2026-07-02 | Simulacrum (`gainAndDealDamageThisTurn` + `hurt()` damage tracking, DuelCore.js) | Card-Forge/forge | s/simulacrum.txt | GPL-3.0 |
+| 2026-07-02 | Sindbad (`drawRevealDiscardIfNonland`, DuelCore.js) | Card-Forge/forge | s/sindbad.txt | GPL-3.0 |
+| 2026-07-02 | Tawnos's Wand (`unblockableTargetPowerLE2` + canBlockDuel unblockable check, DuelCore.js) | Card-Forge/forge | t/tawnoss_wand.txt | GPL-3.0 |
+| 2026-07-02 | Urza's Mine (Tron mana bonus, cards.js) | Card-Forge/forge | u/urzas_mine.txt | GPL-3.0 |
+| 2026-07-02 | Urza's Power Plant (Tron mana bonus, cards.js) | Card-Forge/forge | u/urzas_power_plant.txt | GPL-3.0 |
+| 2026-07-02 | Urza's Tower (Tron mana bonus, cards.js) | Card-Forge/forge | u/urzas_tower.txt | GPL-3.0 |
+| 2026-07-02 | Visions (`scryTop5Reveal`, DuelCore.js) | Card-Forge/forge | v/visions.txt | GPL-3.0 |
+| 2026-07-02 | Word of Binding (`tapXCreatures`, DuelCore.js) | Card-Forge/forge | w/word_of_binding.txt | GPL-3.0 |
+| 2026-07-02 | Wormwood Treefolk (`grantWalkSelfDamage2` activatedAbilities, DuelCore.js) | Card-Forge/forge | w/wormwood_treefolk.txt | GPL-3.0 |
+| 2026-07-02 | Xenic Poltergeist (`animateArtifactUntilEnd` + PHASE.END revert, DuelCore.js) | Card-Forge/forge | x/xenic_poltergeist.txt | GPL-3.0 |
