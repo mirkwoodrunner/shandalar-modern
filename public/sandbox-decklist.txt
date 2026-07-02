@@ -3,8 +3,12 @@ Pestilence x4
 Black Vise x4
 Lava Axe x4
 Badlands x4
-Swamp x2
 Mox Jet x4
-Mountain x2
 Mox Ruby x4
+Underground Sea x4
+Volcanic Island x4
 Black Lotus x4
+Mox Sapphire x4
+Timetwister x4
+Ancestral Recall x4
+Time Walk x4
