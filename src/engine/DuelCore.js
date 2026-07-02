@@ -457,6 +457,22 @@ if (hasTower && hasMine && hasPlant) {
   ns = dlog(ns, `Tron bonus: ${c.name} tapped for ${1 + bonus} colorless.`, "mana");
 }
 }
+// Gauntlet of Might: "Whenever a Mountain is tapped for mana, its controller
+// adds an additional {R}." Adapted from Card-Forge/forge (g/gauntlet_of_might.txt),
+// GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (isLand(c) && c.subtype?.includes("Mountain") && [...ns.p.bf, ...ns.o.bf].some(x => x.name === "Gauntlet of Might")) {
+  ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, R: (ns[who].mana.R || 0) + 1 } } };
+  ns = dlog(ns, `Gauntlet of Might: ${who} gets +1R.`, "mana");
+}
+// Lifeblood: "Whenever a Mountain an opponent controls becomes tapped, you
+// gain 1 life." Adapted from Card-Forge/forge (l/lifeblood.txt), GPL-3.0.
+// See THIRD_PARTY_NOTICES.md.
+if (isLand(c) && c.subtype?.includes("Mountain")) {
+  const oppOfTapper = who === "p" ? "o" : "p";
+  if (ns[oppOfTapper].bf.some(x => x.name === "Lifeblood")) {
+    ns = hurt(ns, oppOfTapper, -1, "Lifeblood");
+  }
+}
 return ns;
 }
 
@@ -3006,17 +3022,33 @@ function evaluateCondition(state, card, condition, payload) {
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
 
+// Leaves-the-battlefield events (ON_CREATURE_DIES): checkDeath moves the dying
+// card to the graveyard/exile *before* calling emitEvent, so by the time this
+// runs the source card is no longer on the battlefield. Find it there using
+// last-known information (CR 603.6d) so self-scoped "when this dies" triggers
+// (Abu Ja'far, Cyclopean Mummy, Onulet, etc.) can still fire.
+function findLeftBattlefieldCard(state, iid) {
+  for (const who of ['p', 'o']) {
+    const found = state[who].gy.find(c => c.iid === iid) || state[who].exile.find(c => c.iid === iid);
+    if (found) return found;
+  }
+  return null;
+}
+
 function emitEvent(state, event) {
   const newTriggers = [];
   const allPlayers = ['p', 'o'];
   let ts = Date.now(); // tie-breaking integer only, not for timing
+
+  const dyingCardId = event.type === 'ON_CREATURE_DIES' ? event.payload?.cardId : null;
+  const dyingCard = dyingCardId ? findLeftBattlefieldCard(state, dyingCardId) : null;
 
   for (const who of allPlayers) {
     for (const card of state[who].bf) {
       if (!card.triggeredAbilities) continue;
       for (const ability of card.triggeredAbilities) {
         if (ability.trigger.event !== event.type) continue;
-        if (ability.trigger.scope === 'self' && card.iid !== event.payload?.sourceId) continue;
+        if (ability.trigger.scope === 'self' && card.iid !== dyingCardId) continue;
         if (ability.trigger.scope === 'controller' && card.controller !== event.payload?.activePlayer) continue;
         if (ability.condition && !evaluateCondition(state, card, ability.condition, event.payload)) continue;
         newTriggers.push({
@@ -3027,6 +3059,23 @@ function emitEvent(state, event) {
           timestamp: ts++,
         });
       }
+    }
+  }
+
+  // Self-scoped death triggers on the dying card itself -- it's already off
+  // the battlefield, so the loop above never sees it.
+  if (dyingCard?.triggeredAbilities) {
+    for (const ability of dyingCard.triggeredAbilities) {
+      if (ability.trigger.event !== event.type) continue;
+      if (ability.trigger.scope !== 'self') continue;
+      if (ability.condition && !evaluateCondition(state, dyingCard, ability.condition, event.payload)) continue;
+      newTriggers.push({
+        triggerId: ability.id,
+        sourceCardId: dyingCard.iid,
+        controller: dyingCard.controller,
+        eventPayload: event.payload,
+        timestamp: ts++,
+      });
     }
   }
 
@@ -3105,6 +3154,71 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         'effect'
       );
     }
+    // Abu Ja'far: destroys creatures blocking or blocked by it (payload captured
+    // pre-zMove in checkDeath, since the dying card's own fields are cleared by
+    // the time this trigger resolves). No regeneration check -- direct zMove.
+    // Adapted from Card-Forge/forge (a/abu_jafar.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'destroyCombatPartners': {
+      const ids = [...(payload.blockedByIds || []), ...(payload.blockingId ? [payload.blockingId] : [])];
+      let s = state;
+      for (const id of ids) {
+        const c = getBF(s, id);
+        if (c) s = zMove(s, id, c.controller, c.controller, 'gy');
+      }
+      if (ids.length) s = dlog(s, `${sourceCard.name}: destroys creatures blocking or blocked by it.`, 'effect');
+      return s;
+    }
+    // Cyclopean Mummy: moves itself from graveyard to exile after dying.
+    // Adapted from Card-Forge/forge (c/cyclopean_mummy.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'exileSelfFromGY': {
+      const who = sourceCard.controller;
+      const inGY = state[who].gy.find(c => c.iid === sourceCard.iid);
+      if (!inGY) return state;
+      const s = { ...state, [who]: { ...state[who], gy: state[who].gy.filter(c => c.iid !== sourceCard.iid), exile: [...(state[who].exile || []), inGY] } };
+      return dlog(s, `${sourceCard.name} is exiled.`, 'effect');
+    }
+    // Ghazbán Ogre: control changes to whichever player has strictly more life
+    // than the other (2-player simplification of "more than each other player").
+    // Adapted from Card-Forge/forge (g/ghazban_ogre.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'controlToHighestLife': {
+      if (state.p.life === state.o.life) return state;
+      const winner = state.p.life > state.o.life ? 'p' : 'o';
+      if (sourceCard.controller === winner) return state;
+      const origCtrl = sourceCard.controller;
+      const current = getBF(state, sourceCard.iid);
+      if (!current) return state;
+      let s = { ...state, [origCtrl]: { ...state[origCtrl], bf: state[origCtrl].bf.filter(c => c.iid !== sourceCard.iid) } };
+      const stolen = { ...current, controller: winner, summoningSick: true, tapped: false, attacking: false, blocking: null };
+      s = { ...s, [winner]: { ...s[winner], bf: [...s[winner].bf, stolen] } };
+      return dlog(s, `${sourceCard.name}: control changes to ${winner} (most life).`, 'effect');
+    }
+    // Onulet: gains its controller a fixed amount of life on death.
+    // Adapted from Card-Forge/forge (o/onulet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'gainLifeController': {
+      const who = sourceCard.controller;
+      return hurt(state, who, -effect.amount, sourceCard.name);
+    }
+    // Soul Net: optional-cost trigger, resolved via the RESOLVE_CHOICE/pendingChoice
+    // pipeline (options presented through the existing ChoiceModal UI).
+    // Adapted from Card-Forge/forge (s/soul_net.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'payGenericGainLife': {
+      const who = sourceCard.controller;
+      const totalMana = Object.values(state[who].mana).reduce((a, b) => a + b, 0);
+      if (totalMana < effect.cost) return dlog(state, `${sourceCard.name}: not enough mana to pay.`, 'effect');
+      const paid = payMana(state[who].mana, String(effect.cost));
+      const s = { ...state, [who]: { ...state[who], mana: paid } };
+      return hurt(s, who, -effect.amount, sourceCard.name);
+    }
+    case 'noop':
+      return state;
+    // Spiritual Sanctuary: fires for each player's upkeep, using the upkeep
+    // event's activePlayer (not sourceCard.controller) as the life-gain recipient.
+    // Adapted from Card-Forge/forge (s/spiritual_sanctuary.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'gainLifeIfControlsPlains': {
+      const who = payload.activePlayer;
+      if (!who || !state[who].bf.some(c => isLand(c) && c.subtype?.includes('Plains'))) return state;
+      return hurt(state, who, -1, sourceCard.name);
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -3113,7 +3227,8 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
 
 function resolveTrigger(state, inst) {
   const allBf = [...state.p.bf, ...state.o.bf];
-  const sourceCard = allBf.find(c => c.iid === inst.sourceCardId);
+  const sourceCard = allBf.find(c => c.iid === inst.sourceCardId)
+    ?? findLeftBattlefieldCard(state, inst.sourceCardId);
   if (!sourceCard?.triggeredAbilities) return state;
   const ability = sourceCard.triggeredAbilities.find(a => a.id === inst.triggerId);
   if (!ability) return state;
@@ -3297,7 +3412,10 @@ case "PLAY_LAND": {
   if (s.stack?.length > 0) return dlog(s, 'Cannot play a land while spells are on the stack.', 'rule');
   if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || (s.landsPlayed >= 1 && !fastbondActive)) return s;
   const prevLandsPlayed = s.landsPlayed;
-  const lArr = { ...c, controller: w, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
+  // Kismet: "Artifacts, creatures, and lands your opponents control enter tapped."
+  // Adapted from Card-Forge/forge (k/kismet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const kismetTapsLand = s[w === 'p' ? 'o' : 'p'].bf.some(x => x.name === 'Kismet');
+  const lArr = { ...c, controller: w, tapped: kismetTapsLand, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
   s = { ...s, [w]: { ...s[w], hand: s[w].hand.filter(x => x.iid !== action.iid), bf: [...s[w].bf, lArr] }, landsPlayed: s.landsPlayed + 1 };
   if (fastbondActive && prevLandsPlayed >= 1) {
     s = hurt(s, w, 1, "Fastbond");
@@ -3450,10 +3568,15 @@ case "RESOLVE_STACK": {
     // skip the normal ETB push so we don't double-add the original card object.
     const alreadyOnBf = s[top.caster].bf.some(c => c.iid === top.card.iid);
     if (!alreadyOnBf) {
+      // Kismet: "Artifacts, creatures, and lands your opponents control enter
+      // tapped." Adapted from Card-Forge/forge (k/kismet.txt), GPL-3.0. See
+      // THIRD_PARTY_NOTICES.md.
+      const kismetTapsPerm = (isArt(top.card) || isCre(top.card)) &&
+        s[top.caster === 'p' ? 'o' : 'p'].bf.some(x => x.name === 'Kismet');
       const pArr = {
         ...top.card,
         controller: top.caster,
-        tapped: false,
+        tapped: kismetTapsPerm,
         summoningSick: !hasKw(top.card, KEYWORDS.HASTE.id),
         attacking: false,
         blocking: null,
@@ -3500,12 +3623,23 @@ case "DECLARE_ATTACKER": {
     sPay = dlog(sPay, `${side} pays {${cost}} so ${c.name} can attack (Brainwash).`, 'mana');
   }
   s = sPay;
+  // Goblin Rock Sled: "can't attack unless defending player controls a Mountain."
+  // Adapted from Card-Forge/forge (g/goblin_rock_sled.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (c.attackRequiresDefenderLand) {
+    const defSide = side === 'p' ? 'o' : 'p';
+    const subLower = c.attackRequiresDefenderLand.toLowerCase();
+    if (!s[defSide].bf.some(l => isLand(l) && l.subtype?.toLowerCase().includes(subLower))) {
+      return dlog(s, `${c.name} can't attack -- defending player doesn't control a ${c.attackRequiresDefenderLand}.`, 'rule');
+    }
+  }
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
     ? (s.turnState.attackedThisCombat || []).filter(id => id !== action.iid)
     : [...(s.turnState.attackedThisCombat || []), action.iid];
-  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id) } : x) } };
+  // Goblin Rock Sled: mark it so it skips its controller's next untap step.
+  const goblinRockSledFlag = !att && c.doesNotUntapIfAttacked ? { skipNextUntap: true } : {};
+  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id), ...goblinRockSledFlag } : x) } };
 }
 
 case "DECLARE_BLOCKER": {

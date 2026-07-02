@@ -98,3 +98,13 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Orcish Oriflamme (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | o/orcish_oriflamme.txt | GPL-3.0 |
 | 2026-07-02 | People of the Woods (`peopleOfTheWoodsToughness` CDA, layers.js) | Card-Forge/forge | p/people_of_the_woods.txt | GPL-3.0 |
 | 2026-07-02 | Seeker (`blockRestrictionArtifactOrWhite` aura mod + canBlockDuel gate, DuelCore.js) | Card-Forge/forge | s/seeker.txt | GPL-3.0 |
+| 2026-07-02 | Abu Ja'far (`destroyCombatPartners` triggered effect, DuelCore.js) | Card-Forge/forge | a/abu_jafar.txt | GPL-3.0 |
+| 2026-07-02 | Cyclopean Mummy (`exileSelfFromGY` triggered effect, DuelCore.js) | Card-Forge/forge | c/cyclopean_mummy.txt | GPL-3.0 |
+| 2026-07-02 | Gauntlet of Might (reused `globalPump` + applyOvergrowthTap Mountain hook, DuelCore.js) | Card-Forge/forge | g/gauntlet_of_might.txt | GPL-3.0 |
+| 2026-07-02 | Ghazbán Ogre (`controlToHighestLife` triggered effect, DuelCore.js) | Card-Forge/forge | g/ghazban_ogre.txt | GPL-3.0 |
+| 2026-07-02 | Goblin Rock Sled (DECLARE_ATTACKER attackRequiresDefenderLand gate + reused skipNextUntap, DuelCore.js) | Card-Forge/forge | g/goblin_rock_sled.txt | GPL-3.0 |
+| 2026-07-02 | Kismet (PLAY_LAND/RESOLVE_STACK enter-tapped hook, DuelCore.js) | Card-Forge/forge | k/kismet.txt | GPL-3.0 |
+| 2026-07-02 | Lifeblood (applyOvergrowthTap Mountain hook, DuelCore.js) | Card-Forge/forge | l/lifeblood.txt | GPL-3.0 |
+| 2026-07-02 | Onulet (`gainLifeController` triggered effect, DuelCore.js) | Card-Forge/forge | o/onulet.txt | GPL-3.0 |
+| 2026-07-02 | Soul Net (`payGenericGainLife`/`noop` triggered effect + requiresChoice, DuelCore.js) | Card-Forge/forge | s/soul_net.txt | GPL-3.0 |
+| 2026-07-02 | Spiritual Sanctuary (`gainLifeIfControlsPlains` triggered effect, DuelCore.js) | Card-Forge/forge | s/spiritual_sanctuary.txt | GPL-3.0 |
