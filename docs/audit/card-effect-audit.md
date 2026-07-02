@@ -39,6 +39,57 @@ See `docs/MECHANICS_INDEX.md` -- Batch: Simple-Tier Stub Cards (Forge Reference)
 
 ---
 
+### 2026-07-02 — Moderate-Tier Stub Cards (Card-Forge/forge reference, GPL-3.0)
+
+55 of the 84 targeted cards below are now implemented (no longer `effect:"STUB"` in
+`cards.js`), split into four sub-batches; rows are left in place below for historical
+reference rather than edited row-by-row.
+
+**M1 (activated abilities/spells, 28/33 implemented):** `alchorss_tomb` (deferred),
+`ashnodss_transmogrant`, `barlss_cage`, `bazaar_of_baghdad`, `blaze_of_glory`
+(deferred), `book_of_rass`, `brothers_of_fire`, `candelabra_of_tawnos`,
+`coral_helm` (deferred), `divine_offering`, `drafnass_restoration`, `flood`,
+`gate_to_phyrexia`, `great_defender`, `greed`, `hurr_jackal`, `inquisition`,
+`jalum_tome`, `life_chisel`, `priest_of_yawgmoth`, `rakalite`,
+`reverse_polarity` (deferred), `sacrifice` (deferred), `simulacrum`, `sindbad`,
+`tawnosss_wand`, `urzass_mine`, `urzass_power_plant`, `urzass_tower`, `visions`,
+`word_of_binding`, `wormwood_treefolk`, `xenic_poltergeist`.
+
+**M2 (keyword-line, 6/11 implemented):** `ashnodss_battle_gear` (deferred),
+`crimson_manticore`, `darkpact` (deferred), `demonic_attorney` (deferred),
+`fallen_angel`, `fire_drake`, `knights_of_thorn` (deferred), `mountain_yeti`,
+`tawnosss_weaponry` (deferred), `thunder_spirit`, `wall_of_light`.
+
+**M3 (static/continuous, 11/15 implemented):** `angelic_voices`,
+`beasts_of_bogardan`, `blood_moon` (deferred), `brainwash`, `eternal_warrior`,
+`evil_presence` (deferred), `gaeass_avenger`, `kobold_drill_sergeant`,
+`kobold_overlord`, `kobold_taskmaster`, `kormus_bell` (deferred),
+`living_lands` (deferred), `orcish_oriflamme`, `people_of_the_woods`, `seeker`.
+
+**M4 (triggered abilities, 10/25 implemented):** `abu_jasfar`, `cave_people`
+(deferred), `citanul_druid` (deferred), `cyclopean_mummy`, `dingus_egg`
+(deferred), `gauntlet_of_might`, `ghazban_ogre`, `goblin_rock_sled`,
+`hasran_ogress` (deferred), `haunting_wind` (deferred), `khabal_ghoul`
+(deferred), `kismet`, `lifeblood`, `marsh_viper` (deferred),
+`martyrs_of_korlis` (deferred), `onulet`, `pit_scorpion` (deferred),
+`powerleech` (deferred), `soul_net`, `spiritual_sanctuary`, `tablet_of_epityr`
+(deferred), `throne_of_bone` (deferred), `urzass_chalice` (deferred),
+`urzass_miter` (deferred), `veteran_bodyguard` (deferred).
+
+Every deferred card has a `DEFERRED: <reason>` comment in place of the old
+`STUB:` comment in `cards.js`. Reasons cluster around: no ante zone/mechanic,
+no token-creation mechanic dependency (n/a this batch), a missing trigger
+event type (attacks-declared, spell-cast, permanent-dies, end-step), no
+damage-source-type tracking for redirection, no generic color-choice or
+optional-untap UI, and type-changing continuous effects (layers.js computes
+them for display but `isCre`/`isLand`/combat code reads `card.type` directly).
+
+See `docs/MECHANICS_INDEX.md` -- Batch: Moderate-Tier Stub Cards (Forge
+Reference) and `docs/CURRENT_SPRINT.md` (2026-07-02) for the full per-card
+effect-id list and engine-change details.
+
+---
+
 ## Summary
 
 | Category | Count | Notes |

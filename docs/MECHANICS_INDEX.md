@@ -2548,4 +2548,219 @@ ACTIVE
 
 ---
 
+## Batch: Moderate-Tier Stub Cards (Forge Reference) -- 2026-07-02
+
+84 targeted Alpha/Beta stub cards, split into four sub-batches (M1 activated
+abilities/spells, M2 keyword-line cards, M3 static/continuous, M4 triggered
+abilities), adapted from Card-Forge/forge (GPL-3.0) implementation-pattern
+reference scripts. Scryfall oracle text (verified against
+`scryfall/shandalar-card-pool.json`) is the sole authority for effect text and
+matched every Forge `Oracle:` line in this batch with no discrepancies.
+55 of 84 cards implemented; 29 deferred with a reason comment in `cards.js`.
+See `THIRD_PARTY_NOTICES.md` for the full per-card attribution table.
+
+### M1 -- Activated abilities and spells (28 of 33 implemented)
+
+New `resolveEff` cases: `counterAndArtifactType`, `skipNextUntap`,
+`damage1AnySelf1`, `untapXLands`, `destroyArtifactGainCMC`,
+`restoreArtifactsFromGYToLibrary`, `tapNonFlyingTarget`,
+`pumpToughnessByTargetCMC`, `cantRegenTarget`, `damageByWhiteCardsInHand`,
+`drawThenDiscardOwn`, `gainLifeSacrificedToughness`, `addBBySacrificedCmc`,
+`preventDamage1AnyReturnEnd`, `gainAndDealDamageThisTurn`,
+`drawRevealDiscardIfNonland`, `unblockableTargetPowerLE2`, `scryTop5Reveal`,
+`tapXCreatures`, `animateArtifactUntilEnd`. Reused existing cases: `draw1`
+(Book of Rass, Greed), `bazaarActivate` (Bazaar of Baghdad), `destroyArtifact`
+(Gate to Phyrexia).
+
+New `ACTIVATE_ABILITY` cost tokens: `payLife2` (pay 2 life as an additional
+cost), `sacCre` (sacrifice a creature you control, not necessarily the
+activating permanent -- preflight-checked like `sacArt`), plus `myUpkeepOnly`
+and `onceEachTurn` activation-restriction flags (`turnState.activatedOnceIids`,
+reset at CLEANUP). X-cost activated abilities now work (`xValPaid` sourced
+from `action.xVal ?? s.xVal`, threading into both mana payment and the pushed
+stack item's `xVal` -- previously hardcoded to 1, a latent gap with no prior
+card to exercise it). `Wormwood Treefolk` uses the pre-existing
+`activatedAbilities` array pathway (Mishra's Factory precedent) via a new
+shared `grantWalkSelfDamage2` branch parameterized by `mana`/`walkKeyword`/
+`walkName`.
+
+New engine infrastructure: `hurt()` now tracks
+`turnState.damageTakenThisTurn[who]` (reset at CLEANUP) for Simulacrum's X
+value. `PHASE.END` gained a delayed-effects block (Rakalite's self-bounce,
+Xenic Poltergeist's animate-artifact revert) -- both stash pre-state in a
+field (`returnToHandNextEnd` / `revertAnimateAtEnd`) applied at the next end
+step. `canBlockDuel` gained an `eotBuffs.unblockable` check (Tawnos's Wand).
+Xenic Poltergeist directly mutates `.type`/`.power`/`.toughness` rather than
+using a layer-4 effect, since `isCre()` and combat/SBE code read `card.type`
+directly, not through `computeCharacteristics()` (see M3 below).
+
+Deferred: **Alchor's Tomb** (needs a generic color-choice UI; existing
+pickers are all mana-specific), **Blaze of Glory** (blocking model can't
+represent one blocker blocking multiple attackers), **Coral Helm** (Milestone
+B/seeded RNG -- would need a new `Math.random()` call site; the existing
+random-discard code only discards from the opponent's hand), **Reverse
+Polarity** (needs artifact-source-tagged damage tracking `hurt()` doesn't
+have), **Sacrifice** (no "additional cost to cast" mechanism exists for
+spells).
+
+### M2 -- Keyword-line cards (6 of 11 implemented)
+
+Implemented via pure keyword/`protection` fields (Mountain Yeti, Thunder
+Spirit, Wall of Light) or a small new activated-ability case
+(`damage1AttackerOrBlocker` for Crimson Manticore, `pumpSelf21EOT` for Fallen
+Angel). Fire Drake reuses `pumpSelf` with the new `onceEachTurn` gate.
+
+**Bug fix during implementation:** the new `sacCre` cost token collided with
+the pre-existing generic self-sacrifice cost branch (`act.cost.includes("sac")`
+matches the substring "sac" inside "sacCre"), double-sacrificing the
+activating permanent. Fixed by excluding `sacCre` from that branch, mirroring
+the existing `sacArt` exclusion. Also hardened the `sacCre` creature-auto-pick
+to prefer a creature other than the activating permanent itself (so Fallen
+Angel doesn't sacrifice itself when another creature is available).
+
+Deferred: **Ashnod's Battle Gear**, **Tawnos's Weaponry** (both need an
+"optional untap" per-permanent choice mechanic -- no UI or engine flag for
+"may choose not to untap during your untap step" exists), **Darkpact**,
+**Demonic Attorney** (no ante zone/mechanic exists in this engine --
+consistent with other still-stubbed ante cards), **Knights of Thorn**
+(`BANDING` is registered in `keywords.js` and grantable via one existing card
+(Helm of Chatzuk), but the engine has no attacker-damage-assignment
+implementation for it -- listed-but-not-enforced per M2 policy).
+
+### M3 -- Static/continuous effects (11 of 15 implemented)
+
+New `layers.js` additions: `gaeasAvengerPT` and `peopleOfTheWoodsToughness`
+CDA evaluators (Layer 7a); named continuous-effect checks for Angelic Voices,
+Beasts of Bogardan, Orcish Oriflamme, following the pre-existing
+Castle/Fortified Area/Weakstone pattern. The generic `lordEffect`/`globalPump`
+matcher gained a `lordControllerOnly` flag so the three Kobold lords can be
+"you control"-scoped, unlike the pre-existing symmetric anthems (Goblin King,
+Crusade, Bad Moon) that intentionally affect both players' matching creatures
+per their real oracle text.
+
+New `DuelCore.js` aura mods, both enforced at their natural check point rather
+than through the layer pipeline: `cantAttackUnlessPay` (Brainwash) in
+`DECLARE_ATTACKER`, auto-paying if able (same "unless you pay" convention as
+Demonic Hordes' upkeep cost); `blockRestrictionArtifactOrWhite` (Seeker) in
+`canBlockDuel`. Eternal Warrior needed no new code at all -- `mod.keywords` on
+an `enchantCreature` aura is already read generically by `layers.js`.
+
+**Architectural finding:** `layers.js` computes a Layer-4 type change for
+`computeCharacteristics()`'s return value, but `isCre`/`isLand`/`isArt`,
+`checkDeath`, and all combat-eligibility checks read `card.type` directly,
+never through `computeCharacteristics()`. A continuous "land becomes a
+creature" effect is therefore not actually live anywhere the engine checks
+creature-ness, unlike a one-shot type change (which can bake the mutation in
+directly, as Ashnod's Transmogrant/Xenic Poltergeist in M1 do). Deferred:
+**Blood Moon**, **Evil Presence**, **Kormus Bell**, **Living Lands** -- all
+four are exactly this pattern (land type/subtype/creature-ness changes) and
+would need a new "recompute type changes on relevant battlefield changes"
+mutation pass, which doesn't exist. Flagged as a candidate for a future
+milestone rather than attempted piecemeal here.
+
+### M4 -- Triggered abilities (10 of 25 implemented)
+
+**Bug fix during implementation (real, not new):** self-scoped "when this
+dies" triggers could never fire. `checkDeath` moves the dying creature to the
+graveyard *before* calling `emitEvent`, but both `emitEvent`'s trigger
+detection and `resolveTrigger`'s source-card lookup only ever scanned the
+live battlefield -- so a `scope:'self'` + `ON_CREATURE_DIES` trigger's source
+card was always already gone by the time either function looked for it. No
+pre-batch card combined those two, so this was latent, not previously
+observed. Fixed with a new `findLeftBattlefieldCard()` helper (checks
+graveyard/exile by last-known information, CR 603.6d equivalent), wired into
+both `emitEvent` and `resolveTrigger`. Required for Abu Ja'far, Cyclopean
+Mummy, and Onulet to work at all.
+
+New `resolveTriggeredEffect` cases: `destroyCombatPartners` (Abu Ja'far --
+`ON_CREATURE_DIES` payload extended with `blockingId`/`blockedByIds`, captured
+in `checkDeath` before `zMove` clears the dying card's own fields),
+`exileSelfFromGY` (Cyclopean Mummy), `controlToHighestLife` (Ghazbán Ogre --
+2-player simplification of "more life than each other player"),
+`gainLifeController` (Onulet), `payGenericGainLife` + `noop` (Soul Net --
+`requiresChoice: true`, resolved through the existing `pendingChoice`/
+`ChoiceModal` UI, already generic enough to need no UI changes),
+`gainLifeIfControlsPlains` (Spiritual Sanctuary -- reads
+`payload.activePlayer`, not `sourceCard.controller`, since the ability fires
+on *each* player's upkeep and pays whichever player is active).
+
+New non-trigger-pipeline hooks, following existing named-check precedent:
+`applyOvergrowthTap` gained a Mountain-tap checkpoint (Gauntlet of Might's
+second ability, Lifeblood) -- the same pattern already used there for Tron,
+Mana Flare, and Manabarbs. `PLAY_LAND`/`RESOLVE_STACK` gained a Kismet
+enter-tapped checkpoint. `DECLARE_ATTACKER` gained an
+`attackRequiresDefenderLand` gate (Goblin Rock Sled); its "doesn't untap if it
+attacked last turn" half reuses M1's `skipNextUntap` flag rather than adding a
+new one. Gauntlet of Might's static half reuses the pre-existing `globalPump`
+case (symmetric "Red creatures get +1/+1", matching its real oracle text).
+
+Deferred, grouped by missing capability:
+- **Cave People, Hasran Ogress** -- need an `ON_ATTACKS`-style event; the
+  trigger vocabulary has `ON_CREATURE_DIES`, `ON_DAMAGE_DEALT` (combat only),
+  `ON_UPKEEP_START`, none of which cover "whenever this creature attacks".
+- **Citanul Druid, Throne of Bone, Urza's Chalice** -- need an
+  `ON_SPELL_CAST` event (would resolve all three at once if added).
+- **Dingus Egg, Tablet of Epityr, Urza's Miter** -- need a non-creature
+  "permanent dies" event; `checkDeath`'s `ON_CREATURE_DIES` only processes
+  creatures, never lands/artifacts.
+- **Khabál Ghoul** -- needs an "each end step" event; only
+  `ON_UPKEEP_START` exists as a phase-boundary trigger.
+- **Haunting Wind, Powerleech** -- the "OR ability activated without {T}"
+  half of their trigger condition spans multiple call sites (`ACTIVATE_ABILITY`
+  tap-cost step, non-tap activation, `TAP_ART_MANA`) with no single hook point
+  like `applyOvergrowthTap` provides for lands.
+- **Marsh Viper, Pit Scorpion** -- poison/infect is explicitly listed in
+  `docs/SYSTEMS.md` as deliberately not ported ("not live in this engine").
+- **Martyrs of Korlis, Veteran Bodyguard** -- damage redirection needs the
+  damage source's permanent-type (artifact / unblocked creature) at the
+  `hurt()` call site; `hurt()` only receives a display-string source label
+  today, the same gap that blocks Reverse Polarity in M1.
+
+**Candidate new event types**, surfaced by this batch's deferrals but not
+added (would need explicit approval as an engine-contract change):
+`ON_ATTACKS_DECLARED` (2 cards), `ON_SPELL_CAST` (3 cards), a generic
+`ON_PERMANENT_DIES`/`ON_LAND_DIES` (3 cards), `ON_END_STEP` (1 card).
+
+### `useDuelController.ts` UI-targeting wiring
+
+- `EXPLICIT_TARGET_EFFECTS` extended: `destroyArtifactGainCMC`,
+  `restoreArtifactsFromGYToLibrary`, `pumpToughnessByTargetCMC`,
+  `damageByWhiteCardsInHand`, `scryTop5Reveal`, `tapXCreatures`,
+  `gainAndDealDamageThisTurn`.
+- `PLAYER_ONLY_TARGET_EFFECTS` extended: `restoreArtifactsFromGYToLibrary`,
+  `damageByWhiteCardsInHand`, `scryTop5Reveal`.
+- `ACTIVATE_TARGET_EFFECTS` extended: `counterAndArtifactType`,
+  `skipNextUntap`, `damage1AnySelf1`, `untapXLands`, `tapNonFlyingTarget`,
+  `destroyArtifact`, `cantRegenTarget`, `unblockableTargetPowerLE2`,
+  `preventDamage1AnyReturnEnd`, `animateArtifactUntilEnd`,
+  `damage1AttackerOrBlocker`.
+- `PLAYER_TARGETABLE_ABILITY_EFFECTS` extended: `damage1AnySelf1`,
+  `preventDamage1AnyReturnEnd`.
+
+### cards.js schema changes
+
+55 cards had `effect:"STUB"` replaced with the effect ids above (or an
+`activated`/`activatedAbilities`/`triggeredAbilities`/`layerDef` block, or a
+bare static/keyword entry, matching existing precedent). 29 cards kept
+`effect:"STUB"` with the comment rewritten to a `DEFERRED:` reason (see
+per-sub-batch breakdown above).
+
+### Tests
+
+- Vitest: `tests/scenarios/moderate-m1-activated.test.js` (28 cases),
+  `tests/scenarios/moderate-m2-keywords.test.js` (7 cases),
+  `tests/scenarios/moderate-m3-statics.test.js` (11 cases),
+  `tests/scenarios/moderate-m4-triggers.test.js` (11 cases)
+- Playwright: `tests/e2e/batch-moderate-tier-forge-2.spec.ts` (Brothers of
+  Fire [M1 activated ability], Thunder Spirit [M2 keyword creature in
+  combat], Orcish Oriflamme [M3 static visibly pumping an attacker], Onulet
+  [M4 dies-trigger]), added to the `mobile-chrome` project's `testMatch`
+  allowlist in `playwright.config.js`; passes on both the `chromium` and
+  `mobile-chrome` projects.
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5
