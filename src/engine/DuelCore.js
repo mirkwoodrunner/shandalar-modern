@@ -2367,6 +2367,25 @@ case "animateArtifactUntilEnd": {
   break;
 }
 // --- END BATCH: MODERATE-TIER STUB CARDS (M1) --------------------------------
+// --- BEGIN BATCH: MODERATE-TIER STUB CARDS (M2 -- keyword-line cards) --------
+case "damage1AttackerOrBlocker": {
+  // Adapted from Card-Forge/forge (c/crimson_manticore.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isCre(tgtC) && (tgtC.attacking || tgtC.blocking)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } };
+    ns = checkDeath(ns);
+    ns = dlog(ns, `${card.name} deals 1 damage to ${tgtC.name}.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target is not attacking or blocking.`, "effect");
+  }
+  break;
+}
+case "pumpSelf21EOT": {
+  // Adapted from Card-Forge/forge (f/fallen_angel.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => c.iid === card.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 2, toughness: 1 }] } : c) } };
+  ns = dlog(ns, `${card.name} gets +2/+1 until end of turn.`, "effect");
+  break;
+}
+// --- END BATCH: MODERATE-TIER STUB CARDS (M2) --------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -3752,7 +3771,7 @@ case "ACTIVATE_ABILITY": {
   // 2. Sacrifice cost (e.g. Strip Mine: "T,sac"). Sacrifices the activating
   // permanent itself. Must happen before pushing to the stack so the source
   // is already gone by the time the ability resolves.
-  if (act.cost.includes("sac") && !act.cost.includes("sacArt")) {
+  if (act.cost.includes("sac") && !act.cost.includes("sacArt") && !act.cost.includes("sacCre")) {
     s = zMove(s, iid, w, w, "gy");
     s = dlog(s, `${card.name} sacrificed to activate its ability.`, "info");
   }
@@ -3769,10 +3788,13 @@ case "ACTIVATE_ABILITY": {
   }
 
   // 2b'. Sacrifice a creature you control, not necessarily the activating
-  // permanent itself (e.g. Gate to Phyrexia, Life Chisel: "Sacrifice a creature:").
-  // SIMPLIFICATION: no UI to choose which creature; sacrifices the first one found.
+  // permanent itself (e.g. Gate to Phyrexia, Life Chisel, Fallen Angel:
+  // "Sacrifice a creature:"). SIMPLIFICATION: no UI to choose which creature;
+  // prefers any creature other than the activating permanent (so, e.g., Fallen
+  // Angel doesn't sacrifice itself when another creature is available), falling
+  // back to itself only if it's the only creature.
   if (act.cost.includes("sacCre")) {
-    const cre = s[w].bf.find(c => isCre(c));
+    const cre = s[w].bf.find(c => isCre(c) && c.iid !== iid) || s[w].bf.find(c => isCre(c));
     sacrificedCard = cre;
     s = zMove(s, cre.iid, w, w, "gy");
     s = dlog(s, `${cre.name} sacrificed to activate ${card.name}.`, "info");

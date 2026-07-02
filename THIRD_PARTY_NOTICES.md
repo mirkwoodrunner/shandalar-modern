@@ -81,3 +81,9 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Word of Binding (`tapXCreatures`, DuelCore.js) | Card-Forge/forge | w/word_of_binding.txt | GPL-3.0 |
 | 2026-07-02 | Wormwood Treefolk (`grantWalkSelfDamage2` activatedAbilities, DuelCore.js) | Card-Forge/forge | w/wormwood_treefolk.txt | GPL-3.0 |
 | 2026-07-02 | Xenic Poltergeist (`animateArtifactUntilEnd` + PHASE.END revert, DuelCore.js) | Card-Forge/forge | x/xenic_poltergeist.txt | GPL-3.0 |
+| 2026-07-02 | Crimson Manticore (`damage1AttackerOrBlocker`, DuelCore.js) | Card-Forge/forge | c/crimson_manticore.txt | GPL-3.0 |
+| 2026-07-02 | Fallen Angel (`pumpSelf21EOT` + `sacCre` cost, DuelCore.js) | Card-Forge/forge | f/fallen_angel.txt | GPL-3.0 |
+| 2026-07-02 | Fire Drake (reused `pumpSelf` + `onceEachTurn` gate, DuelCore.js) | Card-Forge/forge | f/fire_drake.txt | GPL-3.0 |
+| 2026-07-02 | Mountain Yeti (static keywords, cards.js) | Card-Forge/forge | m/mountain_yeti.txt | GPL-3.0 |
+| 2026-07-02 | Thunder Spirit (static keywords, cards.js) | Card-Forge/forge | t/thunder_spirit.txt | GPL-3.0 |
+| 2026-07-02 | Wall of Light (static keywords, cards.js) | Card-Forge/forge | w/wall_of_light.txt | GPL-3.0 |

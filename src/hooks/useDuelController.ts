@@ -213,6 +213,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'counterAndArtifactType', 'skipNextUntap', 'damage1AnySelf1', 'untapXLands',
   'tapNonFlyingTarget', 'destroyArtifact', 'cantRegenTarget',
   'unblockableTargetPowerLE2', 'preventDamage1AnyReturnEnd', 'animateArtifactUntilEnd',
+  // Moderate-tier Forge batch M2 (see THIRD_PARTY_NOTICES.md):
+  'damage1AttackerOrBlocker', // Crimson Manticore -- "target attacking or blocking creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
