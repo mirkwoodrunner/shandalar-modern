@@ -24,6 +24,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
       testMatch: [
         'tests/e2e/ability-stack-bugs.spec.ts',
+        'tests/e2e/ai-creature-evaluation-smoke.spec.ts',
         'tests/e2e/batch1a-desert-landwalk.spec.ts',
         'tests/e2e/batch1b-wall-destruction-sacrifice.spec.ts',
         'tests/e2e/batch-simple-tier-forge-1.spec.ts',

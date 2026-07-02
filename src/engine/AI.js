@@ -19,7 +19,7 @@ import KEYWORDS from '../data/keywords.js';
 import {
   isLand, isCre, isInst, isSort, isArt,
   getBF, getPow, getTou, canBlockDuel,
-  canPay, parseMana,
+  canPay, parseMana, hasKw,
 } from './DuelCore.js';
 import { PHASE } from './phases.js';
 import { getBestMove } from './MCTS.js';
@@ -39,12 +39,72 @@ const AI_PROFILES = {
 
 // --- BOARD EVALUATION ---------------------------------------------------------
 
+// Creature valuation algorithm adapted from Card-Forge/forge
+// (forge-ai/src/main/java/forge/ai/CreatureEvaluator.java), GPL-3.0.
+// See THIRD_PARTY_NOTICES.md.
+//
+// Ported subset only -- Shandalar's Alpha/Beta pool doesn't implement most of
+// Forge's later mechanics (energy, detain, goad, stun/fade/time counters,
+// paired/soulbond, encode, cumulative upkeep/echo), so those branches are
+// omitted rather than stubbed. See docs/SYSTEMS.md for the ported list.
+export function evaluateCreatureValue(c, state) {
+  if (!c) return 0;
+  let value = 80;
+  value += 20; // Shandalar has no token concept -- every creature counts as "non-token".
+
+  const power = getPow(c, state);
+  const toughness = getTou(c, state);
+
+  value += power * 15;
+  value += toughness * 10;
+  value += (c.cmc || 0) * 5;
+
+  // Evasion keywords ported: Shandalar's keyword set has FLYING/MENACE/FEAR
+  // but not horsemanship/intimidate/skulk.
+  if (hasKw(c, KEYWORDS.FLYING.id, state)) value += power * 10;
+  if (hasKw(c, KEYWORDS.FEAR.id, state)) value += power * 6;
+  if (hasKw(c, KEYWORDS.MENACE.id, state)) value += power * 4;
+
+  if (power > 0) {
+    if (hasKw(c, KEYWORDS.DOUBLE_STRIKE.id, state)) {
+      value += 10 + (power * 15);
+    } else if (hasKw(c, KEYWORDS.FIRST_STRIKE.id, state)) {
+      value += 10 + (power * 5);
+    }
+    if (hasKw(c, KEYWORDS.DEATHTOUCH.id, state)) value += 25;
+    if (hasKw(c, KEYWORDS.LIFELINK.id, state)) value += power * 10;
+    if (power > 1 && hasKw(c, KEYWORDS.TRAMPLE.id, state)) value += (power - 1) * 5;
+    if (hasKw(c, KEYWORDS.VIGILANCE.id, state)) value += (power * 5) + (toughness * 5);
+  }
+
+  // Defensive keywords
+  if (hasKw(c, KEYWORDS.REACH.id, state) && !hasKw(c, KEYWORDS.FLYING.id, state)) value += 5;
+
+  // Protection
+  if (hasKw(c, KEYWORDS.INDESTRUCTIBLE.id, state)) {
+    value += 70;
+  }
+  if (hasKw(c, KEYWORDS.HEXPROOF.id, state)) {
+    value += 35;
+  } else if (hasKw(c, KEYWORDS.SHROUD.id, state)) {
+    value += 30;
+  }
+  if (hasKw(c, KEYWORDS.PROTECTION.id, state)) value += 20;
+
+  // Bad keywords
+  if (hasKw(c, KEYWORDS.DEFENDER.id, state)) value -= (power * 9) + 40;
+
+  if (!c.tapped) value += 1;
+
+  return value;
+}
+
 function sumCreaturePower(creatures, state) {
-  return creatures.filter(isCre).reduce((sum, c) => sum + getPow(c, state), 0);
+  return creatures.filter(isCre).reduce((sum, c) => sum + evaluateCreatureValue(c, state), 0);
 }
 
 // Higher score = better position for the AI opponent.
-function evaluateBoard(state) {
+export function evaluateBoard(state) {
   const myPower    = sumCreaturePower(state.o.bf, state);
   const theirPower = sumCreaturePower(state.p.bf, state);
   const lifeDelta  = state.o.life - state.p.life;
