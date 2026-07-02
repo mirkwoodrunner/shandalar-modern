@@ -46,10 +46,14 @@ Plan: a seeded generator stored in `GameState`, advanced by a call counter (pure
 
 See `gdd.md` §3.2.9 (AI Engine) and §3.4 (AI Archetypes) for the existing implementation.
 
+**Status note (2026-07-02):** one piece of this milestone -- the creature-evaluator port -- was pulled forward and completed ahead of Milestone A finishing (Milestone A card-pool completion remains the roadmap's stated priority; this was a deliberate, flagged, self-contained exception, not a resequencing of the milestone order below). `AI.js`'s per-creature board scoring now uses a keyword-aware `evaluateCreatureValue()` ported from Card-Forge/forge's `CreatureEvaluator.java`, replacing the old flat power sum. See `docs/SYSTEMS.md` Section 6.10 and `docs/MECHANICS_INDEX.md` -- Feature: Creature Evaluator Port. Per the graduation rule below, this item is done; the remaining Milestone C items are still open. The much larger attack/block-decision and simulation-based lookahead port (Forge's `AiAttackController`/`AiBlockController`/`GameStateEvaluator`) is scoped but **not implemented** -- see `docs/AI_COMBAT_PORT_PLAN.md` for the batch breakdown and open design questions.
+
+- ~~**Creature evaluator port.**~~ **DONE** (2026-07-02, pulled forward). See above.
 - **Resolve the AI-defender blocking question.** The AI driver effect requires the AI to be the active player; when the human attacks, the path where the AI declares blocks while defending has not been traced. Confirm it works before assuming it does.
 - **Finish the per-mage Gemini roster.** KARAG, SYLVARA, ARZAKON remain after the DELENIA/XYLOS/MORTIS starter set. Infrastructure (`MAGE_PROMPTS`, `selectSystemInstruction`) already exists.
 - **Revisit MCTS scope.** Currently gated to one high-aggression profile. Reassess now that castle fights route to real `BOSS_*` decks.
 - **Retune boss/archetype decks** now that castle routing sends real boss decks instead of generic archetypes.
+- **Combat AI port (attack/block decisions + simulation-based lookahead).** Scoped in `docs/AI_COMBAT_PORT_PLAN.md`, not yet batched into sprint work.
 
 ## Milestone D — Loop polish
 

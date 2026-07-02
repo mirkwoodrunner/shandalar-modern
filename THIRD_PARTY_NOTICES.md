@@ -52,3 +52,4 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-01 | Water Wurm (`waterWurmToughness` CDA, layers.js) | Card-Forge/forge | w/water_wurm.txt | GPL-3.0 |
 | 2026-07-01 | Weakstone (continuous effect, layers.js `collectEffects`) | Card-Forge/forge | w/weakstone.txt | GPL-3.0 |
 | 2026-07-01 | Wyluli Wolf (reused `pumpCreature` via card.mod, DuelCore.js) | Card-Forge/forge | w/wyluli_wolf.txt | GPL-3.0 |
+| 2026-07-02 | Creature valuation algorithm (`evaluateCreatureValue`, AI.js) | Card-Forge/forge | forge-ai/src/main/java/forge/ai/CreatureEvaluator.java | GPL-3.0 |

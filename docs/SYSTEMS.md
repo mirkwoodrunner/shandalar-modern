@@ -404,6 +404,23 @@ Profiles with `aggression >= 0.9` (currently KARAG at 1.0) use `getBestMove(virt
 
 Turn calculation is budgeted at 500ms p95 on a mid-range device. If profiling shows this exceeded: (1) lower MCTS iterations from 600 to 300 or remove the MCTS branch; (2) if still exceeded, evaluate only one plan (drop the alternative-plan generation).
 
+## 6.10 Creature Evaluation (Forge CreatureEvaluator Port)
+
+`evaluateCreatureValue(card, state)` (AI.js) replaces the old flat `getPow()` sum inside `sumCreaturePower()` / `evaluateBoard()`. It scores a single creature's board value with per-keyword nuance instead of treating all same-power creatures as equal, ported from Card-Forge/forge's `CreatureEvaluator.java` (GPL-3.0; see `THIRD_PARTY_NOTICES.md`). Only the algorithm and point weights were ported -- the Java is not mechanically translated line-for-line.
+
+Base value 80 + 20 (this engine has no token concept, so every creature counts as "non-token"), then:
+- Power * 15, toughness * 10, cmc * 5.
+- Evasion: flying (power*10), fear (power*6), menace (power*4). Horsemanship/intimidate/skulk are not in this engine's keyword set and are not scored.
+- Double strike (10 + power*15) else first strike (10 + power*5), deathtouch (+25 flat), lifelink (power*10), trample when power>1 ((power-1)*5), vigilance (power*5 + toughness*5).
+- Reach (+5, only when the creature does not also have flying, matching Forge's own condition).
+- Indestructible (+70); hexproof (+35) else shroud (+30); protection (+20).
+- Defender: `-(power*9 + 40)`.
+- Untapped: +1.
+
+Deliberately not ported (no Shandalar equivalent -- verified against `src/data/keywords.js` and the engine's combat/SBE code, not assumed from the Forge source): token/counter-based scoring (shielded counters, stun counters, paired/soulbond, encode), energy/detain/goad, cumulative upkeep/echo/fading/vanishing upkeep triggers, infect/wither/toxic (the `INFECT` keyword exists in `keywords.js` but has no combat-damage implementation in `DuelCore.js` -- not "live" in this engine), and Eldrazi/bushido/flanking/exalted/melee/prowess/absorb/outlast (no counterpart keywords at all).
+
+`evaluateBoard(state)` itself is unchanged in shape -- still `(myPower * 2) + lifeDelta + (cardDelta * 1.5) - (theirPower * 1.5)` -- only `sumCreaturePower()`'s per-creature term changed from raw power to `evaluateCreatureValue()`. Both functions are exported for direct testability; no other AI.js call site changed.
+
 ## 6.8 AI Instant-Speed Response
 
 `planInstantResponse(state, profile)` is invoked by `getAIPlan` when `priorityWindow === true && active === 'p'` (the player holds priority). The hook in `DuelScreen.tsx` triggers a 200 ms delayed call to `aiDecide` when those conditions hold and the AI has not already passed (`priorityPasser !== 'o'`).

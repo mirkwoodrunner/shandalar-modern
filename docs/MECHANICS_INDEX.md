@@ -2523,4 +2523,29 @@ ACTIVE
 
 ---
 
+## Feature: Creature Evaluator Port (Card-Forge/forge CreatureEvaluator, GPL-3.0) -- 2026-07-02
+
+**Problem:** `AI.js`'s board evaluation (`evaluateBoard` / `sumCreaturePower`) summed raw `getPow()` across creatures with no per-creature nuance -- a 1/1 deathtouch creature scored identically to a vanilla 1/1, undervaluing keyword-rich creatures relative to their actual combat value.
+
+**Fix:** New `evaluateCreatureValue(card, state)` in `AI.js`, ported from Card-Forge/forge's `CreatureEvaluator.java` (algorithm and point weights only, not a mechanical line-for-line port). `sumCreaturePower()` now sums `evaluateCreatureValue()` per creature instead of raw power; `evaluateBoard()`'s formula shape and both call sites (multi-plan simulation scoring, MCTS-adjacent virtual-state scoring) are unchanged. See `docs/SYSTEMS.md` Section 6.10 for the full ported/skipped keyword breakdown.
+
+**Keywords ported** (present in `src/data/keywords.js` and cross-checked as "live" in combat/SBE code): `FLYING`, `FEAR`, `MENACE`, `FIRST_STRIKE`, `DOUBLE_STRIKE`, `DEATHTOUCH`, `LIFELINK`, `TRAMPLE`, `VIGILANCE`, `REACH`, `INDESTRUCTIBLE`, `HEXPROOF`, `SHROUD`, `PROTECTION`, `DEFENDER`, plus base power/toughness/cmc weighting and an untapped bonus.
+
+**Keywords skipped:** `INFECT` exists in `keywords.js` but has no combat-damage implementation anywhere in `DuelCore.js` (`hasKw(..., KEYWORDS.INFECT...)` has zero call sites) -- not scored, since it isn't "live" in this engine yet. `REGENERATION`, `LANDWALK`/color-specific walk variants, `BANDING`, `FLASH`, `MUST_ATTACK`, `LURE` have no Forge `CreatureEvaluator` equivalent to port. Forge mechanics with no Shandalar counterpart at all (horsemanship, intimidate, skulk, shielded/stun counters, paired/soulbond, encode, energy, detain, goad, cumulative upkeep, echo, fading, vanishing, Eldrazi annihilator, bushido, flanking, exalted, melee, prowess, absorb, outlast) are omitted rather than stubbed.
+
+**Judgment call:** Forge's base value includes a conditional "+20 if not a token" bonus. This engine has no token-creation mechanic (verified: no `isToken` field or equivalent anywhere in `DuelCore.js`/`cardHandlers.js`), so every creature is treated as non-token and the +20 always applies unconditionally.
+
+**Files changed:**
+- `src/engine/AI.js` -- `evaluateCreatureValue()` added (exported for testability); `sumCreaturePower()` rewired to call it; `evaluateBoard()` also exported (unchanged internally)
+- `THIRD_PARTY_NOTICES.md` -- new row for the CreatureEvaluator.java attribution
+- `docs/SYSTEMS.md` -- new Section 6.10
+- `docs/AI_COMBAT_PORT_PLAN.md` -- new doc scoping the follow-on attack/block/simulation port (Part B of this batch; no code written)
+
+**Tests:** `tests/scenarios/ai-creature-evaluation.test.js` (Vitest -- vanilla baseline, flying, deathtouch, defender penalty, stacked flying+first-strike, `evaluateBoard` comparative check); `tests/e2e/ai-creature-evaluation-smoke.spec.ts` (Playwright -- desktop + mobile, plays a full AI-vs-AI-ish duel to completion via the sandbox escape hatches and asserts no console/page errors; added to the `mobile-chrome` project's `testMatch` allowlist in `playwright.config.js`).
+
+### Status
+ACTIVE
+
+---
+
 # End of MECHANICS INDEX v1.5
