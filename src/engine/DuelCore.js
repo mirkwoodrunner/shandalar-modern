@@ -3043,6 +3043,19 @@ const over = Math.max(0, ns[opp2].hand.length - 4);
 if (over > 0) ns = hurt(ns, opp2, over, "Black Vise");
 break;
 }
+case "rackUpkeep": {
+// The Rack: SIMPLIFICATION -- "choose an opponent" as this artifact enters
+// is hardcoded as "opponent of controller" (this engine's 2-player duel has
+// only one possible choice). Fires only on that opponent's upkeep, never
+// the controller's own -- unlike blackVise above, this needs an explicit
+// active-player guard since the chosen player and the artifact's controller
+// are never the same player.
+const rackOpp = w === "p" ? "o" : "p";
+if (ns.active !== rackOpp) break;
+const rackDmg = Math.max(0, 3 - ns[rackOpp].hand.length);
+if (rackDmg > 0) ns = hurt(ns, rackOpp, rackDmg, c.name);
+break;
+}
 case "howlingMine": for (const dw of ["p","o"]) ns = drawD(ns, dw, 1); ns = dlog(ns, "Howling Mine: each player draws a card.", "draw"); break;
 case "ivoryTower": { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, "Ivory Tower"); break; }
 case "sylvanLibrary": {
