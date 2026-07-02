@@ -120,3 +120,7 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Reverse Polarity (`reversePolarityGain` spell effect, DuelCore.js) | Card-Forge/forge | r/reverse_polarity.txt | GPL-3.0 |
 | 2026-07-02 | Martyrs of Korlis (`damageRedirect` static flag + hurt() redirection hook, DuelCore.js) | Card-Forge/forge | m/martyrs_of_korlis.txt | GPL-3.0 |
 | 2026-07-02 | Veteran Bodyguard (`damageRedirect` static flag + hurt() redirection hook, DuelCore.js) | Card-Forge/forge | v/veteran_bodyguard.txt | GPL-3.0 |
+| 2026-07-02 | Living Lands (`globalTypeEffect` continuous effect, layers.js/cards.js) | Card-Forge/forge | l/living_lands.txt | GPL-3.0 |
+| 2026-07-02 | Kormus Bell (`globalTypeEffect` continuous effect, layers.js/cards.js) | Card-Forge/forge | k/kormus_bell.txt | GPL-3.0 |
+| 2026-07-02 | Blood Moon (`globalTypeEffect` continuous effect + `bloodMoonNeutered` mana override, layers.js/DuelCore.js) | Card-Forge/forge | b/blood_moon.txt | GPL-3.0 |
+| 2026-07-02 | Evil Presence (`enchantLand` + Layer-4 `layerDef`, DuelCore.js/cards.js) | Card-Forge/forge | e/evil_presence.txt | GPL-3.0 |

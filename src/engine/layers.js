@@ -27,29 +27,38 @@ const WALK_KW_IDS = [
   'LANDWALK', 'PLAINSWALK', 'ISLANDWALK', 'SWAMPWALK', 'MOUNTAINWALK', 'FORESTWALK',
 ];
 
+// Reads a permanent's CURRENT (post-type-effect) subtype for "how many Forests/
+// Swamps do you control"-style CDAs below, so Evil Presence turning a Forest into
+// a Swamp correctly stops it counting as a Forest (and starts counting as a
+// Swamp). Unlike matchesGlobalTypeFilter (which snapshots base subtype so Living
+// Lands/Kormus Bell/Blood Moon don't chase each other's output -- see above),
+// these evaluators read another permanent's already-baked subtypeEff from state,
+// which is safe: no self-reference. See docs/SYSTEMS.md S18.9.
+const subOf = c => c.subtypeEff ?? c.subtype ?? '';
+
 // Named CDA evaluators. Each returns the computed P or T value for the card.
 // Evaluated at read-time from current state; never stored in GameState.
 export const CDA_EVALUATORS = {
   plagueRats:     (card, state) => [...state.p.bf, ...state.o.bf].filter(x => x.name === 'Plague Rats').length,
-  swampCount:     (card, state) => state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Swamp')).length ?? 0,
-  forestCount:    (card, state) => state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0,
+  swampCount:     (card, state) => state[card.controller]?.bf.filter(x => isLand(x) && subOf(x).includes('Swamp')).length ?? 0,
+  forestCount:    (card, state) => state[card.controller]?.bf.filter(x => isLand(x) && subOf(x).includes('Forest')).length ?? 0,
   creatureCount:  (card, state) => [...state.p.bf, ...state.o.bf].filter(x => isCre(x) && x.controller === card.controller).length,
-  forestBonus:    (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && x.subtype?.includes('Forest')) ? 1 : 0),
-  forestBonusTou: (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && x.subtype?.includes('Forest')) ? 2 : 1),
+  forestBonus:    (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && subOf(x).includes('Forest')) ? 1 : 0),
+  forestBonusTou: (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && subOf(x).includes('Forest')) ? 2 : 1),
   keldonWarlord:  (card, state) => state[card.controller]?.bf.filter(x => isCre(x) && !x.subtype?.includes('Wall')).length ?? 0,
   forestCountLiege:   (card, state) => {
     if (card.attacking) {
       const opp = card.controller === 'p' ? 'o' : 'p';
-      return state[opp]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0;
+      return state[opp]?.bf.filter(x => isLand(x) && subOf(x).includes('Forest')).length ?? 0;
     }
-    return state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0;
+    return state[card.controller]?.bf.filter(x => isLand(x) && subOf(x).includes('Forest')).length ?? 0;
   },
   // Water Wurm: gets +0/+1 as long as an opponent controls an Island.
   // Adapted from Card-Forge/forge (w/water_wurm.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   waterWurmToughness: (card, state) => {
     const base = typeof card.toughness === 'number' ? card.toughness : 0;
     const opp = card.controller === 'p' ? 'o' : 'p';
-    const oppHasIsland = state[opp]?.bf.some(x => isLand(x) && x.subtype?.includes('Island'));
+    const oppHasIsland = state[opp]?.bf.some(x => isLand(x) && subOf(x).includes('Island'));
     return base + (oppHasIsland ? 1 : 0);
   },
   // Gaea's Avenger: power and toughness are each equal to 1 plus the number of
@@ -62,11 +71,29 @@ export const CDA_EVALUATORS = {
   // People of the Woods: toughness is equal to the number of Forests you control.
   // Adapted from Card-Forge/forge (p/people_of_the_woods.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   peopleOfTheWoodsToughness: (card, state) =>
-    state[card.controller]?.bf.filter(x => isLand(x) && x.subtype?.includes('Forest')).length ?? 0,
+    state[card.controller]?.bf.filter(x => isLand(x) && subOf(x).includes('Forest')).length ?? 0,
 };
 
 function getTs(eff) {
   return eff.enterTs ?? 0;
+}
+
+// Filter-matching for global type-changing effects (Living Lands, Kormus Bell,
+// Blood Moon). Matches against the affected card's BASE printed type/subtype
+// (not any already-baked typeEff/subtypeEff) -- collectEffects snapshots all
+// effects before applying them in timestamp order, so this intentionally does
+// not chase dependencies between two type-changing effects on the same land
+// (e.g. Evil Presence + Living Lands stacked on one permanent). SIMPLIFICATION:
+// see docs/SYSTEMS.md S18.9.
+function matchesGlobalTypeFilter(card, filter) {
+  const baseType = card.type ?? '';
+  const isBaseLand = baseType === 'Land' || baseType.includes('Land');
+  if (!isBaseLand) return false;
+  const sub = card.subtype ?? '';
+  if (filter === 'Forest') return sub.includes('Forest');
+  if (filter === 'Swamp') return sub.includes('Swamp');
+  if (filter === 'nonBasicLand') return !sub.includes('Basic');
+  return false;
 }
 
 // Collects all applicable continuous effects for the given card from the
@@ -243,13 +270,39 @@ function collectEffects(card, state) {
     effects.push({ layer: '7c', power: 1, enterTs: 0 });
   }
 
+  // 14. Global type/color/P-T-changing static effects (Living Lands, Kormus Bell,
+  //     Blood Moon): unlike lordEffect/globalPump above (which target creatures by
+  //     subtype/color and only ever modify Layer 6/7c), these target LANDS by a
+  //     fixed filter and modify Layer 4 (type), Layer 5 (color), and Layer 7b (set
+  //     P/T). Deferral Sweep 2 -- see docs/SYSTEMS.md S18.9.
+  for (const src of allBf) {
+    if (src.iid === card.iid) continue;
+    const gte = src.globalTypeEffect;
+    if (!gte || !matchesGlobalTypeFilter(card, gte.filter)) continue;
+    const srcTs = src.enterTs ?? 0;
+    if (gte.setTypes || gte.addTypes || gte.removeTypes || gte.setSubtypes || gte.addSubtypes || gte.removeSubtypes) {
+      effects.push({
+        layer: 4,
+        setTypes: gte.setTypes, addTypes: gte.addTypes, removeTypes: gte.removeTypes,
+        setSubtypes: gte.setSubtypes, addSubtypes: gte.addSubtypes, removeSubtypes: gte.removeSubtypes,
+        enterTs: srcTs,
+      });
+    }
+    if (gte.setColor !== undefined) {
+      effects.push({ layer: 5, setColor: gte.setColor, enterTs: srcTs });
+    }
+    if (gte.setPower !== undefined || gte.setToughness !== undefined) {
+      effects.push({ layer: '7b', setPower: gte.setPower, setToughness: gte.setToughness, enterTs: srcTs });
+    }
+  }
+
   return effects;
 }
 
 // Computes the full set of characteristics for a permanent by applying all
 // continuous effects in CR 613 layer order.
 //
-// Returns: { power, toughness, color, types, subtypes, keywords, protection }
+// Returns: { power, toughness, color, types, subtypes, keywords, protection, landTypeOverride }
 export function computeCharacteristics(card, state) {
   // Base values (non-numeric power/toughness — e.g. "*" on CDAs — defaults to 0)
   let power     = typeof card.power     === 'number' ? card.power     : 0;
@@ -289,6 +342,20 @@ export function computeCharacteristics(card, state) {
     if (eff.addSubtypes)    subtypes = [...subtypes, ...eff.addSubtypes.filter(t => !subtypes.includes(t))];
     if (eff.removeSubtypes) subtypes = subtypes.filter(t => !eff.removeSubtypes.includes(t));
   }
+  // landTypeOverride: a land whose subtype was fully REPLACED (not just added to)
+  // by a Layer-4 effect down to a single recognized basic land type it didn't
+  // print (Blood Moon -> Mountain, Evil Presence -> Swamp) is treated as having
+  // lost its other printed land abilities and gained only that basic type's
+  // intrinsic mana ability -- an engine-level SIMPLIFICATION of these cards'
+  // actual Oracle rulings (real Blood Moon doesn't remove non-type-derived
+  // abilities); see docs/SYSTEMS.md S18.9. Living Lands/Kormus Bell only ADD the
+  // Creature type and never touch subtypes, so they never trigger this.
+  const BASIC_LAND_SUBTYPES = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']);
+  const baseSubtypes = card.subtype ? card.subtype.split(' ').filter(Boolean) : [];
+  const subtypesReplaced = subtypes.length !== baseSubtypes.length || subtypes.some(t => !baseSubtypes.includes(t));
+  const landTypeOverride = (subtypesReplaced && subtypes.length === 1 && BASIC_LAND_SUBTYPES.has(subtypes[0]))
+    ? subtypes[0]
+    : null;
 
   // Layer 5: Color-changing effects (last writer wins per 613.9)
   const l5 = effects.filter(e => e.layer === 5).sort((a, b) => getTs(a) - getTs(b));
@@ -351,5 +418,5 @@ export function computeCharacteristics(card, state) {
   // Power floor: minimum 0. Toughness is NOT floored — SBE handles toughness <= 0.
   power = Math.max(0, power);
 
-  return { power, toughness, color, types, subtypes, keywords, protection };
+  return { power, toughness, color, types, subtypes, keywords, protection, landTypeOverride };
 }

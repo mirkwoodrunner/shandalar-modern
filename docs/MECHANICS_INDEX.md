@@ -2846,4 +2846,42 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.5
+## Deferral Sweep 2: Type-Changing Continuous Effects (2026-07-02)
+
+Closed the gap where `layers.js` computed a Layer-4 type change for
+characteristics/display, but `isCre`/`isLand`/`checkDeath`/combat-eligibility
+in `DuelCore.js` read `card.type` directly and never saw it. See
+`docs/SYSTEMS.md` S18.9 for the full design (baked `typeEff`/`subtypeEff`/
+`colorEff`/`landTypeOverride` fields, `recomputeTypeEffects` choke points,
+mid-combat revert, Blood Moon/Evil Presence mana-and-ability override).
+
+| Card | Mechanism |
+|---|---|
+| Living Lands | `globalTypeEffect: { filter:'Forest', addTypes:['Creature'], setPower:1, setToughness:1 }` |
+| Kormus Bell | `globalTypeEffect: { filter:'Swamp', addTypes:['Creature'], setPower:1, setToughness:1, setColor:'B' }` |
+| Blood Moon | `globalTypeEffect: { filter:'nonBasicLand', setSubtypes:['Mountain'] }` -- `landTypeOverride` neuters mana/abilities |
+| Evil Presence | `effect:'enchantLand', mod:{ layerDef:{ layer:4, setSubtypes:['Swamp'] } }` -- existing aura machinery, no new mechanism |
+
+Cyclopean Tomb (`cards.js`, still `effect:"STUB"`) shares this Layer-4
+machinery (mire-counter Swamp conversion) but was not implemented here --
+counter tracking and delayed upkeep triggers make it a separate, more complex
+card. Its type-change dependency is now unblocked for a future prompt.
+
+No other `DEFERRED:` card in `cards.js` was blocked solely by this gap --
+Living Lands/Kormus Bell/Blood Moon/Evil Presence were the only four.
+
+### Tests
+
+- Vitest: `tests/scenarios/type-eff-baking.test.js` (baking/stripping
+  mechanics, regression guards, mid-combat revert in isolation),
+  `tests/scenarios/type-change-cards.test.js` (per-card coverage, including a
+  full CAST_SPELL-driven mid-combat revert scenario).
+- Playwright: `tests/e2e/deferral-sweep-2-typechange.spec.ts`, added to the
+  `mobile-chrome` project's `testMatch` allowlist.
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.6

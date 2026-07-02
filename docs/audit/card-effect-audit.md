@@ -108,6 +108,27 @@ for the full engine-change details.
 
 ---
 
+### 2026-07-02 — Type-Changing Continuous Effects (Deferral Sweep 2)
+
+Closed the Group C "type-changing continuous effect" gap called out in
+Section 4 Batch 3 above: `layers.js` computed a Layer-4 type change for
+`computeCharacteristics()`, but `isCre`/`isLand`/`checkDeath`/combat
+eligibility in `DuelCore.js` read `card.type` directly and never saw it.
+New baked fields (`typeEff`, `subtypeEff`, `colorEff`, `landTypeOverride`)
+written by `recomputeTypeEffects()`.
+
+No longer `effect:"STUB"` in `cards.js`: `living_lands`, `kormus_bell`,
+`blood_moon`, `evil_presence`.
+
+Cyclopean Tomb shares this Layer-4 machinery (mire-counter Swamp conversion)
+and is now unblocked, but was not implemented -- counter tracking and delayed
+upkeep triggers make it a separate, more complex card (still
+`effect:"STUB"`). No other Group C/other-group stub matched this gap alone.
+See `docs/SYSTEMS.md` S18.9 and `docs/MECHANICS_INDEX.md` -- Deferral Sweep 2:
+Type-Changing Continuous Effects for the full engine-change details.
+
+---
+
 ## Summary
 
 | Category | Count | Notes |

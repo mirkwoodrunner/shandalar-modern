@@ -28,8 +28,21 @@ return r;
 
 // --- CARD TYPE GUARDS ---------------------------------------------------------
 
-export const isLand   = c => c?.type === "Land";
-export const isCre    = c => !!c?.type?.includes("Creature");
+// isCre/isLand read the baked typeEff/subtypeEff-adjacent typeEff field (see
+// recomputeTypeEffects below) when present, falling back to the printed type.
+// CAUTION: isLand intentionally keeps the strict-equality branch alongside the
+// substring branch -- Living Lands/Kormus Bell produce a typeEff of "Land Creature",
+// which must still satisfy isLand. See docs/SYSTEMS.md S18.9 for the full audit of
+// call sites whose behavior changes now that isLand can be true for a non-strict match.
+export const isLand   = c => { const t = c?.typeEff ?? c?.type; return t === "Land" || !!t?.includes("Land"); };
+export const isCre    = c => !!(c?.typeEff ?? c?.type)?.includes("Creature");
+// NOTE (observed, not fixed -- out of scope for this prompt): Mishra's Factory's
+// animateLand ability (below, ~line 3963) sets power/toughness/subtype directly but
+// never changes card.type, and UI components read a separate ad-hoc `isAnimatedLand`
+// flag instead of isCre/isLand. isCre(mishrasFactory) returns false even while
+// animated, so DECLARE_ATTACKER's `!isCre(c)` guard blocks it from attacking. Predates
+// this prompt and is unrelated to the Living Lands/Kormus Bell/Blood Moon/Evil
+// Presence gap being closed here.
 export const isInst   = c => c?.type === "Instant";
 export const isSort   = c => c?.type === "Sorcery";
 export const isArt    = c => !!c?.type?.includes("Artifact");
@@ -181,12 +194,17 @@ const atProt = state ? computeCharacteristics(at, state).protection
                      : (Array.isArray(at.protection) ? at.protection : at.protection ? [at.protection] : []);
 const blProt = state ? computeCharacteristics(bl, state).protection
                      : (Array.isArray(bl.protection) ? bl.protection : bl.protection ? [bl.protection] : []);
-if (atProt.some(q => (PROT_MAP[q] || q) === bl.color)) return false;
-if (blProt.some(q => (PROT_MAP[q] || q) === at.color)) return false;
+// Read color through computeCharacteristics when state is available so Layer-5
+// color-setting effects (Kormus Bell: animated Swamps are black) are correctly
+// enforced by protection/Fear, not just the printed .color. See docs/SYSTEMS.md S18.9.
+const atColor = state ? computeCharacteristics(at, state).color : at.color;
+const blColor = state ? computeCharacteristics(bl, state).color : bl.color;
+if (atProt.some(q => (PROT_MAP[q] || q) === blColor)) return false;
+if (blProt.some(q => (PROT_MAP[q] || q) === atColor)) return false;
 // Invisibility: can only be blocked by Walls.
 const atInvisible = at.enchantments?.some(e => e.mod?.invisibility);
 if (atInvisible && !bl.subtype?.includes('Wall')) return false;
-if (hasKw(at, KEYWORDS.FEAR.id) && bl.color !== "B" && !isArt(bl)) return false;
+if (hasKw(at, KEYWORDS.FEAR.id) && blColor !== "B" && !isArt(bl)) return false;
 // Unblockable EOT grant (e.g. Tawnos's Wand).
 if (at.eotBuffs?.some(b => b.unblockable)) return false;
 // Seeker: "Enchanted creature can't be blocked except by artifact creatures
@@ -320,8 +338,11 @@ const ts = (ns.layerClock ?? 0) + 1;
 ns = { ...ns, layerClock: ts };
 a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, eotBuffs: [], enchantments: [], enterTs: ts };
 }
-if (tz === "gy" || tz === "hand") {
-a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
+if (tz === "gy" || tz === "hand" || tz === "exile" || tz === "lib") {
+// Strip typeEff/subtypeEff/colorEff/landTypeOverride here too -- a land that dies
+// while animated by Living Lands must arrive in the gy as a plain land, not a creature.
+a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [],
+  typeEff: undefined, subtypeEff: undefined, colorEff: undefined, landTypeOverride: undefined };
 }
 let moved = { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
 
@@ -345,7 +366,57 @@ if (fromZone === 'bf' && tz !== 'bf') {
   } });
   moved = processTriggerQueue(moved);
 }
+// Battlefield membership changed in either direction -- re-bake typeEff/subtypeEff/
+// colorEff/landTypeOverride for every remaining permanent (e.g. Living Lands itself
+// leaving reverts every animated Forest; a land entering while Blood Moon is out is
+// immediately neutered). zMove is the single choke point for every zone move, so one
+// call here covers checkDeath, destroy/bounce effects, and tutor-to-bf effects alike.
+if (tz === 'bf' || fromZone === 'bf') {
+  moved = recomputeTypeEffects(moved);
+}
 return moved;
+}
+
+// --- LAYER 4 TYPE-EFFECT BAKING -----------------------------------------------
+// Bakes the Layer 3/4 (and Layer-5 color, where a type effect also sets it) result
+// of computeCharacteristics onto each battlefield permanent as typeEff/subtypeEff/
+// colorEff/landTypeOverride. isCre/isLand and every hot-loop combat/death/AI
+// predicate read these baked fields instead of calling computeCharacteristics
+// per-invocation (walking every battlefield effect on every isCre() call would be
+// far too expensive in combat resolution and MCTS/AI search). Absent fields mean
+// "no active type-changing effect, use the printed value." See docs/SYSTEMS.md S18.9.
+export function recomputeTypeEffects(state) {
+  let ns = state;
+  for (const w of ["p", "o"]) {
+    let lostCombatIids = [];
+    const bf = ns[w].bf.map(c => {
+      const ch = computeCharacteristics(c, ns);
+      const baseTypeStr = c.type ?? "";
+      const baseSubtypeStr = c.subtype ?? "";
+      const computedTypeStr = ch.types.join(" ");
+      const computedSubtypeStr = ch.subtypes.join(" ");
+      const next = { ...c };
+      next.typeEff = computedTypeStr !== baseTypeStr ? computedTypeStr : undefined;
+      next.subtypeEff = computedSubtypeStr !== baseSubtypeStr ? computedSubtypeStr : undefined;
+      next.colorEff = ch.color !== (c.color ?? "") ? ch.color : undefined;
+      next.landTypeOverride = ch.landTypeOverride || undefined;
+      // CR 506.4-adjacent: a permanent that stops being a creature is removed from
+      // combat. Follows the same pattern as the ebonyHorse case (clear attacking/
+      // blocking, splice from state.attackers) for a creature leaving combat alive --
+      // see docs/SYSTEMS.md S18.9 for why this doesn't also touch state.blockers.
+      if (isCre(c) && !isCre(next) && (c.attacking || c.blocking)) {
+        lostCombatIids.push(c.iid);
+        next.attacking = false;
+        next.blocking = null;
+      }
+      return next;
+    });
+    ns = { ...ns, [w]: { ...ns[w], bf } };
+    if (lostCombatIids.length) {
+      ns = { ...ns, attackers: ns.attackers.filter(id => !lostCombatIids.includes(id)) };
+    }
+  }
+  return ns;
 }
 
 export function checkDeath(s) {
@@ -477,7 +548,12 @@ export function shouldPromptPlayerForResponse(state) {
 export function applyOvergrowthTap(s, who, iid, mana) {
 const c = s[who].bf.find(x => x.iid === iid);
 if (!c || c.tapped || !isLand(c)) return s;
-const m = mana || c.produces?.[0] || "C";
+// Blood Moon / Evil Presence: a land whose subtype was fully replaced by a basic
+// land type (landTypeOverride) taps for ONLY that type's mana, overriding whatever
+// color the caller requested and whatever this land normally produces.
+// See docs/SYSTEMS.md S18.9.
+const LAND_TYPE_MANA = { Plains: "W", Island: "U", Swamp: "B", Mountain: "R", Forest: "G" };
+const m = c.landTypeOverride ? LAND_TYPE_MANA[c.landTypeOverride] : (mana || c.produces?.[0] || "C");
 // Mishra's Workshop: {T}: Add {C}{C}{C}.
 // Adapted from Card-Forge/forge (m/mishras_workshop.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 // SIMPLIFICATION: the "spend this mana only to cast artifact spells" restriction
@@ -1981,6 +2057,15 @@ case "lordEffect": {
   ns = dlog(ns, `${card.name} is a continuous lord (${card.targets}).`, "effect");
   break;
 }
+case "globalTypeEffect": {
+  // Living Lands, Kormus Bell, Blood Moon: continuous type/color/P-T-changing
+  // effect applied via layers.js collectEffects' globalTypeEffect scan at read
+  // time (RESOLVE_STACK's recomputeTypeEffects call bakes the result onto every
+  // matching land right after this resolves). No state mutation here.
+  // See docs/SYSTEMS.md S18.9.
+  ns = dlog(ns, `${card.name} is now in effect (${card.globalTypeEffect?.filter}).`, "effect");
+  break;
+}
 case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(ns, `${card.name} resolves (effect pending).`, "effect"); break;
 // --- BATCH: SIMPLE-TIER STUB CARDS (Forge reference batch, GPL-3.0) ----------
 // Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -2521,7 +2606,10 @@ const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink
 // First-strike pass: only combatants with FIRST_STRIKE deal their damage here.
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
-if (!att) continue;
+// A permanent that stopped being a creature (e.g. an animated land reverting
+// mid-combat when its animating enchantment left) can't deal or receive combat
+// damage. See docs/SYSTEMS.md S18.9.
+if (!att || !isCre(att)) continue;
 const ap = getPow(att, ns);
 const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
@@ -2592,7 +2680,10 @@ ns = dlog(ns, "Combat damage resolving.", "combat");
 
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
-if (!att) continue;
+// A permanent that stopped being a creature (e.g. an animated land reverting
+// mid-combat when its animating enchantment left) can't deal or receive combat
+// damage. See docs/SYSTEMS.md S18.9.
+if (!att || !isCre(att)) continue;
 const ap = getPow(att, ns);
 const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
@@ -3606,12 +3697,17 @@ case "PLAY_LAND": {
   // Kismet: "Artifacts, creatures, and lands your opponents control enter tapped."
   // Adapted from Card-Forge/forge (k/kismet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   const kismetTapsLand = s[w === 'p' ? 'o' : 'p'].bf.some(x => x.name === 'Kismet');
-  const lArr = { ...c, controller: w, tapped: kismetTapsLand, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
+  // summoningSick was previously hardcoded false here (lands had no {T}-ability
+  // sickness restriction). Now that a land can be animated into a creature
+  // (Living Lands, Kormus Bell) it must track sickness like any other permanent --
+  // see docs/SYSTEMS.md S18.9.
+  const lArr = { ...c, controller: w, tapped: kismetTapsLand, summoningSick: !hasKw(c, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: {} };
   s = { ...s, [w]: { ...s[w], hand: s[w].hand.filter(x => x.iid !== action.iid), bf: [...s[w].bf, lArr] }, landsPlayed: s.landsPlayed + 1 };
   if (fastbondActive && prevLandsPlayed >= 1) {
     s = hurt(s, w, 1, "Fastbond");
     s = dlog(s, `Fastbond: ${w} takes 1 damage for playing an extra land.`, "damage");
   }
+  s = recomputeTypeEffects(s);
   return dlog(s, `${w} plays ${c.name}.`, "play");
 }
 
@@ -3796,6 +3892,11 @@ case "RESOLVE_STACK": {
   } else if (!isPerm(top.card) && !top.isAbility) {
     s = { ...s, [top.caster]: { ...s[top.caster], gy: [...s[top.caster].gy, { ...top.card }] } };
   }
+  // A resolving permanent may itself be a type-changing static effect (Living
+  // Lands, Kormus Bell, Blood Moon) or an aura that just attached one (Evil
+  // Presence, via resolveEff's enchantLand case above) -- recompute for the
+  // whole battlefield now that it's live.
+  s = recomputeTypeEffects(s);
   return s;
 }
 
@@ -3951,6 +4052,15 @@ case "ACTIVATE_ABILITY": {
   const w = action.who || 'p';
   const card = s[w].bf.find(c => c.iid === iid);
   if (!card) return s;
+  // Blood Moon / Evil Presence: a land whose subtype was fully replaced (landTypeOverride)
+  // loses its printed abilities -- it's just a copy of that basic land type now. The
+  // land's own basic-land-type mana ability is granted separately (TAP_LAND /
+  // applyOvergrowthTap), never routed through ACTIVATE_ABILITY, so this guard safely
+  // blocks every case below (activatedAbilities array and the single card.activated
+  // field) without needing a per-case check. See docs/SYSTEMS.md S18.9.
+  if (card.landTypeOverride) {
+    return dlog(s, `${card.name}'s abilities are lost -- it's just a ${card.landTypeOverride} now.`, 'rule');
+  }
   // X-cost activated abilities (e.g. Candelabra of Tawnos: "{X}, {T}: ..."), same
   // xVal source CAST_SPELL uses for X spells.
   const xValPaid = action.xVal ?? s.xVal ?? 1;

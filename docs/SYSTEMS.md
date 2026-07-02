@@ -2108,6 +2108,178 @@ keyword swaps are processed in Layer 3 before Layer 6.
 the stack item so `resolveEff` can read them. The UI is responsible for populating these
 fields when the player selects the substitution targets.
 
+## 18.9 Layer 4 -- Baked Type-Effect Fields (Living Lands, Kormus Bell, Blood Moon, Evil Presence)
+
+Deferral Sweep 2. Closes the gap where `computeCharacteristics` could compute a Layer-4
+type change for display, but `isCre`/`isLand` and every hot-loop combat/death/AI predicate
+read `card.type` directly and never saw it.
+
+### Design: baked recompute, not per-call layers evaluation
+
+`isCre`/`isLand` do **not** call `computeCharacteristics()`. That would walk every
+battlefield effect on every invocation, and both predicates run in combat resolution,
+`checkDeath`'s SBE loop, and AI/MCTS search -- multiplying cost and risking re-entrancy
+(reading state that is mid-mutation). Instead, `DuelCore.js` bakes the computed result onto
+each battlefield permanent as four optional fields, written by `recomputeTypeEffects(state)`
+(exported from `DuelCore.js`):
+
+| Field | Meaning when present |
+|---|---|
+| `typeEff` | Space-joined computed type string (e.g. `"Land Creature"`). Absent = use `card.type`. |
+| `subtypeEff` | Space-joined computed subtype string (e.g. `"Swamp"`). Absent = use `card.subtype`. |
+| `colorEff` | Computed color, only baked when a type-changing effect also sets it (Kormus Bell). Absent = use `card.color`. UI-only consumer (Card.jsx); state-aware callers should prefer `computeCharacteristics(card, state).color` directly (see `canBlockDuel` below). |
+| `landTypeOverride` | Set to a basic land type name (`"Mountain"`, `"Swamp"`, etc.) when a Layer-4 effect **fully replaced** (not merely added to) a land's subtype down to exactly one recognized basic land type it didn't print. Drives the "lost its printed abilities, taps for only that color" simplification for Blood Moon and Evil Presence. |
+
+```js
+export const isLand = c => { const t = c?.typeEff ?? c?.type; return t === "Land" || !!t?.includes("Land"); };
+export const isCre  = c => !!(c?.typeEff ?? c?.type)?.includes("Creature");
+```
+
+`isLand` keeps both the strict-equality and substring branches: Living Lands/Kormus Bell
+produce a `typeEff` of `"Land Creature"`, which must still satisfy `isLand`.
+
+**Audit result: no existing isLand call site's true/false answer changes.** `card.type` (the
+raw printed field) is never mutated by this feature -- only the new `typeEff` field is added
+-- so before this sweep every permanent's `isLand()` result was already computed from the
+same raw field this sweep still falls back to when no type-changing effect is baked. The
+only permanents that ever get a non-empty `typeEff` are Forests/Swamps animated by Living
+Lands/Kormus Bell, and for those `isLand` still returns `true` (via the substring branch)
+exactly as it did before (via the strict-equality branch on the still-unchanged
+`card.type`). Blood Moon and Evil Presence only ever touch `subtypeEff`/`landTypeOverride`,
+never `typeEff`, so they don't affect `isLand` at all. The substring branch is added for
+forward compatibility (a future effect that changes a land's base *type*, not just
+subtype) and is exercised by `tests/scenarios/type-eff-baking.test.js`.
+
+### `globalTypeEffect` (Living Lands, Kormus Bell, Blood Moon)
+
+A new `collectEffects` section in `layers.js`, structurally parallel to the existing
+`lordEffect`/`globalPump` section but for LANDS matched by a fixed filter instead of
+creatures matched by subtype/color, and modifying Layer 4 (type)/Layer 5 (color)/Layer 7b
+(set P/T) instead of Layer 6/7c:
+
+```js
+{ effect: 'globalTypeEffect', globalTypeEffect: { filter: 'Forest'|'Swamp'|'nonBasicLand',
+  addTypes?, setSubtypes?, setPower?, setToughness?, setColor? } }
+```
+
+`matchesGlobalTypeFilter(card, filter)` matches against the affected card's **base printed**
+type/subtype, not any already-baked `typeEff`/`subtypeEff` -- `collectEffects` snapshots all
+effects before applying them in timestamp order, so this intentionally does not chase
+dependencies between two type-changing effects stacked on the same land (e.g. Evil Presence
++ Living Lands on one Forest). This is a documented SIMPLIFICATION consistent with this
+codebase's existing precedent for layer edge cases.
+
+`resolveEff`'s `case "globalTypeEffect"` is log-only (mirrors `lordEffect`/`globalPump`) --
+the effect is entirely read-time, applied via `collectEffects` and baked by
+`recomputeTypeEffects`.
+
+### Evil Presence: existing `enchantLand` + `layerDef` machinery
+
+Evil Presence needed no new mechanism -- it fits the existing per-permanent aura path:
+`effect: 'enchantLand', mod: { layerDef: { layer: 4, setSubtypes: ['Swamp'] } }`.
+`collectEffects` already reads `aura.mod.layerDef` for attached auras (see S18.4).
+
+### `recomputeTypeEffects(state)` -- where it's called from and why
+
+One choke point does not exist (permanents enter/leave the battlefield via several
+different code paths), so it's called from three well-defined points, chosen because they
+are the only places new type-changing effect *sources* can appear/disappear or a land can
+enter under an existing one:
+
+1. **`zMove`** (end of function, when `tz === 'bf' || fromZone === 'bf'`): the documented
+   single choke point for every bf <-> gy/exile/hand/lib move. Covers `checkDeath` (a land
+   dying while animated), destroy/bounce effects, and tutor-to-bf effects.
+2. **`PLAY_LAND`** (end of case): a land entering while Living Lands/Kormus Bell/Blood Moon
+   is already out must be baked immediately.
+3. **`RESOLVE_STACK`** (end of case, after the ETB push and `onResolve`): covers Living
+   Lands/Kormus Bell/Blood Moon themselves entering (animating every matching land already
+   on the battlefield) and Evil Presence attaching (via `enchantLand`, invoked earlier in
+   the same case through `resolveEff`).
+
+`zMove`'s non-`bf` zone-reset branch (`tz === "gy"|"hand"|"exile"|"lib"`, broadened from the
+previous `"gy"|"hand"`-only check to also cover `exile`/`lib`) now also resets
+`typeEff`/`subtypeEff`/`colorEff`/`landTypeOverride` to `undefined` -- a land that dies while
+animated by Living Lands must arrive in the graveyard as a plain land card, not a creature.
+
+### Summoning sickness
+
+`PLAY_LAND` previously hardcoded `summoningSick: false` (lands had no `{T}`-ability
+sickness restriction). Now that a land can become a creature, it sets
+`summoningSick: !hasKw(c, HASTE)` like every other zone-entering permanent. This is safe for
+existing (non-animated) lands: nothing reads `summoningSick` on a land unless `isCre()` is
+also true. The UNTAP-step pass already clears `summoningSick` for every permanent
+(including lands) at the start of its controller's turn regardless of type, so "was this
+land already under my control when the turn began" is tracked correctly for free.
+
+### Mid-combat revert (CR 506.4-adjacent)
+
+`recomputeTypeEffects` detects, per permanent, `isCre(before) && !isCre(after)`. If the
+permanent was `attacking`/`blocking` when it lost creature-ness, it's cleared
+(`attacking: false, blocking: null`) and spliced out of `state.attackers` -- the same
+pattern the pre-existing `ebonyHorse` case uses for a creature that leaves combat alive
+(untap-and-remove-from-combat), minus the untap (losing creature-ness doesn't untap it).
+This deliberately does **not** also clean `state.blockers` map entries or other creatures'
+`.blocking` pointers referencing the departed attacker -- `ebonyHorse` doesn't either, and a
+blocker whose attack target is no longer iterated in `resolveCombat`'s `for (const attId of
+state.attackers)` loop simply deals/receives no damage from that pairing, which is the
+existing tolerated-dangling-reference behavior for a creature that dies mid-combat (see
+`if (!att) continue` in the same loops, now broadened to `if (!att || !isCre(att)) continue`
+as defense-in-depth).
+
+### Blood Moon / Evil Presence: mana and ability loss (`landTypeOverride`)
+
+Real Blood Moon does not remove a nonbasic land's non-type-derived printed abilities (per
+Gatherer rulings) -- this project's Forge-derived design directive for both Blood Moon and
+Evil Presence deliberately simplifies this: a land whose subtype is fully replaced down to
+one basic type is treated as having lost its other printed abilities and having only that
+basic type's mana ability. `landTypeOverride` (see table above) drives two targeted
+overrides, not a new subsystem:
+
+- `applyOvergrowthTap` (the actual land-tap-for-mana resolver, despite its name): if
+  `c.landTypeOverride` is set, the tapped-for color is forced to that type's mana
+  (`{Plains:W, Island:U, Swamp:B, Mountain:R, Forest:G}`), overriding both the caller's
+  requested color and `c.produces`.
+- `ACTIVATE_ABILITY`: a single guard at the top of the case (`if (card.landTypeOverride)
+  return ...`) blocks every other printed ability. Safe as a single choke point because a
+  land's basic-type mana ability is never itself routed through `ACTIVATE_ABILITY` (only
+  `TAP_LAND`/`applyOvergrowthTap` is) -- so this guard can't accidentally block the one
+  ability the land is supposed to keep.
+
+### Color-aware combat legality
+
+`canBlockDuel`'s protection and Fear checks previously compared against raw `at.color`/
+`bl.color`. Fixed to read `computeCharacteristics(at/bl, state).color` (already computed
+there for protection) so a Kormus-Bell-blackened Swamp is correctly recognized as black for
+protection-from-black and Fear, matching the "still lands, still creatures" oracle intent
+for the color Layer 5 sets. `layers.js`'s CDA evaluators (`swampCount`, `forestCount`,
+`forestBonus`, etc.) similarly now read a peer permanent's `subtypeEff ?? subtype` so Evil
+Presence turning a Forest into a Swamp is correctly reflected in Forest/Swamp-counting CDAs
+(Nightmare, Kird Ape, etc.) -- these read another permanent's already-baked field from
+state, which is safe (no self-reference), unlike `matchesGlobalTypeFilter`'s intentional
+base-subtype snapshot above.
+
+### UI consumption
+
+`isCre`/`isLand` are the only sanctioned way for UI code to check creature/land-ness.
+`useDuelController.ts`'s `pCreatures`/`pLands`/`pPerms` (and `o*` counterparts) and
+`handleBfClick`'s combat-phase routing now use `isCre`/`isLand` instead of a raw
+`card.type?.includes('Creature')` check, so an animated land is clickable to declare as an
+attacker/blocker. `pLands`/`oLands` additionally exclude currently-creature lands
+(`isLand(c) && !isCre(c)`) so an animated land renders once, in the creatures row, not
+twice. `src/ui/Battlefield/Half.tsx` (desktop) had its own duplicate local
+`isLandCard`/`isCreatureCard` helpers (previously keyed off `card.isAnimatedLand`, the
+Mishra's Factory-only flag) reworked to delegate to the shared `isLand`/`isCre` (kept
+`isAnimatedLand` as an additional OR-condition for Mishra's Factory, which does not use
+`typeEff`). `FieldCard.tsx`'s local `isCre` check was fixed the same way.
+
+**Known display gap (pre-existing, not introduced here):** `getDisplayPT` (used by
+`FieldCard` to show P/T with no `state` available) only sums `eotBuffs`/counters -- it does
+not reflect Layer 7a/7b baked P/T. Plague Rats, Keldon Warlord, and Sorceress Queen-style
+cards already have this same gap; animated lands under Living Lands/Kormus Bell inherit it
+(they display as 0/0 instead of 1/1 in the card frame, though `getPow`/`getTou` with state
+are correct). Not fixed here -- would require passing computed P/T down from a
+state-aware ancestor, out of scope for this sweep.
+
 ---
 
 ## 19. Card Tools MCP Server (`tools/card-mcp-server/`)
