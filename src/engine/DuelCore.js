@@ -3185,14 +3185,16 @@ for (const w of ["p","o"]) {
   if (ns[w].channelActive) ns = { ...ns, [w]: { ...ns[w], channelActive: false }};
   ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.damageShield ? { ...c, damageShield: 0 } : c) } };
 }
-// Pestilence: destroy if its controller has no black creatures
-for (const w of ["p","o"]) {
-for (const pest of [...ns[w].bf].filter(x => x.id === "pestilence")) {
-  if (!ns[w].bf.some(c => isCre(c) && c.color === "B")) {
-    ns = zMove(ns, pest.iid, w, w, "gy");
-    ns = dlog(ns, "Pestilence: no black creatures — destroyed.", "effect");
+// Pestilence: at the beginning of the end step, if no creatures are on the
+// battlefield (either side, any color), its controller sacrifices it.
+const anyCreatures = [...ns.p.bf, ...ns.o.bf].some(c => isCre(c));
+if (!anyCreatures) {
+  for (const w of ["p","o"]) {
+    for (const pest of [...ns[w].bf].filter(x => x.id === "pestilence")) {
+      ns = zMove(ns, pest.iid, w, w, "gy");
+      ns = dlog(ns, "Pestilence: no creatures on the battlefield -- sacrificed.", "effect");
+    }
   }
-}
 }
 // Castle Inferno modifier
 if (ns.castleMod?.name === "Inferno") { ns = hurt(ns, "p", 1, "Inferno"); ns = hurt(ns, "o", 1, "Inferno"); }
