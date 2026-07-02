@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
 import { aiDecide } from '../engine/AI.js';
-import { isLand, isArt, canPay, parseMana } from '../engine/DuelCore.js';
+import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
@@ -820,7 +820,7 @@ export function useDuelController(
       const isYours = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
       const isAttacker = (s.attackers ?? []).includes(card.iid);
 
-      if (isYours && card.type?.includes('Creature')) {
+      if (isYours && isCre(card)) {
         // First click: select your blocker (toggle)
         setPendingBlockerIid(prev => prev === card.iid ? null : card.iid);
         return;
@@ -837,7 +837,7 @@ export function useDuelController(
       return;
     }
 
-    if (s.phase === 'COMBAT_ATTACKERS' && s.active === 'p' && card.type?.includes('Creature')) {
+    if (s.phase === 'COMBAT_ATTACKERS' && s.active === 'p' && isCre(card)) {
       const isYours = (s.p.bf as any[]).some((c: any) => c.iid === card.iid);
       if (isYours) {
         declareAttacker(card.iid);
@@ -1183,12 +1183,15 @@ export function useDuelController(
     [s.o.bf]
   );
 
-  const pLands     = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => isLand(c)), [s.p.bf]);
-  const pCreatures = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => c.type?.includes('Creature')), [s.p.bf]);
-  const pPerms     = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => !isLand(c) && !c.type?.includes('Creature')), [s.p.bf]);
-  const oLands     = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => isLand(c)), [s.o.bf]);
-  const oCreatures = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => c.type?.includes('Creature')), [s.o.bf]);
-  const oPerms     = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => !isLand(c) && !c.type?.includes('Creature')), [s.o.bf]);
+  // A land animated into a creature (Living Lands, Kormus Bell) renders in the
+  // CREATURES row, not LANDS -- avoids showing the same permanent in both rows.
+  // It reverts to the LANDS row automatically once isCre(c) goes false again.
+  const pLands     = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => isLand(c) && !isCre(c)), [s.p.bf]);
+  const pCreatures = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => isCre(c)), [s.p.bf]);
+  const pPerms     = useMemo(() => (s.p.bf as CardData[]).filter((c: any) => !isLand(c) && !isCre(c)), [s.p.bf]);
+  const oLands     = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => isLand(c) && !isCre(c)), [s.o.bf]);
+  const oCreatures = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => isCre(c)), [s.o.bf]);
+  const oPerms     = useMemo(() => (s.o.bf as CardData[]).filter((c: any) => !isLand(c) && !isCre(c)), [s.o.bf]);
 
   return {
     // Raw engine state and dispatch

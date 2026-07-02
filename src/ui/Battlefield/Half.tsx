@@ -3,6 +3,7 @@ import { FieldCard } from '../Card/FieldCard';
 import { LandPip } from '../Card/LandPip';
 import { EnchantedCardSlot } from '../Card/EnchantedCardSlot';
 import type { CardData } from '../Card/types';
+import { isLand as isLandEngine, isCre as isCreEngine } from '../../engine/DuelCore.js';
 
 interface HalfProps {
   side: 'you' | 'opp';
@@ -28,14 +29,14 @@ const ROW_LABEL: React.CSSProperties = {
 
 export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendingBlockerIid, blockers, onCardClick, onCardHover }: HalfProps) {
   const isOpp = side === 'opp';
-  // isLand: matches 'Land', 'Basic Land', 'Land — Forest', etc.
-  const isLandCard = (c: CardData): boolean =>
-    typeof c.type === 'string' && c.type.split('—')[0].trim().split(' ').includes('Land') && !(c as any).isAnimatedLand;
-
-  // isCreatureCard: matches 'Creature', 'Artifact Creature', 'Enchantment Creature', etc.
+  // A land turned into a creature by a type-changing static effect (Living
+  // Lands, Kormus Bell) or by Mishra's Factory's own isAnimatedLand toggle
+  // renders in the creature row, not the land row, so it isn't shown twice.
   const isCreatureCard = (c: CardData): boolean =>
-    (typeof c.type === 'string' && c.type.includes('Creature')) ||
-    (c as any).isAnimatedLand === true;
+    isCreEngine(c as any) || (c as any).isAnimatedLand === true;
+
+  const isLandCard = (c: CardData): boolean =>
+    isLandEngine(c as any) && !isCreatureCard(c);
 
   const lands            = cards.filter(isLandCard);
   const nonLands         = cards.filter(c => !isLandCard(c));
