@@ -309,13 +309,31 @@ docs/AI.md                   — AI role definitions
 
 ## Testing
 
+### Default testing policy -- targeted, not full-suite
+
+**Targeted testing is mandatory, not optional.** For any prompt that edits files under
+`src/`, run `npm run test:targeted -- <tag1> <tag2> ...` for the tag(s) that match the
+files changed (see the lookup table below), then `npm run test:audit -- <same tags>`
+once targeted passes. This is the default for every scoped change -- do not skip straight
+to a full-suite run because it "feels safer."
+
+`npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
+plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+
+individual test executions). Do not run these bare commands by default. Only run the
+full suite in one of these two situations:
+1. A `test:audit` run fails -- the documented STOP/escalation path below explicitly
+   calls for a full-suite diagnosis.
+2. The user explicitly asks for a full-suite or pre-merge/pre-release validation.
+
+Doc-only changes (nothing under `src/` touched) need no test run at all.
+
 ### Unit tests (Vitest)
 ```
-npm test                     # run all unit + snapshot tests
-npm run test:e2e             # run Playwright e2e suite (all specs)
+npm run test:targeted -- @engine @persistence   # DEFAULT: run only tagged tests
+npm run test:audit -- @engine                   # DEFAULT: audit a random untouched tag area
+npm test                     # full suite -- audit-failure escalation or explicit user request only
+npm run test:e2e             # full Playwright suite -- same restriction
 npm run test:e2e:ui          # Playwright UI mode
-npm run test:targeted -- @engine @persistence   # run only tagged tests
-npm run test:audit -- @engine                   # audit a random untouched tag area
 ```
 
 ### Test locations
@@ -337,11 +355,31 @@ Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePatter
 
 Tags are additive prefixes: `@engine @mobile Duel persistence [mobile]` means the test belongs to both the engine and mobile areas.
 
+### File path -> tag lookup
+
+Use this to pick the tag(s) for `test:targeted`/`test:audit` mechanically instead of guessing.
+A change often matches more than one row -- pass all matching tags. If a touched file isn't
+covered here, fall back to the tag taxonomy table above.
+
+| Path pattern | Tag(s) |
+|---|---|
+| `src/engine/DuelCore.js`, `AI.js`, `MCTS.js`, `cardHandlers.js`, `phases.js`, `LegalActions.js`, `layers.js` | `@engine` |
+| `src/hooks/useDuel.js`, `useDuelController.ts`, `usePhaseAdvance.ts` | `@engine` |
+| `src/DuelScreen.tsx`, `src/ui/duel/*`, `src/ui/Battlefield/*`, `src/ui/Card/*`, `src/ui/Hand/*`, `src/ui/Stack/*`, `src/ui/ActionBar/*`, `src/ui/Phase/*` | `@engine` |
+| `src/engine/MapGenerator.js`, `DungeonGenerator.js`, `EnemyAI.js` | `@overworld` |
+| `src/hooks/useOverworldController.js` | `@overworld` |
+| `src/OverworldGame.jsx`, `src/ui/overworld/*`, `src/ui/dungeon/*` | `@overworld` |
+| `src/engine/GeminiAdvisor.js`, `geminiPrompts.js` | `@gemini` |
+| `src/hooks/usePersistence.ts` | `@persistence` |
+| `src/hooks/useIsMobile.ts`, `src/ui/Mobile/*`, `DuelScreenMobile.tsx`, `OverworldGameMobile.jsx`, any `isMobile`/`@media`-guarded code | `@mobile` |
+| `src/data/cardsPremodern.js`, premodern pool structural files | `@premodern` |
+| `src/data/cards.js`, `src/data/keywords.js` | `@engine` (add `@premodern` too if the change is premodern-pool-specific) |
+
 ### Targeted and audit scripts
 
-`npm run test:targeted -- @tag1 @tag2` runs both Vitest and Playwright for the given tags (OR-combined). Use after making changes scoped to those areas.
+`npm run test:targeted -- @tag1 @tag2` runs both Vitest and Playwright for the given tags (OR-combined). This is the default command for scoped changes -- see policy above.
 
-`npm run test:audit -- @tag1` picks one random tag from the five not being targeted, runs its full suite, and exits non-zero with a **STOP** message if anything fails. **An audit failure is a hard stop** -- it means the current change has a side effect outside its declared scope:
+`npm run test:audit -- @tag1` picks one random tag from the untargeted remainder, runs its full suite, and exits non-zero with a **STOP** message if anything fails. **An audit failure is a hard stop** -- it means the current change has a side effect outside its declared scope:
 
 ```
 1. Run full suite: npm test && npm run test:e2e
