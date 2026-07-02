@@ -2884,4 +2884,45 @@ ACTIVE
 
 ---
 
+## Bug Fix: Pestilence Sacrifice Condition (2026-07-02)
+
+Pestilence's end-step check (`DuelCore.js`, `PHASE.CLEANUP` handling) was
+gated on "its controller has no black creatures" instead of the oracle
+condition: "if no creatures are on the battlefield, sacrifice Pestilence."
+
+**Fix:** the check now evaluates `[...ns.p.bf, ...ns.o.bf].some(isCre)` once
+per end step (matching the simultaneous intervening-if timing) and, if false,
+sacrifices every Pestilence on either battlefield via a direct `zMove` to its
+controller's graveyard -- color is irrelevant, and the block no longer treats
+the effect as a destroy (log wording changed to "sacrificed").
+
+Timing location in the CLEANUP sequence is unchanged.
+
+### Tests
+- Vitest: `tests/scenarios/pestilence-sacrifice.test.js` (PEST-01 through
+  PEST-04: opponent non-black creature present, zero creatures anywhere,
+  controller has a black creature (regression guard), two Pestilences
+  sacrificed simultaneously).
+- Playwright: `tests/e2e/pestilence-sacrifice.spec.ts` (E2E-PEST-01), desktop
+  and mobile viewports.
+
+### Status
+ACTIVE
+
+## Investigation: The Rack Upkeep Targeting -- unimplemented in this working copy (2026-07-02)
+
+Task requested a fix for The Rack firing on the wrong player's upkeep.
+Pre-flight verification found `the_rack` in `cards.js` still has
+`effect:"STUB"`, and no upkeep trigger for it exists anywhere in
+`src/engine/` -- the per-card `c.upkeep` switch in `DuelCore.js`
+(`PHASE.UPKEEP` handling) has cases for Black Vise, Karma, Land Tax, etc.,
+but none for the Rack. No fix was applied; building one from scratch would
+be a new feature, not a bug fix, and was out of scope for this prompt. See
+the session report for details.
+
+### Status
+DEFERRED -- needs a real feature-implementation prompt, not a bug-fix prompt.
+
+---
+
 # End of MECHANICS INDEX v1.6
