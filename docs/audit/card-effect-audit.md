@@ -90,6 +90,24 @@ effect-id list and engine-change details.
 
 ---
 
+### 2026-07-02 — Trigger-Event Expansion + Damage Source Infrastructure (Deferral Sweep 1)
+
+Closed two of the M4 deferral blockers above (missing trigger event types;
+no damage-source-type tracking) and implemented the 12 cards they unblocked.
+No longer `effect:"STUB"` in `cards.js`: `cave_people`, `hasran_ogress`,
+`citanul_druid`, `throne_of_bone`, `urzass_chalice`, `dingus_egg`,
+`tablet_of_epityr`, `urzass_miter`, `khabal_ghoul`, `reverse_polarity`,
+`martyrs_of_korlis`, `veteran_bodyguard`.
+
+Remaining M2/M3 deferrals (optional-untap UI, type-changing continuous
+effects) and the ante/poison/banding/blocking-model gaps are unaffected --
+none of them matched the mechanisms added in this batch. See
+`docs/MECHANICS_INDEX.md` -- Batch: Trigger-Event Expansion + Damage Source
+Infrastructure (Deferral Sweep 1) and `docs/CURRENT_SPRINT.md` (2026-07-02)
+for the full engine-change details.
+
+---
+
 ## Summary
 
 | Category | Count | Notes |

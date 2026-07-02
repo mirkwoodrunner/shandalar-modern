@@ -108,3 +108,15 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Onulet (`gainLifeController` triggered effect, DuelCore.js) | Card-Forge/forge | o/onulet.txt | GPL-3.0 |
 | 2026-07-02 | Soul Net (`payGenericGainLife`/`noop` triggered effect + requiresChoice, DuelCore.js) | Card-Forge/forge | s/soul_net.txt | GPL-3.0 |
 | 2026-07-02 | Spiritual Sanctuary (`gainLifeIfControlsPlains` triggered effect, DuelCore.js) | Card-Forge/forge | s/spiritual_sanctuary.txt | GPL-3.0 |
+| 2026-07-02 | Cave People (`pumpSelfEOT` triggered effect + `grantMountainwalkTarget` activated ability, DuelCore.js) | Card-Forge/forge | c/cave_people.txt | GPL-3.0 |
+| 2026-07-02 | Hasran Ogress (`payGenericNoEffect`/`dealFixedDamageToController` triggered effect, DuelCore.js) | Card-Forge/forge | h/hasran_ogress.txt | GPL-3.0 |
+| 2026-07-02 | Citanul Druid (reused `addCounter` triggered effect via ON_SPELL_CAST, DuelCore.js) | Card-Forge/forge | c/citanul_druid.txt | GPL-3.0 |
+| 2026-07-02 | Throne of Bone (reused `payGenericGainLife`/`noop` triggered effect via ON_SPELL_CAST, DuelCore.js) | Card-Forge/forge | t/throne_of_bone.txt | GPL-3.0 |
+| 2026-07-02 | Urza's Chalice (reused `payGenericGainLife`/`noop` triggered effect via ON_SPELL_CAST, DuelCore.js) | Card-Forge/forge | u/urzas_chalice.txt | GPL-3.0 |
+| 2026-07-02 | Dingus Egg (`damagePermanentControllerFromArtifact` triggered effect via ON_PERMANENT_LEAVES_BF, DuelCore.js) | Card-Forge/forge | d/dingus_egg.txt | GPL-3.0 |
+| 2026-07-02 | Tablet of Epityr (reused `payGenericGainLife`/`noop` triggered effect via ON_PERMANENT_LEAVES_BF, DuelCore.js) | Card-Forge/forge | t/tablet_of_epityr.txt | GPL-3.0 |
+| 2026-07-02 | Urza's Miter (`payGenericDrawCard` triggered effect + `sacrificedIids` tracking, DuelCore.js) | Card-Forge/forge | u/urzas_miter.txt | GPL-3.0 |
+| 2026-07-02 | Khabál Ghoul (`addCounterEqualToCreatureDeaths` triggered effect via ON_END_STEP, DuelCore.js) | Card-Forge/forge | k/khabal_ghoul.txt | GPL-3.0 |
+| 2026-07-02 | Reverse Polarity (`reversePolarityGain` spell effect, DuelCore.js) | Card-Forge/forge | r/reverse_polarity.txt | GPL-3.0 |
+| 2026-07-02 | Martyrs of Korlis (`damageRedirect` static flag + hurt() redirection hook, DuelCore.js) | Card-Forge/forge | m/martyrs_of_korlis.txt | GPL-3.0 |
+| 2026-07-02 | Veteran Bodyguard (`damageRedirect` static flag + hurt() redirection hook, DuelCore.js) | Card-Forge/forge | v/veteran_bodyguard.txt | GPL-3.0 |

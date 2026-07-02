@@ -221,7 +221,36 @@ export function dlog(s, text, type = "info") {
 return { ...s, log: [...s.log.slice(-100), { text, type, turn: s.turn }] };
 }
 
-export function hurt(s, who, amt, src = "") {
+// Returns the battlefield permanent that should absorb damage described by `meta`
+// instead of player `who`, or null if no redirection applies. General hook: any
+// card can opt in by setting `damageRedirect: { from: <'artifacts'|'unblockedCreatures'> }`
+// in its card-data entry; the redirect only applies while the permanent is untapped
+// (both current cards -- Martyrs of Korlis, Veteran Bodyguard -- read "as long as
+// this creature is untapped" on their Oracle text). No further engine changes are
+// needed for future cards using this pattern, as long as they fit one of these two
+// `from` shapes.
+function getDamageRedirectTarget(s, who, meta) {
+  if (!meta) return null;
+  const candidates = (s[who]?.bf || []).filter(c => c.damageRedirect && !c.tapped);
+  for (const c of candidates) {
+    const { from } = c.damageRedirect;
+    if (from === 'artifacts' && meta.sourceType === 'artifact') return c;
+    if (from === 'unblockedCreatures' && meta.sourceType === 'creature' && meta.combat && meta.unblocked) return c;
+  }
+  return null;
+}
+
+export function hurt(s, who, amt, src = "", meta = null) {
+if (amt > 0) {
+  const redirectTarget = getDamageRedirectTarget(s, who, meta);
+  if (redirectTarget) {
+    let ns = { ...s, [who]: { ...s[who], bf: s[who].bf.map(c =>
+      c.iid === redirectTarget.iid ? { ...c, damage: c.damage + amt } : c
+    ) } };
+    ns = dlog(ns, `${amt} damage redirected from ${who} to ${redirectTarget.name}${src ? ` (from ${src})` : ""}.`, "damage");
+    return checkDeath(ns);
+  }
+}
 const floor = amt > 0 ? getLifeFloor(s, who) : null;
 const rawNl = s[who].life - amt;
 const nl = (floor !== null && rawNl < floor) ? floor : rawNl;
@@ -229,6 +258,16 @@ let ns = { ...s, [who]: { ...s[who], life: nl, lifeAnim: amt > 0 ? "damage" : "h
 if (amt > 0) {
   // Tracks total damage taken by each player this turn (Simulacrum). Reset at CLEANUP.
   ns = { ...ns, turnState: { ...ns.turnState, damageTakenThisTurn: { ...ns.turnState.damageTakenThisTurn, [who]: (ns.turnState.damageTakenThisTurn?.[who] || 0) + amt } } };
+  // Tracks damage taken this turn by source permanent type (Reverse Polarity). Reset at CLEANUP.
+  if (meta?.sourceType) {
+    ns = { ...ns, turnState: { ...ns.turnState, damageBySourceType: {
+      ...ns.turnState.damageBySourceType,
+      [who]: {
+        ...ns.turnState.damageBySourceType?.[who],
+        [meta.sourceType]: (ns.turnState.damageBySourceType?.[who]?.[meta.sourceType] || 0) + amt,
+      },
+    } } };
+  }
   ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
 }
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
@@ -251,11 +290,13 @@ return ns;
 
 export function zMove(s, iid, fw, tw, tz) {
 let card = null;
+let fromZone = null;
 let ns = { ...s };
 for (const z of ["hand","bf","gy","exile","lib"]) {
 const idx = ns[fw]?.[z]?.findIndex(c => c.iid === iid);
 if (idx !== undefined && idx >= 0) {
 card = ns[fw][z][idx];
+fromZone = z;
 ns = { ...ns, [fw]: { ...ns[fw], [z]: ns[fw][z].filter((_, i) => i !== idx) } };
 break;
 }
@@ -282,7 +323,29 @@ a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attac
 if (tz === "gy" || tz === "hand") {
 a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [] };
 }
-return { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
+let moved = { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
+
+// ON_PERMANENT_LEAVES_BF: generic leaves-the-battlefield event. Fires alongside
+// ON_CREATURE_DIES (emitted separately by callers such as checkDeath) rather than
+// replacing it -- zMove is the single choke point for every bf -> gy/exile/hand
+// move, so this one emission site covers lands, artifacts, enchantments, and
+// creatures. Does not fire for bf -> bf control changes.
+if (fromZone === 'bf' && tz !== 'bf') {
+  if (isCre(card) && tz === 'gy') {
+    // Tracks creatures that died this turn (Khabál Ghoul). Reset at CLEANUP.
+    moved = { ...moved, turnState: { ...moved.turnState, creaturesDiedThisTurn: [...(moved.turnState.creaturesDiedThisTurn || []), iid] } };
+  }
+  moved = emitEvent(moved, { type: 'ON_PERMANENT_LEAVES_BF', payload: {
+    cardIid: iid,
+    previousController: fw,
+    wasLand: isLand(card),
+    wasArtifact: isArt(card),
+    wasCreature: isCre(card),
+    destination: tz,
+  } });
+  moved = processTriggerQueue(moved);
+}
+return moved;
 }
 
 export function checkDeath(s) {
@@ -496,6 +559,11 @@ export function resolveEff(s, item) {
 const { card, caster, targets, xVal } = item;
 const opp = caster === "p" ? "o" : "p";
 let ns = s;
+// Artifact-source damage meta (Reverse Polarity, Martyrs of Korlis). `card` here is
+// the spell or activated permanent dealing the damage, so isArt(card) generically
+// covers both current artifacts (Rod of Ruin, Rocket Launcher, Aladdin's Ring) and
+// any future artifact reusing these damage effect keys.
+const srcMeta = isArt(card) ? { sourceIid: card.iid, sourceType: 'artifact', combat: false } : null;
 const tgt = targets?.[0];
 const tgtC = tgt ? getBF(ns, tgt) : null;
 
@@ -586,6 +654,14 @@ case "gainLifeX": ns = hurt(ns, caster, -xVal); break;
 case "gainLife1": ns = hurt(ns, caster, -1); break;
 case "gainLife2": ns = hurt(ns, caster, -2); break;
 case "gainLife6": ns = hurt(ns, caster, -6); break;
+// Reverse Polarity: "You gain X life, where X is twice the damage dealt to you
+// so far this turn by artifacts."
+// Adapted from Card-Forge/forge (r/reverse_polarity.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "reversePolarityGain": {
+  const artDmg = ns.turnState.damageBySourceType?.[caster]?.artifact || 0;
+  ns = hurt(ns, caster, -(artDmg * 2), card.name);
+  break;
+}
 case "bounce": {
 if (tgtC) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "hand"); ns = dlog(ns, `${card.name} returns ${tgtC.name}.`, "effect"); }
 break;
@@ -1099,18 +1175,29 @@ ns = dlog(ns, `${tgtC.name} gains flying.`, "effect");
 break;
 }
 case "ping": {
-if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name, srcMeta);
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
 break;
 }
 case "damage1": {
-if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name, srcMeta);
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+1 } : c) } }; ns = checkDeath(ns); }
 break;
 }
 case "damage2": {
-if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 2, card.name);
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 2, card.name, srcMeta);
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+2 } : c) } }; ns = checkDeath(ns); }
+break;
+}
+case "grantMountainwalkTarget": {
+// Cave People: "{1}{R}{R}, {T}: Target creature gains mountainwalk until end of turn."
+// Adapted from Card-Forge/forge (c/cave_people.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.MOUNTAINWALK.id] }] } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gains mountainwalk until end of turn.`, 'effect');
+}
 break;
 }
 case "destroyTapped": {
@@ -1339,7 +1426,7 @@ if (tgtC && isCre(tgtC) && tgtC.color === 'U') {
 break;
 }
 case "damage4Any": {
-if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 4, card.name);
+if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 4, card.name, srcMeta);
 else if (tgtC) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
     c.iid === tgtC.iid ? { ...c, damage: c.damage + 4 } : c
@@ -1640,6 +1727,7 @@ case "sacrificeForMana": {
 const cres = ns[caster].bf.filter(isCre);
 if (cres.length) {
 const sac = cres[0];
+ns = { ...ns, turnState: { ...ns.turnState, sacrificedIids: [...(ns.turnState.sacrificedIids || []), sac.iid] } };
 ns = zMove(ns, sac.iid, caster, caster, "gy");
 const mp3 = { ...ns[caster].mana }; mp3.C = (mp3.C || 0) + 2;
 ns = { ...ns, [caster]: { ...ns[caster], mana: mp3 } };
@@ -2444,7 +2532,7 @@ const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
 if (!blockers.length) {
   if (!attGaseous && attFS) {
-    ns = hurt(ns, defW, ap, att.name);
+    ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
   }
@@ -2491,7 +2579,7 @@ if (!blockers.length) {
     if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp);
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
 
 }
@@ -2515,7 +2603,7 @@ const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
 if (!blockers.length) {
   if (!attGaseous && !attFS) {
-    ns = hurt(ns, defW, ap, att.name);
+    ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
   }
@@ -2562,7 +2650,7 @@ if (!blockers.length) {
     if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp);
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`);
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
 
 }
@@ -2666,6 +2754,14 @@ let ns = { ...s, phase: next };
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
 for (const w of ["p","o"]) ns = burnMana(ns, w, ns.ruleset);
 
+// ON_ATTACKS_DECLARED: fires once when leaving COMBAT_ATTACKERS with at least one
+// attacker committed -- the same boundary the B14 skip logic above uses to count
+// declared attackers (s.attackers, pre-transition).
+if (s.phase === PHASE.COMBAT_ATTACKERS && s.attackers && s.attackers.length > 0) {
+  ns = emitEvent(ns, { type: 'ON_ATTACKS_DECLARED', payload: { attackerIids: [...s.attackers], attackingPlayer: s.active } });
+  ns = processTriggerQueue(ns);
+}
+
 // Issue B11: auto-declare MUST_ATTACK creatures as attackers at start of declare-attackers step.
 if (next === PHASE.COMBAT_ATTACKERS) {
   const activeWho = ns.active;
@@ -2722,6 +2818,11 @@ if (next === PHASE.END) {
       ? { ...c, type: c.revertAnimateAtEnd.type, power: c.revertAnimateAtEnd.power, toughness: c.revertAnimateAtEnd.toughness, revertAnimateAtEnd: undefined }
       : c) } };
   }
+  // ON_END_STEP: unscoped, like ON_UPKEEP_START -- fires once per turn cycle for
+  // the turn's active player (this engine has a single END phase per turn, not a
+  // separate end step per player). Khabál Ghoul.
+  ns = emitEvent(ns, { type: 'ON_END_STEP', payload: { activePlayer: ns.active } });
+  ns = processTriggerQueue(ns);
 }
 
 if (next === PHASE.COMBAT_DAMAGE) {
@@ -2834,11 +2935,11 @@ break;
 }
 case "lordsUpkeep": {
 const others = ns[w].bf.filter(x => isCre(x) && x.iid !== c.iid);
-if (others.length) { ns = zMove(ns, others[0].iid, w, w, "gy"); ns = dlog(ns, `Lord of the Pit devours ${others[0].name}.`, "death"); }
+if (others.length) { ns = { ...ns, turnState: { ...ns.turnState, sacrificedIids: [...(ns.turnState.sacrificedIids || []), others[0].iid] } }; ns = zMove(ns, others[0].iid, w, w, "gy"); ns = dlog(ns, `Lord of the Pit devours ${others[0].name}.`, "death"); }
 else ns = hurt(ns, w, 7, "Lord of the Pit");
 break;
 }
-case "sacrificeSelf": if (next === PHASE.CLEANUP) ns = zMove(ns, c.iid, w, w, "gy"); break;
+case "sacrificeSelf": if (next === PHASE.CLEANUP) { ns = { ...ns, turnState: { ...ns.turnState, sacrificedIids: [...(ns.turnState.sacrificedIids || []), c.iid] } }; ns = zMove(ns, c.iid, w, w, "gy"); } break;
 case "sacrificeUnless_U": {
 const mp = { ...ns[w].mana };
 if ((mp.U || 0) >= 1) { mp.U--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
@@ -2962,7 +3063,7 @@ if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: d
 }
 
 if (next === PHASE.CLEANUP) {
-ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, activatedOnceIids: [] } };
+ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -3018,6 +3119,39 @@ function evaluateCondition(state, card, condition, payload) {
     return state.turnState.damageLog.some(
       entry => entry.sourceId === card.iid && entry.targetId === payload.cardId
     );
+  }
+  // ON_ATTACKS_DECLARED: restricts a "whenever this creature attacks" ability to
+  // firing only for the card that is itself among the declared attackers.
+  // Cave People, Hasran Ogress.
+  if (condition.type === 'selfIsAttacker') {
+    return !!payload.attackerIids?.includes(card.iid);
+  }
+  // ON_PERMANENT_LEAVES_BF: "put into a graveyard" -- Dingus Egg.
+  if (condition.type === 'permanentWasLand') {
+    return !!payload.wasLand && payload.destination === 'gy';
+  }
+  // ON_PERMANENT_LEAVES_BF: "an artifact you control is put into a graveyard" -- Tablet of Epityr.
+  if (condition.type === 'ownArtifactLeftBf') {
+    return !!payload.wasArtifact && payload.previousController === card.controller && payload.destination === 'gy';
+  }
+  // ON_PERMANENT_LEAVES_BF: "an artifact you control ... if it wasn't sacrificed" -- Urza's Miter.
+  if (condition.type === 'ownArtifactDiedNotSacrificed') {
+    return !!payload.wasArtifact
+      && payload.previousController === card.controller
+      && payload.destination === 'gy'
+      && !(state.turnState.sacrificedIids || []).includes(payload.cardIid);
+  }
+  // ON_SPELL_CAST: "a player casts a spell of color X" -- Throne of Bone (black).
+  if (condition.type === 'spellColorIncludes') {
+    return !!payload.colors?.includes(condition.color);
+  }
+  // ON_SPELL_CAST: "a player casts an artifact spell" -- Urza's Chalice.
+  if (condition.type === 'spellIsArtifact') {
+    return !!payload.isArtifact;
+  }
+  // ON_SPELL_CAST: "an opponent casts an artifact spell" -- Citanul Druid.
+  if (condition.type === 'opponentCastArtifactSpell') {
+    return !!payload.isArtifact && payload.casterId !== card.controller;
   }
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
@@ -3211,6 +3345,63 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     }
     case 'noop':
       return state;
+    // Cave People: "Whenever this creature attacks, it gets +1/-2 until end of turn."
+    // Adapted from Card-Forge/forge (c/cave_people.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'pumpSelfEOT': {
+      const who = sourceCard.controller;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid
+          ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: effect.power || 0, toughness: effect.toughness || 0 }] }
+          : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gets ${effect.power >= 0 ? '+' : ''}${effect.power}/${effect.toughness >= 0 ? '+' : ''}${effect.toughness} until end of turn.`, 'effect');
+    }
+    // Hasran Ogress: "unless you pay {2}" -- the pay branch (no further effect).
+    // Adapted from Card-Forge/forge (h/hasran_ogress.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'payGenericNoEffect': {
+      const who = sourceCard.controller;
+      const totalMana = Object.values(state[who].mana).reduce((a, b) => a + b, 0);
+      if (totalMana < effect.cost) return dlog(state, `${sourceCard.name}: not enough mana to pay.`, 'effect');
+      const paid = payMana(state[who].mana, String(effect.cost));
+      return dlog({ ...state, [who]: { ...state[who], mana: paid } }, `${sourceCard.name}: paid {${effect.cost}}.`, 'effect');
+    }
+    // Hasran Ogress: "unless you pay {2}" -- the decline branch (fixed damage,
+    // routed through hurt() so it's tagged as creature-source combat-trigger damage).
+    // Adapted from Card-Forge/forge (h/hasran_ogress.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'dealFixedDamageToController': {
+      const who = sourceCard.controller;
+      return hurt(state, who, effect.amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'creature', combat: false });
+    }
+    // Dingus Egg: deals damage to the controller of the land that just died.
+    // Routed through hurt() with an artifact-source meta tag so it's counted by
+    // Reverse Polarity and eligible for Martyrs of Korlis redirection.
+    // Adapted from Card-Forge/forge (d/dingus_egg.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'damagePermanentControllerFromArtifact': {
+      const who = payload.previousController;
+      if (!who) return state;
+      return hurt(state, who, effect.amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'artifact', combat: false });
+    }
+    // Khabál Ghoul: "put a +1/+1 counter for each creature that died this turn."
+    // Adapted from Card-Forge/forge (k/khabal_ghoul.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'addCounterEqualToCreatureDeaths': {
+      const who = sourceCard.controller;
+      const amount = (state.turnState.creaturesDiedThisTurn || []).length;
+      if (amount === 0) return state;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + amount } } : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gets ${amount} +1/+1 counter${amount === 1 ? '' : 's'} (creatures died this turn).`, 'effect');
+    }
+    // Urza's Miter: optional-cost trigger that draws a card instead of gaining life.
+    // Adapted from Card-Forge/forge (u/urzas_miter.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'payGenericDrawCard': {
+      const who = sourceCard.controller;
+      const totalMana = Object.values(state[who].mana).reduce((a, b) => a + b, 0);
+      if (totalMana < effect.cost) return dlog(state, `${sourceCard.name}: not enough mana to pay.`, 'effect');
+      const paid = payMana(state[who].mana, String(effect.cost));
+      const s = { ...state, [who]: { ...state[who], mana: paid } };
+      return drawD(s, who);
+    }
     // Spiritual Sanctuary: fires for each player's upkeep, using the upkeep
     // event's activePlayer (not sourceCard.controller) as the life-gain recipient.
     // Adapted from Card-Forge/forge (s/spiritual_sanctuary.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -3317,7 +3508,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, activatedOnceIids: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] },
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
@@ -3527,11 +3718,23 @@ case "CAST_SPELL": {
     if (stackItem) return ` targeting ${stackItem.card?.name ?? 'stack spell'}`;
     return '';
   })();
-  const castState = dlog(
+  let castState = dlog(
     { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null },
     `${w} casts ${c.name}${xSuffix}${tgtLabel}.`,
     "play"
   );
+  // ON_SPELL_CAST: generic cast-triggered event, emitted after the spell is legally
+  // placed on the stack (not at resolution). `colors` splits the single-string
+  // `color` field (e.g. "UB" for multicolor) into an array for condition matching.
+  castState = emitEvent(castState, { type: 'ON_SPELL_CAST', payload: {
+    casterId: w,
+    cardIid: c.iid,
+    cardType: c.type,
+    isArtifact: isArt(c),
+    isCreature: isCre(c),
+    colors: c.color ? c.color.split('') : [],
+  } });
+  castState = processTriggerQueue(castState);
   // Sphere lifegain cycle: scan battlefields for matching artifact triggers.
   // Fires on cast (not resolution), includes caster's own spells per oracle text.
   const SPHERE_COLOR_MAP = { crystal_rod: 'U', iron_star: 'R', ivory_cup: 'W', wooden_sphere: 'G' };
@@ -3925,6 +4128,7 @@ case "ACTIVATE_ABILITY": {
   // permanent itself. Must happen before pushing to the stack so the source
   // is already gone by the time the ability resolves.
   if (act.cost.includes("sac") && !act.cost.includes("sacArt") && !act.cost.includes("sacCre")) {
+    s = { ...s, turnState: { ...s.turnState, sacrificedIids: [...(s.turnState.sacrificedIids || []), iid] } };
     s = zMove(s, iid, w, w, "gy");
     s = dlog(s, `${card.name} sacrificed to activate its ability.`, "info");
   }
@@ -3936,6 +4140,7 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("sacArt")) {
     const art = s[w].bf.find(c => isArt(c));
     sacrificedCard = art;
+    s = { ...s, turnState: { ...s.turnState, sacrificedIids: [...(s.turnState.sacrificedIids || []), art.iid] } };
     s = zMove(s, art.iid, w, w, "gy");
     s = dlog(s, `${art.name} sacrificed to activate ${card.name}.`, "info");
   }
@@ -3949,6 +4154,7 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("sacCre")) {
     const cre = s[w].bf.find(c => isCre(c) && c.iid !== iid) || s[w].bf.find(c => isCre(c));
     sacrificedCard = cre;
+    s = { ...s, turnState: { ...s.turnState, sacrificedIids: [...(s.turnState.sacrificedIids || []), cre.iid] } };
     s = zMove(s, cre.iid, w, w, "gy");
     s = dlog(s, `${cre.name} sacrificed to activate ${card.name}.`, "info");
   }
@@ -4126,7 +4332,8 @@ case "CONFIRM_TRANSMUTE_SACRIFICE": {
   const art = s[caster].bf.find(c => c.iid === action.iid);
   if (!art) return s;
 
-  let ns = zMove(s, art.iid, caster, caster, 'gy');
+  let ns = { ...s, turnState: { ...s.turnState, sacrificedIids: [...(s.turnState.sacrificedIids || []), art.iid] } };
+  ns = zMove(ns, art.iid, caster, caster, 'gy');
   const sacrificedCmc = art.cmc ?? 0;
   const shuttered = shuffle([...ns[caster].lib]);
 
