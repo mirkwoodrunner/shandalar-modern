@@ -2909,19 +2909,40 @@ Timing location in the CLEANUP sequence is unchanged.
 ### Status
 ACTIVE
 
-## Investigation: The Rack Upkeep Targeting -- unimplemented in this working copy (2026-07-02)
+## Feature: The Rack Upkeep Trigger (2026-07-02)
 
-Task requested a fix for The Rack firing on the wrong player's upkeep.
-Pre-flight verification found `the_rack` in `cards.js` still has
-`effect:"STUB"`, and no upkeep trigger for it exists anywhere in
-`src/engine/` -- the per-card `c.upkeep` switch in `DuelCore.js`
-(`PHASE.UPKEEP` handling) has cases for Black Vise, Karma, Land Tax, etc.,
-but none for the Rack. No fix was applied; building one from scratch would
-be a new feature, not a bug fix, and was out of scope for this prompt. See
-the session report for details.
+`the_rack` in `cards.js` was previously `effect:"STUB"` with no upkeep
+trigger anywhere in `src/engine/` -- it did nothing when cast. Implemented
+as a real `upkeep:"rackUpkeep"` case in the per-card `c.upkeep` switch in
+`DuelCore.js` (`PHASE.UPKEEP` handling), following the same static-field
+pattern as Black Vise/Karma (no `effect` field needed; `upkeep` alone
+carries through to the battlefield permanent via the ETB spread).
+
+**SIMPLIFICATION:** oracle text is "As this artifact enters, choose an
+opponent." This engine's 2-player duel has only one possible choice, so
+"chosen player" is hardcoded as "opponent of controller" -- same
+simplification already used for Black Vise. Unlike Black Vise's case
+(which has no active-player guard), the Rack case must check
+`ns.active !== rackOpp` and bail otherwise, since the chosen player and the
+card's controller are never the same player and the trigger must never fire
+on the controller's own upkeep.
+
+Damage is `max(0, 3 - handSize)`, computed against the opponent's hand size
+at trigger resolution; zero or negative X deals no damage and logs nothing
+(matching Black Vise's convention, not Power Surge's zero-damage log).
+Multiple Racks trigger independently since each is a separate battlefield
+permanent hit by the same loop.
+
+### Tests
+- Vitest: `tests/scenarios/the-rack-upkeep.test.js` (RACK-01 through
+  RACK-04: opponent's upkeep damage, controller's-own-upkeep no-damage
+  regression guard, 3+ hand size no-damage, two Racks triggering
+  independently).
+- Playwright: `tests/e2e/the-rack-upkeep.spec.ts` (E2E-RACK-01), desktop and
+  mobile viewports.
 
 ### Status
-DEFERRED -- needs a real feature-implementation prompt, not a bug-fix prompt.
+ACTIVE
 
 ---
 
