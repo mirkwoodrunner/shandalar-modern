@@ -122,7 +122,14 @@ for (const vp of VIEWPORTS) {
       expect(painted, `tileset must paint within 2000 ms; took ${elapsed} ms`).toBe(true);
     });
 
-    test('fog-edge tile has directional linear-gradient mask only on unrevealed sides', async ({ page }) => {
+    // Note: this used to assert an inline mask-image directly on the tile
+    // root div. That mechanism was replaced (2026-07-03) by a separate
+    // .ow-fog-fade overlay div because a CSS mask's painting area is the
+    // border box, which fully hid the canvas's overflow bands (OVERFLOW_TOP/
+    // OVERFLOW_X in terrainRenderer.js) and hard-clipped tree canopies at the
+    // fog frontier. See docs/CURRENT_SPRINT.md -- Bug Fix: Sprite Black Boxes
+    // + Tree Clipping.
+    test('fog-edge tile has a directional linear-gradient fade overlay only on unrevealed sides', async ({ page }) => {
       await page.goto('/?overworld=sandbox');
       // Wait for the map to settle (toolbar or mobile menu must be visible).
       const selector = vp.width >= 640
@@ -136,39 +143,39 @@ for (const vp of VIEWPORTS) {
         const tile = document.querySelector('[data-fog-sides]') as HTMLElement | null;
         if (!tile) return null;
         const sides = tile.getAttribute('data-fog-sides') ?? '';
-        const style = tile.style;
-        return { sides, maskImage: style.maskImage || style.webkitMaskImage || '' };
+        const overlay = tile.querySelector('.ow-fog-fade') as HTMLElement | null;
+        return { sides, background: overlay?.style.background ?? '' };
       });
 
       // The sandbox map (seed 42) always has at least one revealed boundary tile.
       expect(result, 'at least one fog-edge tile must exist on the initial viewport').not.toBeNull();
 
-      const { sides, maskImage } = result!;
+      const { sides, background } = result!;
 
       // Must be directional linear-gradients, NOT the old radial gradient.
-      expect(maskImage).not.toContain('ellipse at center');
-      expect(maskImage).toContain('linear-gradient');
+      expect(background).not.toContain('ellipse at center');
+      expect(background).toContain('linear-gradient');
 
       // Each active side contributes exactly one gradient; count them.
       const activeSides = sides.split(',').filter(Boolean);
-      const gradCount = (maskImage.match(/linear-gradient/g) || []).length;
+      const gradCount = (background.match(/linear-gradient/g) || []).length;
       expect(gradCount).toBe(activeSides.length);
 
       // Verify direction-to-gradient alignment: each active side maps to the
       // correct directional gradient.
-      if (activeSides.includes('w')) expect(maskImage).toContain('to right');
-      if (activeSides.includes('e')) expect(maskImage).toContain('to left');
-      if (activeSides.includes('n')) expect(maskImage).toContain('to bottom');
-      if (activeSides.includes('s')) expect(maskImage).toContain('to top');
+      if (activeSides.includes('w')) expect(background).toContain('to right');
+      if (activeSides.includes('e')) expect(background).toContain('to left');
+      if (activeSides.includes('n')) expect(background).toContain('to bottom');
+      if (activeSides.includes('s')) expect(background).toContain('to top');
 
-      // Inactive sides must NOT appear in the mask.
-      if (!activeSides.includes('w')) expect(maskImage).not.toContain('to right');
-      if (!activeSides.includes('e')) expect(maskImage).not.toContain('to left');
-      if (!activeSides.includes('n')) expect(maskImage).not.toContain('to bottom');
-      if (!activeSides.includes('s')) expect(maskImage).not.toContain('to top');
+      // Inactive sides must NOT appear in the overlay's background.
+      if (!activeSides.includes('w')) expect(background).not.toContain('to right');
+      if (!activeSides.includes('e')) expect(background).not.toContain('to left');
+      if (!activeSides.includes('n')) expect(background).not.toContain('to bottom');
+      if (!activeSides.includes('s')) expect(background).not.toContain('to top');
     });
 
-    test('fully-interior revealed tile has no fog mask', async ({ page }) => {
+    test('fully-interior revealed tile has no fog fade overlay', async ({ page }) => {
       // To guarantee an interior tile exists we press ArrowRight several times
       // so a previously unrevealed region opens up and some older revealed tiles
       // gain revealed neighbors on all four sides.
@@ -185,7 +192,7 @@ for (const vp of VIEWPORTS) {
         await page.waitForTimeout(120);
       }
 
-      const interiorHasMask = await page.evaluate(() => {
+      const interiorHasFade = await page.evaluate(() => {
         // An interior tile: revealed, no data-fog-sides attribute, has an
         // ow-terrain-canvas sibling (i.e. it is a revealed tile, not the fog div).
         const tiles = Array.from(
@@ -194,17 +201,17 @@ for (const vp of VIEWPORTS) {
 
         for (const tile of tiles) {
           if (tile.hasAttribute('data-fog-sides')) continue; // edge tile, skip
+          if (tile.querySelector('.ow-fog-fade')) return true; // interior tile with a fade overlay = bug
           const style = tile.style;
-          const mask = style.maskImage || style.webkitMaskImage || '';
-          if (mask) return mask; // non-empty mask on an interior tile = bug
+          if (style.maskImage || style.webkitMaskImage) return true; // stale mask = bug
         }
-        return null;
+        return false;
       });
 
       expect(
-        interiorHasMask,
-        'fully-interior revealed tile must not have a mask-image applied'
-      ).toBeNull();
+        interiorHasFade,
+        'fully-interior revealed tile must not have a fog-fade overlay or mask-image applied'
+      ).toBe(false);
     });
   });
 }
