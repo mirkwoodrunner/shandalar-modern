@@ -2579,6 +2579,121 @@ case "pumpSelf21EOT": {
   break;
 }
 // --- END BATCH: MODERATE-TIER STUB CARDS (M2) --------------------------------
+// --- BEGIN BATCH: ANTE CARDS -------------------------------------------------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "contractFromBelow": {
+  // Adapted from Card-Forge/forge (c/contract_from_below.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  ns = { ...ns, [caster]: { ...ns[caster], hand: [], gy: [...ns[caster].gy, ...ns[caster].hand] } };
+  if (ns[caster].lib.length) {
+    const [anted, ...restLib] = ns[caster].lib;
+    const extraKey = caster === 'p' ? 'anteExtraP' : 'anteExtraO';
+    ns = { ...ns, [caster]: { ...ns[caster], lib: restLib }, [extraKey]: [...ns[extraKey], anted] };
+    ns = dlog(ns, `${card.name}: ${caster} antes ${anted.name}.`, "effect");
+  }
+  ns = drawD(ns, caster, 7);
+  break;
+}
+case "demonicAttorney": {
+  // Adapted from Card-Forge/forge (d/demonic_attorney.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    if (!ns[w].lib.length) continue;
+    const [anted, ...restLib] = ns[w].lib;
+    const extraKey = w === 'p' ? 'anteExtraP' : 'anteExtraO';
+    ns = { ...ns, [w]: { ...ns[w], lib: restLib }, [extraKey]: [...ns[extraKey], anted] };
+    ns = dlog(ns, `${card.name}: ${w} antes ${anted.name}.`, "effect");
+  }
+  break;
+}
+case "rebirthAnte": {
+  // Adapted from Card-Forge/forge (r/rebirth.txt), GPL-3.0.
+  // SIMPLIFICATION: the real card lets each player individually choose whether
+  // to ante (no downside besides the ante risk, upside is a life reset to 20).
+  // No per-player yes/no UI exists for this niche legacy ante decision, so each
+  // player auto-antes only when it would raise their life (life < 20) --
+  // consistent with existing "auto-decide" conventions elsewhere in this file
+  // (Brainwash, Hasran Ogress: no UI to decline, decision made automatically).
+  for (const w of ['p', 'o']) {
+    if (ns[w].life >= 20 || !ns[w].lib.length) continue;
+    const [anted, ...restLib] = ns[w].lib;
+    const extraKey = w === 'p' ? 'anteExtraP' : 'anteExtraO';
+    ns = { ...ns, [w]: { ...ns[w], lib: restLib, life: 20 }, [extraKey]: [...ns[extraKey], anted] };
+    ns = dlog(ns, `${card.name}: ${w} antes ${anted.name} -- life becomes 20.`, "effect");
+  }
+  break;
+}
+case "jeweledBirdAnte": {
+  // Adapted from Card-Forge/forge (j/jeweled_bird.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const extraKey = caster === 'p' ? 'anteExtraP' : 'anteExtraO';
+  const anteScalarKey = caster === 'p' ? 'anteP' : 'anteO';
+  const oldStake = [...(ns[anteScalarKey] ? [ns[anteScalarKey]] : []), ...ns[extraKey]];
+  ns = {
+    ...ns,
+    [caster]: { ...ns[caster], gy: [...ns[caster].gy, ...oldStake] },
+    [anteScalarKey]: null,
+    [extraKey]: [card],
+  };
+  ns = drawD(ns, caster, 1);
+  ns = dlog(ns, `${card.name}: ${caster} antes it, discards the rest of their ante, and draws a card.`, "effect");
+  break;
+}
+case "bronzeTabletExchange": {
+  // Adapted from Card-Forge/forge (b/bronze_tablet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // SIMPLIFICATION: no per-player yes/no UI exists for this legacy ante decision
+  // (same convention as rebirthAnte above); the targeted player auto-pays 10
+  // life when it wouldn't be lethal, else declines.
+  if (tgtC) {
+    const owner = tgtC.controller;
+    const willPay = ns[owner].life > 10;
+    ns = zMove(ns, card.iid, caster, caster, "exile");
+    ns = zMove(ns, tgtC.iid, owner, owner, "exile");
+    if (willPay) {
+      ns = { ...ns, [owner]: { ...ns[owner], life: ns[owner].life - 10 } };
+      ns = zMove(ns, card.iid, caster, caster, "gy");
+      ns = dlog(ns, `${owner} pays 10 life -- ${card.name} is put into its owner's graveyard.`, "effect");
+    } else {
+      ns = {
+        ...ns,
+        ownershipChanges: [
+          ...ns.ownershipChanges,
+          { cardId: card.id, card, newOwner: owner },
+          { cardId: tgtC.id, card: tgtC, newOwner: caster },
+        ],
+      };
+      ns = dlog(ns, `${owner} declines -- ownership of ${card.name} and ${tgtC.name} is permanently exchanged.`, "effect");
+    }
+  }
+  break;
+}
+case "tempestEfreetExchange": {
+  // Adapted from Card-Forge/forge (t/tempest_efreet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // Tempest Efreet is already sacrificed to caster's gy as the activation cost
+  // (see ACTIVATE_ABILITY's sac-cost handling); this resolves the exchange.
+  // SIMPLIFICATION: no per-player yes/no UI exists for this legacy ante
+  // decision; the targeted opponent auto-pays 10 life when it wouldn't be
+  // lethal, else declines (same convention as bronzeTabletExchange above).
+  const willPay = ns[opp].life > 10;
+  if (willPay) {
+    ns = { ...ns, [opp]: { ...ns[opp], life: ns[opp].life - 10 } };
+    ns = dlog(ns, `${opp} pays 10 life to save their hand from ${card.name}.`, "effect");
+  } else if (ns[opp].hand.length) {
+    const idx = Math.floor(Math.random() * ns[opp].hand.length);
+    const revealed = ns[opp].hand[idx];
+    ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, i) => i !== idx) } };
+    ns = { ...ns, [caster]: { ...ns[caster], hand: [...ns[caster].hand, revealed], gy: ns[caster].gy.filter(c => c.iid !== card.iid) } };
+    ns = { ...ns, [opp]: { ...ns[opp], gy: [...ns[opp].gy, card] } };
+    ns = {
+      ...ns,
+      ownershipChanges: [
+        ...ns.ownershipChanges,
+        { cardId: revealed.id, card: revealed, newOwner: caster },
+        { cardId: card.id, card, newOwner: opp },
+      ],
+    };
+    ns = dlog(ns, `${opp} declines -- reveals ${revealed.name}. Ownership of ${revealed.name} and ${card.name} is permanently exchanged.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: ANTE CARDS ----------------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -3584,6 +3699,11 @@ const oh = od.splice(0, ruleset.startingHandSize);
 const startLife = overworldHP ?? ruleset.startingLife;
 const anteP = anteEnabled && pd.length ? pd[0] : null;
 const anteO = anteEnabled && od.length ? od[0] : null;
+// The anted card is set aside for the duel: remove it from the library so it
+// can never be drawn or played while it is at stake (Part 1 fix -- previously
+// the card stayed in pd/od and remained fully drawable).
+if (anteP) pd.splice(0, 1);
+if (anteO) od.splice(0, 1);
 
 return {
 ruleset,
@@ -3608,7 +3728,21 @@ oppArch: ARCHETYPES[oppArchKey],
 castleMod: castleMod || null,
 anteP,
 anteO,
+// Additional ante-zone cards contributed mid-game (Contract from Below,
+// Demonic Attorney, Rebirth, Jeweled Bird, Darkpact). anteExtraP holds cards
+// the player owns; anteExtraO cards the opponent owns. Reconciled together
+// with anteP/anteO by handleDuelEnd (winner takes the whole ante zone).
+anteExtraP: [],
+anteExtraO: [],
+// Permanent ownership exchanges (Bronze Tablet, Tempest Efreet, Darkpact
+// cross-ownership). Entries: { cardId, card, newOwner: 'p'|'o' }. Swept
+// unconditionally by handleDuelEnd regardless of duel outcome.
+ownershipChanges: [],
 anteEnabled,
+// Pending ante-related player decision (Rebirth ante choice, Bronze Tablet /
+// Tempest Efreet pay-10-life choice, Darkpact ante-card pick). Shape:
+// { kind, decider: 'p'|'o', data, queue }. Resolved via ANTE_CHOICE_RESOLVE.
+pendingAnteChoice: null,
 fogActive: false,
 exileNextDeath: false,
 pendingLotus: false,
@@ -3890,7 +4024,8 @@ case "RESOLVE_STACK": {
       const pArr = {
         ...top.card,
         controller: top.caster,
-        tapped: kismetTapsPerm,
+        // Bronze Tablet: "This artifact enters tapped."
+        tapped: kismetTapsPerm || !!top.card.entersTapped,
         summoningSick: !hasKw(top.card, KEYWORDS.HASTE.id),
         attacking: false,
         blocking: null,

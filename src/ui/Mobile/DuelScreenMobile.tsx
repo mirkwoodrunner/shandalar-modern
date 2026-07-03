@@ -348,6 +348,21 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           : undefined
       } />
 
+      {s_state.anteEnabled && (() => {
+        const anteExtraP = (s_state as any).anteExtraP ?? [];
+        const anteExtraO = (s_state as any).anteExtraO ?? [];
+        const stakeP = [...((s_state as any).anteP ? [(s_state as any).anteP] : []), ...anteExtraP];
+        const stakeO = [...((s_state as any).anteO ? [(s_state as any).anteO] : []), ...anteExtraO];
+        if (!stakeP.length && !stakeO.length) return null;
+        return (
+          <div className={s.geminiThinking} data-testid="ante-banner-mobile">
+            ANTE {'—'} {stakeP.length > 0 && `You: ${stakeP.map((c: any) => c.name).join(', ')}`}
+            {stakeP.length > 0 && stakeO.length > 0 && ' · '}
+            {stakeO.length > 0 && `Opp: ${stakeO.map((c: any) => c.name).join(', ')}`}
+          </div>
+        );
+      })()}
+
       {isGeminiThinking && (
         <div className={s.geminiThinking}>
           Gemini is thinking{'…'}

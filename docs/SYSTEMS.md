@@ -2736,4 +2736,95 @@ A sphere controller with 0 total mana is silently skipped (no decision to presen
 `RESOLVE_STACK`. `pendingUpkeepChoice` is set during upkeep. These three states cannot be
 simultaneously active in a legal game sequence and do not conflict.
 
-# End of SYSTEMS v1.5
+# Section 26 — Ante System (Complete)
+
+## Overview
+
+Ante is an opt-in, per-new-game toggle (title screen, default off) that stakes a
+random card from each player's deck on every duel for the rest of that campaign
+run. Threaded: `TitleScreen` toggle -> `onStart({ ..., anteEnabled })` ->
+`startConfig.anteEnabled` -> `useOverworldController`'s `anteEnabled` state
+(seeded once at mount, not re-toggleable mid-run) -> `duelCfg.anteEnabled` ->
+`buildDuelState(..., anteEnabled, ...)`.
+
+## Duel-State Shape
+
+```
+anteP:       Card | null   // player's forced pre-game ante (set once, in buildDuelState)
+anteO:       Card | null   // opponent's forced pre-game ante
+anteExtraP:  Card[]        // additional ante-zone cards the player contributes mid-game
+anteExtraO:  Card[]        // additional ante-zone cards the opponent contributes mid-game
+anteEnabled: boolean
+ownershipChanges: { cardId, card, newOwner: 'p'|'o' }[]  // Section below
+```
+
+`buildDuelState` sets `anteP = pd[0]` / `anteO = od[0]` (when `anteEnabled` and a
+library exists) immediately after hand-draw splicing, then **removes** that card
+from `pd`/`od` before they become `p.lib`/`o.lib` -- the anted card is set aside
+for the whole duel; it is never drawable or playable.
+
+`anteP`/`anteO` remain single-card scalars (existing tests assert this shape).
+`anteExtraP`/`anteExtraO` generalize the model to mid-game ante additions
+(Contract from Below, Demonic Attorney, Rebirth, Jeweled Bird) without touching
+the scalars.
+
+## Reconciliation (`handleDuelEnd`, `useOverworldController.js`)
+
+Real ante rules resolve as winner-takes-the-whole-ante-zone. The player's stake
+is `anteP` + `anteExtraP`; the opponent's stake is `anteO` + `anteExtraO`.
+
+- **Win**: the opponent's whole stake is added to `binder`. The player's own
+  stake is untouched (nothing removes it from `deck`).
+- **Loss**: each card in the player's own stake is removed from `deck` (matched
+  by `id`). Nothing happens to the opponent's stake (opponents don't persist
+  between duels).
+
+This sweep runs inside the `if (won) {...} else {...}` branch, unlike
+`ownershipChanges` below.
+
+## Ownership Exchanges (Bronze Tablet, Tempest Efreet)
+
+Bronze Tablet and Tempest Efreet exchange ownership of an arbitrary card
+**unconditionally** -- not contingent on who wins the duel, and permanent per
+their oracle text. The engine has no persistent `owner` field distinct from
+`controller` (zone arrays are the implicit ownership record; `controller` is
+reserved for temporary control grants that revert, e.g. Aladdin). Instead, both
+cards push entries onto `ownershipChanges: { cardId, card, newOwner }[]` when
+their exchange effect resolves.
+
+`handleDuelEnd` sweeps `ownershipChanges` **unconditionally**, outside the
+win/loss branch:
+- `newOwner === 'p'`: the card is added to `binder`.
+- `newOwner === 'o'`: the matching card (by id) is removed from `deck`.
+
+Since AI opponents don't persist a collection between duels, an exchange in the
+opponent's favor only has an observable lasting effect on the player's side
+(the `deck` removal) -- there is no opponent-side collection to add to.
+
+## New Ante Cards (Part 7 batch)
+
+| Card | Effect key | Notes |
+|---|---|---|
+| Contract from Below | `contractFromBelow` | Discard hand, ante top of library to `anteExtraP`, draw 7. |
+| Demonic Attorney | `demonicAttorney` | Each player antes their own top-of-library card to their own `anteExtra*`. |
+| Jeweled Bird | `jeweledBirdAnte` (activated, `{T}`) | Antes itself (into `anteExtra*`, replacing the rest of that player's stake); all prior cards in that stake go to the controller's graveyard; draws 1. |
+| Rebirth | `rebirthAnte` | SIMPLIFICATION: real card lets each player individually choose to ante for a life-reset to 20. No per-player yes/no UI exists for this niche decision; each player auto-antes only when `life < 20` (matches the "no UI to decline" convention already used for Brainwash/Hasran Ogress). |
+| Bronze Tablet | `bronzeTabletExchange` (activated, `{4},{T}`, targets a nontoken permanent an opponent owns) | Enters tapped (`entersTapped: true` card flag, generalized alongside the existing Kismet enter-tapped hook in `RESOLVE_STACK`). Exiles both permanents. SIMPLIFICATION: the targeted player's "may pay 10 life" decision auto-resolves (pay if `life > 10`, same convention as Rebirth). Declining pushes both `ownershipChanges` entries; paying puts Bronze Tablet in its owner's graveyard and leaves the target exiled with no ownership change. |
+| Tempest Efreet | `tempestEfreetExchange` (activated, `{T}, Sacrifice`) | Implicit single-opponent target (no target UI needed in a 2-player duel). SIMPLIFICATION: same auto-pay-if-`life > 10` convention. Declining reveals a random card from the opponent's hand (reusing the existing `Math.floor(Math.random() * hand.length)` idiom from `discardX`/`discardOne`), swaps it into the caster's hand, and pushes both `ownershipChanges` entries. |
+| Darkpact | **Deferred** | Oracle text confirms this changes true ownership (not just zone membership) of a targeted ante-zone card before exchanging it with the caster's top library card. Deferred because "target card in the ante" is a target domain the existing `castFlow` targeting UI (battlefield permanents, players, stack items) has no concept of. |
+
+All seven cards carry `anteOnly: true` in `cards.js` (not string-matched against
+`text`). `generateStartingDeck` (`src/data/difficulties.js`) takes an
+`anteEnabled` parameter and filters `c.anteOnly` out of both `CARD_DB.filter(...)`
+pool-construction sites whenever ante is off (default). Opponent archetype decks
+(`ARCHETYPES` in `cards.js`) are fixed lists that were verified to contain none
+of the seven ante-only ids, so no separate filter was needed there.
+
+## UI
+
+Both `DuelScreen.tsx` (`data-testid="ante-banner"`) and
+`DuelScreenMobile.tsx` (`data-testid="ante-banner-mobile"`) display the combined
+stake (`anteP`/`anteO` plus `anteExtraP`/`anteExtraO`) whenever `anteEnabled` and
+the combined stake is non-empty.
+
+# End of SYSTEMS v1.6

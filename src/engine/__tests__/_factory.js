@@ -65,6 +65,10 @@ export function makeState({
     anteEnabled: false,
     anteP: null,
     anteO: null,
+    anteExtraP: [],
+    anteExtraO: [],
+    ownershipChanges: [],
+    pendingAnteChoice: null,
     p: makePlayerState({ bf: pBf, hand: pHand }),
     o: makePlayerState({ bf: oBf, hand: oHand }),
   };

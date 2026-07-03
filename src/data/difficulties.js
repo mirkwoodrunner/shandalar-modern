@@ -98,9 +98,12 @@ export default DIFFICULTIES;
  * @param {string} primaryColor - 'W'|'U'|'B'|'R'|'G'
  * @param {string} difficultyId - key of DIFFICULTIES
  * @param {number} [seed] - optional seed hint (uses Math.random if absent)
+ * @param {boolean} [anteEnabled] - when false, ante-only cards (c.anteOnly) are
+ *   excluded from the pool ("Remove this card from your deck before playing if
+ *   you're not playing for ante.")
  * @returns {string[]} array of card IDs (lands included)
  */
-export function generateStartingDeck(primaryColor, difficultyId, seed) {
+export function generateStartingDeck(primaryColor, difficultyId, seed, anteEnabled = false) {
   const diff = DIFFICULTIES[difficultyId] || DIFFICULTIES.APPRENTICE;
 
   // --- Deck size: random within [min, max] ---
@@ -150,7 +153,7 @@ export function generateStartingDeck(primaryColor, difficultyId, seed) {
 
   for (const [color, count] of Object.entries(spellsPerColor)) {
     // Eligible cards: matching color, not a basic land
-    const eligible = CARD_DB.filter(c => !isBasicLand(c) && c.color === color);
+    const eligible = CARD_DB.filter(c => !isBasicLand(c) && c.color === color && (anteEnabled || !c.anteOnly));
     const isOnColor = color === primaryColor;
 
     // Build weighted pool entries: each card represented weight times
@@ -186,7 +189,7 @@ export function generateStartingDeck(primaryColor, difficultyId, seed) {
   const artifactSlots = Math.max(0, spellCount - spellIds.length);
   if (artifactSlots > 0 || Math.random() < 0.3) {
     const artifactPool = [];
-    for (const card of CARD_DB.filter(c => !isBasicLand(c) && c.color === '')) {
+    for (const card of CARD_DB.filter(c => !isBasicLand(c) && c.color === '' && (anteEnabled || !c.anteOnly))) {
       const mappedRarity = ARTIFACT_RARITY_MAP[card.rarity];
       if (mappedRarity === null) continue; // rare artifacts excluded
       const weight = Math.round((RARITY_WEIGHTS[mappedRarity] ?? 1) * 10);

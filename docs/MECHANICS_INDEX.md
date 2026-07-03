@@ -2946,4 +2946,62 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.6
+## Feature: Complete Ante System (2026-07-03)
+
+The ante mechanic already had partial scaffolding (`anteEnabled`/`anteP`/`anteO`
+in `DuelCore.js` and `useOverworldController.js`), but nothing in the UI ever
+called `setAnteEnabled` -- the feature was fully unreachable. This batch wires
+it up end-to-end and adds the seven Magic ante cards.
+
+**Bug fix (in scope because it breaks this feature):** `buildDuelState` set
+`anteP`/`anteO` but never removed the anted card from the library --
+it stayed fully drawable/playable for the whole duel while also being staked.
+Now spliced out of `pd`/`od` immediately after being set.
+
+**Generalized ante zone:** added `anteExtraP`/`anteExtraO` arrays for mid-game
+ante additions (Contract from Below, Demonic Attorney, Rebirth, Jeweled Bird)
+alongside the existing `anteP`/`anteO` scalars. `handleDuelEnd` reconciliation
+sweeps both together per side, winner-takes-the-whole-ante-zone.
+
+**New-game toggle:** `TitleScreen` (`src/ui/layout/GameWrapper.jsx`) gained an
+ante on/off control (`data-testid="ante-toggle"`, defaults off) threaded
+through `onStart({ ..., anteEnabled })` -> `startConfig` -> `useOverworldController`.
+
+**Ante-only exclusion:** all seven cards carry `anteOnly: true` in `cards.js`.
+`generateStartingDeck` (`src/data/difficulties.js`) takes an `anteEnabled`
+param and filters `c.anteOnly` cards out of both pool-construction sites
+when ante is off.
+
+**Ownership exchanges:** new `ownershipChanges: []` duel-state array for Bronze
+Tablet / Tempest Efreet, which exchange ownership unconditionally (not
+contingent on duel outcome). `handleDuelEnd` sweeps this array outside the
+win/loss branch used for ante reconciliation.
+
+**Cards implemented:** Contract from Below (`contractFromBelow`), Demonic
+Attorney (`demonicAttorney`), Jeweled Bird (`jeweledBirdAnte`), Rebirth
+(`rebirthAnte`), Bronze Tablet (`bronzeTabletExchange`), Tempest Efreet
+(`tempestEfreetExchange`). Rebirth/Bronze Tablet/Tempest Efreet each carry a
+SIMPLIFICATION: their real "may pay"/"may ante" per-player choices auto-resolve
+via a heuristic (matches the existing "no UI to decline" convention used for
+Brainwash/Hasran Ogress) rather than adding new choice-modal infrastructure for
+a niche legacy mechanic.
+
+**Deferred:** Darkpact -- confirmed via oracle text that it changes true
+ownership (not just zone membership) of a targeted ante-zone card, but
+targeting "a card in the ante" is a target domain the existing `castFlow`
+targeting UI has no concept of (battlefield permanents, players, stack items
+only).
+
+See `docs/SYSTEMS.md` Section 26 for the full mechanical spec.
+
+### Tests
+- Vitest: `tests/scenarios/ante-zone-setup.test.js`, `ante-toggle-exclusion.test.js`,
+  `ownership-exchange.test.js`, `ante-cards.test.js`.
+- Playwright: `tests/e2e/ante-system-complete.spec.ts` (desktop + mobile-chrome).
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.7

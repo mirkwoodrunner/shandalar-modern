@@ -215,6 +215,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'unblockableTargetPowerLE2', 'preventDamage1AnyReturnEnd', 'animateArtifactUntilEnd',
   // Moderate-tier Forge batch M2 (see THIRD_PARTY_NOTICES.md):
   'damage1AttackerOrBlocker', // Crimson Manticore -- "target attacking or blocking creature"
+  // Ante cards (see THIRD_PARTY_NOTICES.md):
+  'bronzeTabletExchange', // Bronze Tablet -- "target nontoken permanent an opponent owns"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
