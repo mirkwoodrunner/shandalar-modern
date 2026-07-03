@@ -36,6 +36,7 @@ export default defineConfig({
         'tests/e2e/duel-controller.spec.ts',
         'tests/e2e/duel-persistence.spec.ts',
         'tests/e2e/dungeon-tileset.spec.ts',
+        'tests/e2e/end-turn-with-activated-permanent.spec.ts',
         'tests/e2e/exile-zone.spec.ts',
         'tests/e2e/first-strike-combat.spec.ts',
         'tests/e2e/force-of-nature-mobile-parity.spec.ts',

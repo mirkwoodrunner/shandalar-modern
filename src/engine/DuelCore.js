@@ -3154,6 +3154,7 @@ break;
 }
 case "blackVise": {
 const opp2 = w === "p" ? "o" : "p";
+if (ns.active !== opp2) break;
 const over = Math.max(0, ns[opp2].hand.length - 4);
 if (over > 0) ns = hurt(ns, opp2, over, "Black Vise");
 break;
@@ -3161,10 +3162,11 @@ break;
 case "rackUpkeep": {
 // The Rack: SIMPLIFICATION -- "choose an opponent" as this artifact enters
 // is hardcoded as "opponent of controller" (this engine's 2-player duel has
-// only one possible choice). Fires only on that opponent's upkeep, never
-// the controller's own -- unlike blackVise above, this needs an explicit
-// active-player guard since the chosen player and the artifact's controller
-// are never the same player.
+// only one possible choice). Both blackVise above and this case need an
+// active-player guard for the same reason: the chosen player and the
+// artifact's controller are never the same player. blackVise fires only
+// on the chosen player's own upkeep; The Rack fires only on the chosen
+// opponent's upkeep, never the controller's own.
 const rackOpp = w === "p" ? "o" : "p";
 if (ns.active !== rackOpp) break;
 const rackDmg = Math.max(0, 3 - ns[rackOpp].hand.length);

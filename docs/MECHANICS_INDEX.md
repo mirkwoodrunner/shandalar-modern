@@ -2921,11 +2921,12 @@ carries through to the battlefield permanent via the ETB spread).
 **SIMPLIFICATION:** oracle text is "As this artifact enters, choose an
 opponent." This engine's 2-player duel has only one possible choice, so
 "chosen player" is hardcoded as "opponent of controller" -- same
-simplification already used for Black Vise. Unlike Black Vise's case
-(which has no active-player guard), the Rack case must check
-`ns.active !== rackOpp` and bail otherwise, since the chosen player and the
-card's controller are never the same player and the trigger must never fire
-on the controller's own upkeep.
+simplification already used for Black Vise. Both the Rack and Black Vise
+need the same active-player guard (`ns.active !== rackOpp` / `ns.active !==
+opp2`) and bail otherwise, since the chosen player and the card's
+controller are never the same player and neither trigger may fire on the
+controller's own upkeep. See "Bug Fix: Black Vise Upkeep Guard" below --
+Black Vise originally shipped without this guard.
 
 Damage is `max(0, 3 - handSize)`, computed against the opponent's hand size
 at trigger resolution; zero or negative X deals no damage and logs nothing
@@ -2998,6 +2999,73 @@ See `docs/SYSTEMS.md` Section 26 for the full mechanical spec.
 - Vitest: `tests/scenarios/ante-zone-setup.test.js`, `ante-toggle-exclusion.test.js`,
   `ownership-exchange.test.js`, `ante-cards.test.js`.
 - Playwright: `tests/e2e/ante-system-complete.spec.ts` (desktop + mobile-chrome).
+
+### Status
+ACTIVE
+
+---
+
+## Bug Fix: Black Vise Upkeep Guard (BLACKVISE-GUARD-1) -- 2026-07-03
+
+**Problem:** The `blackVise` upkeep case in `DuelCore.js` was missing the
+active-player guard that `rackUpkeep` already had, so it fired on every
+`PHASE.UPKEEP` transition -- both the chosen player's upkeep and the
+controller's own -- instead of only "the chosen player's upkeep" per oracle
+text. In practice this meant the chosen opponent could take Black Vise
+damage twice per turn cycle (once on their own upkeep, once again when the
+transition into the controller's upkeep re-ran the same unconditional
+case).
+
+**Fix:** Added `if (ns.active !== opp2) break;` to the `blackVise` case in
+`DuelCore.js`, mirroring the existing `rackUpkeep` guard. Also corrected the
+`rackUpkeep` case's comment, which incorrectly claimed Black Vise needed no
+guard -- both cards need it for the same reason (chosen player and
+controller are never the same player).
+
+**Files changed:**
+- `src/engine/DuelCore.js` -- `blackVise` case guard; `rackUpkeep` comment fix.
+
+**Tests:**
+- Vitest: `tests/scenarios/black-vise-upkeep.test.js` (BV-01 through BV-04:
+  chosen player's upkeep damage, controller's-own-upkeep no-damage
+  regression guard within the same turn cycle, 4-or-fewer-cards no-damage,
+  rackUpkeep regression guard).
+
+### Status
+ACTIVE
+
+---
+
+## Bug Fix: AI Priority Pass-Through Stall (AI-PRIORITY-PASS-1) -- 2026-07-03
+
+**Problem:** The "AI priority window effect" in `useDuelController.ts` had
+no fallback dispatch when `aiDecide()` returned `null` or `[]`. `usePhaseAdvance.ts`
+correctly opens a priority window whenever a non-mana activated-ability
+permanent (e.g. Pestilence) is on either battlefield, but if the AI had
+nothing worth doing in that window, 'o' never explicitly passed priority.
+`PASS_PRIORITY` requires both players to pass before the window closes, so
+the window -- and both manual play and the End Turn skip-loop -- could hang
+indefinitely.
+
+**Fix:** Added an `else` branch to the effect's `aiDecide()` result handling
+in `useDuelController.ts` that dispatches `PASS_PRIORITY` for `'o'` when
+`acts` is falsy or empty, matching the existing illegal-mulligan-action
+fallback path immediately above it.
+
+**Files changed:**
+- `src/hooks/useDuelController.ts` -- `else` branch added to the AI priority
+  window effect.
+
+**Tests:**
+- Vitest: `tests/scenarios/ai-priority-passthrough.test.js` (AI-PRIORITY-01
+  through AI-PRIORITY-06: decision-logic mirror for empty/null/real/illegal
+  `aiDecide()` results, plus DuelCore-level confirmation that a second
+  `PASS_PRIORITY` dispatch actually closes the window).
+- Playwright: `tests/e2e/end-turn-with-activated-permanent.spec.ts`
+  (END-TURN-PERM-01, desktop + mobile-chrome) -- reproduces the stall with
+  Pestilence in play and a one-shot `aiDecide()` route-patch forcing the `[]`
+  return, since the real phase planners in `AI.js` each append their own
+  explicit pass fallback and don't naturally return empty in ordinary play.
 
 ### Status
 ACTIVE
