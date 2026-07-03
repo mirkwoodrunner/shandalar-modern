@@ -30,6 +30,9 @@ export const TILE_SIZE = 34;   // destination tile, pixels (matches WorldMap)
 // upward. WorldMap sizes the per-tile canvas to TILE_SIZE + OVERFLOW_TOP and
 // translates ground/decoration drawing down by OVERFLOW_TOP.
 export const OVERFLOW_TOP = 40;
+// Extra canvas band on each horizontal side so wide decorations (trees, with
+// anchor jitter) can overflow sideways instead of clipping at the tile edge.
+export const OVERFLOW_X = 8;
 
 // --- sheet identifiers -------------------------------------------------------
 export const SHEET_TILESET = 'tileset';
@@ -281,9 +284,11 @@ const SEED_POS2 = 606;
 
 // Build a single decoration draw instruction, anchored bottom-center at a
 // deterministic jittered point. Tall decorations (trees) are scaled to roughly
-// tile width and allowed to overflow upward into the OVERFLOW_TOP band; all
-// others fit fully inside the tile. anchorX/anchorY are tile-local (0..TILE_SIZE);
-// WorldMap applies the OVERFLOW_TOP vertical offset when drawing.
+// tile width and allowed to overflow upward into the OVERFLOW_TOP band and
+// sideways into the OVERFLOW_X bands (anchor jitter can push a ~37px-wide tree
+// off-center); all others fit fully inside the tile. anchorX/anchorY are
+// tile-local (0..TILE_SIZE); WorldMap applies the OVERFLOW_TOP/OVERFLOW_X
+// offsets when drawing.
 function makeDecorInstance(name, x, y, posSeed) {
   const [col, row, wTiles, hTiles] = DECORATIONS[name];
   const srcW = wTiles * TILE_PX;
@@ -296,11 +301,12 @@ function makeDecorInstance(name, x, y, posSeed) {
 
   let scale;
   if (TALL_DECOR.has(name)) {
-    // Fill ~tile width; clamp height to the tile + overflow band.
-    scale = (TILE_SIZE * 1.05) / srcW;
+    // Fill ~tile width, varied, then clamp height to the tile + overflow band
+    // so the clamp is the final word -- applying vary after the clamp would
+    // let max-vary trees exceed maxH by ~1px and clip at the canvas top.
+    scale = ((TILE_SIZE * 1.05) / srcW) * vary;
     const maxH = TILE_SIZE + OVERFLOW_TOP;
     if (srcH * scale > maxH) scale = maxH / srcH;
-    scale *= vary;
   } else {
     scale = (TILE_SIZE / Math.max(srcW, srcH)) * vary;
   }
@@ -344,6 +350,7 @@ export default {
   TILE_PX,
   TILE_SIZE,
   OVERFLOW_TOP,
+  OVERFLOW_X,
   SHEET_TILESET,
   SHEET_DECORATIONS,
   TILESET,

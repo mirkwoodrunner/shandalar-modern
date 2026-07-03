@@ -13,6 +13,7 @@ import {
   SHEET_TILESET,
   TILE_PX,
   OVERFLOW_TOP,
+  OVERFLOW_X,
 } from './terrainRenderer.js';
 import tilesetUrl from '../../assets/tiles/forest_tileset.png';
 import decorationsUrl from '../../assets/tiles/forest_decorations.png';
@@ -137,6 +138,61 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
+// --- fog frontier fade overlay ------------------------------------------------
+// Revealed tiles bordering unrevealed neighbors used to get an inline
+// mask-image on the tile root div. CSS mask painting area is the border box,
+// so it fully masked out the overflowing canvas bands (OVERFLOW_TOP/OVERFLOW_X
+// in terrainRenderer.js), hard-cutting tree canopies at the tile boundary on
+// every frontier tile. This overlay div sits above the canvas instead, sized
+// to cover the overflow bands too, and fades to the void color (matching the
+// grid wrapper's radial-gradient outer stop) rather than masking to
+// transparent -- so overflowing decor fades into darkness instead of clipping.
+const FOG_VOID_COLOR = '#050302';
+const FOG_FADE_INSET = 12; // px inside the tile edge where the fade completes
+
+function fogFadeOverlayStyle(fogSides, tileSize) {
+  if (!fogSides) return null;
+  const active = ['n', 's', 'e', 'w'].filter((k) => fogSides[k]);
+  if (!active.length) return null;
+
+  const overlayH = tileSize + OVERFLOW_TOP;
+  const overlayW = tileSize + 2 * OVERFLOW_X;
+  const grads = [];
+
+  if (fogSides.n) {
+    // Overlay top sits OVERFLOW_TOP px above the tile; fade completes
+    // FOG_FADE_INSET px inside the tile's own top edge.
+    const endPct = ((OVERFLOW_TOP + FOG_FADE_INSET) / overlayH) * 100;
+    const midPct = endPct * (4 / 7);
+    grads.push(
+      `linear-gradient(to bottom, ${FOG_VOID_COLOR} 0%, rgba(5,3,2,0.85) ${midPct.toFixed(1)}%, transparent ${endPct.toFixed(1)}%)`
+    );
+  }
+  if (fogSides.s) {
+    const endPct = (FOG_FADE_INSET / overlayH) * 100;
+    grads.push(`linear-gradient(to top, ${FOG_VOID_COLOR} 0%, transparent ${endPct.toFixed(1)}%)`);
+  }
+  if (fogSides.w) {
+    const endPct = ((OVERFLOW_X + FOG_FADE_INSET) / overlayW) * 100;
+    grads.push(`linear-gradient(to right, ${FOG_VOID_COLOR} 0%, transparent ${endPct.toFixed(1)}%)`);
+  }
+  if (fogSides.e) {
+    const endPct = ((OVERFLOW_X + FOG_FADE_INSET) / overlayW) * 100;
+    grads.push(`linear-gradient(to left, ${FOG_VOID_COLOR} 0%, transparent ${endPct.toFixed(1)}%)`);
+  }
+
+  return {
+    position: 'absolute',
+    top: -OVERFLOW_TOP,
+    left: -OVERFLOW_X,
+    right: -OVERFLOW_X,
+    bottom: 0,
+    pointerEvents: 'none',
+    zIndex: 4,
+    background: grads.join(', '),
+  };
+}
+
 const TERRAIN_CLASS = {
   PLAINS:   'ow-plains',
   FOREST:   'ow-forest',
@@ -209,11 +265,12 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
 
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, tileSize, tileSize + OVERFLOW_TOP);
+    ctx.clearRect(0, 0, tileSize + 2 * OVERFLOW_X, tileSize + OVERFLOW_TOP);
 
-    // Draw in tile-local coords; the overflow band sits above (negative y).
+    // Draw in tile-local coords; the overflow band sits above (negative y)
+    // and on each side (negative/positive x beyond the tile).
     ctx.save();
-    ctx.translate(0, OVERFLOW_TOP);
+    ctx.translate(OVERFLOW_X, OVERFLOW_TOP);
 
     const nsg = (dx, dy) => {
       if (dx === -1) return gnW;
@@ -266,38 +323,14 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
   }
 
   const terrainClass = TERRAIN_CLASS[t.id] ?? '';
-  // Build a directional mask: one linear-gradient per unrevealed side, each
-  // fading the tile toward transparent only on that side. Multiple gradients
-  // are intersected (multiplied) so fades compound at corners.
-  const fogEdgeStyle = (() => {
-    if (!fogSides) return null;
-    const grads = [];
-    if (fogSides.w) grads.push('linear-gradient(to right, transparent 0%, black 35%)');
-    if (fogSides.e) grads.push('linear-gradient(to left,  transparent 0%, black 35%)');
-    if (fogSides.n) grads.push('linear-gradient(to bottom, transparent 0%, black 35%)');
-    if (fogSides.s) grads.push('linear-gradient(to top,   transparent 0%, black 35%)');
-    if (!grads.length) return null;
-    const maskImage = grads.join(', ');
-    // 'intersect' (source-in for webkit) multiplies alpha channels so each
-    // direction's fade applies independently; pixels only stay opaque where
-    // every active gradient allows it.
-    const comp  = grads.map(() => 'intersect').join(', ');
-    const wkComp = grads.map(() => 'source-in').join(', ');
-    return {
-      WebkitMaskImage: maskImage,
-      maskImage,
-      WebkitMaskComposite: wkComp,
-      maskComposite: comp,
-      boxShadow: 'inset 0 0 18px 3px rgba(0,0,0,.70)',
-    };
-  })();
+  const fogFadeStyle = fogFadeOverlayStyle(fogSides, tileSize);
   const ml = tile.manaLink;
   const tileBg = TERRAIN_BG[t.id] ?? t.color;
 
   const castleColor   = tile.castleData?.color ? MANA_HEX[tile.castleData.color] : '#c4a040';
   const castleDefeated = tile.castleData?.defeated ?? false;
 
-  const fogSideKeys = fogEdgeStyle
+  const fogSideKeys = fogFadeStyle
     ? ['w', 'e', 'n', 's'].filter((k) => fogSides[k]).join(',')
     : null;
 
@@ -305,7 +338,10 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
     <div
       className={`ow-tile ${terrainClass}`}
       data-fog-sides={fogSideKeys ?? undefined}
-      style={{ background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex, ...(fogEdgeStyle ?? {}) }}
+      style={{
+        background: tileBg, width: tileSize, height: tileSize, zIndex: rowIndex,
+        ...(fogFadeStyle ? { boxShadow: 'inset 0 0 18px 3px rgba(0,0,0,.70)' } : {}),
+      }}
       onClick={() => onClick(tile)}
     >
       {/* Terrain sprites -- drawn beneath all overlays. Transparent until the
@@ -315,19 +351,24 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
       <canvas
         ref={terrainCanvasRef}
         className="ow-terrain-canvas"
-        width={tileSize}
+        width={tileSize + 2 * OVERFLOW_X}
         height={tileSize + OVERFLOW_TOP}
         style={{
           position: 'absolute',
-          left: 0,
+          left: -OVERFLOW_X,
           top: -OVERFLOW_TOP,
-          width: tileSize,
+          width: tileSize + 2 * OVERFLOW_X,
           height: tileSize + OVERFLOW_TOP,
           imageRendering: 'pixelated',
           pointerEvents: 'none',
           zIndex: 0,
         }}
       />
+
+      {/* Fog frontier fade -- covers the canvas overflow bands too, so
+          overflowing decor (tree canopies) fades into the void instead of
+          hard-cutting at the tile boundary. Only rendered on fog-edge tiles. */}
+      {fogFadeStyle && <div className="ow-fog-fade" style={fogFadeStyle} />}
 
       {/* Mana link corruption overlay */}
       {ml && (
@@ -540,8 +581,9 @@ const OW_STYLES = `
 }
 .ow-fog::after { background: none; }
 
-/* .ow-fog-edge removed: box-shadow and directional mask-image are now applied
-   inline per MapTile based on which neighbors are unrevealed. */
+/* .ow-fog-edge removed: box-shadow is applied inline per MapTile based on
+   which neighbors are unrevealed. The directional fade is now a separate
+   .ow-fog-fade overlay div (not a mask-image) -- see fogFadeOverlayStyle. */
 
 .ow-mana {
   position: absolute;
