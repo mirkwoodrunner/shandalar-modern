@@ -54,3 +54,13 @@ This original generated art is released into the public domain under
 is required; it is recorded here for the project's own reference. If genuine
 sourced CC0 art is preferred later, replace these PNGs (keeping the exact grid)
 and update this file -- no code change is needed.
+
+## 2026-07-02 alpha repair
+
+`goblin.png` and `zombie.png` shipped with opaque near-black backgrounds
+(1.6% and 0.0% transparent respectively, vs. 43-67% for the other four
+sheets), rendering as black boxes on the overworld map. Repaired by keying the
+background to alpha via a border-connected flood fill (seeded from every
+32x32 cell border, threshold max-channel < 14) so interior blacks (eyes,
+outlines) not connected to the background were preserved. Post-repair:
+goblin.png 44.5% transparent, zombie.png 71.3% transparent.
