@@ -124,3 +124,9 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-02 | Kormus Bell (`globalTypeEffect` continuous effect, layers.js/cards.js) | Card-Forge/forge | k/kormus_bell.txt | GPL-3.0 |
 | 2026-07-02 | Blood Moon (`globalTypeEffect` continuous effect + `bloodMoonNeutered` mana override, layers.js/DuelCore.js) | Card-Forge/forge | b/blood_moon.txt | GPL-3.0 |
 | 2026-07-02 | Evil Presence (`enchantLand` + Layer-4 `layerDef`, DuelCore.js/cards.js) | Card-Forge/forge | e/evil_presence.txt | GPL-3.0 |
+| 2026-07-03 | Contract from Below (`contractFromBelow` triggered effect, DuelCore.js) | Card-Forge/forge | c/contract_from_below.txt | GPL-3.0 |
+| 2026-07-03 | Demonic Attorney (`demonicAttorney` triggered effect, DuelCore.js) | Card-Forge/forge | d/demonic_attorney.txt | GPL-3.0 |
+| 2026-07-03 | Jeweled Bird (`jeweledBirdAnte` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | j/jeweled_bird.txt | GPL-3.0 |
+| 2026-07-03 | Rebirth (`rebirthAnte` triggered effect, DuelCore.js) | Card-Forge/forge | r/rebirth.txt | GPL-3.0 |
+| 2026-07-03 | Bronze Tablet (`bronzeTabletExchange` activated ability effect + `entersTapped` RESOLVE_STACK hook, DuelCore.js/cards.js) | Card-Forge/forge | b/bronze_tablet.txt | GPL-3.0 |
+| 2026-07-03 | Tempest Efreet (`tempestEfreetExchange` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | t/tempest_efreet.txt | GPL-3.0 |

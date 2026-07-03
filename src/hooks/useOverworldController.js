@@ -212,7 +212,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
   });
   const [deck, setDeck]     = useState(() => {
     if (isSandbox) return [];
-    const ids = generateStartingDeck(color, difficultyId, seed);
+    const ids = generateStartingDeck(color, difficultyId, seed, !!startConfig.anteEnabled);
     return ids.map(id => {
       const def = CARD_DB.find(c => c.id === id);
       if (!def) return null;
@@ -274,7 +274,8 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
 
   // -- Ruleset / ante -------------------------------------------------------
   const [ruleset, setRuleset]       = useState(RULESETS.CLASSIC);
-  const [anteEnabled, setAnteEnabled] = useState(false);
+  // Seeded from the title-screen toggle (startConfig.anteEnabled); defaults off.
+  const [anteEnabled, setAnteEnabled] = useState(!!startConfig.anteEnabled);
   const [foodEnabled, setFoodEnabled] = useState(true);
 
   // -- UI -------------------------------------------------------------------
@@ -802,14 +803,50 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     const finalHP = duelState?.p?.life ?? 1;
     const ctx     = duelCfg?.context;
 
-    if (anteEnabled && duelState?.anteP && duelState?.anteO) {
+    // Ante reconciliation: winner takes the whole ante zone. The player's stake
+    // is anteP plus any mid-game additions (anteExtraP); the opponent's stake is
+    // anteO plus anteExtraO. On a win the opponent's stake is claimed into the
+    // binder and the player's own stake is untouched; on a loss the player's
+    // stake is removed from the deck (opponents don't persist between duels, so
+    // nothing to do for their side).
+    const anteStakeP = [
+      ...(duelState?.anteP ? [duelState.anteP] : []),
+      ...(duelState?.anteExtraP || []),
+    ];
+    const anteStakeO = [
+      ...(duelState?.anteO ? [duelState.anteO] : []),
+      ...(duelState?.anteExtraO || []),
+    ];
+    if (anteEnabled && (anteStakeP.length || anteStakeO.length)) {
       if (won) {
-        setBinder(b => [...b, { ...duelState.anteO, iid: mkId() }]);
-        addLog(`Ante claimed: ${duelState.anteO.name}!`, 'success');
-      } else {
-        const lost = duelState.anteP.id;
-        setDeck(d => { const i = d.findIndex(x => x.id === lost); return d.filter((_, idx) => idx !== i); });
-        addLog(`Ante lost: ${duelState.anteP.name}.`, 'danger');
+        if (anteStakeO.length) {
+          setBinder(b => [...b, ...anteStakeO.map(c => ({ ...c, iid: mkId() }))]);
+          addLog(`Ante claimed: ${anteStakeO.map(c => c.name).join(', ')}!`, 'success');
+        }
+      } else if (anteStakeP.length) {
+        setDeck(d => {
+          let nd = d;
+          for (const lost of anteStakeP) {
+            const i = nd.findIndex(x => x.id === lost.id);
+            if (i >= 0) nd = nd.filter((_, idx) => idx !== i);
+          }
+          return nd;
+        });
+        addLog(`Ante lost: ${anteStakeP.map(c => c.name).join(', ')}.`, 'danger');
+      }
+    }
+
+    // Ownership exchanges (Bronze Tablet, Tempest Efreet, Darkpact): permanent
+    // and unconditional -- applied regardless of who won the duel. newOwner 'p'
+    // means the player permanently gains the card (into the binder); newOwner
+    // 'o' means the player permanently loses their copy (removed from deck).
+    for (const oc of duelState?.ownershipChanges || []) {
+      if (oc.newOwner === 'p' && oc.card) {
+        setBinder(b => [...b, { ...oc.card, iid: mkId() }]);
+        addLog(`Ownership gained: ${oc.card.name}.`, 'success');
+      } else if (oc.newOwner === 'o') {
+        setDeck(d => { const i = d.findIndex(x => x.id === oc.cardId); return i >= 0 ? d.filter((_, idx) => idx !== i) : d; });
+        addLog(`Ownership lost: ${oc.card?.name || oc.cardId}.`, 'danger');
       }
     }
 
@@ -1662,15 +1699,29 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
   // State snapshot + setters for e2e test seeding (sandbox only).
   useEffect(() => {
     if (!isSandbox || typeof window === 'undefined') return undefined;
-    window.__overworldState = () => ({ enemies, moves, pos, tiles });
+    window.__overworldState = () => ({ enemies, moves, pos, tiles, deck, binder, anteEnabled });
     window.__overworldSetEnemies = setEnemies;
     window.__overworldSetMoves = setMoves;
+    // Ante e2e coverage (ante-system-complete.spec.ts): lets a test seed a
+    // real deck and force-launch a duel without needing to physically walk
+    // the player into a monster encounter. __overworldMakeDeck builds full
+    // CARD_DB-backed card objects (not bare {id} stubs) since the overworld
+    // deck-list UI reads fields like `.name` that a stub object lacks.
+    window.__overworldSetDeck = setDeck;
+    window.__overworldLaunchDuel = launchDuel;
+    window.__overworldMakeDeck = (ids) => ids.map(id => {
+      const found = CARD_DB.find(c => c.id === id);
+      return found ? { ...found, iid: mkId() } : null;
+    }).filter(Boolean);
     return () => {
       delete window.__overworldState;
       delete window.__overworldSetEnemies;
       delete window.__overworldSetMoves;
+      delete window.__overworldSetDeck;
+      delete window.__overworldLaunchDuel;
+      delete window.__overworldMakeDeck;
     };
-  }, [isSandbox, enemies, moves, pos, tiles]);
+  }, [isSandbox, enemies, moves, pos, tiles, deck, binder, anteEnabled, launchDuel]);
 
   // -------------------------------------------------------------------------
   // RETURN

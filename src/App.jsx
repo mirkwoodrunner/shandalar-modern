@@ -125,6 +125,11 @@ const FALLBACK_DECK = [
 const _duelParam      = new URLSearchParams(window.location.search).get('duel');
 const _overworldParam = new URLSearchParams(window.location.search).get('overworld');
 const _dungeonParam   = new URLSearchParams(window.location.search).get('dungeon');
+// ?ante=1 lets Playwright specs exercise the ante duel-state pipeline
+// (buildDuelState/anteP/anteExtraP/etc.) deterministically via the sandbox
+// duel entry point, without needing to route through the title screen +
+// overworld encounter flow.
+const _sandboxAnteEnabled = new URLSearchParams(window.location.search).get('ante') === '1';
 const sandboxMode          = _duelParam === 'sandbox';
 const sandboxMobileMode    = _duelParam === 'sandbox-mobile';
 const overworldSandboxMode = _overworldParam === 'sandbox';
@@ -168,7 +173,7 @@ function SandboxApp() {
     },
     overworldHP:  20,
     castleMod:    null,
-    anteEnabled:  false,
+    anteEnabled:  _sandboxAnteEnabled,
     sandbox:      true,
     forcedHandIds: forcedIds,
   };
@@ -223,7 +228,7 @@ function SandboxMobileApp() {
     },
     overworldHP:  20,
     castleMod:    null,
-    anteEnabled:  false,
+    anteEnabled:  _sandboxAnteEnabled,
     sandbox:      true,
     forcedHandIds: forcedIds,
   };
@@ -253,6 +258,7 @@ function SandboxOverworldApp() {
           seed: 42,
           difficulty: 'APPRENTICE',
           sandbox: true,
+          anteEnabled: _sandboxAnteEnabled,
         }}
         onQuit={() => { window.location.href = '/'; }}
         onScore={() => { window.location.href = '/'; }}

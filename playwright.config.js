@@ -25,6 +25,7 @@ export default defineConfig({
       testMatch: [
         'tests/e2e/ability-stack-bugs.spec.ts',
         'tests/e2e/ai-creature-evaluation-smoke.spec.ts',
+        'tests/e2e/ante-system-complete.spec.ts',
         'tests/e2e/batch1a-desert-landwalk.spec.ts',
         'tests/e2e/batch1b-wall-destruction-sacrifice.spec.ts',
         'tests/e2e/batch-moderate-tier-forge-2.spec.ts',

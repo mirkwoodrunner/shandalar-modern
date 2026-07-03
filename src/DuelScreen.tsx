@@ -553,18 +553,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       )}
 
       {/* -- ANTE BANNER ----------------------------------------------------- */}
-      {s.anteEnabled && (s.anteP || s.anteO) && (
-        <div style={{
-          background: 'rgba(60,30,0,.4)', borderBottom: '1px solid rgba(180,120,40,.2)',
-          padding: isMobile ? '2px 8px' : '3px 14px',
-          display: 'flex', gap: 12, alignItems: 'center',
-          flexShrink: 0, fontSize: isMobile ? 8 : 9, fontFamily: 'var(--font-display)',
-        }}>
-          <span style={{ color: '#c0a040' }}>ANTE:</span>
-          {s.anteP && <span style={{ color: '#a09060' }}>You: <strong style={{ color: '#f0c060' }}>{s.anteP.name}</strong></span>}
-          {s.anteO && <span style={{ color: '#a09060' }}>Opp: <strong style={{ color: '#f0c060' }}>{s.anteO.name}</strong></span>}
-        </div>
-      )}
+      {s.anteEnabled && (s.anteP || s.anteO || (s.anteExtraP?.length ?? 0) > 0 || (s.anteExtraO?.length ?? 0) > 0) && (() => {
+        const stakeP = [...(s.anteP ? [s.anteP] : []), ...(s.anteExtraP ?? [])];
+        const stakeO = [...(s.anteO ? [s.anteO] : []), ...(s.anteExtraO ?? [])];
+        return (
+          <div data-testid="ante-banner" style={{
+            background: 'rgba(60,30,0,.4)', borderBottom: '1px solid rgba(180,120,40,.2)',
+            padding: isMobile ? '2px 8px' : '3px 14px',
+            display: 'flex', gap: 12, alignItems: 'center',
+            flexShrink: 0, fontSize: isMobile ? 8 : 9, fontFamily: 'var(--font-display)',
+          }}>
+            <span style={{ color: '#c0a040' }}>ANTE:</span>
+            {stakeP.length > 0 && <span style={{ color: '#a09060' }}>You: <strong style={{ color: '#f0c060' }}>{stakeP.map(c => c.name).join(', ')}</strong></span>}
+            {stakeO.length > 0 && <span style={{ color: '#a09060' }}>Opp: <strong style={{ color: '#f0c060' }}>{stakeO.map(c => c.name).join(', ')}</strong></span>}
+          </div>
+        );
+      })()}
 
       {/* -- MAIN LAYOUT ----------------------------------------------------- */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

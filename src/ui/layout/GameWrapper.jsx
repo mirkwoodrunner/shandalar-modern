@@ -21,6 +21,7 @@ const [col, setCol]     = useState(null);
 const [name, setName]   = useState("");
 const [step, setStep]   = useState("intro"); // intro | choose
 const [diff, setDiff]   = useState("APPRENTICE");
+const [anteOn, setAnteOn] = useState(false);
 const [useGemini, setUseGemini] = useState(false);
 
 return (
@@ -187,6 +188,31 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           })}
         </div>
 
+        {/* Ante toggle -- opt-in, high stakes, defaults off */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <div
+            data-testid="ante-toggle"
+            onClick={() => setAnteOn(v => !v)}
+            style={{
+              maxWidth: 340, padding: '10px 14px', cursor: 'pointer', textAlign: 'center',
+              background: anteOn ? 'rgba(200,60,40,.12)' : 'rgba(255,255,255,.02)',
+              border: `2px solid ${anteOn ? 'rgba(220,100,60,.7)' : 'rgba(255,255,255,.08)'}`,
+              borderRadius: 8,
+              boxShadow: anteOn ? '0 0 14px rgba(220,100,60,.35)' : 'none',
+              transition: 'all .2s',
+              transform: anteOn ? 'translateY(-3px)' : 'none',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: anteOn ? '#f08050' : '#6a5030', marginBottom: 3, letterSpacing: 1 }}>
+              PLAY FOR ANTE: {anteOn ? 'ON' : 'OFF'}
+            </div>
+            <div style={{ fontSize: 8, color: '#5a4020', lineHeight: 1.4, fontFamily: "'Crimson Text',serif", fontStyle: 'italic' }}>
+              Each duel stakes a random card from each deck. Cards can be permanently won or lost.
+            </div>
+          </div>
+        </div>
+
         <div style={{ width: '100%', height: 1, background: 'rgba(200,160,40,.12)', margin: '4px 0 16px' }} />
 
         {/* Wizard name */}
@@ -198,7 +224,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           onChange={e => setName(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter' && col) {
-              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, useGemini });
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn, useGemini });
             }
           }}
           placeholder="Enter your wizard's name..."
@@ -226,7 +252,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
             disabled={!col}
             onClick={() => {
               if (!col) return;
-              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, useGemini });
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn, useGemini });
             }}
             style={{
               background: col ? `linear-gradient(135deg,${MANA_HEX[col]}20,${MANA_HEX[col]}10)` : 'rgba(0,0,0,.3)',

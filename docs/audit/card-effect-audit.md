@@ -13,6 +13,19 @@
 
 ## Batch Completion Log
 
+### 2026-07-03 — Complete Ante System (6 of 7 ante cards)
+
+Six of the seven ante cards below are now implemented (no longer `effect:"STUB"`
+in `cards.js`); rows are left in place below for historical reference. Implemented:
+`contract_from_below`, `demonic_attorney`, `jeweled_bird`, `rebirth`,
+`bronze_tablet`, `tempest_efreet`. `darkpact` remains deferred -- oracle text
+confirms it changes ownership of a targeted ante-zone card, but "target card in
+the ante" is a target domain the existing `castFlow` targeting UI has no concept
+of. `tempest_efreet`'s row below (line ~308 in this file) predates
+implementation and is inaccurate -- verified oracle text is the sacrifice +
+reveal-and-exchange-ownership effect in `docs/SYSTEMS.md` Section 26, not "deal 7
+damage." See `docs/MECHANICS_INDEX.md` -- Feature: Complete Ante System.
+
 ### 2026-07-01 — Simple-Tier Stub Cards (Card-Forge/forge reference, GPL-3.0)
 
 47 of the 50 targeted cards below are now implemented (no longer `effect:"STUB"` in
