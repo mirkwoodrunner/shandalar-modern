@@ -12,6 +12,9 @@
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
+## Completed (2026-07-03)
+- **SPRITE-SAMPLE-CONVERT-1** -- Two new overworld sprite kinds converted from project-owner-provided sample renders: `merfolk` and `vampire`. New deterministic converter `tools/convert-sample-sprites.py` turns three high-res sample views (front/side/back on a baked checkerboard background) into a Sprite.jsx-compatible 128x128 sheet (4 dirs x 4 walk frames of 32x32 cells; main mass grayscaled for runtime palette tint, skin/wood/coral accents kept saturated; `--bg-mode flood` variant for characters with pale or neutral-gray regions). Sheets registered in `SHEET_URLS` in `src/ui/overworld/Sprite.jsx`; no terrain/archetype mapping assigned yet. Provenance recorded in `src/assets/sprites/CREDITS.md`.
+
 ## Completed (2026-07-02)
 - **Bug Fix: Pestilence Sacrifice Condition** -- the end-step check in `DuelCore.js` (`PHASE.CLEANUP` handling) was gated on "controller has no black creatures" instead of the oracle condition "no creatures are on the battlefield." Fixed to check `[...p.bf, ...o.bf]` for any creature, evaluated once per end step; if false, every Pestilence on either battlefield is sacrificed (direct `zMove` to graveyard, log wording changed from "destroyed" to "sacrificed"). See `docs/MECHANICS_INDEX.md` -- Bug Fix: Pestilence Sacrifice Condition.
 - **Feature: The Rack Upkeep Trigger.** `the_rack` was previously `effect:"STUB"` with no implementation at all. Added `upkeep:"rackUpkeep"` case to `DuelCore.js`'s per-card upkeep switch: fires only on the opponent-of-controller's upkeep (2-player simplification of "choose an opponent"), dealing `max(0, 3 - handSize)` damage. See `docs/MECHANICS_INDEX.md` -- Feature: The Rack Upkeep Trigger.

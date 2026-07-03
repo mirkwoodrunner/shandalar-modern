@@ -16,6 +16,8 @@ import zombieUrl from '../../assets/sprites/zombie.png';
 import goblinUrl from '../../assets/sprites/goblin.png';
 import fishUrl from '../../assets/sprites/fish.png';
 import hoodedFigureUrl from '../../assets/sprites/hoodedfigure.png';
+import merfolkUrl from '../../assets/sprites/merfolk.png';
+import vampireUrl from '../../assets/sprites/vampire.png';
 
 const CELL = 32;            // source cell size in the sheet
 const DIR_ROW = { down: 0, up: 1, left: 2, right: 3 };
@@ -49,6 +51,8 @@ const SHEET_URLS = {
   goblin:       goblinUrl,
   fish:         fishUrl,
   hoodedFigure: hoodedFigureUrl,
+  merfolk:      merfolkUrl,
+  vampire:      vampireUrl,
 };
 
 // ---------------------------------------------------------------------------
