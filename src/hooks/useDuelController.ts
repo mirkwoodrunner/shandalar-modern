@@ -463,6 +463,8 @@ export function useDuelController(
         dispatch({ type: 'PASS_PRIORITY', who: 'o' });
       } else if (acts && acts.length) {
         applyAiActionsWithPriority(acts);
+      } else {
+        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
       }
     }, 200);
     return () => clearTimeout(timer);
