@@ -55,7 +55,10 @@ export const CARD_HANDLERS = {
       const rawTgt = targets[0];
       const who = rawTgt === 'opponent' || rawTgt === 'player-o' ? 'o'
                 : rawTgt === 'player'   || rawTgt === 'player-p' ? 'p'
-                : (rawTgt || 'p');
+                : rawTgt === 'p' || rawTgt === 'o' ? rawTgt
+                : 'p'; // defensive fallback -- invalid target should be unreachable
+                       // after the PLAYER_ONLY_TARGET_EFFECTS fix, kept for parity
+                       // with the damage5 fix (see lava-axe-targeting.spec.ts)
       const ns = drawN(state, who, 3);
       return addLog(ns, `Ancestral Recall: ${who} draws 3.`, 'draw');
     },
