@@ -2248,6 +2248,23 @@ ACTIVE
 
 ---
 
+## Bug Fix: Ancestral Recall creature-targeting crash (ARCANE-1) — 2026-07-04
+
+**Problem:** `draw3` (Ancestral Recall) was in `EXPLICIT_TARGET_EFFECTS` but missing from `PLAYER_ONLY_TARGET_EFFECTS`, so the creature-click guard shared by `DuelScreen.tsx` / `DuelScreenMobile.tsx` never fired for it. Clicking a creature during targeting set `selTgt` to the creature's `iid`, which `CARD_HANDLERS['Ancestral Recall'].onResolve` passed straight through to `drawN(state, who, 3)` via a truthy fallback, crashing on `ns[who].lib` since `who` was a creature iid. Same root cause and fix pattern as the earlier Lava Axe (`damage5`) crash above.
+
+**Fix:**
+- `useDuelController.ts` — added `'draw3'` to `PLAYER_ONLY_TARGET_EFFECTS`, making `draw3` player-only, consistent with `damage5` and the other player-only effects.
+- `cardHandlers.js` — `'Ancestral Recall'` handler: replaced the truthy `(rawTgt || 'p')` fallback with an explicit `'p'`/`'o'` check, defaulting to `'p'` for any unrecognized target.
+
+**Files changed:**
+- `src/hooks/useDuelController.ts`
+- `src/engine/cardHandlers.js`
+
+**Tests:**
+- Playwright: `tests/e2e/ancestral-recall-targeting.spec.ts` (ARCANE-E2E-01/02/03 × desktop + mobile)
+
+---
+
 ## Bug Fix: Resume-duel modal removed (RESUME-REMOVE-1) — 2026-06-25
 
 **Problem:** `LOAD_STATE` is an unreconciled state swap — unsafe for mid-stack or mid-priority saves. The resume-duel UI (`ResumeDuelModal`) offered to reload a partially-resolved duel state, which could put the engine into an inconsistent state.

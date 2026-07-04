@@ -99,6 +99,7 @@ export function needsExplicitTarget(card: any): boolean {
 // must never allow a creature click to register as the target.
 export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
   'damage5', // Lava Axe -- "deals 5 damage to target player or planeswalker"
+  'draw3',   // Ancestral Recall -- "target player draws three cards"
   'discardAllNonland', // Amnesia -- "target player reveals hand..."
   'scryTop3Reveal',    // Natural Selection -- "top three cards of target player's library"
   // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
