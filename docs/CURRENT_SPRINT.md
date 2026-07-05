@@ -1,17 +1,14 @@
 # Current Sprint — 2026-06-25
 
 ## Focus (priority order)
-1. ~~**P1 — Gemini "thinking" indicator desktop parity.**~~ **DONE.** `isGeminiThinking` destructured in `DuelScreen.tsx`; `.gemini-thinking` indicator rendered below opponent Banner; CSS rule added to `src/styles/global.css`. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Gemini thinking indicator desktop parity.
-2. ~~**P2 — Per-mage Gemini system prompts (2-3 profiles).**~~ **DONE.** Starter roster: DELENIA (white aggro), XYLOS (blue control), MORTIS (black attrition). Logic split into `src/engine/geminiPrompts.js` for testability; `fetchGeminiMove` gains optional `profileId` param; `useDuelController.ts` resolves and passes `oppProfileId` from `ARCHETYPES`. Base-prompt fallback for all other opponents. See `docs/MECHANICS_INDEX.md` -- GEMINI-MAGE-PROMPTS-1.
 
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.
-- Additional Gemini mage prompts beyond the P2 starter roster.
-- **Gemini path COMBAT_BLOCKERS bug**: `GEMINI_PHASES` in `useDuelController.ts` includes `COMBAT_BLOCKERS`, reproducing the same AI auto-advance bug on the Gemini code path. Gated behind `config.useGemini && config.sandbox`; deferred as separate fix.
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-07-05)
+- **Gemini LLM opponent integration removed at owner's request.** `src/engine/GeminiAdvisor.js`, `src/engine/LegalActions.js`, and `src/engine/geminiPrompts.js` deleted, along with all associated tests. The `useGemini` config flag, title-screen toggle, in-duel Gemini decision path, "thinking" indicator, and Gemini log-entry styling were removed from `useDuelController.ts`, `GameWrapper.jsx`, `useOverworldController.js`, `DuelScreen.tsx`, `DuelScreenMobile.tsx`, `LogSheet.tsx`, and both CSS files. The heuristic AI (`aiDecide` in `AI.js`) is now the sole opponent decision path for every opponent, including ARZAKON.
 - **Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint C
   (final)** -- final 7 cards implemented (Time Vault, Goblin Artisans,
   Leviathan, Yawgmoth Demon, Magnetic Mountain, Power Leak, Lich), no

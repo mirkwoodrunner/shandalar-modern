@@ -77,7 +77,6 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     castFlow, beginCastFlow, beginActivateFlow,
     selectCastTarget, confirmCastTargets, cancelCastFlow,
     adjustCastX, confirmCastX,
-    isGeminiThinking,
   } = useDuelController(config, handleDuelEndWithClear);
 
   const s_state = state;
@@ -376,19 +375,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         const stakeO = [...((s_state as any).anteO ? [(s_state as any).anteO] : []), ...anteExtraO];
         if (!stakeP.length && !stakeO.length) return null;
         return (
-          <div className={s.geminiThinking} data-testid="ante-banner-mobile">
+          <div className={s.centerInfoBanner} data-testid="ante-banner-mobile">
             ANTE {'—'} {stakeP.length > 0 && `You: ${stakeP.map((c: any) => c.name).join(', ')}`}
             {stakeP.length > 0 && stakeO.length > 0 && ' · '}
             {stakeO.length > 0 && `Opp: ${stakeO.map((c: any) => c.name).join(', ')}`}
           </div>
         );
       })()}
-
-      {isGeminiThinking && (
-        <div className={s.geminiThinking}>
-          Gemini is thinking{'…'}
-        </div>
-      )}
 
       {/* BEB/REB mode picker — shown when a two-mode card is selected and no mode chosen yet */}
       {sel?.card && isBebRebEffect(sel.card) && pendingMode === null && !castFlow && (

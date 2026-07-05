@@ -170,7 +170,6 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
   const { color, name, seed, difficulty: difficultyId = 'APPRENTICE' } = startConfig;
   const difficulty = DIFFICULTIES[difficultyId] || DIFFICULTIES.APPRENTICE;
   const isSandbox = !!startConfig.sandbox;
-  const useGemini = !!startConfig.useGemini;
   const startDef = START_DECKS[color];
 
   // -- Map ------------------------------------------------------------------
@@ -1120,11 +1119,10 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
       castleMod: { name: 'Dominion', desc: 'Arzakon commands all five colors. The final battle for Shandalar begins.' },
       anteEnabled: false,
       context: 'arzakon',
-      useGemini,
       sandbox: isSandbox,
       _ts: Date.now(),
     });
-  }, [deck, ruleset, addLog, isCompactMobile, useGemini]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deck, ruleset, addLog, isCompactMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -------------------------------------------------------------------------
   // TOWN ACTIONS

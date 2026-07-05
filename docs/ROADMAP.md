@@ -50,7 +50,6 @@ See `gdd.md` §3.2.9 (AI Engine) and §3.4 (AI Archetypes) for the existing impl
 
 - ~~**Creature evaluator port.**~~ **DONE** (2026-07-02, pulled forward). See above.
 - **Resolve the AI-defender blocking question.** The AI driver effect requires the AI to be the active player; when the human attacks, the path where the AI declares blocks while defending has not been traced. Confirm it works before assuming it does.
-- **Finish the per-mage Gemini roster.** KARAG, SYLVARA, ARZAKON remain after the DELENIA/XYLOS/MORTIS starter set. Infrastructure (`MAGE_PROMPTS`, `selectSystemInstruction`) already exists.
 - **Revisit MCTS scope.** Currently gated to one high-aggression profile. Reassess now that castle fights route to real `BOSS_*` decks.
 - **Retune boss/archetype decks** now that castle routing sends real boss decks instead of generic archetypes.
 - **Combat AI port (attack/block decisions + simulation-based lookahead).** Scoped in `docs/AI_COMBAT_PORT_PLAN.md`, not yet batched into sprint work.
@@ -66,7 +65,6 @@ Construction is done; this is feel and balance. Reward/difficulty curves vs. dis
 ## Cross-cutting (run throughout, not separate milestones)
 
 - **Parity tax.** Every duel-facing change mirrors to `DuelScreen.tsx` and `DuelScreenMobile.tsx`. Budget this into every A/C batch, not as separate work.
-- **Test seams.** Beyond the overworld seed hook (Milestone B), the Gemini thinking-state has no deterministic seam — it stays inspection-only until one is added.
 - **Doc/process overhead.** The tiered doc policy and engine-guard/parity/encoding hooks add real per-prompt cost. Budget for it.
 
 ## Suggested sequencing
@@ -74,7 +72,7 @@ Construction is done; this is feel and balance. Reward/difficulty curves vs. dis
 1. Seeded-RNG design spike + A4 (sphere cycle) as a low-risk cadence-starter while the spike is reviewed.
 2. Implement seeded RNG + overworld seed hook, then A1 (layer completion).
 3. A2 (damage prevention), A3 (upkeep triggers), A5 (untap) — overworld seed hook now unblocks their E2E.
-4. A6 (pumps), A8 (one-offs), Milestone C defender-block fix, remaining Gemini roster.
+4. A6 (pumps), A8 (one-offs), Milestone C defender-block fix.
 5. A7 (ante), Milestone D loop polish.
 6. Premodern go/no-go.
 

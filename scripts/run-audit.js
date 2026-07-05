@@ -11,7 +11,7 @@
 
 import { spawnSync } from 'child_process';
 
-const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@gemini', '@persistence', '@premodern'];
+const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@persistence', '@premodern'];
 
 const targeted = process.argv.slice(2).filter(a => a.startsWith('@'));
 

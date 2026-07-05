@@ -42,8 +42,6 @@ export default defineConfig({
         'tests/e2e/exile-zone.spec.ts',
         'tests/e2e/first-strike-combat.spec.ts',
         'tests/e2e/force-of-nature-mobile-parity.spec.ts',
-        'tests/e2e/gemini-toggle.spec.ts',
-        'tests/e2e/gemini-wiring.spec.ts',
         'tests/e2e/generalized-choice-mechanisms.spec.ts',
         'tests/e2e/henchman-visibility.spec.ts',
         'tests/e2e/hooded-figure-sprites.spec.ts',

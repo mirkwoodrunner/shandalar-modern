@@ -22,7 +22,6 @@ const [name, setName]   = useState("");
 const [step, setStep]   = useState("intro"); // intro | choose
 const [diff, setDiff]   = useState("APPRENTICE");
 const [anteOn, setAnteOn] = useState(false);
-const [useGemini, setUseGemini] = useState(false);
 
 return (
 <div style={{
@@ -58,7 +57,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           fontSize:14, fontFamily:"'Cinzel',serif", letterSpacing:2,
         }}>BEGIN YOUR JOURNEY</button>
         <div style={{ marginTop:18 }}>
-          <button onClick={() => onStart({ color:"W", name:"The Archivist", seed:Date.now(), sandbox:true, useGemini })} style={{
+          <button onClick={() => onStart({ color:"W", name:"The Archivist", seed:Date.now(), sandbox:true })} style={{
             background:"transparent",
             border:"1px solid rgba(96,192,255,.35)", color:"rgba(96,192,255,.7)",
             padding:"8px 22px", borderRadius:5, cursor:"pointer",
@@ -66,41 +65,6 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           }}>⚗ Sandbox Mode</button>
           <div style={{ fontSize:9, color:"rgba(96,192,255,.35)", marginTop:5, fontFamily:"'Crimson Text',serif", fontStyle:"italic" }}>
             All cards · unlimited copies · dev testing
-          </div>
-        </div>
-
-        {/* Gemini AI toggle */}
-        <div
-          onClick={() => setUseGemini(v => !v)}
-          data-testid="gemini-toggle"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-            cursor: 'pointer', marginTop: 20, padding: '8px 16px',
-            background: useGemini ? 'rgba(100,180,255,.08)' : 'rgba(255,255,255,.02)',
-            border: `1px solid ${useGemini ? 'rgba(100,180,255,.4)' : 'rgba(255,255,255,.08)'}`,
-            borderRadius: 6, transition: 'all .2s', userSelect: 'none',
-          }}
-        >
-          <div style={{
-            width: 32, height: 17, borderRadius: 9,
-            background: useGemini ? 'rgba(100,180,255,.5)' : 'rgba(255,255,255,.12)',
-            position: 'relative', transition: 'background .2s', flexShrink: 0,
-          }}>
-            <div style={{
-              width: 13, height: 13, borderRadius: '50%',
-              background: useGemini ? '#a0d0ff' : '#4a3820',
-              position: 'absolute', top: 2,
-              left: useGemini ? 17 : 2,
-              transition: 'left .15s, background .2s',
-            }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, fontFamily: "'Cinzel',serif", color: useGemini ? '#a0d0ff' : '#6a5030', letterSpacing: 1 }}>
-              ARZAKON AI
-            </div>
-            <div style={{ fontSize: 8, color: useGemini ? 'rgba(160,208,255,.5)' : 'rgba(100,80,50,.5)', fontFamily: "'Crimson Text',serif", fontStyle: 'italic', marginTop: 1 }}>
-              {useGemini ? 'Gemini LLM active for final boss' : 'Standard heuristic AI'}
-            </div>
           </div>
         </div>
       </div>
@@ -224,7 +188,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           onChange={e => setName(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter' && col) {
-              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn, useGemini });
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn });
             }
           }}
           placeholder="Enter your wizard's name..."
@@ -252,7 +216,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
             disabled={!col}
             onClick={() => {
               if (!col) return;
-              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn, useGemini });
+              onStart({ color: col, name: name.trim() || `The ${COLOR_META[col].name} Mage`, seed: Date.now(), difficulty: diff, anteEnabled: anteOn });
             }}
             style={{
               background: col ? `linear-gradient(135deg,${MANA_HEX[col]}20,${MANA_HEX[col]}10)` : 'rgba(0,0,0,.3)',
