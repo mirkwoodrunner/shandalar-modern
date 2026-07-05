@@ -3288,4 +3288,63 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.11
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint A
+
+**Scope:** 12 of 41 targeted C4 stub cards implemented in this checkpoint; 7
+deferred so far (checkpointing every ~10-12 cards per the prompt).
+
+**Cards implemented:** El-Hajjâj, Feedback, Island Sanctuary, Mold Demon, Wall
+of Tombstones, Wanderlust, Warp Artifact, Ydwen Efreet, Abomination,
+Cockatrice, Infernal Medusa, Time Elemental.
+
+**Deferred (7):** Library of Leng, Psychic Venom, Artifact Possession,
+Artifact Ward, Blight, Relic Bind, Oubliette. Psychic Venom/Artifact
+Possession/Blight/Relic Bind share one root cause: an ON_TAP ("becomes
+tapped") trigger event that doesn't exist in the confirmed vocabulary --
+flagged per the prompt's ground rules rather than silently added. Oubliette
+needs phasing (confirmed absent). Library of Leng and Artifact Ward would
+each need a centralized choke point (discard call sites; target-validation)
+that doesn't exist -- implementing only part of either would violate the
+no-half-implementation rule.
+
+**New engine mechanisms:**
+- `endOfCombatDestroy`/`endOfCombatSacrifice` turnState arrays, generalizing
+  the existing `venomTargets` idiom to a reusable "queue this iid for an
+  effect at COMBAT_END" pattern. Unblocks Abomination/Infernal
+  Medusa/Cockatrice (`blocksDestroyFilter`/`blockedByDestroyFilter` card
+  fields, checked in `DECLARE_BLOCKER`) and Time Elemental
+  (`sacrificeAtEndOfCombat`, checked in `DECLARE_ATTACKER`/`DECLARE_BLOCKER`).
+- **Real bug fixed:** `PHASE.COMBAT_DAMAGE` handling never called
+  `processTriggerQueue()` after `resolveCombat()`, so ON_DAMAGE_DEALT-based
+  triggered abilities queued during combat were silently dropped -- El-Hajjâj
+  is the first card to actually need this drained. Safe fix: no pre-existing
+  `triggeredAbilities` entry keys off ON_DAMAGE_DEALT (Sengir Vampire's
+  counter uses a separate hardcoded ON_CREATURE_DIES path).
+- `selfIsDamageSource` condition -- `scope:'self'` can't be reused outside
+  ON_CREATURE_DIES (it's derived from that event's `dyingCardId`
+  specifically); any other self-scoped event type needs an explicit
+  condition instead. El-Hajjâj.
+- ON_DAMAGE_DEALT emission extended to the two unblocked-attacker `hurt()`
+  call sites in `resolveCombat()` (previously only emitted for
+  blocked-creature-vs-creature damage). El-Hajjâj, Merchant Ship (checkpoint B).
+- `skipEtbPush` -- a permanent whose ETB effect sacrifices it immediately
+  (Mold Demon) needs to suppress `RESOLVE_STACK`'s normal ETB push, which
+  otherwise re-adds it (the existing `alreadyOnBf` guard can't distinguish
+  "never placed" from "placed then removed").
+- `coinFlipOnBlock` -- Ydwen Efreet is the first card needing a coin flip
+  inside `DECLARE_BLOCKER` itself; follows the same already-flagged
+  `Math.random()` idiom as Mana Clash (C1) pending a seeded-RNG migration.
+- `islandSanctuaryProtected` -- draw-skip (auto-taken, documented
+  simplification) sets a flag consumed by a new `DECLARE_ATTACKER` gate,
+  cleared when the protected player's own turn comes back around.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-a.test.js` (13 cases).
+- Full existing Vitest suite (472 tests) re-run clean after this checkpoint.
+
+### Status
+ACTIVE (checkpoint A of C4 -- more checkpoints follow)
+
+---
+
+# End of MECHANICS INDEX v1.12

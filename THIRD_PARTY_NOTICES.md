@@ -156,3 +156,15 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Hidden Path (Hidden Path forestwalk grant, layers.js `collectEffects`) | Card-Forge/forge | h/hidden_path.txt | GPL-3.0 |
 | 2026-07-05 | Phantasmal Terrain (`phantasmalTerrainEnchant` spell effect + `basicLandTypeChoice` pendingChoice kind, DuelCore.js/cards.js) | Card-Forge/forge | p/phantasmal_terrain.txt | GPL-3.0 |
 | 2026-07-05 | Energy Flux (`energyFluxUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | e/energy_flux.txt | GPL-3.0 |
+| 2026-07-05 | El-Hajjâj (`gainLifeEqualToDamageDealt` triggered effect + `selfIsDamageSource` condition + ON_DAMAGE_DEALT queue drain, DuelCore.js/cards.js) | Card-Forge/forge | e/el_hajjaj.txt | GPL-3.0 |
+| 2026-07-05 | Feedback (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | f/feedback.txt | GPL-3.0 |
+| 2026-07-05 | Island Sanctuary (draw-skip + `islandSanctuaryProtected` DECLARE_ATTACKER hook, DuelCore.js/cards.js) | Card-Forge/forge | i/island_sanctuary.txt | GPL-3.0 |
+| 2026-07-05 | Mold Demon (`moldDemonETB` spell effect + `skipEtbPush` RESOLVE_STACK guard, DuelCore.js/cards.js) | Card-Forge/forge | m/mold_demon.txt | GPL-3.0 |
+| 2026-07-05 | Wall of Tombstones (`wallOfTombstonesUpkeep` upkeep case, DuelCore.js/cards.js) | Card-Forge/forge | w/wall_of_tombstones.txt | GPL-3.0 |
+| 2026-07-05 | Wanderlust (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | w/wanderlust.txt | GPL-3.0 |
+| 2026-07-05 | Warp Artifact (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | w/warp_artifact.txt | GPL-3.0 |
+| 2026-07-05 | Ydwen Efreet (`coinFlipOnBlock` DECLARE_BLOCKER hook, DuelCore.js/cards.js) | Card-Forge/forge | y/ydwen_efreet.txt | GPL-3.0 |
+| 2026-07-05 | Abomination (`blocksDestroyFilter`/`blockedByDestroyFilter` + `endOfCombatDestroy`, DuelCore.js/cards.js) | Card-Forge/forge | a/abomination.txt | GPL-3.0 |
+| 2026-07-05 | Cockatrice (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | c/cockatrice.txt | GPL-3.0 |
+| 2026-07-05 | Infernal Medusa (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | i/infernal_medusa.txt | GPL-3.0 |
+| 2026-07-05 | Time Elemental (`sacrificeAtEndOfCombat` + `endOfCombatSacrifice` + `bounceUnenchanted` activated ability, DuelCore.js/cards.js) | Card-Forge/forge | t/time_elemental.txt | GPL-3.0 |

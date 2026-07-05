@@ -13,6 +13,16 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C4 checkpoint A (12 of 41 implemented so far)
+
+First checkpoint of sub-batch C4 (triggered abilities), the largest of the
+complex-tier batch. Implemented: `el_hajjaj`, `feedback`, `island_sanctuary`,
+`mold_demon`, `wall_of_tombstones`, `wanderlust`, `warp_artifact`,
+`ydwen_efreet`, `abomination`, `cockatrice`, `infernal_medusa`,
+`time_elemental`. Deferred so far: `library_of_leng`, `psychic_venom`,
+`artifact_possession`, `artifact_ward`, `blight`, `relic_bind`, `oubliette`.
+More checkpoints follow.
+
 ### 2026-07-05 — Complex-Tier C3 (7 of 7 implemented)
 
 Sub-batch C3 (static/continuous) of the complex-tier Card-Forge/forge batch.

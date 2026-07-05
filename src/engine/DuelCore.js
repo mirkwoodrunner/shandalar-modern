@@ -184,6 +184,8 @@ export function getDisplayPT(c) {
 export function canBlockDuel(bl, at, defBf, state = null) {
 // MTG rule 509.1a: blocking creatures must be untapped.
 if (bl.tapped) return false;
+// Ydwen Efreet: lost the coin flip this combat -- can't block again this turn.
+if (bl.cantBlockThisTurn) return false;
 if (hasKw(at, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.FLYING.id) && !hasKw(bl, KEYWORDS.REACH.id)) return false;
 // Support both string ("B") and array (["black"]) protection formats (S17.6)
 const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
@@ -3106,6 +3108,37 @@ case "phantasmalTerrainEnchant": {
   break;
 }
 // --- END BATCH: COMPLEX-TIER C3 ----------------------------------------------
+// --- BEGIN BATCH: COMPLEX-TIER C4 (triggered abilities) ----------------------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+// Mold Demon: "When this creature enters, sacrifice it unless you sacrifice
+// two Swamps." Places the permanent on the battlefield itself (mirroring the
+// RESOLVE_STACK ETB-push guard) so the sacrifice condition can be checked
+// immediately after entry, then removes it again if the condition fails.
+case "moldDemonETB": {
+  const pArr = { ...card, controller: caster, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: {} };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
+  const swamps = ns[caster].bf.filter(c => isLand(c) && c.subtype?.includes("Swamp") && c.iid !== pArr.iid);
+  if (swamps.length >= 2) {
+    for (const sw of swamps.slice(0, 2)) ns = zMove(ns, sw.iid, caster, caster, "gy");
+    ns = dlog(ns, `${card.name}: sacrifices two Swamps to remain on the battlefield.`, "effect");
+  } else {
+    ns = zMove(ns, pArr.iid, caster, caster, "gy");
+    ns = { ...ns, skipEtbPush: true };
+    ns = dlog(ns, `${card.name}: sacrificed (not enough Swamps to sacrifice).`, "death");
+  }
+  break;
+}
+// Time Elemental: "Return target permanent that isn't enchanted to its owner's hand."
+case "bounceUnenchanted": {
+  if (tgtC && !tgtC.enchantments?.length) {
+    ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "hand");
+    ns = dlog(ns, `${card.name} returns ${tgtC.name}.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target is enchanted or no longer exists.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: COMPLEX-TIER C4 ----------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -3148,8 +3181,12 @@ const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 if (!blockers.length) {
   if (!attGaseous && !att.preventCombatDamageDealt && attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
+    if (ap > 0) ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: att.iid, targetId: defW, amount: ap, combat: true } });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
+    // Merchant Ship: "Whenever this creature attacks and isn't blocked, you gain 2 life."
+    // Adapted from Card-Forge/forge (m/merchant_ship.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name);
   }
 } else {
   let rem = ap;
@@ -3224,8 +3261,12 @@ const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 if (!blockers.length) {
   if (!attGaseous && !att.preventCombatDamageDealt && !attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
+    if (ap > 0) ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: att.iid, targetId: defW, amount: ap, combat: true } });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
+    // Merchant Ship: "Whenever this creature attacks and isn't blocked, you gain 2 life."
+    // Adapted from Card-Forge/forge (m/merchant_ship.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name);
   }
 } else {
   let rem = ap;
@@ -3424,6 +3465,34 @@ if (next === PHASE.COMBAT_END) {
     }
   }
   ns = { ...ns, turnState: { ...ns.turnState, venomTargets: [] } };
+  // End-of-combat delayed destroy: Abomination/Infernal Medusa/Cockatrice
+  // ("destroy that creature at end of combat"), keyed off combat role rather
+  // than a specific card -- populated by resolveCombat/DECLARE_BLOCKER when the
+  // condition fires. Same idiom as venomTargets above (generalized to a
+  // reusable field since three cards in this batch need the identical shape).
+  // Adapted from Card-Forge/forge (a/abomination.txt, i/infernal_medusa.txt,
+  // c/cockatrice.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const iid of (ns.turnState.endOfCombatDestroy ?? [])) {
+    const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
+    if (who) {
+      const c = ns[who].bf.find(x => x.iid === iid);
+      ns = zMove(ns, iid, who, who, 'gy');
+      ns = dlog(ns, `${c?.name || 'Creature'} destroyed at end of combat.`, 'effect');
+    }
+  }
+  ns = { ...ns, turnState: { ...ns.turnState, endOfCombatDestroy: [] } };
+  // End-of-combat delayed self-sacrifice: Time Elemental ("at end of combat,
+  // sacrifice it and it deals 5 damage to you").
+  // Adapted from Card-Forge/forge (t/time_elemental.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const iid of (ns.turnState.endOfCombatSacrifice ?? [])) {
+    const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
+    if (who) {
+      const c = ns[who].bf.find(x => x.iid === iid);
+      ns = zMove(ns, iid, who, who, 'gy');
+      ns = hurt(ns, who, 5, c?.name || 'Time Elemental');
+    }
+  }
+  ns = { ...ns, turnState: { ...ns.turnState, endOfCombatSacrifice: [] } };
   ns = processTriggerQueue(ns);
   ns = checkDeath(ns);
 }
@@ -3449,6 +3518,13 @@ if (next === PHASE.END) {
 
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
+// ON_DAMAGE_DEALT triggers (El-Hajjâj, "whenever this creature deals damage,
+// you gain that much life") are queued by emitEvent() calls inside
+// resolveCombat() but were never actually processed anywhere -- this is the
+// first card needing that queue drained. Safe to add unconditionally: no
+// pre-existing triggeredAbilities entry keys off ON_DAMAGE_DEALT (Sengir
+// Vampire's counter uses a separate hardcoded ON_CREATURE_DIES path).
+ns = processTriggerQueue(ns);
 for (const iid of ns.turnState.mustAttackEligible ?? []) {
   if (!ns.turnState.attackedThisCombat.includes(iid)) {
     const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
@@ -3477,6 +3553,11 @@ ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
   turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [] } };
+// Island Sanctuary: protection lasts "until your next turn" -- cleared once
+// that player's own turn comes back around.
+if (ns[ns.active].islandSanctuaryProtected) {
+  ns = { ...ns, [ns.active]: { ...ns[ns.active], islandSanctuaryProtected: false } };
+}
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 // Power Surge: snapshot tapped land count before untapping (SYSTEMS.md S20, Option A)
@@ -3602,6 +3683,18 @@ if (w === ns.active && isLand(c) && c.enchantments?.some(e => e.name === "Farmst
   } else {
     ns = queueUpkeepChoice(ns, { cardName: "Farmstead", handlerKey: "farmsteadUpkeep", iid: c.iid });
   }
+}
+// Feedback/Wanderlust/Warp Artifact: "Enchant [enchantment/creature/artifact].
+// At the beginning of the upkeep of enchanted permanent's controller, this
+// Aura deals 1 damage to that player." Same "checked via attached aura name"
+// idiom as Farmstead above -- these enchant enchantments/creatures/artifacts
+// rather than lands, and deal a fixed (non-optional) 1 damage, so no upkeep
+// choice is needed.
+// Adapted from Card-Forge/forge (f/feedback.txt, w/wanderlust.txt,
+// w/warp_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active) {
+  const curseAura = c.enchantments?.find(e => ["Feedback", "Wanderlust", "Warp Artifact"].includes(e.name));
+  if (curseAura) ns = hurt(ns, w, 1, curseAura.name);
 }
 switch (c.upkeep) {
 case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
@@ -3752,6 +3845,17 @@ case "kudzuUpkeep": {
   }
   break;
 }
+// Wall of Tombstones: "change this creature's base toughness to 1 plus the
+// number of creature cards in your graveyard. (This effect lasts indefinitely.)"
+// Directly mutates the base toughness field rather than a continuous buff --
+// matches "change base toughness ... lasts indefinitely" exactly.
+// Adapted from Card-Forge/forge (w/wall_of_tombstones.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "wallOfTombstonesUpkeep": {
+  if (w !== ns.active) break;
+  const gyCreatures = ns[w].gy.filter(isCre).length;
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, toughness: 1 + gyCreatures } : x) } };
+  break;
+}
 default: break;
 }
 }
@@ -3761,10 +3865,22 @@ if (ns.fogActive) ns = { ...ns, fogActive: false };
 
 if (next === PHASE.DRAW) {
 if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
-ns = drawD(ns, ns.active);
-// SBE: check deck-out
-const drawWin = checkWinConditions(ns);
-if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: drawWin.reason } };
+  // Island Sanctuary: "If you would draw a card during your draw step, instead
+  // you may skip that draw. If you do, until your next turn, you can't be
+  // attacked except by creatures with flying and/or islandwalk."
+  // SIMPLIFICATION: always skips when in play -- no "decline to skip" UI exists
+  // (same convention as other "may" upkeep effects elsewhere in this file);
+  // skipping is virtually always the correct line while Island Sanctuary is out.
+  // Adapted from Card-Forge/forge (i/island_sanctuary.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (ns[ns.active].bf.some(c => c.name === "Island Sanctuary")) {
+    ns = { ...ns, [ns.active]: { ...ns[ns.active], islandSanctuaryProtected: true } };
+    ns = dlog(ns, `${ns.active} skips their draw (Island Sanctuary) -- protected until their next turn.`, "effect");
+  } else {
+    ns = drawD(ns, ns.active);
+    // SBE: check deck-out
+    const drawWin = checkWinConditions(ns);
+    if (drawWin && !ns.over) ns = { ...ns, over: { winner: drawWin.winner, reason: drawWin.reason } };
+  }
 }
 }
 
@@ -3798,6 +3914,10 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, must
 // Clear Wall of Wonder's "can attack despite defender" flag at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.canAttackDespiteDefender ? { ...c, canAttackDespiteDefender: false } : c) } };
+}
+// Clear Ydwen Efreet's "can't block this turn" flag at end of turn
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.cantBlockThisTurn ? { ...c, cantBlockThisTurn: false } : c) } };
 }
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
@@ -3853,6 +3973,14 @@ function evaluateCondition(state, card, condition, payload) {
   // Cave People, Hasran Ogress.
   if (condition.type === 'selfIsAttacker') {
     return !!payload.attackerIids?.includes(card.iid);
+  }
+  // ON_DAMAGE_DEALT: restricts a "whenever this creature deals damage" ability
+  // to firing only for the card that was itself the damage source. scope:'self'
+  // can't be reused here -- it's derived from ON_CREATURE_DIES's dyingCardId
+  // specifically, so any other event type needs an explicit condition instead.
+  // El-Hajjâj.
+  if (condition.type === 'selfIsDamageSource') {
+    return payload.sourceId === card.iid;
   }
   // ON_PERMANENT_LEAVES_BF: "put into a graveyard" -- Dingus Egg.
   if (condition.type === 'permanentWasLand') {
@@ -4138,6 +4266,28 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       if (!who || !state[who].bf.some(c => isLand(c) && c.subtype?.includes('Plains'))) return state;
       return hurt(state, who, -1, sourceCard.name);
     }
+    // El-Hajjâj: "Whenever this creature deals damage, you gain that much life."
+    // Adapted from Card-Forge/forge (e/el_hajjaj.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'gainLifeEqualToDamageDealt': {
+      const amount = payload.amount ?? 0;
+      if (amount <= 0) return state;
+      return hurt(state, sourceCard.controller, -amount, sourceCard.name);
+    }
+    // Personal Incarnation: "When this creature dies, its owner loses half
+    // their life, rounded up."
+    // Adapted from Card-Forge/forge (p/personal_incarnation.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'loseHalfLifeRoundedUp': {
+      const who = sourceCard.controller;
+      const amount = Math.ceil(state[who].life / 2);
+      return hurt(state, who, amount, sourceCard.name);
+    }
+    // Lich: "When this enchantment is put into a graveyard from the
+    // battlefield, you lose the game."
+    // Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'losesGameController': {
+      const who = sourceCard.controller;
+      return { ...state, over: { winner: who === 'p' ? 'o' : 'p', reason: `${sourceCard.name} left the battlefield` } };
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -4356,7 +4506,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [] },
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
@@ -4632,8 +4782,14 @@ case "RESOLVE_STACK": {
   if (isPerm(top.card) && !isLand(top.card) && !top.isAbility) {
     // Guard: if resolveEff already placed the permanent on the bf (e.g. copyPermanentCharacteristics),
     // skip the normal ETB push so we don't double-add the original card object.
+    // Mold Demon: skipEtbPush additionally covers "placed then immediately
+    // removed" (sacrificed itself as its own ETB condition) -- alreadyOnBf alone
+    // can't distinguish that from "never placed yet" since both read false.
+    // Adapted from Card-Forge/forge (m/mold_demon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
     const alreadyOnBf = s[top.caster].bf.some(c => c.iid === top.card.iid);
-    if (!alreadyOnBf) {
+    const skipEtbPush = s.skipEtbPush;
+    if (skipEtbPush) s = { ...s, skipEtbPush: false };
+    if (!alreadyOnBf && !skipEtbPush) {
       // Kismet: "Artifacts, creatures, and lands your opponents control enter
       // tapped." Adapted from Card-Forge/forge (k/kismet.txt), GPL-3.0. See
       // THIRD_PARTY_NOTICES.md.
@@ -4682,6 +4838,15 @@ case "DECLARE_ATTACKER": {
   if ([...s.p.bf, ...s.o.bf].some(m => m.name === 'Moat') && !hasKw(c, KEYWORDS.FLYING.id, s)) {
     return dlog(s, `${c.name} can't attack -- Moat allows only creatures with flying to attack.`, 'rule');
   }
+  // Island Sanctuary: "...you can't be attacked except by creatures with flying
+  // and/or islandwalk." Checked against the DEFENDING player's protection flag.
+  // Adapted from Card-Forge/forge (i/island_sanctuary.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  {
+    const defSide2 = side === 'p' ? 'o' : 'p';
+    if (s[defSide2].islandSanctuaryProtected && !hasKw(c, KEYWORDS.FLYING.id, s) && !hasKw(c, KEYWORDS.ISLANDWALK.id, s)) {
+      return dlog(s, `${c.name} can't attack -- Island Sanctuary protects the defending player.`, 'rule');
+    }
+  }
   // Brainwash: "Enchanted creature can't attack unless its controller pays {3}."
   // SIMPLIFICATION: no "decline to pay" UI -- auto-pays if able (same convention
   // as Demonic Hordes' "unless you pay" upkeep cost), otherwise blocks the attack.
@@ -4706,6 +4871,20 @@ case "DECLARE_ATTACKER": {
       return dlog(s, `${c.name} can't attack -- defending player doesn't control a ${c.attackRequiresDefenderLand}.`, 'rule');
     }
   }
+  // Leviathan: "can't attack unless you sacrifice two Islands. (This cost is
+  // paid as attackers are declared.)" Only charged on a NEW attack declaration.
+  // Adapted from Card-Forge/forge (l/leviathan.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (c.attackCostSacLands && !s.attackers.includes(action.iid)) {
+    const { count, subtype } = c.attackCostSacLands;
+    const matching = s[side].bf.filter(l => isLand(l) && l.subtype?.includes(subtype));
+    if (matching.length < count) {
+      return dlog(s, `${c.name} can't attack -- you don't control ${count} ${subtype}s to sacrifice.`, 'rule');
+    }
+    for (const land of matching.slice(0, count)) {
+      s = zMove(s, land.iid, side, side, 'gy');
+    }
+    s = dlog(s, `${side} sacrifices ${count} ${subtype}(s) so ${c.name} can attack.`, 'effect');
+  }
   const att = s.attackers.includes(action.iid);
   const atts = att ? s.attackers.filter(id => id !== action.iid) : [...s.attackers, action.iid];
   const atc = att
@@ -4713,7 +4892,15 @@ case "DECLARE_ATTACKER": {
     : [...(s.turnState.attackedThisCombat || []), action.iid];
   // Goblin Rock Sled: mark it so it skips its controller's next untap step.
   const goblinRockSledFlag = !att && c.doesNotUntapIfAttacked ? { skipNextUntap: true } : {};
-  return { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id), ...goblinRockSledFlag } : x) } };
+  // Time Elemental: "When this creature attacks or blocks, at end of combat,
+  // sacrifice it and it deals 5 damage to you." Only queued on a NEW attack
+  // declaration (not when un-declaring via the toggle above).
+  // Adapted from Card-Forge/forge (t/time_elemental.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  let ns3 = { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id), ...goblinRockSledFlag } : x) } };
+  if (!att && c.sacrificeAtEndOfCombat) {
+    ns3 = { ...ns3, turnState: { ...ns3.turnState, endOfCombatSacrifice: [...(ns3.turnState.endOfCombatSacrifice || []), c.iid] } };
+  }
+  return ns3;
 }
 
 case "DECLARE_BLOCKER": {
@@ -4747,10 +4934,55 @@ case "DECLARE_BLOCKER": {
   if (blHasVenom && !attIsWall) {
     ns2 = { ...ns2, turnState: { ...ns2.turnState, venomTargets: [...(ns2.turnState.venomTargets || []), att.iid] } };
   }
+  // Abomination/Infernal Medusa/Cockatrice: "whenever this creature blocks or
+  // becomes blocked by [a filtered creature], destroy that creature at end of
+  // combat." card.blocksDestroyFilter checks the OTHER creature when THIS one
+  // is declared as a blocker; card.blockedByDestroyFilter checks the blocker
+  // when THIS one is the attacker being blocked. Only fires on a new block
+  // (not when un-declaring one via the toggle below).
+  // Adapted from Card-Forge/forge (a/abomination.txt, i/infernal_medusa.txt,
+  // c/cockatrice.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const matchesDestroyFilter = (card, filter) => {
+    if (filter === 'any') return true;
+    if (filter === 'nonWall') return !card.subtype?.includes('Wall');
+    if (filter === 'greenOrWhite') return card.color === 'G' || card.color === 'W';
+    return false;
+  };
+  const notAlreadyBlocking = ns2.blockers[action.blId] !== action.attId;
+  if (notAlreadyBlocking) {
+    if (bl.blocksDestroyFilter && matchesDestroyFilter(att, bl.blocksDestroyFilter)) {
+      ns2 = { ...ns2, turnState: { ...ns2.turnState, endOfCombatDestroy: [...(ns2.turnState.endOfCombatDestroy || []), att.iid] } };
+    }
+    if (att.blockedByDestroyFilter && matchesDestroyFilter(bl, att.blockedByDestroyFilter)) {
+      ns2 = { ...ns2, turnState: { ...ns2.turnState, endOfCombatDestroy: [...(ns2.turnState.endOfCombatDestroy || []), bl.iid] } };
+    }
+    // Time Elemental: "When this creature attacks or blocks..." -- the blocks half.
+    if (bl.sacrificeAtEndOfCombat) {
+      ns2 = { ...ns2, turnState: { ...ns2.turnState, endOfCombatSacrifice: [...(ns2.turnState.endOfCombatSacrifice || []), bl.iid] } };
+    }
+  }
   const already = ns2.blockers[action.blId] === action.attId;
   const nb = { ...ns2.blockers };
   if (already) delete nb[action.blId]; else nb[action.blId] = action.attId;
-  return { ...ns2, blockers: nb, [blSide]: { ...ns2[blSide], bf: ns2[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: already ? null : action.attId } : x) } };
+  let finalBlocking = already ? null : action.attId;
+  let ns4 = { ...ns2, blockers: nb, [blSide]: { ...ns2[blSide], bf: ns2[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: finalBlocking } : x) } };
+  // Ydwen Efreet: "Whenever this creature blocks, flip a coin. If you lose the
+  // flip, remove this creature from combat and it can't block this turn."
+  // Clearing `blocking` here means the attacker it was blocking is automatically
+  // treated as unblocked by resolveCombat -- no extra bookkeeping needed.
+  // Adapted from Card-Forge/forge (y/ydwen_efreet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (!already && bl.coinFlipOnBlock) {
+    // OBSERVED (out of scope for this prompt): Math.random() here follows the
+    // same already-flagged coin-flip idiom used elsewhere (Mana Clash) pending
+    // a seeded-RNG migration.
+    const won = Math.random() < 0.5;
+    if (!won) {
+      delete nb[action.blId];
+      ns4 = { ...ns4, blockers: nb, [blSide]: { ...ns4[blSide], bf: ns4[blSide].bf.map(x => x.iid === action.blId ? { ...x, blocking: null, cantBlockThisTurn: true } : x) } };
+      ns4 = dlog(ns4, `${bl.name} loses the coin flip -- removed from combat.`, 'effect');
+    }
+  }
+  return ns4;
 }
 
 case "OPEN_PRIORITY_WINDOW":

@@ -235,6 +235,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'forcefieldShield',      // Forcefield -- "an unblocked creature of your choice"
   // Complex-tier Forge batch C2 (see THIRD_PARTY_NOTICES.md):
   'lockArtifactWhileTapped', // Phyrexian Gremlins -- "target artifact"
+  // Complex-tier Forge batch C4 (see THIRD_PARTY_NOTICES.md):
+  'bounceUnenchanted', // Time Elemental -- "target permanent that isn't enchanted"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
