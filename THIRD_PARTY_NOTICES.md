@@ -130,3 +130,7 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-03 | Rebirth (`rebirthAnte` triggered effect, DuelCore.js) | Card-Forge/forge | r/rebirth.txt | GPL-3.0 |
 | 2026-07-03 | Bronze Tablet (`bronzeTabletExchange` activated ability effect + `entersTapped` RESOLVE_STACK hook, DuelCore.js/cards.js) | Card-Forge/forge | b/bronze_tablet.txt | GPL-3.0 |
 | 2026-07-03 | Tempest Efreet (`tempestEfreetExchange` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | t/tempest_efreet.txt | GPL-3.0 |
+| 2026-07-05 | Alchor's Tomb (`colorChoiceTarget` activated ability effect + generalized `pendingChoice`, DuelCore.js/cards.js) | Card-Forge/forge | a/alchors_tomb.txt | GPL-3.0 |
+| 2026-07-05 | Darkpact (`darkpactExchange` spell effect + `pendingAnteExchange`, DuelCore.js/cards.js) | Card-Forge/forge | d/darkpact.txt | GPL-3.0 |
+| 2026-07-05 | Ashnod's Battle Gear (`pumpWhileTapped` activated ability effect + `optionalUntap`/upkeep-choice registry, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | a/ashnods_battle_gear.txt | GPL-3.0 |
+| 2026-07-05 | Tawnos's Weaponry (reused `pumpWhileTapped` activated ability effect + `optionalUntap`, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | t/tawnoss_weaponry.txt | GPL-3.0 |

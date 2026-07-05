@@ -69,6 +69,9 @@ export function makeState({
     anteExtraO: [],
     ownershipChanges: [],
     pendingAnteChoice: null,
+    pendingUpkeepChoice: null,
+    pendingUpkeepChoiceQueue: [],
+    pendingAnteExchange: null,
     p: makePlayerState({ bf: pBf, hand: pHand }),
     o: makePlayerState({ bf: oBf, hand: oHand }),
   };

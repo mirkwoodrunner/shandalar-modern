@@ -37,8 +37,9 @@ import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from './ui/duel/TransmutePayModal';
 import { ConditionalCounterModal } from './ui/duel/ConditionalCounterModal';
 import { XSelectModal } from './ui/duel/XSelectModal';
-import { ForceOfNatureUpkeepModal } from './ui/duel/ForceOfNatureUpkeepModal';
 import { SphereTriggerModal } from './ui/duel/SphereTriggerModal';
+import { ChoiceModal } from './ui/duel/ChoiceModal';
+import { UPKEEP_CHOICE_MODALS } from './ui/duel/upkeepChoiceRegistry';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
@@ -103,25 +104,6 @@ function AbilityMenuPopover({ card, onSelect, onClose }: {
             </button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ChoiceModal({ pendingChoice, allBf, onResolve }: {
-  pendingChoice: any; allBf: any[]; onResolve: (id: string) => void;
-}) {
-  const sourceCard = allBf.find((c: any) => c.iid === pendingChoice.sourceCardId);
-  return (
-    <div className="popover-overlay">
-      <div className="popover-content" onClick={e => e.stopPropagation()}>
-        <h3>{sourceCard ? sourceCard.name : 'Triggered Ability'}</h3>
-        <p>Choose:</p>
-        {(pendingChoice.options ?? []).map((opt: any) => (
-          <button key={opt.id} className="mana-choice-btn" onClick={() => onResolve(opt.id)}>
-            {opt.label}
-          </button>
-        ))}
       </div>
     </div>
   );
@@ -268,6 +250,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
+    resolveAnteExchange, declineAnteExchange,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     pendingDualLand, setPendingDualLand,
@@ -1014,12 +997,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         />
       )}
 
-      {s.pendingUpkeepChoice && s.active === 'p' && (
-        <ForceOfNatureUpkeepModal
-          greenMana={s.p.mana?.G ?? 0}
-          onResolve={resolveUpkeepChoice}
-        />
-      )}
+      {s.pendingUpkeepChoice && s.active === 'p' && (() => {
+        const entry = UPKEEP_CHOICE_MODALS[s.pendingUpkeepChoice.handlerKey];
+        if (!entry) return null;
+        const Comp = entry.component;
+        return <Comp {...entry.getProps(s, s.pendingUpkeepChoice, resolveUpkeepChoice)} />;
+      })()}
 
       {s.pendingSphereTrigger && s.pendingSphereTrigger.controller === 'p' && (() => {
         const st = s.pendingSphereTrigger;
@@ -1107,6 +1090,16 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onConfirm={confirmTransmutePay}
           onUndo={undoManaTaps}
           onDecline={declineTransmutePay}
+        />
+      )}
+
+      {s.pendingAnteExchange && s.pendingAnteExchange.caster === 'p' && (
+        <TutorModal
+          library={s.pendingAnteExchange.cards}
+          filter="any"
+          onChoose={(iid: string) => resolveAnteExchange(iid)}
+          onDecline={declineAnteExchange}
+          titleOverride="Darkpact — Choose a Card in the Ante"
         />
       )}
     </div>

@@ -2165,6 +2165,53 @@ case "colorLace": {
   ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
   break;
 }
+case "colorChoiceTarget": {
+  // Adapted from Card-Forge/forge (a/alchors_tomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // Alchor's Tomb: "Target permanent you control becomes the color of your choice."
+  // Presents a 5-option pendingChoice (kind: colorChoice); RESOLVE_CHOICE sets
+  // the target's color permanently, same field colorLace mutates above.
+  if (!tgtC || tgtC.controller !== caster) {
+    ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+    break;
+  }
+  ns = createPendingChoice(ns, {
+    sourceCardId: card.iid,
+    controller: caster,
+    kind: 'colorChoice',
+    targetIid: tgtC.iid,
+    sourceCardName: card.name,
+    options: [
+      { id: 'W', label: 'White' },
+      { id: 'U', label: 'Blue' },
+      { id: 'B', label: 'Black' },
+      { id: 'R', label: 'Red' },
+      { id: 'G', label: 'Green' },
+    ],
+  });
+  break;
+}
+case "pumpWhileTapped": {
+  // Adapted from Card-Forge/forge (a/ashnods_battle_gear.txt, t/tawnoss_weaponry.txt),
+  // GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // "Target creature [you control] gets +X/+Y for as long as this artifact
+  // remains tapped." Stored on the source artifact (whileTappedPump) and read
+  // by layers.js as a Layer 7c continuous effect gated on source.tapped --
+  // the bonus ends automatically the moment the artifact untaps, no separate
+  // duration/expiry tracking needed. card.pumpRequiresControl (Ashnod's Battle
+  // Gear only) restricts the target to creatures the caster controls.
+  if (!tgtC || !isCre(tgtC) || (card.pumpRequiresControl && tgtC.controller !== caster)) {
+    ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+    break;
+  }
+  const srcOwner = ns.p.bf.some(c => c.iid === card.iid) ? 'p' : 'o';
+  ns = { ...ns, [srcOwner]: { ...ns[srcOwner], bf: ns[srcOwner].bf.map(c => c.iid === card.iid
+    ? { ...c, whileTappedPump: { targetIid: tgtC.iid, power: card.pumpPower ?? 0, toughness: card.pumpToughness ?? 0 } }
+    : c) } };
+  const pStr = (card.pumpPower ?? 0) >= 0 ? `+${card.pumpPower ?? 0}` : `${card.pumpPower ?? 0}`;
+  const tStr = (card.pumpToughness ?? 0) >= 0 ? `+${card.pumpToughness ?? 0}` : `${card.pumpToughness ?? 0}`;
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gets ${pStr}/${tStr} while ${card.name} remains tapped.`, "effect");
+  break;
+}
 case "destroyBlackCreature": {
   // Adapted from Card-Forge/forge (e/exorcist.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (tgtC && isCre(tgtC) && tgtC.color === "B") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
@@ -2676,6 +2723,9 @@ case "tempestEfreetExchange": {
     ns = { ...ns, [opp]: { ...ns[opp], life: ns[opp].life - 10 } };
     ns = dlog(ns, `${opp} pays 10 life to save their hand from ${card.name}.`, "effect");
   } else if (ns[opp].hand.length) {
+    // OBSERVED (out of scope for this prompt): Math.random() here violates the
+    // project's "all randomness routes through the seeded RNG" rule. Pre-existing,
+    // unrelated to the generalized-choice-mechanisms work -- not fixed here.
     const idx = Math.floor(Math.random() * ns[opp].hand.length);
     const revealed = ns[opp].hand[idx];
     ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, i) => i !== idx) } };
@@ -2691,6 +2741,24 @@ case "tempestEfreetExchange": {
     };
     ns = dlog(ns, `${opp} declines -- reveals ${revealed.name}. Ownership of ${revealed.name} and ${card.name} is permanently exchanged.`, "effect");
   }
+  break;
+}
+case "darkpactExchange": {
+  // Adapted from Card-Forge/forge (d/darkpact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // "You own target card in the ante. Exchange that card with the top card of
+  // your library." Read as a targeting restriction ("target card in the ante
+  // that you own") rather than an ownership-changing effect -- see completion
+  // summary for the Forge-naming (GainOwnership) vs. Oracle-text discrepancy
+  // this resolves. Only the caster's own ante contributions are legal targets;
+  // picking which one is deferred to pendingAnteExchange (reuses TutorModal).
+  const scalarKey = caster === 'p' ? 'anteP' : 'anteO';
+  const extraKey  = caster === 'p' ? 'anteExtraP' : 'anteExtraO';
+  const ownAnteCards = [...(ns[scalarKey] ? [ns[scalarKey]] : []), ...ns[extraKey]];
+  if (!ownAnteCards.length) {
+    ns = dlog(ns, `${card.name} fizzles -- ${caster} owns no card in the ante.`, "effect");
+    break;
+  }
+  ns = { ...ns, pendingAnteExchange: { caster, cards: ownAnteCards } };
   break;
 }
 // --- END BATCH: ANTE CARDS ----------------------------------------------------
@@ -3088,6 +3156,12 @@ for (const om of ns[ns.active].bf.filter(c => c.id === 'old_man_of_the_sea' && c
     }
   }
 }
+// Ashnod's Battle Gear / Tawnos's Weaponry: "You may choose not to untap this
+// during your untap step." Only relevant while tapped with an active
+// while-tapped bonus in play (whileTappedPump) -- no reason to skip untapping
+// otherwise. Computed from the pre-untap bf snapshot so the .map() below stays
+// a pure per-card transform.
+const optionalUntapTargets = ns[ns.active].bf.filter(c => c.optionalUntap && c.tapped && c.whileTappedPump);
 ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
 const base = { ...c, summoningSick:false, damage:0 };
 if (isLand(c)) {
@@ -3105,8 +3179,19 @@ if (c.paralyzed || c.enchantments?.some(e => e.mod?.paralyzed)) return { ...base
 cresUntapped++;
 return { ...base, tapped:false };
 }
+if (c.optionalUntap && c.tapped && c.whileTappedPump) return base; // stays tapped; choice queued below
 return { ...base, tapped:false };
 }) } };
+if (ns.active === 'p') {
+  for (const t of optionalUntapTargets) {
+    ns = queueUpkeepChoice(ns, { cardName: t.name, handlerKey: 'optionalUntap', iid: t.iid });
+  }
+}
+// Opponent auto-decide: keep the bonus (decline to untap), handled implicitly
+// above by leaving it tapped -- no per-player yes/no UI exists for a
+// non-player controller (same convention as Brainwash/Hasran Ogress elsewhere
+// in this file). Since the ability was activated in the first place because
+// the bonus is worth having, staying tapped is assumed the better line.
 }
 }
 
@@ -3131,11 +3216,11 @@ if (w === "o") {
     ns = dlog(ns, "Force of Nature: opponent takes 8 damage (could not pay GGGG).", "damage");
   }
 } else {
-  ns = { ...ns, pendingUpkeepChoice: {
+  ns = queueUpkeepChoice(ns, {
     cardName: "Force of Nature",
     handlerKey: "forceOfNatureUpkeep",
-    options: ["PAY_GGGG", "TAKE_DAMAGE"]
-  }};
+    options: ["PAY_GGGG", "TAKE_DAMAGE"],
+  });
 }
 break;
 }
@@ -3639,6 +3724,25 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
   }
 }
 
+// createPendingChoice: the single place that sets state.pendingChoice. Callable
+// from resolveTrigger() (triggered abilities) or directly from resolveEff()
+// (e.g. Alchor's Tomb's color choice, which has no triggered ability at all).
+// `kind` tags how RESOLVE_CHOICE should resolve the answer -- see that case.
+function createPendingChoice(state, { sourceCardId, controller, options, kind = 'triggered_ability_choice', ...extra }) {
+  return {
+    ...state,
+    pendingChoice: {
+      id: `choice_${sourceCardId}_${makeId()}`,
+      kind,
+      sourceCardId,
+      controller,
+      options,
+      required: true,
+      ...extra,
+    },
+  };
+}
+
 function resolveTrigger(state, inst) {
   const allBf = [...state.p.bf, ...state.o.bf];
   const sourceCard = allBf.find(c => c.iid === inst.sourceCardId)
@@ -3650,15 +3754,12 @@ function resolveTrigger(state, inst) {
   if (ability.requiresChoice) {
     // Suspend queue and present choice to the controlling player
     return {
-      ...state,
-      pendingChoice: {
-        id: `choice_${inst.triggerId}_${inst.timestamp}`,
-        type: 'triggered_ability_choice',
+      ...createPendingChoice(state, {
         sourceCardId: inst.sourceCardId,
         controller: inst.controller,
         options: ability.effect.options,
-        required: true,
-      },
+        kind: 'triggered_ability_choice',
+      }),
       // Re-insert at front so it is re-resolved once the choice is made
       triggerQueue: [inst, ...state.triggerQueue],
     };
@@ -3689,6 +3790,47 @@ function processTriggerQueue(state) {
     }
   }
   return s;
+}
+
+// Small handlerKey-keyed registry for pendingUpkeepChoice, mirroring the
+// CARD_HANDLERS pattern in cardHandlers.js. pendingUpkeepChoice always holds
+// the front slot of the queue; pendingUpkeepChoiceQueue holds any additional
+// choices queued in the same untap step. Add an entry here for every new
+// handlerKey queued via queueUpkeepChoice -- do not add another hardcoded
+// UPKEEP_CHOICE_RESOLVE branch.
+const UPKEEP_CHOICE_HANDLERS = {
+  forceOfNatureUpkeep: {
+    resolve(s, _choice, action) {
+      if (action.choice === "PAY_GGGG") {
+        let ns = { ...s, p: { ...s.p, mana: { ...s.p.mana, G: (s.p.mana.G ?? 0) - 4 } } };
+        return dlog(ns, "Force of Nature: paid GGGG upkeep.", "mana");
+      }
+      const ns = hurt(s, "p", 8, "Force of Nature");
+      return dlog(ns, "Force of Nature: player takes 8 damage.", "damage");
+    },
+  },
+  // Ashnod's Battle Gear / Tawnos's Weaponry: "You may choose not to untap
+  // this artifact during your untap step." choice.iid is the artifact.
+  optionalUntap: {
+    resolve(s, choice, action) {
+      if (action.choice !== "UNTAP") {
+        return dlog(s, `${choice.cardName} remains tapped.`, "info");
+      }
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
+      return dlog(ns, `${choice.cardName} untaps.`, "info");
+    },
+  },
+};
+
+// Appends an upkeep choice to the queue: sets pendingUpkeepChoice directly if
+// the front slot is empty, else appends to pendingUpkeepChoiceQueue. Existing
+// `if (s.pendingUpkeepChoice) ...` null checks (ADVANCE_PHASE gate, UI render
+// gate) stay correct unchanged -- they're non-null exactly when the queue is
+// non-empty.
+function queueUpkeepChoice(state, choice) {
+  if (!state.pendingUpkeepChoice) return { ...state, pendingUpkeepChoice: choice };
+  return { ...state, pendingUpkeepChoiceQueue: [...state.pendingUpkeepChoiceQueue, choice] };
 }
 
 // --- DUEL STATE BUILDER -------------------------------------------------------
@@ -3754,6 +3896,16 @@ turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, a
 triggerQueue: [],
 pendingChoice: null,
 pendingUpkeepChoice: null,
+// Extra queued upkeep choices for the same untap step (Part 3: upkeep-choice
+// registry). pendingUpkeepChoice always holds the front slot; the null check
+// on it (ADVANCE_PHASE gate, UI render gate) is unchanged -- when it resolves,
+// UPKEEP_CHOICE_RESOLVE shifts the next entry (if any) off this queue.
+pendingUpkeepChoiceQueue: [],
+// Darkpact: { caster, cards } where cards are the caster's own ante
+// contributions (anteP/anteExtraP or anteO/anteExtraO). Resolved via
+// RESOLVE_ANTE_EXCHANGE / DECLINE_ANTE_EXCHANGE. Distinct from the unused
+// pendingAnteChoice scaffold above (never wired to a reducer case).
+pendingAnteExchange: null,
 pendingConditionalCounter: null,
 priorityWindow: false,
 priorityPasser: null,
@@ -4587,6 +4739,42 @@ case "DECLINE_TUTOR": {
   return ns;
 }
 
+case "RESOLVE_ANTE_EXCHANGE": {
+  // Darkpact: reuses TutorModal for the picker (see pendingAnteExchange.cards),
+  // but resolves differently -- the chosen ante card is exchanged with the top
+  // card of the caster's library, not moved to hand. The exchanged-out ante
+  // card is appended to the caster's library (not shuffled in -- the exact
+  // insertion point isn't meaningfully random since only the top card of a
+  // library is ever observable/exchangeable by existing effects).
+  const pae = s.pendingAnteExchange;
+  if (!pae) return s;
+  const { caster, cards } = pae;
+  const chosen = cards.find(c => c.iid === action.iid);
+  if (!chosen) return s;
+  const lib = s[caster].lib;
+  if (!lib.length) {
+    return dlog({ ...s, pendingAnteExchange: null }, `${caster}'s library is empty -- Darkpact's exchange fizzles.`, 'effect');
+  }
+  const [topCard, ...restLib] = lib;
+  const scalarKey = caster === 'p' ? 'anteP' : 'anteO';
+  const extraKey  = caster === 'p' ? 'anteExtraP' : 'anteExtraO';
+  const chosenInScalar = s[scalarKey]?.iid === chosen.iid;
+  const ns = {
+    ...s,
+    pendingAnteExchange: null,
+    [caster]: { ...s[caster], lib: [...restLib, chosen] },
+    [scalarKey]: chosenInScalar ? topCard : s[scalarKey],
+    [extraKey]: chosenInScalar ? s[extraKey] : s[extraKey].map(c => c.iid === chosen.iid ? topCard : c),
+  };
+  return dlog(ns, `${caster} exchanges ${chosen.name} (ante) with ${topCard.name} (top of library).`, 'effect');
+}
+
+case "DECLINE_ANTE_EXCHANGE": {
+  if (!s.pendingAnteExchange) return s;
+  const { caster } = s.pendingAnteExchange;
+  return dlog({ ...s, pendingAnteExchange: null }, `${caster} declines Darkpact's exchange.`, 'effect');
+}
+
 case "CONFIRM_TRANSMUTE_SACRIFICE": {
   const pts = s.pendingTransmuteSacrifice;
   if (!pts) return s;
@@ -4742,6 +4930,24 @@ case "USE_CHANNEL": {
 case "RESOLVE_CHOICE": {
   if (!s.pendingChoice) return s;
   const choice = s.pendingChoice;
+
+  // Alchor's Tomb: color choice created directly from resolveEff (colorChoiceTarget),
+  // not a triggered ability. Resolves by setting the targeted permanent's color
+  // permanently, same field colorLace mutates.
+  if (choice.kind === 'colorChoice') {
+    let ns = { ...s, pendingChoice: null };
+    const targetIid = choice.targetIid;
+    const owner = ns.p.bf.some(c => c.iid === targetIid) ? 'p'
+                : ns.o.bf.some(c => c.iid === targetIid) ? 'o'
+                : null;
+    if (!owner) return dlog(ns, `${choice.sourceCardName ?? 'Effect'} fizzles -- target no longer exists.`, "effect");
+    const targetCard = ns[owner].bf.find(c => c.iid === targetIid);
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid ? { ...c, color: action.optionId } : c) } };
+    return dlog(ns, `${targetCard.name} becomes ${action.optionId}.`, "effect");
+  }
+
+  // Default / 'triggered_ability_choice': resolve back through the triggered
+  // ability that suspended the trigger queue (Soul Net and similar).
   // The re-inserted trigger sits at the front of the queue (put there by resolveTrigger)
   const [pendingTrigger, ...remainingQueue] = s.triggerQueue;
   const sourceCard = [...s.p.bf, ...s.o.bf].find(c => c.iid === choice.sourceCardId);
@@ -4762,15 +4968,12 @@ case "RESOLVE_CHOICE": {
 }
 
 case "UPKEEP_CHOICE_RESOLVE": {
-  const { choice } = action; // "PAY_GGGG" | "TAKE_DAMAGE"
-  let ns = { ...s, pendingUpkeepChoice: null };
-  if (choice === "PAY_GGGG") {
-    ns = { ...ns, p: { ...ns.p, mana: { ...ns.p.mana, G: (ns.p.mana.G ?? 0) - 4 } } };
-    ns = dlog(ns, "Force of Nature: paid GGGG upkeep.", "mana");
-  } else {
-    ns = hurt(ns, "p", 8, "Force of Nature");
-    ns = dlog(ns, "Force of Nature: player takes 8 damage.", "damage");
-  }
+  if (!s.pendingUpkeepChoice) return s;
+  const choice = s.pendingUpkeepChoice;
+  const handler = UPKEEP_CHOICE_HANDLERS[choice.handlerKey];
+  let ns = handler ? handler.resolve(s, choice, action) : s;
+  const queue = ns.pendingUpkeepChoiceQueue || [];
+  ns = { ...ns, pendingUpkeepChoice: queue[0] ?? null, pendingUpkeepChoiceQueue: queue.slice(1) };
   return ns;
 }
 

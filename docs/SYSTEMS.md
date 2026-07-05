@@ -2811,7 +2811,7 @@ opponent's favor only has an observable lasting effect on the player's side
 | Rebirth | `rebirthAnte` | SIMPLIFICATION: real card lets each player individually choose to ante for a life-reset to 20. No per-player yes/no UI exists for this niche decision; each player auto-antes only when `life < 20` (matches the "no UI to decline" convention already used for Brainwash/Hasran Ogress). |
 | Bronze Tablet | `bronzeTabletExchange` (activated, `{4},{T}`, targets a nontoken permanent an opponent owns) | Enters tapped (`entersTapped: true` card flag, generalized alongside the existing Kismet enter-tapped hook in `RESOLVE_STACK`). Exiles both permanents. SIMPLIFICATION: the targeted player's "may pay 10 life" decision auto-resolves (pay if `life > 10`, same convention as Rebirth). Declining pushes both `ownershipChanges` entries; paying puts Bronze Tablet in its owner's graveyard and leaves the target exiled with no ownership change. |
 | Tempest Efreet | `tempestEfreetExchange` (activated, `{T}, Sacrifice`) | Implicit single-opponent target (no target UI needed in a 2-player duel). SIMPLIFICATION: same auto-pay-if-`life > 10` convention. Declining reveals a random card from the opponent's hand (reusing the existing `Math.floor(Math.random() * hand.length)` idiom from `discardX`/`discardOne`), swaps it into the caster's hand, and pushes both `ownershipChanges` entries. |
-| Darkpact | **Deferred** | Oracle text confirms this changes true ownership (not just zone membership) of a targeted ante-zone card before exchanging it with the caster's top library card. Deferred because "target card in the ante" is a target domain the existing `castFlow` targeting UI (battlefield permanents, players, stack items) has no concept of. |
+| Darkpact | `darkpactExchange` | See Section 27.2 (`pendingAnteExchange`) -- "target card in the ante" no longer needs a `castFlow` targeting domain; it's picked via a reused `TutorModal` at resolution time, same as Demonic Tutor's search. |
 
 All seven cards carry `anteOnly: true` in `cards.js` (not string-matched against
 `text`). `generateStartingDeck` (`src/data/difficulties.js`) takes an
@@ -2827,4 +2827,127 @@ Both `DuelScreen.tsx` (`data-testid="ante-banner"`) and
 stake (`anteP`/`anteO` plus `anteExtraP`/`anteExtraO`) whenever `anteEnabled` and
 the combined stake is non-empty.
 
-# End of SYSTEMS v1.6
+# Section 27 — Generalized Choice Mechanisms (2026-07-05)
+
+Three narrow, single-use-case choice mechanisms were each generalized minimally
+to unblock four deferred cards (Alchor's Tomb, Darkpact, Ashnod's Battle Gear,
+Tawnos's Weaponry). No fourth mechanism was introduced.
+
+## 27.1 `pendingChoice` — generic creation path + `kind` dispatch
+
+Previously `pendingChoice` was only ever created by `resolveTrigger()` for
+triggered abilities with `requiresChoice`. `createPendingChoice(state, {
+sourceCardId, controller, options, kind, ...extra })` (`DuelCore.js`) is now
+the single place that sets `state.pendingChoice`; `resolveTrigger()` is just
+one caller (`kind: 'triggered_ability_choice'`).
+
+`RESOLVE_CHOICE` dispatches on `choice.kind`:
+- `'triggered_ability_choice'` (default): unchanged -- resolves back through
+  the triggered ability's `effect.options` (Soul Net and any future
+  `requiresChoice` card).
+- `'colorChoice'` (Alchor's Tomb): resolves directly, setting
+  `choice.targetIid`'s permanent `.color` to the chosen option id. Same field
+  the `colorLace` effect (Chaoslace/Deathlace/etc.) mutates -- no new
+  color-override mechanism was introduced.
+
+`ChoiceModal` (`src/ui/duel/ChoiceModal.tsx`) was extracted out of
+`DuelScreen.tsx` into its own file (matching where `TutorModal` /
+`ForceOfNatureUpkeepModal` already live) so it could be imported and rendered
+by `DuelScreenMobile.tsx` too -- it was previously desktop-only, a real parity
+bug independent of this batch. Both screens render it under the same
+`s.pendingChoice && s.pendingChoice.controller === 'p'` gate.
+
+### Alchor's Tomb
+
+`{2}, {T}: Target permanent you control becomes the color of your choice.`
+Modeled as `activated: { cost: "2,T", effect: "colorChoiceTarget" }`. The
+`colorChoiceTarget` resolveEff case (fires from `RESOLVE_STACK`, same as any
+other activated ability) validates `tgtC.controller === caster`, then calls
+`createPendingChoice` with a 5-option W/U/B/R/G list and `kind: 'colorChoice'`.
+The color change is permanent (no `eotBuffs`, no expiry) -- matches the oracle
+text "(This effect lasts indefinitely.)"
+
+## 27.2 `pendingAnteExchange` — Darkpact
+
+Darkpact's `darkpactExchange` resolveEff case (fires on `RESOLVE_STACK`, same
+as any sorcery) reads "You own target card in the ante" as a **targeting
+restriction** (only cards the caster already owns in the ante zone are legal
+targets), not as a separate ownership-changing effect -- see the completion
+summary for the Forge (`GainOwnership`) vs. Oracle-text naming discrepancy this
+resolves, and why network access to verify against live Scryfall rulings was
+unavailable. It sets:
+
+```
+pendingAnteExchange: { caster: 'p'|'o', cards: Card[] }  // caster's own anteP/anteExtraP or anteO/anteExtraO
+```
+
+The picker reuses `TutorModal` directly (`library={pendingAnteExchange.cards}`,
+`filter="any"`, `titleOverride="Darkpact — Choose a Card in the Ante"`) --
+no new picker component. Resolution is a new action, `RESOLVE_ANTE_EXCHANGE
+{ iid }` / `DECLINE_ANTE_EXCHANGE`, not `CHOOSE_TUTOR` -- that action's
+resolution (move to hand, remove from library) doesn't match Darkpact's
+exchange semantics. The chosen ante card is appended to the caster's library
+(not shuffled in -- position isn't meaningfully random since only the top
+card of a library is ever an exchange target by any existing effect) and the
+former top card of the library takes its place in whichever ante slot (scalar
+`anteP`/`anteO` or the matching `anteExtraP`/`anteExtraO` array entry) the
+chosen card occupied.
+
+## 27.3 Upkeep-choice registry — Ashnod's Battle Gear / Tawnos's Weaponry
+
+`pendingUpkeepChoice` (previously a single hardcoded Force of Nature slot) is
+now backed by `UPKEEP_CHOICE_HANDLERS` (`DuelCore.js`), a `handlerKey`-keyed
+registry mirroring the `CARD_HANDLERS` pattern in `cardHandlers.js`:
+
+```
+UPKEEP_CHOICE_HANDLERS = {
+  forceOfNatureUpkeep: { resolve(s, choice, action) { ... } },  // unchanged behavior
+  optionalUntap:       { resolve(s, choice, action) { ... } },  // new
+}
+```
+
+`pendingUpkeepChoiceQueue: []` holds any additional choices queued in the same
+untap step; `pendingUpkeepChoice` always holds the front slot.
+`queueUpkeepChoice(state, choice)` appends to the queue if the front slot is
+occupied, else fills it directly. **The gate did not need to change from a
+null check to a queue-emptiness check** -- every existing
+`if (s.pendingUpkeepChoice) ...` site (the `ADVANCE_PHASE` gate, both screens'
+render gates, `useDuelController.ts`'s `endTurn` effect) stays a plain null
+check, because `pendingUpkeepChoice` is non-null exactly when the queue is
+non-empty (`UPKEEP_CHOICE_RESOLVE` shifts the next queued item into the front
+slot on every resolve).
+
+The UI mirrors this with `UPKEEP_CHOICE_MODALS` (`src/ui/duel/
+upkeepChoiceRegistry.tsx`), keyed by `handlerKey`, replacing the hardcoded
+`ForceOfNatureUpkeepModal` render in both `DuelScreen.tsx` and
+`DuelScreenMobile.tsx` with a lookup.
+
+### Ashnod's Battle Gear / Tawnos's Weaponry
+
+Both are `optionalUntap: true` artifacts with a `{2},{T}` pump ability
+(`pumpWhileTapped` resolveEff case) that sets `+X/+Y` on a target creature "for
+as long as this artifact remains tapped." The pump is stored directly on the
+source artifact (`whileTappedPump: { targetIid, power, toughness }`) and read
+by `layers.js`'s `collectEffects` as a Layer 7c continuous effect gated on
+`src.tapped` -- the bonus ends automatically the instant the artifact untaps;
+no separate duration/expiry tracking exists or is needed (mirrors how Old Man
+of the Sea's `whileTappedAndPowerLte` control grant is already tapped-gated
+rather than duration-tracked).
+
+The untap-step loop in `DuelCore.js` (the generic non-land/non-creature
+fallthrough) computes `optionalUntapTargets` from permanents with
+`c.optionalUntap && c.tapped && c.whileTappedPump` *before* the untap `.map()`
+runs (keeping the map a pure per-card transform), leaves them tapped in the
+map, then queues an `optionalUntap` upkeep choice per target -- but only when
+`ns.active === 'p'`. For the opponent (`'o'`), the artifact is simply left
+tapped with no queued choice (auto-decide: keep the bonus, since it was
+activated in the first place because it's worth having -- same "no UI to
+decline" convention as Brainwash/Hasran Ogress/Rebirth elsewhere in this
+file). This is why no opponent-side AI wiring was added to
+`useDuelController.ts` for this mechanism.
+
+`pumpRequiresControl: true` (Ashnod's Battle Gear only) restricts the pump
+target to a creature the caster controls; Tawnos's Weaponry omits it (targets
+"target creature," either side).
+
+# End of SYSTEMS v1.7

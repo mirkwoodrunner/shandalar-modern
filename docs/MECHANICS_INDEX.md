@@ -3089,4 +3089,69 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.7
+## Feature: Generalized Choice Mechanisms (2026-07-05)
+
+Three narrow, single-use-case choice mechanisms (`pendingChoice`, `TutorModal`'s
+card-source, `pendingUpkeepChoice`) were each generalized minimally to unblock
+four deferred cards. No fourth mechanism was introduced. See `docs/SYSTEMS.md`
+Section 27 for the full mechanical spec.
+
+**`pendingChoice` generalization + mobile parity fix:** `createPendingChoice()`
+(`DuelCore.js`) is now the single place that sets `state.pendingChoice`, callable
+directly from `resolveEff` (not only from `resolveTrigger()`'s `requiresChoice`
+path). `RESOLVE_CHOICE` dispatches on a new `choice.kind` field
+(`'triggered_ability_choice'` unchanged default, new `'colorChoice'` for
+Alchor's Tomb). `ChoiceModal` was extracted from `DuelScreen.tsx` into
+`src/ui/duel/ChoiceModal.tsx` and is now also rendered by
+`DuelScreenMobile.tsx` -- it was previously desktop-only, a real parity bug
+independent of this batch, confirmed live before this change.
+
+**`pendingAnteExchange` (Darkpact):** reuses `TutorModal` for the picker
+(`library={pendingAnteExchange.cards}`) but resolves via new
+`RESOLVE_ANTE_EXCHANGE`/`DECLINE_ANTE_EXCHANGE` actions that swap the chosen
+ante card with the top of the caster's library, rather than `CHOOSE_TUTOR`'s
+move-to-hand semantics. Only the caster's own `anteP`/`anteExtraP` (or
+`anteO`/`anteExtraO`) cards are legal targets.
+
+**Upkeep-choice registry (Ashnod's Battle Gear / Tawnos's Weaponry):**
+`pendingUpkeepChoice` is now backed by `UPKEEP_CHOICE_HANDLERS`
+(handlerKey-keyed, mirrors `cardHandlers.js`'s `CARD_HANDLERS`) plus a
+`pendingUpkeepChoiceQueue: []` for more than one choice queued in the same
+untap step. Force of Nature (`forceOfNatureUpkeep`) is unchanged as the first
+registry entry; `optionalUntap` is new. The UI mirrors this with
+`UPKEEP_CHOICE_MODALS` (`src/ui/duel/upkeepChoiceRegistry.tsx`), replacing the
+hardcoded `ForceOfNatureUpkeepModal` render with a lookup in both screens.
+The two artifacts' "+X/+Y for as long as this artifact remains tapped" pump
+(`pumpWhileTapped`) is stored on the source artifact and read by `layers.js`
+as a Layer 7c effect gated on `src.tapped` -- no separate duration/expiry
+tracking exists or is needed.
+
+**Cards implemented:** Alchor's Tomb (`colorChoiceTarget`), Darkpact
+(`darkpactExchange`), Ashnod's Battle Gear (`pumpWhileTapped`,
+`pumpRequiresControl: true`), Tawnos's Weaponry (`pumpWhileTapped`, any
+creature). All four were the last STUB entries deferred on choice/picker UI
+gaps.
+
+**Darkpact rules note:** "You own target card in the ante" was implemented as
+a targeting restriction (only the caster's own ante contributions are legal
+targets) rather than a separate ownership-changing effect, resolving an
+apparent disagreement between Forge's ability name (`GainOwnership`) and a
+literal reading of the Oracle text. Network access to verify against live
+Scryfall rulings was unavailable in this environment; see the completion
+summary for the full reasoning.
+
+### Tests
+- Vitest: `tests/scenarios/pending-choice-generalized.test.js`,
+  `ante-exchange-darkpact.test.js`, `upkeep-choice-registry.test.js`,
+  `alchors-tomb.test.js`.
+- Playwright: `tests/e2e/generalized-choice-mechanisms.spec.ts` (desktop +
+  mobile-chrome) -- exercises the ChoiceModal mobile-parity fix, the
+  Darkpact ante-picker, and the Ashnod's Battle Gear untap-step choice
+  through real button clicks on both viewports.
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.8
