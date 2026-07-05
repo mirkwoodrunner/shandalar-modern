@@ -16,8 +16,9 @@ import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
 import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
-import { ForceOfNatureUpkeepModal } from '../duel/ForceOfNatureUpkeepModal';
 import { SphereTriggerModal } from '../duel/SphereTriggerModal';
+import { ChoiceModal } from '../duel/ChoiceModal';
+import { UPKEEP_CHOICE_MODALS } from '../duel/upkeepChoiceRegistry';
 import { usePersistence, clearDuel } from '../../hooks/usePersistence';
 
 import { Topbar } from './Topbar';
@@ -60,8 +61,10 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
+    resolveAnteExchange, declineAnteExchange,
     resolveConditionalCounter,
     resolveUpkeepChoice,
+    resolveChoice,
     resolveSphereTrigger,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
@@ -262,6 +265,24 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         />
       )}
 
+      {s_state.pendingAnteExchange && s_state.pendingAnteExchange.caster === 'p' && (
+        <TutorModal
+          library={s_state.pendingAnteExchange.cards}
+          filter="any"
+          onChoose={(iid: string) => resolveAnteExchange(iid)}
+          onDecline={declineAnteExchange}
+          titleOverride="Darkpact — Choose a Card in the Ante"
+        />
+      )}
+
+      {s_state.pendingChoice && s_state.pendingChoice.controller === 'p' && (
+        <ChoiceModal
+          pendingChoice={s_state.pendingChoice}
+          allBf={[...s_state.p.bf, ...s_state.o.bf]}
+          onResolve={resolveChoice}
+        />
+      )}
+
       {s_state.pendingTransmuteSacrifice && s_state.pendingTransmuteSacrifice.caster === 'p' && (
         <TransmuteSacrificeModal
           artifacts={(s_state.p.bf as any[]).filter((c: any) => c.type?.includes('Artifact'))}
@@ -315,12 +336,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         );
       })()}
 
-      {s_state.pendingUpkeepChoice && s_state.active === 'p' && (
-        <ForceOfNatureUpkeepModal
-          greenMana={s_state.p.mana?.G ?? 0}
-          onResolve={resolveUpkeepChoice}
-        />
-      )}
+      {s_state.pendingUpkeepChoice && s_state.active === 'p' && (() => {
+        const entry = UPKEEP_CHOICE_MODALS[s_state.pendingUpkeepChoice.handlerKey];
+        if (!entry) return null;
+        const Comp = entry.component;
+        return <Comp {...entry.getProps(s_state, s_state.pendingUpkeepChoice, resolveUpkeepChoice)} />;
+      })()}
 
       {s_state.pendingSphereTrigger && s_state.pendingSphereTrigger.controller === 'p' && (() => {
         const st = s_state.pendingSphereTrigger;

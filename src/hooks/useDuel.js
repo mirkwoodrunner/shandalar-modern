@@ -130,6 +130,12 @@ dispatch({ type: 'CONFIRM_TRANSMUTE_PAY' }), []);
 const declineTransmutePay = useCallback(() =>
 dispatch({ type: 'DECLINE_TRANSMUTE_PAY' }), []);
 
+const resolveAnteExchange = useCallback((iid) =>
+dispatch({ type: 'RESOLVE_ANTE_EXCHANGE', iid }), []);
+
+const declineAnteExchange = useCallback(() =>
+dispatch({ type: 'DECLINE_ANTE_EXCHANGE' }), []);
+
 return {
 state,
 dispatch,
@@ -165,6 +171,8 @@ confirmTransmuteSacrifice,
 declineTransmuteSacrifice,
 confirmTransmutePay,
 declineTransmutePay,
+resolveAnteExchange,
+declineAnteExchange,
 };
 }
 

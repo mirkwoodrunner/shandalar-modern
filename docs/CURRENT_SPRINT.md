@@ -6,11 +6,23 @@
 
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.
-- **"Optional untap" mechanic**: no per-permanent "you may choose not to untap during your untap step" flag/UI exists (Ashnod's Battle Gear, Tawnos's Weaponry).
 - Additional Gemini mage prompts beyond the P2 starter roster.
 - **Gemini path COMBAT_BLOCKERS bug**: `GEMINI_PHASES` in `useDuelController.ts` includes `COMBAT_BLOCKERS`, reproducing the same AI auto-advance bug on the Gemini code path. Gated behind `config.useGemini && config.sandbox`; deferred as separate fix.
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
+
+## Completed (2026-07-05)
+- **Generalized Choice Mechanisms** -- three narrow choice mechanisms
+  (`pendingChoice`, `TutorModal`'s card-source, `pendingUpkeepChoice`) each
+  generalized minimally, unblocking the last four STUB cards deferred on
+  choice/picker UI gaps: Alchor's Tomb (`colorChoiceTarget`), Darkpact
+  (`darkpactExchange` + new `pendingAnteExchange`), Ashnod's Battle Gear and
+  Tawnos's Weaponry (`pumpWhileTapped` + new upkeep-choice registry). Also
+  fixed a real mobile-parity bug found during pre-flight: `ChoiceModal` was
+  desktop-only (never rendered by `DuelScreenMobile.tsx`) -- extracted to
+  `src/ui/duel/ChoiceModal.tsx` and now shared by both screens. See
+  `docs/MECHANICS_INDEX.md` -- Feature: Generalized Choice Mechanisms, and
+  `docs/SYSTEMS.md` Section 27.
 
 ## Completed (2026-07-04)
 - **Bug Fix: Ancestral Recall creature-targeting crash (ARCANE-1)** -- fixed Ancestral Recall crash on creature-click during targeting, same root cause as the earlier Lava Axe fix (`draw3` was missing from `PLAYER_ONLY_TARGET_EFFECTS`). See `docs/MECHANICS_INDEX.md` -- Bug Fix: Ancestral Recall creature-targeting crash.

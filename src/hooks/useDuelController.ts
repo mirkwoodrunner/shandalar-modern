@@ -218,6 +218,9 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'damage1AttackerOrBlocker', // Crimson Manticore -- "target attacking or blocking creature"
   // Ante cards (see THIRD_PARTY_NOTICES.md):
   'bronzeTabletExchange', // Bronze Tablet -- "target nontoken permanent an opponent owns"
+  // Generalized-choice-mechanisms batch (see THIRD_PARTY_NOTICES.md):
+  'colorChoiceTarget', // Alchor's Tomb -- "target permanent you control"
+  'pumpWhileTapped',   // Ashnod's Battle Gear / Tawnos's Weaponry -- "target creature [you control]"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -288,6 +291,8 @@ export function useDuelController(
     declineTransmuteSacrifice,
     confirmTransmutePay,
     declineTransmutePay,
+    resolveAnteExchange,
+    declineAnteExchange,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -356,7 +361,7 @@ export function useDuelController(
     if (
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
       s.pendingChoice || s.pendingTutor || s.pendingTransmuteSacrifice ||
-      s.pendingTransmutePay || s.pendingLotus || s.pendingBop
+      s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange
     ) {
       return;
     }
@@ -384,7 +389,7 @@ export function useDuelController(
     endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
-    s.pendingLotus, s.pendingBop, passPriority, requestPhaseAdvance,
+    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────
@@ -556,6 +561,17 @@ export function useDuelController(
       } else {
         chooseTutor(best.iid);
       }
+      return;
+    }
+
+    // AI resolves Darkpact's ante-exchange picker. Which own ante card gets
+    // swapped is blind (the outcome depends on the caster's own top library
+    // card, which is not worth scoring against), so the AI just takes the
+    // first one -- there's no meaningful heuristic to apply here.
+    if (s.pendingAnteExchange && s.pendingAnteExchange.caster === 'o') {
+      const first = s.pendingAnteExchange.cards[0];
+      if (first) resolveAnteExchange(first.iid);
+      else declineAnteExchange();
       return;
     }
 
@@ -752,7 +768,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -1235,6 +1251,8 @@ export function useDuelController(
     declineTransmuteSacrifice,
     confirmTransmutePay,
     declineTransmutePay,
+    resolveAnteExchange,
+    declineAnteExchange,
 
     // Phase advance
     requestPhaseAdvance,

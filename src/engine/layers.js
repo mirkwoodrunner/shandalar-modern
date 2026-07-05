@@ -296,6 +296,18 @@ function collectEffects(card, state) {
     }
   }
 
+  // 15. Ashnod's Battle Gear / Tawnos's Weaponry: "Target creature gets +X/+Y
+  //     for as long as this artifact remains tapped." whileTappedPump is set on
+  //     the source artifact by the pumpWhileTapped resolveEff case in
+  //     DuelCore.js. Gating on src.tapped here (rather than a stored duration)
+  //     means the bonus ends automatically the instant the artifact untaps --
+  //     no separate expiry tracking needed.
+  for (const src of allBf) {
+    const wtp = src.whileTappedPump;
+    if (!wtp || wtp.targetIid !== card.iid || !src.tapped) continue;
+    effects.push({ layer: '7c', power: wtp.power || 0, toughness: wtp.toughness || 0, enterTs: src.enterTs ?? 0 });
+  }
+
   return effects;
 }
 

@@ -13,6 +13,21 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Generalized Choice Mechanisms (4 deferred cards)
+
+The last four cards deferred on choice/picker UI gaps are now implemented (no
+longer `effect:"STUB"` in `cards.js`); rows are left in place below for
+historical reference. Implemented: `alchorss_tomb` (`colorChoiceTarget`,
+generalized `pendingChoice`), `darkpact` (`darkpactExchange`, new
+`pendingAnteExchange` -- see the 2026-07-03 entry below for why it was
+previously deferred), `ashnodss_battle_gear` and `tawnosss_weaponry`
+(`pumpWhileTapped`, new upkeep-choice registry for the "optional untap"
+mechanic). No new fourth choice mechanism was introduced -- each of the three
+existing narrow mechanisms (`pendingChoice`, `TutorModal`'s card-source,
+`pendingUpkeepChoice`) was extended minimally instead. See
+`docs/MECHANICS_INDEX.md` -- Feature: Generalized Choice Mechanisms, and
+`docs/SYSTEMS.md` Section 27.
+
 ### 2026-07-03 — Complete Ante System (6 of 7 ante cards)
 
 Six of the seven ante cards below are now implemented (no longer `effect:"STUB"`
