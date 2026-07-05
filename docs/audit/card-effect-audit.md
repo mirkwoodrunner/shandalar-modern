@@ -13,6 +13,13 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C3 (7 of 7 implemented)
+
+Sub-batch C3 (static/continuous) of the complex-tier Card-Forge/forge batch.
+Implemented: `angry_mob`, `rabid_wombat`, `damping_field`, `farmstead`,
+`hidden_path`, `phantasmal_terrain`, `energy_flux`. No deferrals -- all
+mapped cleanly onto the existing layers.js/upkeep-choice infrastructure.
+
 ### 2026-07-05 — Complex-Tier C2 (2 of 2 implemented)
 
 Sub-batch C2 (keyword-line cards) of the complex-tier Card-Forge/forge batch.

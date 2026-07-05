@@ -12,6 +12,14 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-07-05)
+- **Complex-Tier C3 -- Static/Continuous Effects (Forge Reference)** -- 7 of 7
+  targeted stub cards implemented, no deferrals: Angry Mob, Rabid Wombat,
+  Damping Field, Farmstead, Hidden Path, Phantasmal Terrain, Energy Flux. New
+  turn-conditional CDA evaluator, new `basicLandTypeChoice` pendingChoice
+  kind. Observed (not fixed, pre-existing): the `burnMana()`/upkeep-check
+  ordering means an AI opponent's "pay mana or sacrifice" upkeep choices
+  always resolve to sacrifice in practice. See `docs/MECHANICS_INDEX.md` --
+  Batch: Complex-Tier C3.
 - **Complex-Tier C2 -- Keyword-Line Cards (Forge Reference)** -- 2 of 2
   targeted stub cards implemented, no deferrals: Phyrexian Gremlins
   (`lockArtifactWhileTapped`, new `optionalUntapAlways`/`lockedByIid`

@@ -92,6 +92,9 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'sewersOfEstark',        // Sewers of Estark -- "target creature"
   'winterBlastTapX',       // Winter Blast -- "X target creatures"
   'volcanicEruption',      // Volcanic Eruption -- "X target Mountains"
+  // Complex-tier Forge batch C3 (see THIRD_PARTY_NOTICES.md):
+  'enchantLand',              // Farmstead (and Wild Growth/Kudzu/Evil Presence) -- "enchant land"
+  'phantasmalTerrainEnchant', // Phantasmal Terrain -- "enchant land"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {

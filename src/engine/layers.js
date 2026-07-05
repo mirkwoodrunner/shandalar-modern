@@ -72,6 +72,14 @@ export const CDA_EVALUATORS = {
   // Adapted from Card-Forge/forge (p/people_of_the_woods.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   peopleOfTheWoodsToughness: (card, state) =>
     state[card.controller]?.bf.filter(x => isLand(x) && subOf(x).includes('Forest')).length ?? 0,
+  // Angry Mob: during your turn, power and toughness are each 2 plus the number
+  // of Swamps your opponents control. During turns other than yours, 2/2.
+  // Adapted from Card-Forge/forge (a/angry_mob.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  angryMobPT: (card, state) => {
+    if (state.active !== card.controller) return 2;
+    const opp = card.controller === 'p' ? 'o' : 'p';
+    return 2 + (state[opp]?.bf.filter(x => isLand(x) && subOf(x).includes('Swamp')).length ?? 0);
+  },
 };
 
 function getTs(eff) {
@@ -296,7 +304,20 @@ function collectEffects(card, state) {
     }
   }
 
-  // 15. Ashnod's Battle Gear / Tawnos's Weaponry: "Target creature gets +X/+Y
+  // 15. Rabid Wombat: "gets +2/+2 for each Aura attached to it."
+  //     Adapted from Card-Forge/forge (r/rabid_wombat.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (card.name === 'Rabid Wombat') {
+    const auraCount = card.enchantments?.length ?? 0;
+    if (auraCount > 0) effects.push({ layer: '7c', power: auraCount * 2, toughness: auraCount * 2, enterTs: 0 });
+  }
+
+  // 16. Hidden Path: "Green creatures have forestwalk."
+  //     Adapted from Card-Forge/forge (h/hidden_path.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.color === 'G' && [...(state.p?.bf ?? []), ...(state.o?.bf ?? [])].some(h => h.name === 'Hidden Path')) {
+    effects.push({ layer: 6, addKeywords: [KEYWORDS.FORESTWALK.id], enterTs: 0 });
+  }
+
+  // 17. Ashnod's Battle Gear / Tawnos's Weaponry: "Target creature gets +X/+Y
   //     for as long as this artifact remains tapped." whileTappedPump is set on
   //     the source artifact by the pumpWhileTapped resolveEff case in
   //     DuelCore.js. Gating on src.tapped here (rather than a stored duration)

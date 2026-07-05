@@ -3242,4 +3242,50 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.10
+## Batch: Complex-Tier C3 -- Static/Continuous Effects (Forge Reference)
+
+**Scope:** 7 of 7 targeted C3 stub cards implemented, no deferrals.
+
+**Cards implemented:** Angry Mob (`angryMobPT` CDA), Rabid Wombat (aura-count
+P/T bonus), Damping Field (`dampingFieldOut`/`artifactsUntapped`), Farmstead
+(`farmsteadUpkeep`), Hidden Path (Hidden Path forestwalk grant), Phantasmal
+Terrain (`phantasmalTerrainEnchant` + `basicLandTypeChoice`), Energy Flux
+(`energyFluxUpkeep`).
+
+**New engine mechanisms:**
+- `angryMobPT` CDA evaluator (`layers.js`) -- the first turn-conditional CDA
+  (`state.active !== card.controller` branch); all prior CDA evaluators were
+  turn-blind.
+- `artifactsUntapped` untap-phase counter, same idiom as the existing
+  `landsUntapped` (Winter Orb)/`cresUntapped` (Smoke) counters. Damping Field.
+- `farmsteadUpkeep`/`energyFluxUpkeep` UPKEEP_CHOICE_HANDLERS entries, plus a
+  new pattern: checking an aura's *name* (Farmstead) or a global permanent's
+  *name* (Energy Flux) inside the per-card upkeep loop, rather than gating on
+  the affected card's own `card.upkeep` field -- needed because both cards
+  grant an ability to a permanent that doesn't otherwise have one.
+- `basicLandTypeChoice` pendingChoice kind -- same shape as the existing
+  `colorChoice` (Alchor's Tomb) but for a 5-option basic-land-type pick,
+  applied to an aura's `mod.layerDef` after the aura is already attached.
+  Phantasmal Terrain.
+
+**Note:** Energy Flux/Farmstead's opponent (AI) auto-decide branch is written
+symmetrically to the existing Force of Nature convention, but that whole
+convention has a latent (pre-existing, not introduced here) ordering issue:
+`burnMana()` runs before the upkeep-effects loop on every phase transition,
+so an AI-controlled player's mana pool is always 0 by the time any
+"pay mana or sacrifice" upkeep check runs in the same transition. This
+already affected Force of Nature and is not fixed here (out of scope --
+logged per CLAUDE.md's protected-file observation rule). The player-facing
+path (via `UPKEEP_CHOICE_HANDLERS`, where mana is tapped in response to the
+prompt) is unaffected and fully functional.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c3-statics.test.js` (10 cases).
+- Full existing Vitest suite (459 tests) re-run clean after this sub-batch.
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.11

@@ -149,3 +149,10 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Forcefield (`forcefieldShield` activated ability effect + `combatDamageShield` identity-scoped prevention hook in `hurt()`, DuelCore.js) | Card-Forge/forge | f/forcefield.txt | GPL-3.0 |
 | 2026-07-05 | Phyrexian Gremlins (`lockArtifactWhileTapped` activated ability effect + `optionalUntapAlways`/`lockedByIid` untap-phase hooks, DuelCore.js/cards.js) | Card-Forge/forge | p/phyrexian_gremlins.txt | GPL-3.0 |
 | 2026-07-05 | Wall of Wonder (`wallOfWonderPump` activated ability effect + `canAttackDespiteDefender` DECLARE_ATTACKER hook, DuelCore.js/cards.js) | Card-Forge/forge | w/wall_of_wonder.txt | GPL-3.0 |
+| 2026-07-05 | Angry Mob (`angryMobPT` CDA evaluator, layers.js/cards.js) | Card-Forge/forge | a/angry_mob.txt | GPL-3.0 |
+| 2026-07-05 | Rabid Wombat (aura-count P/T bonus, layers.js `collectEffects`) | Card-Forge/forge | r/rabid_wombat.txt | GPL-3.0 |
+| 2026-07-05 | Damping Field (`dampingFieldOut`/`artifactsUntapped` untap-phase hook, DuelCore.js) | Card-Forge/forge | d/damping_field.txt | GPL-3.0 |
+| 2026-07-05 | Farmstead (`farmsteadUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | f/farmstead.txt | GPL-3.0 |
+| 2026-07-05 | Hidden Path (Hidden Path forestwalk grant, layers.js `collectEffects`) | Card-Forge/forge | h/hidden_path.txt | GPL-3.0 |
+| 2026-07-05 | Phantasmal Terrain (`phantasmalTerrainEnchant` spell effect + `basicLandTypeChoice` pendingChoice kind, DuelCore.js/cards.js) | Card-Forge/forge | p/phantasmal_terrain.txt | GPL-3.0 |
+| 2026-07-05 | Energy Flux (`energyFluxUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | e/energy_flux.txt | GPL-3.0 |

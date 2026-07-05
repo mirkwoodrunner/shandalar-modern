@@ -3075,6 +3075,37 @@ case "wallOfWonderPump": {
   break;
 }
 // --- END BATCH: COMPLEX-TIER C2 ----------------------------------------------
+// --- BEGIN BATCH: COMPLEX-TIER C3 (static/continuous) ------------------------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+// Phantasmal Terrain: "Enchant land. As this Aura enters, choose a basic land
+// type. Enchanted land is the chosen type." Attach first (empty mod), then
+// present the basic-land-type choice; RESOLVE_CHOICE fills in mod.layerDef.
+case "phantasmalTerrainEnchant": {
+  if (tgtC && isLand(tgtC)) {
+    const auraRecord = { iid: card.iid, name: card.name, mod: {}, controller: caster, cardData: { ...card } };
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
+    ) } };
+    ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
+    ns = createPendingChoice(ns, {
+      sourceCardId: card.iid,
+      controller: caster,
+      kind: 'basicLandTypeChoice',
+      targetIid: tgtC.iid,
+      options: [
+        { id: 'Plains', label: 'Plains' },
+        { id: 'Island', label: 'Island' },
+        { id: 'Swamp', label: 'Swamp' },
+        { id: 'Mountain', label: 'Mountain' },
+        { id: 'Forest', label: 'Forest' },
+      ],
+    });
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid land target.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: COMPLEX-TIER C3 ----------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -3458,6 +3489,11 @@ if (powerSurgeOnField) {
 const meekstoneOut = allBF_s.some(x => x.id === "meekstone");
 const winterOrbOut = allBF_s.some(x => x.id === "winter_orb" && !x.tapped);
 const smokeOut     = allBF_s.some(x => x.id === "smoke");
+// Damping Field: "Players can't untap more than one artifact during their untap
+// steps." Same per-turn-counter idiom as winterOrbOut (lands) / smokeOut (creatures).
+// Adapted from Card-Forge/forge (d/damping_field.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const dampingFieldOut = allBF_s.some(x => x.id === "damping_field");
+let artifactsUntapped = 0;
 let landsUntapped = 0, cresUntapped = 0;
 // Old Man of the Sea: revert stolen creatures before Old Man untaps.
 // If Old Man would untap this step (not blocked by Meekstone/Paralyze), any creature
@@ -3508,6 +3544,10 @@ if (c.lockedByIid) {
   const locker = [...ns.p.bf, ...ns.o.bf].find(x => x.iid === c.lockedByIid);
   if (locker && locker.tapped) return base;
 }
+if (isArt(c)) {
+  if (dampingFieldOut && artifactsUntapped >= 1) return base;
+  artifactsUntapped++;
+}
 return { ...base, tapped:false };
 }) } };
 if (ns.active === 'p') {
@@ -3531,6 +3571,38 @@ if (!ns.dungeonMod || ns.dungeonMod !== 'SILENCE') {
 for (const w of ["p","o"]) {
 for (const c of [...ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
+// Energy Flux: "All artifacts have 'At the beginning of your upkeep, sacrifice
+// this artifact unless you pay {2}.'" Global grant to every artifact regardless
+// of its own card.upkeep field -- checked here rather than via the switch below.
+// Adapted from Card-Forge/forge (e/energy_flux.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && isArt(c) && [...ns.p.bf, ...ns.o.bf].some(x => x.name === "Energy Flux")) {
+  if (w === "o") {
+    const totalMana = Object.values(ns.o.mana).reduce((a, b) => a + b, 0);
+    if (totalMana >= 2) {
+      ns = { ...ns, o: { ...ns.o, mana: payMana(ns.o.mana, "2") } };
+      ns = dlog(ns, `${c.name}: opponent pays {2} (Energy Flux).`, "mana");
+    } else {
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = dlog(ns, `${c.name} sacrificed (Energy Flux).`, "death");
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "energyFluxUpkeep", iid: c.iid });
+  }
+}
+// Farmstead: "Enchanted land has 'At the beginning of your upkeep, you may pay
+// {W}{W}. If you do, you gain 1 life.'" Checked via the attached aura's name
+// rather than the land's own card.upkeep field.
+// Adapted from Card-Forge/forge (f/farmstead.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && isLand(c) && c.enchantments?.some(e => e.name === "Farmstead")) {
+  if (w === "o") {
+    if ((ns.o.mana.W ?? 0) >= 2) {
+      ns = { ...ns, o: { ...ns.o, mana: { ...ns.o.mana, W: ns.o.mana.W - 2 } } };
+      ns = hurt(ns, "o", -1, "Farmstead");
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Farmstead", handlerKey: "farmsteadUpkeep", iid: c.iid });
+  }
+}
 switch (c.upkeep) {
 case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
 case "forceOfNatureUpkeep": {
@@ -4167,6 +4239,33 @@ const UPKEEP_CHOICE_HANDLERS = {
       const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
       const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
       return dlog(ns, `${choice.cardName} untaps.`, "info");
+    },
+  },
+  // Energy Flux: "sacrifice this artifact unless you pay {2}." choice.iid is the artifact.
+  // Adapted from Card-Forge/forge (e/energy_flux.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  energyFluxUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice !== "PAY") {
+        return dlog(zMove(s, choice.iid, owner, owner, "gy"), `${choice.cardName} sacrificed (Energy Flux).`, "death");
+      }
+      const totalMana = Object.values(s[owner].mana).reduce((a, b) => a + b, 0);
+      if (totalMana < 2) {
+        return dlog(zMove(s, choice.iid, owner, owner, "gy"), `${choice.cardName} sacrificed -- could not pay {2}.`, "death");
+      }
+      const ns = { ...s, [owner]: { ...s[owner], mana: payMana(s[owner].mana, "2") } };
+      return dlog(ns, `${choice.cardName}: paid {2} (Energy Flux).`, "mana");
+    },
+  },
+  // Farmstead: "you may pay {W}{W}. If you do, you gain 1 life." choice.iid is the enchanted land.
+  // Adapted from Card-Forge/forge (f/farmstead.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  farmsteadUpkeep: {
+    resolve(s, choice, action) {
+      if (action.choice !== "PAY") return dlog(s, "Farmstead: declines to pay.", "info");
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if ((s[owner].mana.W ?? 0) < 2) return dlog(s, "Farmstead: not enough mana to pay {W}{W}.", "info");
+      const ns = { ...s, [owner]: { ...s[owner], mana: { ...s[owner].mana, W: s[owner].mana.W - 2 } } };
+      return hurt(ns, owner, -1, "Farmstead");
     },
   },
 };
@@ -5328,6 +5427,26 @@ case "RESOLVE_CHOICE": {
       targets: choice.tgt ? [choice.tgt] : [],
       xVal: choice.xVal,
     });
+  }
+
+  // Phantasmal Terrain: "As this Aura enters, choose a basic land type.
+  // Enchanted land is the chosen type." Same shape as colorChoice above, applied
+  // to the already-attached aura's mod.layerDef instead of the card's own color.
+  // Adapted from Card-Forge/forge (p/phantasmal_terrain.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (choice.kind === 'basicLandTypeChoice') {
+    let ns = { ...s, pendingChoice: null };
+    const targetIid = choice.targetIid;
+    const owner = ns.p.bf.some(c => c.iid === targetIid) ? 'p'
+                : ns.o.bf.some(c => c.iid === targetIid) ? 'o'
+                : null;
+    if (!owner) return dlog(ns, "Phantasmal Terrain fizzles -- target no longer exists.", "effect");
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid ? {
+      ...c, enchantments: (c.enchantments || []).map(e => e.iid === choice.sourceCardId
+        ? { ...e, mod: { ...e.mod, layerDef: { layer: 4, setSubtypes: [action.optionId] } } }
+        : e),
+    } : c) } };
+    ns = recomputeTypeEffects(ns);
+    return dlog(ns, `Phantasmal Terrain: the enchanted land is now a ${action.optionId}.`, "effect");
   }
 
   // Numeric choices ("choose a number between 0 and N"): Mind Bomb chains this
