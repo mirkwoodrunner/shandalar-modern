@@ -87,6 +87,14 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'scryTop5Reveal',                // Visions -- "target player"
   'tapXCreatures',                 // Word of Binding -- "X target creatures"
   'gainAndDealDamageThisTurn',     // Simulacrum -- "target creature you control"
+  // Complex-tier Forge batch C1 (see THIRD_PARTY_NOTICES.md):
+  'alabasterPotionChoice', // Alabaster Potion -- "target player" / "any target" (modal)
+  'sewersOfEstark',        // Sewers of Estark -- "target creature"
+  'winterBlastTapX',       // Winter Blast -- "X target creatures"
+  'volcanicEruption',      // Volcanic Eruption -- "X target Mountains"
+  // Complex-tier Forge batch C3 (see THIRD_PARTY_NOTICES.md):
+  'enchantLand',              // Farmstead (and Wild Growth/Kudzu/Evil Presence) -- "enchant land"
+  'phantasmalTerrainEnchant', // Phantasmal Terrain -- "enchant land"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -221,6 +229,15 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   // Generalized-choice-mechanisms batch (see THIRD_PARTY_NOTICES.md):
   'colorChoiceTarget', // Alchor's Tomb -- "target permanent you control"
   'pumpWhileTapped',   // Ashnod's Battle Gear / Tawnos's Weaponry -- "target creature [you control]"
+  // Complex-tier Forge batch C1 (see THIRD_PARTY_NOTICES.md):
+  'trackerDamageExchange', // Tracker -- "target creature"
+  'bansheeDrain',          // Banshee -- "any target"
+  'forcefieldShield',      // Forcefield -- "an unblocked creature of your choice"
+  // Complex-tier Forge batch C2 (see THIRD_PARTY_NOTICES.md):
+  'lockArtifactWhileTapped', // Phyrexian Gremlins -- "target artifact"
+  // Complex-tier Forge batch C4 (see THIRD_PARTY_NOTICES.md):
+  'bounceUnenchanted', // Time Elemental -- "target permanent that isn't enchanted"
+  // Erosion reuses 'enchantCreature' (already registered above) for its "enchant land" attach.
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -233,6 +250,8 @@ const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   // Moderate-tier Forge batch M1 (see THIRD_PARTY_NOTICES.md):
   'damage1AnySelf1',          // Brothers of Fire -- "deals 1 damage to any target"
   'preventDamage1AnyReturnEnd', // Rakalite -- "prevent... damage to any target"
+  // Complex-tier Forge batch C1 (see THIRD_PARTY_NOTICES.md):
+  'bansheeDrain', // Banshee -- "any target"
 ]);
 
 function scoreLibCard(card: any, _state: any): number {

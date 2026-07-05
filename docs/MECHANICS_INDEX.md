@@ -3154,4 +3154,351 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.8
+## Batch: Complex-Tier C1 -- Activated Abilities and Spells (Forge Reference)
+
+**Scope:** 13 of 25 targeted C1 stub cards implemented; 12 deferred.
+
+**Cards implemented:** Alabaster Potion (`alabasterPotionChoice`), Sewers of
+Estark (`sewersOfEstark`), Siren's Call (`sirensCall`), Tracker
+(`trackerDamageExchange`), Winter Blast (`winterBlastTapX`), Banshee
+(`bansheeDrain`), Eternal Flame (`eternalFlameDrain`), Martyr's Cry
+(`martyrsCry`), Volcanic Eruption (`volcanicEruption`), Winds of Change
+(`windsOfChange`), Mana Clash (`manaClash`), Mind Bomb (`mindBomb`),
+Forcefield (`forcefieldShield`).
+
+**Deferred (12):** Guardian Angel, Ring of Ma'rûf, Greater Realm of
+Preservation, Circle of Protection (Artifacts/Black/Blue/Green/Red/White --
+all 6), Pyramids, Eye for an Eye, Aladdin's Lamp. See completion summary for
+per-card reasons; the common thread across 9 of the 12 is a real
+infrastructure gap discovered during pre-flight: `damageShield` was written
+by several existing cards but never consumed anywhere in `hurt()`.
+
+**Real bug fixed (pre-existing, not new to this batch):** `hurt()` never
+read `.damageShield` before this batch -- Conservator, Argivian Blacksmith,
+and Rakalite (all pre-existing cards) had been setting a shield field that
+did nothing. Fixed in `hurt()` (player-level flat shield + new
+`combatDamageShield` identity-scoped variant for Forcefield) and via a new
+`dmgWithShield()` helper used at all 4 creature-vs-creature combat damage
+call sites in `resolveCombat()`. Both expire at end of turn (added to the
+existing CLEANUP cleanup loop, which previously only cleared the
+creature-level field, never the player-level one).
+
+**New engine mechanisms:**
+- `modalChoice` pendingChoice kind (`DuelCore.js` `RESOLVE_CHOICE`) --
+  spell-level "choose one --" effects, re-enters `resolveEff()` directly
+  (unlike the existing `triggered_ability_choice` default, which only
+  reaches the narrower `resolveTriggeredEffect` vocabulary). Alabaster
+  Potion is the first user.
+- `numberChoice` pendingChoice kind + `NUMBER_CHOICE_HANDLERS` registry
+  (mirrors `UPKEEP_CHOICE_HANDLERS`) -- "choose a number" effects, chainable
+  across players via `nextPlayer`. Mind Bomb is the first user.
+- `preventCombatDamageDealt` flag, checked at all 6 attacker/blocker combat
+  damage-dealt sites in `resolveCombat()` (source-side, independent of the
+  existing receiver-side Gaseous Form checks). Sewers of Estark.
+- `pendingSirenSweep` -- one-shot end-of-turn sweep flag consumed in the
+  existing CLEANUP block, reusing `turnState.attackedThisCombat`. Siren's
+  Call.
+
+**Not hard-enforced (documented simplification):** Siren's Call's "cast only
+during an opponent's turn, before attackers are declared" timing restriction
+-- no CAST_SPELL timing-gate mechanism exists yet in this engine.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c1-activated.test.js` (14 cases).
+- Full existing Vitest suite (445 tests) re-run clean after this sub-batch.
+- Playwright: deferred to the consolidated `batch-complex-tier-general.spec.ts`
+  at the end of the full C1-C4 batch (see completion summary).
+
+### Status
+ACTIVE
+
+---
+
+## Batch: Complex-Tier C2 -- Keyword-Line Cards (Forge Reference)
+
+**Scope:** 2 of 2 targeted C2 stub cards implemented, no deferrals.
+
+**Cards implemented:** Phyrexian Gremlins (`lockArtifactWhileTapped`), Wall of
+Wonder (`wallOfWonderPump`).
+
+**New engine mechanisms:**
+- `optionalUntapAlways` -- generalizes the existing `optionalUntap`
+  mechanism (previously artifact-only, gated on `whileTappedPump`) to
+  creatures with no P/T-pump precondition. Phyrexian Gremlins.
+- `lockedByIid` -- a locked permanent doesn't untap during its controller's
+  untap step for as long as the locking creature (by iid) remains tapped,
+  checked in the UNTAP-phase map alongside the existing Winter Orb/Smoke/
+  Paralyze checks. Phyrexian Gremlins.
+- `canAttackDespiteDefender` -- until-end-of-turn override checked in
+  `DECLARE_ATTACKER` alongside the existing `KEYWORDS.DEFENDER` gate. Wall of
+  Wonder.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c2-keywords.test.js` (4 cases).
+- Full existing Vitest suite (449 tests) re-run clean after this sub-batch.
+
+### Status
+ACTIVE
+
+---
+
+## Batch: Complex-Tier C3 -- Static/Continuous Effects (Forge Reference)
+
+**Scope:** 7 of 7 targeted C3 stub cards implemented, no deferrals.
+
+**Cards implemented:** Angry Mob (`angryMobPT` CDA), Rabid Wombat (aura-count
+P/T bonus), Damping Field (`dampingFieldOut`/`artifactsUntapped`), Farmstead
+(`farmsteadUpkeep`), Hidden Path (Hidden Path forestwalk grant), Phantasmal
+Terrain (`phantasmalTerrainEnchant` + `basicLandTypeChoice`), Energy Flux
+(`energyFluxUpkeep`).
+
+**New engine mechanisms:**
+- `angryMobPT` CDA evaluator (`layers.js`) -- the first turn-conditional CDA
+  (`state.active !== card.controller` branch); all prior CDA evaluators were
+  turn-blind.
+- `artifactsUntapped` untap-phase counter, same idiom as the existing
+  `landsUntapped` (Winter Orb)/`cresUntapped` (Smoke) counters. Damping Field.
+- `farmsteadUpkeep`/`energyFluxUpkeep` UPKEEP_CHOICE_HANDLERS entries, plus a
+  new pattern: checking an aura's *name* (Farmstead) or a global permanent's
+  *name* (Energy Flux) inside the per-card upkeep loop, rather than gating on
+  the affected card's own `card.upkeep` field -- needed because both cards
+  grant an ability to a permanent that doesn't otherwise have one.
+- `basicLandTypeChoice` pendingChoice kind -- same shape as the existing
+  `colorChoice` (Alchor's Tomb) but for a 5-option basic-land-type pick,
+  applied to an aura's `mod.layerDef` after the aura is already attached.
+  Phantasmal Terrain.
+
+**Note:** Energy Flux/Farmstead's opponent (AI) auto-decide branch is written
+symmetrically to the existing Force of Nature convention, but that whole
+convention has a latent (pre-existing, not introduced here) ordering issue:
+`burnMana()` runs before the upkeep-effects loop on every phase transition,
+so an AI-controlled player's mana pool is always 0 by the time any
+"pay mana or sacrifice" upkeep check runs in the same transition. This
+already affected Force of Nature and is not fixed here (out of scope --
+logged per CLAUDE.md's protected-file observation rule). The player-facing
+path (via `UPKEEP_CHOICE_HANDLERS`, where mana is tapped in response to the
+prompt) is unaffected and fully functional.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c3-statics.test.js` (10 cases).
+- Full existing Vitest suite (459 tests) re-run clean after this sub-batch.
+
+### Status
+ACTIVE
+
+---
+
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint A
+
+**Scope:** 12 of 41 targeted C4 stub cards implemented in this checkpoint; 7
+deferred so far (checkpointing every ~10-12 cards per the prompt).
+
+**Cards implemented:** El-Hajjâj, Feedback, Island Sanctuary, Mold Demon, Wall
+of Tombstones, Wanderlust, Warp Artifact, Ydwen Efreet, Abomination,
+Cockatrice, Infernal Medusa, Time Elemental.
+
+**Deferred (7):** Library of Leng, Psychic Venom, Artifact Possession,
+Artifact Ward, Blight, Relic Bind, Oubliette. Psychic Venom/Artifact
+Possession/Blight/Relic Bind share one root cause: an ON_TAP ("becomes
+tapped") trigger event that doesn't exist in the confirmed vocabulary --
+flagged per the prompt's ground rules rather than silently added. Oubliette
+needs phasing (confirmed absent). Library of Leng and Artifact Ward would
+each need a centralized choke point (discard call sites; target-validation)
+that doesn't exist -- implementing only part of either would violate the
+no-half-implementation rule.
+
+**New engine mechanisms:**
+- `endOfCombatDestroy`/`endOfCombatSacrifice` turnState arrays, generalizing
+  the existing `venomTargets` idiom to a reusable "queue this iid for an
+  effect at COMBAT_END" pattern. Unblocks Abomination/Infernal
+  Medusa/Cockatrice (`blocksDestroyFilter`/`blockedByDestroyFilter` card
+  fields, checked in `DECLARE_BLOCKER`) and Time Elemental
+  (`sacrificeAtEndOfCombat`, checked in `DECLARE_ATTACKER`/`DECLARE_BLOCKER`).
+- **Real bug fixed:** `PHASE.COMBAT_DAMAGE` handling never called
+  `processTriggerQueue()` after `resolveCombat()`, so ON_DAMAGE_DEALT-based
+  triggered abilities queued during combat were silently dropped -- El-Hajjâj
+  is the first card to actually need this drained. Safe fix: no pre-existing
+  `triggeredAbilities` entry keys off ON_DAMAGE_DEALT (Sengir Vampire's
+  counter uses a separate hardcoded ON_CREATURE_DIES path).
+- `selfIsDamageSource` condition -- `scope:'self'` can't be reused outside
+  ON_CREATURE_DIES (it's derived from that event's `dyingCardId`
+  specifically); any other self-scoped event type needs an explicit
+  condition instead. El-Hajjâj.
+- ON_DAMAGE_DEALT emission extended to the two unblocked-attacker `hurt()`
+  call sites in `resolveCombat()` (previously only emitted for
+  blocked-creature-vs-creature damage). El-Hajjâj, Merchant Ship (checkpoint B).
+- `skipEtbPush` -- a permanent whose ETB effect sacrifices it immediately
+  (Mold Demon) needs to suppress `RESOLVE_STACK`'s normal ETB push, which
+  otherwise re-adds it (the existing `alreadyOnBf` guard can't distinguish
+  "never placed" from "placed then removed").
+- `coinFlipOnBlock` -- Ydwen Efreet is the first card needing a coin flip
+  inside `DECLARE_BLOCKER` itself; follows the same already-flagged
+  `Math.random()` idiom as Mana Clash (C1) pending a seeded-RNG migration.
+- `islandSanctuaryProtected` -- draw-skip (auto-taken, documented
+  simplification) sets a flag consumed by a new `DECLARE_ATTACKER` gate,
+  cleared when the protected player's own turn comes back around.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-a.test.js` (13 cases).
+- Full existing Vitest suite (472 tests) re-run clean after this checkpoint.
+
+### Status
+ACTIVE (checkpoint A of C4 -- more checkpoints follow)
+
+---
+
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint B
+
+**Scope:** 11 more of 41 targeted C4 stub cards implemented (23/41 total so
+far); 1 more deferred (8 total so far).
+
+**Cards implemented:** Goblins of the Flarg, Cosmic Horror, Nafs Asp, Sunken
+City, Drop of Honey, Erosion, Merchant Ship, Nether Shadow, Shapeshifter,
+Island Fish Jasconius, Jihad.
+
+**Deferred:** Personal Incarnation -- its `{0}` damage-redirect-to-owner
+ability needs creature-damage redirection, which (like the C1 damageShield
+gap) isn't centralized; creature damage is applied via ad hoc inline
+mutation at combat sites and dozens of resolveEff cases. The companion
+death-trigger clause is buildable via existing infra, but implementing only
+that half would misrepresent the card's defining mechanic.
+
+**New engine mechanisms:**
+- Generalized the Pestilence "sacrifice when a battlefield-wide condition is
+  true" idiom (checked at CLEANUP) to Drop of Honey, Goblins of the Flarg,
+  Merchant Ship/Island Fish Jasconius (`sacrificeIfNoIslands`), and Jihad.
+- `doesNotUntapNormally` -- a permanent that never untaps automatically
+  during the untap-phase map, only via an explicit paid action. Island Fish
+  Jasconius; reused later for Leviathan and Time Vault.
+- **Real correctness fix mid-checkpoint:** the first draft of
+  `cosmicHorrorUpkeep`/`sunkenCityUpkeep`/`payToUntapSelf` auto-decided the
+  "pay or else" choice synchronously inline for both players, including the
+  human. Since `burnMana()` runs at every phase boundary before any upkeep
+  check, a human player's mana is always 0 at that exact instant -- this
+  would have made these costs impossible to pay in a live game, not just in
+  tests. Fixed to follow the established Farmstead/Energy Flux convention:
+  auto-decide only for the AI opponent; queue via
+  `UPKEEP_CHOICE_HANDLERS` for the human player, who taps mana in response
+  to the prompt.
+- Nether Shadow needed a graveyard-position scan (not the battlefield loop
+  the rest of the upkeep switch uses) -- "cards above it" reads as "added to
+  the graveyard after it" (higher array index, since new discards are
+  pushed to the end).
+- `numberChoice` extended with a second real user: Shapeshifter (ETB +
+  optional upkeep re-prompt, human-only -- the AI keeps its current value
+  rather than being re-prompted every turn).
+- `jihadColorChoice` pendingChoice kind -- sets fields on the *source* card
+  itself (unlike `colorChoice`, which recolors a separate target).
+
+**Observed, not caused by this checkpoint:** `AI.sim.test.js`'s
+"deterministic given the same initial state" test is empirically flaky
+(~12% failure rate measured over 8 runs) on the pre-checkpoint-B baseline
+(commit with checkpoint A only) -- root cause is the already-documented,
+deliberately-accepted `Math.random()` coin-flip idiom (Mana Clash, Ydwen
+Efreet) reachable in some AI simulation paths, not anything introduced in
+this checkpoint. Confirmed via repeated runs on both the pre- and
+post-checkpoint-B code; the flake rate is consistent across both. Seeding
+the RNG is out of scope per the batch's ground rules.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-b.test.js` (15 cases).
+- Full existing Vitest suite (487 tests) re-run; 486 passed, 1 pre-existing
+  flaky failure diagnosed above and confirmed unrelated to this checkpoint's
+  changes.
+
+### Status
+ACTIVE (checkpoint B of C4 -- more checkpoints follow)
+
+---
+
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint C (final)
+
+**Scope:** Final 7 cards for this checkpoint; no additional deferrals (8
+deferred total across C4's three checkpoints). Across the three checkpoints'
+own "Cards implemented"/"Deferred" lists, C4 accounts for 30 implemented + 8
+deferred = 38 cards by name; checkpoints A and B both cited "41 targeted C4
+stub cards" as the sub-batch total, so 3 cards are unaccounted for between
+that stated total and the itemized lists across all three checkpoint
+entries. This discrepancy predates this checkpoint (present already after
+checkpoint B) and is flagged in the final completion summary rather than
+silently resolved here, since reconciling it needs the original C4 card
+list from the task prompt, not something inferable from the docs alone.
+
+**Cards implemented:** Time Vault, Goblin Artisans, Leviathan, Yawgmoth
+Demon, Magnetic Mountain, Power Leak, Lich.
+
+**New engine mechanisms:**
+- Time Vault's turn-transition skip-turn check (added to the same block that
+  already handles Island Sanctuary's protection-clear) -- "if you would
+  begin your turn while this artifact is tapped, you may skip that turn
+  instead. If you do, untap this artifact." Simplification: always skips
+  (no decline UI), matching the convention already used for other such
+  "may" replacement effects.
+- Magnetic Mountain reuses the `doesNotUntapNormally`-adjacent untap-phase
+  map (a new `magneticMountainOut && c.color === "U"` check) plus a new
+  two-stage upkeep-choice flow (see correctness fix below).
+- Lich required the most new `hurt()` surface of the batch: (a) "if you
+  would gain life, draw that many cards instead" (early-return override),
+  (b) "you don't lose the game for having 0 or less life" (gates the
+  existing `nl <= 0` game-over check), (c) "whenever you're dealt damage,
+  sacrifice that many nontoken permanents; if you can't, you lose the game"
+  (gated on `!meta?.isLifeLoss` so Lich's own ETB life-loss doesn't
+  self-trigger the sacrifice clause). Its own death trigger
+  (`scope:'self'`, `ON_PERMANENT_LEAVES_BF`) reuses the `dyingCard`
+  generalization added in checkpoint A, combined with a new
+  `destinationIsGY` condition so bounce/exile don't also end the game.
+- No new token tracking exists anywhere in this engine (every permanent is
+  treated as nontoken), matching the pre-existing Beasts of Bogardan
+  simplification in layers.js -- Lich's sacrifice clause follows the same
+  convention rather than half-building token infrastructure for one card.
+
+**Real correctness fix mid-checkpoint:** Magnetic Mountain and Power Leak's
+first drafts computed their numberChoice option lists (affordability-gated)
+*inline* at UPKEEP-transition time, the same instant `burnMana()` zeroes
+both players' mana pools. That made the "may pay" numberChoice unreachable
+for a human player in real gameplay, not just in tests -- structurally the
+same bug already fixed for Cosmic Horror/Sunken City/Island Fish Jasconius
+in checkpoint B, just re-introduced by two cards implemented before that
+fix's lesson was applied consistently. Fixed the same way: queue a
+`pendingUpkeepChoice` (`magneticMountainPrompt` / `powerLeakPrompt`) at
+UPKEEP-transition time with no mana-affordability gate, then compute the
+actual numberChoice (and its affordability-based option list) inside the
+`UPKEEP_CHOICE_HANDLERS.resolve` step, a separate non-phase-transition
+dispatch where any mana the player has tapped in response is still present.
+
+**Known UI-wiring gap (flagged, not built):** Goblin Artisans' activated
+ability targets a spell on the stack (an artifact spell you control), not a
+permanent or player. The existing activated-ability targeting UI path
+(`ACTIVATE_TARGET_EFFECTS`/`PLAYER_TARGETABLE_ABILITY_EFFECTS` in
+`useDuelController.ts`) only supports permanent/player targets;
+stack-item targeting UI (`needsStackTarget`) exists only for the
+spell-casting flow (counterspells), not the activated-ability flow. Wiring
+a new "activated ability targets the stack" interaction into both
+`DuelScreen.tsx` and `DuelScreenMobile.tsx` is new cross-cutting UI
+infrastructure beyond this checkpoint's scope -- the engine-side effect
+(`coinFlipDrawOrCounterArtifact`) is fully implemented and covered by a
+direct-dispatch Vitest scenario, but the card cannot yet be activated with
+a target through the UI. This is consistent with the pre-existing gap
+already present for several checkpoint B/C upkeep-choice handlers
+(Farmstead, Erosion, Cosmic Horror, Sunken City, Island Fish Jasconius/
+Leviathan's pay-to-untap, Yawgmoth Demon, and now Magnetic Mountain/Power
+Leak): `UPKEEP_CHOICE_MODALS` in `src/ui/duel/upkeepChoiceRegistry.tsx`
+only has entries for `forceOfNatureUpkeep` and `optionalUntap`, so these
+handlerKeys currently render no prompt UI at all (the engine-side queue and
+resolve logic is correct and tested via direct dispatch, but a human
+player has no on-screen way to trigger `UPKEEP_CHOICE_RESOLVE` for them
+yet). Flagging rather than building 9 new modals inside this batch.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-c.test.js` (16 cases).
+- Full existing Vitest suite (503 tests across `src/engine/__tests__` +
+  `src/hooks/__tests__` + `tests/scenarios`) re-run; all 503 passed, no
+  regressions.
+
+### Status
+COMPLETE (C4 finished: 30 implemented, 8 deferred across all 3 checkpoints;
+C1-C4 combined status recorded in the batch completion summary)
+
+---
+
+# End of MECHANICS INDEX v1.14

@@ -12,6 +12,69 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-07-05)
+- **Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint C
+  (final)** -- final 7 cards implemented (Time Vault, Goblin Artisans,
+  Leviathan, Yawgmoth Demon, Magnetic Mountain, Power Leak, Lich), no
+  additional deferrals. Real correctness fix: Magnetic Mountain/Power Leak's
+  first drafts computed their numberChoice option lists at the exact instant
+  `burnMana()` zeroes mana, making the "may pay" choice unreachable for a
+  human player -- fixed via the same queue-then-resolve pattern already
+  used for Cosmic Horror/Sunken City. Lich needed the most new `hurt()`
+  surface of the whole complex-tier batch (lifegain-to-draw, no-zero-loss,
+  damage-forces-sacrifice). Flagged (not built): Goblin Artisans' stack-item
+  activated-ability targeting has no UI wiring yet (new cross-cutting UI
+  infra); several checkpoint B/C upkeep-choice handlers still have no
+  `UPKEEP_CHOICE_MODALS` entry either. C4 totals across all three
+  checkpoints: 30 implemented, 8 deferred by name (see
+  `docs/MECHANICS_INDEX.md` for a flagged discrepancy against the
+  originally-stated "41 targeted" count). See `docs/MECHANICS_INDEX.md` --
+  Batch: Complex-Tier C4, Checkpoint C.
+- **Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint B**
+  -- 11 more cards implemented (Goblins of the Flarg, Cosmic Horror, Nafs
+  Asp, Sunken City, Drop of Honey, Erosion, Merchant Ship, Nether Shadow,
+  Shapeshifter, Island Fish Jasconius, Jihad); 1 deferred (Personal
+  Incarnation -- needs centralized creature-damage redirection, not built).
+  Real correctness fix: the first draft of several "pay or sacrifice"
+  upkeep checks auto-decided synchronously for both players, but
+  `burnMana()` zeroes mana before any upkeep check runs, making the cost
+  unpayable for a human player in a live game -- fixed to auto-decide only
+  for the AI and queue via `UPKEEP_CHOICE_HANDLERS` for the human. See
+  `docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C4, Checkpoint B.
+- **Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint A**
+  -- first 12 cards implemented (El-Hajjâj, Feedback, Island Sanctuary, Mold
+  Demon, Wall of Tombstones, Wanderlust, Warp Artifact, Ydwen Efreet,
+  Abomination, Cockatrice, Infernal Medusa, Time Elemental); 7 deferred
+  (Library of Leng, Psychic Venom, Artifact Possession, Artifact Ward,
+  Blight, Relic Bind, Oubliette -- mostly a missing ON_TAP trigger event and
+  missing phasing, both flagged rather than improvised). Fixed two real
+  engine bugs: `ON_DAMAGE_DEALT` triggers were queued but never drained
+  (`processTriggerQueue` wasn't called after `resolveCombat`), and
+  `scope:'self'` triggers only ever matched `ON_CREATURE_DIES`. See
+  `docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C4, Checkpoint A.
+- **Complex-Tier C3 -- Static/Continuous Effects (Forge Reference)** -- 7 of 7
+  targeted stub cards implemented, no deferrals: Angry Mob, Rabid Wombat,
+  Damping Field, Farmstead, Hidden Path, Phantasmal Terrain, Energy Flux. New
+  turn-conditional CDA evaluator, new `basicLandTypeChoice` pendingChoice
+  kind. Observed (not fixed, pre-existing): the `burnMana()`/upkeep-check
+  ordering means an AI opponent's "pay mana or sacrifice" upkeep choices
+  always resolve to sacrifice in practice. See `docs/MECHANICS_INDEX.md` --
+  Batch: Complex-Tier C3.
+- **Complex-Tier C2 -- Keyword-Line Cards (Forge Reference)** -- 2 of 2
+  targeted stub cards implemented, no deferrals: Phyrexian Gremlins
+  (`lockArtifactWhileTapped`, new `optionalUntapAlways`/`lockedByIid`
+  untap-phase hooks), Wall of Wonder (`wallOfWonderPump`, new
+  `canAttackDespiteDefender` DECLARE_ATTACKER override). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C2.
+- **Complex-Tier C1 -- Activated Abilities and Spells (Forge Reference)** -- 13
+  of 25 targeted stub cards implemented (Alabaster Potion, Sewers of Estark,
+  Siren's Call, Tracker, Winter Blast, Banshee, Eternal Flame, Martyr's Cry,
+  Volcanic Eruption, Winds of Change, Mana Clash, Mind Bomb, Forcefield); 12
+  deferred (Guardian Angel, Ring of Ma'rûf, Greater Realm of Preservation, the
+  full Circle of Protection cycle, Pyramids, Eye for an Eye, Aladdin's Lamp).
+  Fixed a real pre-existing bug: `damageShield` was written by several
+  already-shipped cards but never consumed by `hurt()`. New pendingChoice
+  kinds `modalChoice` and `numberChoice`. See `docs/MECHANICS_INDEX.md` --
+  Batch: Complex-Tier C1.
 - **Generalized Choice Mechanisms** -- three narrow choice mechanisms
   (`pendingChoice`, `TutorModal`'s card-source, `pendingUpkeepChoice`) each
   generalized minimally, unblocking the last four STUB cards deferred on

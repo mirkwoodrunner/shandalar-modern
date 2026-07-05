@@ -134,3 +134,55 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Darkpact (`darkpactExchange` spell effect + `pendingAnteExchange`, DuelCore.js/cards.js) | Card-Forge/forge | d/darkpact.txt | GPL-3.0 |
 | 2026-07-05 | Ashnod's Battle Gear (`pumpWhileTapped` activated ability effect + `optionalUntap`/upkeep-choice registry, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | a/ashnods_battle_gear.txt | GPL-3.0 |
 | 2026-07-05 | Tawnos's Weaponry (reused `pumpWhileTapped` activated ability effect + `optionalUntap`, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | t/tawnoss_weaponry.txt | GPL-3.0 |
+| 2026-07-05 | Alabaster Potion (`alabasterPotionChoice`/`gainLifeXTarget`/`preventDamageXAny` + `modalChoice` pendingChoice kind + `hurt()`/`dmgWithShield()` damageShield consumption fix, DuelCore.js) | Card-Forge/forge | a/alabaster_potion.txt | GPL-3.0 |
+| 2026-07-05 | Sewers of Estark (`sewersOfEstark` spell effect + `preventCombatDamageDealt` resolveCombat hook, DuelCore.js) | Card-Forge/forge | s/sewers_of_estark.txt | GPL-3.0 |
+| 2026-07-05 | Siren's Call (`sirensCall` spell effect + `pendingSirenSweep`, DuelCore.js) | Card-Forge/forge | s/sirens_call.txt | GPL-3.0 |
+| 2026-07-05 | Tracker (`trackerDamageExchange` activated ability effect, DuelCore.js) | Card-Forge/forge | t/tracker.txt | GPL-3.0 |
+| 2026-07-05 | Winter Blast (`winterBlastTapX` spell effect, DuelCore.js) | Card-Forge/forge | w/winter_blast.txt | GPL-3.0 |
+| 2026-07-05 | Banshee (`bansheeDrain` activated ability effect, DuelCore.js) | Card-Forge/forge | b/banshee.txt | GPL-3.0 |
+| 2026-07-05 | Eternal Flame (`eternalFlameDrain` spell effect, DuelCore.js) | Card-Forge/forge | e/eternal_flame.txt | GPL-3.0 |
+| 2026-07-05 | Martyr's Cry (`martyrsCry` spell effect, DuelCore.js) | Card-Forge/forge | m/martyrs_cry.txt | GPL-3.0 |
+| 2026-07-05 | Volcanic Eruption (`volcanicEruption` spell effect, DuelCore.js) | Card-Forge/forge | v/volcanic_eruption.txt | GPL-3.0 |
+| 2026-07-05 | Winds of Change (`windsOfChange` spell effect, DuelCore.js) | Card-Forge/forge | w/winds_of_change.txt | GPL-3.0 |
+| 2026-07-05 | Mana Clash (`manaClash` spell effect, DuelCore.js) | Card-Forge/forge | m/mana_clash.txt | GPL-3.0 |
+| 2026-07-05 | Mind Bomb (`mindBomb` spell effect + `numberChoice` pendingChoice kind + `NUMBER_CHOICE_HANDLERS` registry, DuelCore.js) | Card-Forge/forge | m/mind_bomb.txt | GPL-3.0 |
+| 2026-07-05 | Forcefield (`forcefieldShield` activated ability effect + `combatDamageShield` identity-scoped prevention hook in `hurt()`, DuelCore.js) | Card-Forge/forge | f/forcefield.txt | GPL-3.0 |
+| 2026-07-05 | Phyrexian Gremlins (`lockArtifactWhileTapped` activated ability effect + `optionalUntapAlways`/`lockedByIid` untap-phase hooks, DuelCore.js/cards.js) | Card-Forge/forge | p/phyrexian_gremlins.txt | GPL-3.0 |
+| 2026-07-05 | Wall of Wonder (`wallOfWonderPump` activated ability effect + `canAttackDespiteDefender` DECLARE_ATTACKER hook, DuelCore.js/cards.js) | Card-Forge/forge | w/wall_of_wonder.txt | GPL-3.0 |
+| 2026-07-05 | Angry Mob (`angryMobPT` CDA evaluator, layers.js/cards.js) | Card-Forge/forge | a/angry_mob.txt | GPL-3.0 |
+| 2026-07-05 | Rabid Wombat (aura-count P/T bonus, layers.js `collectEffects`) | Card-Forge/forge | r/rabid_wombat.txt | GPL-3.0 |
+| 2026-07-05 | Damping Field (`dampingFieldOut`/`artifactsUntapped` untap-phase hook, DuelCore.js) | Card-Forge/forge | d/damping_field.txt | GPL-3.0 |
+| 2026-07-05 | Farmstead (`farmsteadUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | f/farmstead.txt | GPL-3.0 |
+| 2026-07-05 | Hidden Path (Hidden Path forestwalk grant, layers.js `collectEffects`) | Card-Forge/forge | h/hidden_path.txt | GPL-3.0 |
+| 2026-07-05 | Phantasmal Terrain (`phantasmalTerrainEnchant` spell effect + `basicLandTypeChoice` pendingChoice kind, DuelCore.js/cards.js) | Card-Forge/forge | p/phantasmal_terrain.txt | GPL-3.0 |
+| 2026-07-05 | Energy Flux (`energyFluxUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | e/energy_flux.txt | GPL-3.0 |
+| 2026-07-05 | El-Hajjâj (`gainLifeEqualToDamageDealt` triggered effect + `selfIsDamageSource` condition + ON_DAMAGE_DEALT queue drain, DuelCore.js/cards.js) | Card-Forge/forge | e/el_hajjaj.txt | GPL-3.0 |
+| 2026-07-05 | Feedback (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | f/feedback.txt | GPL-3.0 |
+| 2026-07-05 | Island Sanctuary (draw-skip + `islandSanctuaryProtected` DECLARE_ATTACKER hook, DuelCore.js/cards.js) | Card-Forge/forge | i/island_sanctuary.txt | GPL-3.0 |
+| 2026-07-05 | Mold Demon (`moldDemonETB` spell effect + `skipEtbPush` RESOLVE_STACK guard, DuelCore.js/cards.js) | Card-Forge/forge | m/mold_demon.txt | GPL-3.0 |
+| 2026-07-05 | Wall of Tombstones (`wallOfTombstonesUpkeep` upkeep case, DuelCore.js/cards.js) | Card-Forge/forge | w/wall_of_tombstones.txt | GPL-3.0 |
+| 2026-07-05 | Wanderlust (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | w/wanderlust.txt | GPL-3.0 |
+| 2026-07-05 | Warp Artifact (reused `enchantCreature` + upkeep-aura-name damage hook, DuelCore.js/cards.js) | Card-Forge/forge | w/warp_artifact.txt | GPL-3.0 |
+| 2026-07-05 | Ydwen Efreet (`coinFlipOnBlock` DECLARE_BLOCKER hook, DuelCore.js/cards.js) | Card-Forge/forge | y/ydwen_efreet.txt | GPL-3.0 |
+| 2026-07-05 | Abomination (`blocksDestroyFilter`/`blockedByDestroyFilter` + `endOfCombatDestroy`, DuelCore.js/cards.js) | Card-Forge/forge | a/abomination.txt | GPL-3.0 |
+| 2026-07-05 | Cockatrice (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | c/cockatrice.txt | GPL-3.0 |
+| 2026-07-05 | Infernal Medusa (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | i/infernal_medusa.txt | GPL-3.0 |
+| 2026-07-05 | Time Elemental (`sacrificeAtEndOfCombat` + `endOfCombatSacrifice` + `bounceUnenchanted` activated ability, DuelCore.js/cards.js) | Card-Forge/forge | t/time_elemental.txt | GPL-3.0 |
+| 2026-07-05 | Goblins of the Flarg (CLEANUP-phase sacrifice-if-controls-Dwarf check, DuelCore.js/cards.js) | Card-Forge/forge | g/goblins_of_the_flarg.txt | GPL-3.0 |
+| 2026-07-05 | Cosmic Horror (`cosmicHorrorUpkeep` upkeep case + handler, DuelCore.js/cards.js) | Card-Forge/forge | c/cosmic_horror.txt | GPL-3.0 |
+| 2026-07-05 | Nafs Asp (`queueDrainAtNextDraw` triggered effect + PHASE.DRAW consumption, DuelCore.js/cards.js) | Card-Forge/forge | n/nafs_asp.txt | GPL-3.0 |
+| 2026-07-05 | Sunken City (reused `lordEffect` + `sunkenCityUpkeep` upkeep case, DuelCore.js/cards.js) | Card-Forge/forge | s/sunken_city.txt | GPL-3.0 |
+| 2026-07-05 | Drop of Honey (`dropOfHoneyUpkeep` upkeep case + CLEANUP sacrifice-if-no-creatures check, DuelCore.js/cards.js) | Card-Forge/forge | d/drop_of_honey.txt | GPL-3.0 |
+| 2026-07-05 | Erosion (reused `enchantCreature` + `erosionUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | e/erosion.txt | GPL-3.0 |
+| 2026-07-05 | Merchant Ship (reused `attackRequiresDefenderLand`/`unblockedAttackGainLife` + `sacrificeIfNoIslands`, DuelCore.js/cards.js) | Card-Forge/forge | m/merchant_ship.txt | GPL-3.0 |
+| 2026-07-05 | Nether Shadow (graveyard-position upkeep scan, DuelCore.js/cards.js) | Card-Forge/forge | n/nether_shadow.txt | GPL-3.0 |
+| 2026-07-05 | Shapeshifter (`shapeshifterETB` spell effect + `shapeshifterChoose` numberChoice handler + CDA evaluators, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | s/shapeshifter.txt | GPL-3.0 |
+| 2026-07-05 | Island Fish Jasconius (`doesNotUntapNormally` + `payToUntapSelf` upkeep-choice handler + reused attack/sacrifice fields, DuelCore.js/cards.js) | Card-Forge/forge | i/island_fish_jasconius.txt | GPL-3.0 |
+| 2026-07-05 | Jihad (`jihadETB` spell effect + `jihadColorChoice` pendingChoice kind + layers.js P/T buff, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | j/jihad.txt | GPL-3.0 |
+| 2026-07-05 | Time Vault (`doesNotUntapNormally` + turn-transition skip-turn hook + `extraTurn` activated ability, DuelCore.js/cards.js) | Card-Forge/forge | t/time_vault.txt | GPL-3.0 |
+| 2026-07-05 | Goblin Artisans (`coinFlipDrawOrCounterArtifact` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | g/goblin_artisans.txt | GPL-3.0 |
+| 2026-07-05 | Leviathan (reused `attackRequiresDefenderLand`/`doesNotUntapNormally`/`payToUntapSelf` + `sacIslandsToUntapSelf` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | l/leviathan.txt | GPL-3.0 |
+| 2026-07-05 | Yawgmoth Demon (`yawgmothDemonUpkeep` upkeep case + handler, DuelCore.js/cards.js) | Card-Forge/forge | y/yawgmoth_demon.txt | GPL-3.0 |
+| 2026-07-05 | Magnetic Mountain (`magneticMountainOut` untap-phase hook + `magneticMountainPrompt`/`magneticMountainUntap` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | m/magnetic_mountain.txt | GPL-3.0 |
+| 2026-07-05 | Power Leak (reused `enchantCreature` + `powerLeakPrompt`/`powerLeakPay` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | p/power_leak.txt | GPL-3.0 |
+| 2026-07-05 | Lich (`lichETB` spell effect + `hurt()` lifegain-to-draw/no-zero-loss/damage-forces-sacrifice overrides + `ON_PERMANENT_LEAVES_BF` `scope:'self'` generalization + `destinationIsGY` condition, DuelCore.js/cards.js) | Card-Forge/forge | l/lich.txt | GPL-3.0 |

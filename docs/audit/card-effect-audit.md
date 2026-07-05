@@ -13,6 +13,88 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C4 checkpoint C, final (30 implemented, 8 deferred across C4)
+
+Third and final checkpoint of sub-batch C4. Implemented: `time_vault`,
+`goblin_artisans`, `leviathan`, `yawgmoth_demon`, `magnetic_mountain`,
+`power_leak`, `lich`. No additional deferrals this checkpoint. Fixed a real
+bug found mid-checkpoint (same class as checkpoint B's fix, re-introduced
+by two cards implemented before that lesson generalized across the whole
+upkeep loop): `magnetic_mountain`/`power_leak`'s numberChoice option lists
+were computed inline at the UPKEEP transition, the same instant
+`burnMana()` zeroes both players' mana -- making the "may pay" choice
+unreachable for a human player in a live game. Corrected to the same
+queue-then-resolve pattern as checkpoint B: queue a `pendingUpkeepChoice`
+with no mana gate, compute the actual numberChoice inside the
+`UPKEEP_CHOICE_HANDLERS.resolve` step where mana tapped in response is
+still present. `lich` required the most new `hurt()` surface of the whole
+complex-tier batch (lifegain-to-draw override, no-zero-loss override,
+damage-forces-sacrifice-or-lose clause) plus reused the
+`ON_PERMANENT_LEAVES_BF`/`scope:'self'` generalization from checkpoint A
+for its own death trigger. Flagged, not built: `goblin_artisans`' activated
+ability targets a stack item (an artifact spell), which the existing
+activated-ability targeting UI (`ACTIVATE_TARGET_EFFECTS`) doesn't support
+-- engine logic is implemented and tested via direct dispatch, but the
+card can't yet be activated with a target through the UI. C4 sub-batch
+complete: 30 cards implemented, 8 deferred by name across all three
+checkpoints (12+11+7 implemented, 7+1+0 deferred) -- note this sums to 38
+against the "41 targeted" figure cited in checkpoints A/B; that 3-card gap
+is flagged in the final batch completion summary rather than resolved here,
+since it needs the original C4 card list to reconcile.
+
+### 2026-07-05 — Complex-Tier C4 checkpoint B (23 of 41 implemented so far)
+
+Second checkpoint of sub-batch C4. Implemented: `goblins_of_the_flarg`,
+`cosmic_horror`, `nafs_asp`, `sunken_city`, `drop_of_honey`, `erosion`,
+`merchant_ship`, `nether_shadow`, `shapeshifter`, `island_fish_jasconius`,
+`jihad`. Deferred: `personal_incarnation`. Fixed a real bug found mid-
+checkpoint: the initial "pay or sacrifice" upkeep implementations
+auto-decided synchronously for both players, which would have made the
+cost literally unpayable for a human player too (mana always burns to 0
+before an inline upkeep check runs) -- corrected to queue via
+`UPKEEP_CHOICE_HANDLERS` for the human, matching the established
+Farmstead/Energy Flux convention. More checkpoints follow.
+
+### 2026-07-05 — Complex-Tier C4 checkpoint A (12 of 41 implemented so far)
+
+First checkpoint of sub-batch C4 (triggered abilities), the largest of the
+complex-tier batch. Implemented: `el_hajjaj`, `feedback`, `island_sanctuary`,
+`mold_demon`, `wall_of_tombstones`, `wanderlust`, `warp_artifact`,
+`ydwen_efreet`, `abomination`, `cockatrice`, `infernal_medusa`,
+`time_elemental`. Deferred so far: `library_of_leng`, `psychic_venom`,
+`artifact_possession`, `artifact_ward`, `blight`, `relic_bind`, `oubliette`.
+More checkpoints follow.
+
+### 2026-07-05 — Complex-Tier C3 (7 of 7 implemented)
+
+Sub-batch C3 (static/continuous) of the complex-tier Card-Forge/forge batch.
+Implemented: `angry_mob`, `rabid_wombat`, `damping_field`, `farmstead`,
+`hidden_path`, `phantasmal_terrain`, `energy_flux`. No deferrals -- all
+mapped cleanly onto the existing layers.js/upkeep-choice infrastructure.
+
+### 2026-07-05 — Complex-Tier C2 (2 of 2 implemented)
+
+Sub-batch C2 (keyword-line cards) of the complex-tier Card-Forge/forge batch.
+Implemented: `phyrexian_gremlins`, `wall_of_wonder`. No deferrals.
+
+### 2026-07-05 — Complex-Tier C1 (13 of 25 implemented)
+
+Sub-batch C1 (activated abilities and spells) of the complex-tier
+Card-Forge/forge batch. Implemented: `alabaster_potion`, `sewers_of_estark`,
+`sirenss_call`, `tracker`, `winter_blast`, `banshee`, `eternal_flame`,
+`martyrss_cry`, `volcanic_eruption`, `winds_of_change`, `mana_clash`,
+`mind_bomb`, `forcefield`. Deferred (still `effect:"STUB"`, comment updated
+from `STUB:` to `DEFERRED:` with a reason): `guardian_angel`, `ring_of_maruf`,
+`greater_realm_of_preservation`, `circle_of_protection_artifacts/black/blue/
+green/red/white`, `pyramids`, `eye_for_an_eye`, `aladdinss_lamp`. Root cause
+for 9 of the 12 deferrals: `damageShield` (used by several pre-existing
+cards) was written but never read by `hurt()` -- fixed for the flat,
+source-agnostic case, but full identity/color-aware "prevent damage from a
+chosen source" (needed by Circle of Protection, Greater Realm, Eye for an
+Eye) would require threading source metadata through ~80 additional `hurt()`
+call sites, a cross-cutting change out of scope for a single card. See
+`docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C1.
+
 ### 2026-07-05 — Generalized Choice Mechanisms (4 deferred cards)
 
 The last four cards deferred on choice/picker UI gaps are now implemented (no
