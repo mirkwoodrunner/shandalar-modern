@@ -281,6 +281,9 @@ function batchTests() {
 
   // ── 5. Untamed Wilds: library search, land onto battlefield, then shuffle ─
   test('Untamed Wilds fetches a basic land onto the battlefield', async ({ page }) => {
+    await page.route('**/sandbox-decklist.txt', route =>
+      route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
+    );
     await page.goto(sandboxWith('untamed_wilds'));
     await waitForDuel(page);
     await waitForMain1(page);

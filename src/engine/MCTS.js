@@ -338,9 +338,10 @@ export function scoreMoves(state, candidateMoves, budgetMs = 800) {
   }
 
   const iterBudget = _testIterCap !== null ? _testIterCap : Infinity;
+  const useTimeBudget = _testIterCap === null;
   let extraIter = 0;
   const start = Date.now();
-  while (extraIter < iterBudget && Date.now() - start < budgetMs) {
+  while (extraIter < iterBudget && (!useTimeBudget || Date.now() - start < budgetMs)) {
     const totalN = stats.reduce((sum, e) => sum + e.iterations, 0);
 
     const best = stats.reduce((best, e) => {
