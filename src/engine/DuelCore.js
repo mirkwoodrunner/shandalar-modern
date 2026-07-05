@@ -258,6 +258,16 @@ function getDamageRedirectTarget(s, who, meta) {
   return null;
 }
 
+// Applies combat damage to a creature, consuming its flat damageShield first (if any).
+// Used at the resolveCombat call sites, which mutate c.damage inline rather than via hurt().
+// Adapted from Card-Forge/forge (a/alabaster_potion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+function dmgWithShield(c, amount) {
+  const shield = c.damageShield || 0;
+  if (shield <= 0 || amount <= 0) return { damage: c.damage + amount };
+  const prevented = Math.min(shield, amount);
+  return { damage: c.damage + (amount - prevented), damageShield: shield - prevented };
+}
+
 export function hurt(s, who, amt, src = "", meta = null) {
 if (amt > 0) {
   const redirectTarget = getDamageRedirectTarget(s, who, meta);
@@ -267,6 +277,28 @@ if (amt > 0) {
     ) } };
     ns = dlog(ns, `${amt} damage redirected from ${who} to ${redirectTarget.name}${src ? ` (from ${src})` : ""}.`, "damage");
     return checkDeath(ns);
+  }
+}
+if (amt > 0) {
+  // Forcefield-style identity-scoped shield: "prevent all but N of the next combat
+  // damage from creature X" -- only matches the exact declared source, combat only.
+  // Adapted from Card-Forge/forge (f/forcefield.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const cshield = s[who].combatDamageShield;
+  if (cshield && meta?.combat && meta?.sourceIid === cshield.sourceIid) {
+    const prevented = Math.max(0, amt - cshield.allowThrough);
+    if (prevented > 0) {
+      s = dlog({ ...s, [who]: { ...s[who], combatDamageShield: null } }, `${cshield.cardName || "Prevention effect"} prevents ${prevented} damage.`, "effect");
+      amt -= prevented;
+    }
+  }
+  // Flat "prevent the next N damage" shield -- Alabaster Potion and the existing
+  // (previously inert) preventDamage1Any/preventDamage2ArtifactCreature/
+  // preventDamage2Self/preventDamage1AnyReturnEnd cases all write this field.
+  const shield = s[who].damageShield || 0;
+  if (shield > 0 && amt > 0) {
+    const prevented = Math.min(shield, amt);
+    s = dlog({ ...s, [who]: { ...s[who], damageShield: shield - prevented } }, `Prevented ${prevented} damage to ${who}.`, "effect");
+    amt -= prevented;
   }
 }
 const floor = amt > 0 ? getLifeFloor(s, who) : null;
@@ -2762,6 +2794,260 @@ case "darkpactExchange": {
   break;
 }
 // --- END BATCH: ANTE CARDS ----------------------------------------------------
+// --- BEGIN BATCH: COMPLEX-TIER C1 (activated abilities and spells) -----------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "alabasterPotionChoice": {
+  // Alabaster Potion: "Choose one -- target player gains X life. / Prevent the
+  // next X damage that would be dealt to any target this turn."
+  ns = createPendingChoice(ns, {
+    sourceCardId: card.iid,
+    controller: caster,
+    kind: 'modalChoice',
+    card: { name: card.name, iid: card.iid },
+    tgt,
+    xVal,
+    options: [
+      { id: 'gain', label: `Target player gains ${xVal} life`, effect: 'gainLifeXTarget' },
+      { id: 'prevent', label: `Prevent the next ${xVal} damage to any target`, effect: 'preventDamageXAny' },
+    ],
+  });
+  break;
+}
+case "gainLifeXTarget": {
+  const who = tgt === 'p' || tgt === 'o' ? tgt : (tgtC ? tgtC.controller : null);
+  if (who) ns = hurt(ns, who, -xVal, card.name);
+  else ns = dlog(ns, `${card.name} fizzles -- no valid player target.`, "effect");
+  break;
+}
+case "preventDamageXAny": {
+  if (tgt === 'p' || tgt === 'o') {
+    ns = { ...ns, [tgt]: { ...ns[tgt], damageShield: (ns[tgt].damageShield || 0) + xVal } };
+  } else if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + xVal } : c
+    ) } };
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+    break;
+  }
+  ns = dlog(ns, `Prevent the next ${xVal} damage to that target this turn.`, "effect");
+  break;
+}
+// Sewers of Estark: "Choose target creature. If it's attacking, it can't be
+// blocked this turn. If it's blocking, prevent all combat damage that would be
+// dealt this combat by it and each creature it's blocking."
+case "sewersOfEstark": {
+  if (!tgtC) { ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect"); break; }
+  if (tgtC.attacking) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { unblockable: true }] } : c
+    ) } };
+    ns = dlog(ns, `${tgtC.name} can't be blocked this turn.`, "effect");
+  } else if (tgtC.blocking) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, preventCombatDamageDealt: true } : c
+    ) } };
+    const atkC = getBF(ns, tgtC.blocking);
+    if (atkC) {
+      ns = { ...ns, [atkC.controller]: { ...ns[atkC.controller], bf: ns[atkC.controller].bf.map(c =>
+        c.iid === atkC.iid ? { ...c, preventCombatDamageDealt: true } : c
+      ) } };
+    }
+    ns = dlog(ns, `${tgtC.name}: prevents combat damage this combat between it and what it's blocking.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- ${tgtC.name} is neither attacking nor blocking.`, "effect");
+  }
+  break;
+}
+// Siren's Call: "Creatures the active player controls attack this turn if
+// able. At the beginning of the next end step, destroy all non-Wall creatures
+// that player controls that didn't attack this turn." SIMPLIFICATION: the
+// "cast only during an opponent's turn, before attackers are declared" timing
+// restriction is not hard-enforced at cast time (no CAST_SPELL timing-gate
+// mechanism exists yet); the effect below is only meaningful if cast legally.
+case "sirensCall": {
+  const activeWho = ns.active;
+  const eligible = ns[activeWho].bf.filter(c => isCre(c) && !c.summoningSick);
+  for (const c of eligible) {
+    ns = { ...ns, [activeWho]: { ...ns[activeWho], bf: ns[activeWho].bf.map(x =>
+      x.iid === c.iid ? { ...x, eotBuffs: [...(x.eotBuffs || []), { keywords: [KEYWORDS.MUST_ATTACK.id] }] } : x
+    ) } };
+  }
+  ns = { ...ns, pendingSirenSweep: { activePlayer: activeWho, eligibleIids: eligible.map(c => c.iid) } };
+  ns = dlog(ns, `${card.name}: ${activeWho}'s creatures attack this turn if able.`, "effect");
+  break;
+}
+// Tracker: "{G}{G}, {T}: This creature deals damage equal to its power to
+// target creature. That creature deals damage equal to its power to this
+// creature." Both powers read before either damage instance is applied.
+case "trackerDamageExchange": {
+  if (tgtC) {
+    const selfPow = getPow(card, ns);
+    const tgtPow = getPow(tgtC, ns);
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, ...dmgWithShield(c, selfPow) } : c
+    ) } };
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+      c.iid === card.iid ? { ...c, ...dmgWithShield(c, tgtPow) } : c
+    ) } };
+    ns = dlog(ns, `${card.name} and ${tgtC.name} trade damage.`, "damage");
+    ns = checkDeath(ns);
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+  }
+  break;
+}
+// Winter Blast: "Tap X target creatures. Winter Blast deals 2 damage to each
+// of those creatures with flying." SIMPLIFICATION: no multi-target picker UI
+// for X targets (same convention as tapXCreatures/untapXLands above);
+// auto-fills remaining slots with untapped creatures, preferring the opponent's.
+case "winterBlastTapX": {
+  const explicitCres = (targets || []).filter(id => { const c = getBF(ns, id); return c && isCre(c) && !c.tapped; });
+  const pool = [...ns[opp].bf, ...ns[caster].bf].filter(c => isCre(c) && !c.tapped && !explicitCres.includes(c.iid));
+  const autoCres = pool.slice(0, Math.max(0, xVal - explicitCres.length)).map(c => c.iid);
+  const toTap = [...explicitCres, ...autoCres].slice(0, xVal);
+  for (const cid of toTap) {
+    const owner = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === cid ? { ...c, tapped: true } : c) } };
+  }
+  for (const cid of toTap) {
+    const owner = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
+    const c = ns[owner].bf.find(x => x.iid === cid);
+    if (c && hasKw(c, KEYWORDS.FLYING.id)) {
+      ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(x => x.iid === cid ? { ...x, ...dmgWithShield(x, 2) } : x) } };
+    }
+  }
+  ns = dlog(ns, `${card.name}: taps ${toTap.length} creature(s), damages fliers among them.`, "effect");
+  ns = checkDeath(ns);
+  break;
+}
+// Banshee: "{X}, {T}: This creature deals half X damage, rounded down, to any
+// target, and half X damage, rounded up, to you."
+case "bansheeDrain": {
+  const down = Math.floor(xVal / 2);
+  const up = Math.ceil(xVal / 2);
+  if (tgt === 'p' || tgt === 'o') {
+    ns = hurt(ns, tgt, down, card.name);
+  } else if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, ...dmgWithShield(c, down) } : c
+    ) } };
+    ns = checkDeath(ns);
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+  }
+  ns = hurt(ns, caster, up, card.name);
+  break;
+}
+// Eternal Flame: "deals X damage to target opponent or planeswalker and half X
+// damage, rounded up, to you, where X is the number of Mountains you control."
+// No planeswalkers in this engine -- target is always the opponent player.
+case "eternalFlameDrain": {
+  const mountains = ns[caster].bf.filter(c => isLand(c) && c.subtype?.includes("Mountain")).length;
+  ns = hurt(ns, opp, mountains, card.name);
+  ns = hurt(ns, caster, Math.ceil(mountains / 2), card.name);
+  break;
+}
+// Martyr's Cry: "Exile all white creatures. For each creature exiled this way,
+// its controller draws a card."
+case "martyrsCry": {
+  const whites = [...ns.p.bf, ...ns.o.bf].filter(c => isCre(c) && c.color === "W");
+  for (const c of whites) {
+    const owner = ns.p.bf.some(x => x.iid === c.iid) ? 'p' : 'o';
+    ns = zMove(ns, c.iid, owner, owner, "exile");
+    ns = drawD(ns, owner);
+  }
+  ns = dlog(ns, `${card.name}: exiles ${whites.length} white creature(s); controllers draw.`, "effect");
+  break;
+}
+// Volcanic Eruption: "Destroy X target Mountains. Volcanic Eruption deals
+// damage to each creature and each player equal to the number of Mountains put
+// into a graveyard this way." SIMPLIFICATION: no multi-target picker UI for X
+// targets (same convention as tapXCreatures/untapXLands above).
+case "volcanicEruption": {
+  const explicitMtn = (targets || []).filter(id => { const c = getBF(ns, id); return c && isLand(c) && c.subtype?.includes("Mountain"); });
+  const pool = [...ns.p.bf, ...ns.o.bf].filter(c => isLand(c) && c.subtype?.includes("Mountain") && !explicitMtn.includes(c.iid));
+  const autoMtn = pool.slice(0, Math.max(0, xVal - explicitMtn.length)).map(c => c.iid);
+  const toDestroy = [...explicitMtn, ...autoMtn].slice(0, xVal);
+  let destroyedCount = 0;
+  for (const lid of toDestroy) {
+    const owner = ns.p.bf.some(c => c.iid === lid) ? 'p' : 'o';
+    ns = zMove(ns, lid, owner, owner, "gy");
+    destroyedCount++;
+  }
+  if (destroyedCount > 0) {
+    for (const c of [...ns.p.bf, ...ns.o.bf].filter(isCre)) {
+      const owner = ns.p.bf.some(x => x.iid === c.iid) ? 'p' : 'o';
+      ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(x => x.iid === c.iid ? { ...x, ...dmgWithShield(x, destroyedCount) } : x) } };
+    }
+    ns = hurt(ns, 'p', destroyedCount, card.name);
+    ns = hurt(ns, 'o', destroyedCount, card.name);
+    ns = checkDeath(ns);
+  }
+  ns = dlog(ns, `${card.name}: destroys ${destroyedCount} Mountain(s), deals ${destroyedCount} damage to each creature and player.`, "effect");
+  break;
+}
+// Winds of Change: "Each player shuffles the cards from their hand into their
+// library, then draws that many cards."
+case "windsOfChange": {
+  for (const w of ["p", "o"]) {
+    const n = ns[w].hand.length;
+    ns = { ...ns, [w]: { ...ns[w], lib: shuffle([...ns[w].lib, ...ns[w].hand]), hand: [] } };
+    ns = drawD(ns, w, n);
+  }
+  ns = dlog(ns, `${card.name}: each player shuffles their hand into their library and draws that many cards.`, "effect");
+  break;
+}
+// Mana Clash: "You and target opponent each flip a coin. Mana Clash deals 1
+// damage to each player whose coin comes up tails. Repeat this process until
+// both players' coins come up heads on the same flip." No flipCoin primitive
+// exists in this engine; Math.random() follows the same already-flagged
+// idiom used elsewhere (e.g. tempestEfreetExchange above) for coin-flip-shaped
+// randomness pending a seeded-RNG migration (out of scope for this batch).
+case "manaClash": {
+  let bothHeads = false;
+  let rounds = 0;
+  while (!bothHeads && rounds < 100) {
+    rounds++;
+    const casterHeads = Math.random() < 0.5;
+    const oppHeads = Math.random() < 0.5;
+    if (!casterHeads) ns = hurt(ns, caster, 1, card.name);
+    if (!oppHeads) ns = hurt(ns, opp, 1, card.name);
+    bothHeads = casterHeads && oppHeads;
+    if (ns.over) break;
+  }
+  ns = dlog(ns, `${card.name}: ${rounds} round(s) of coin flips.`, "effect");
+  break;
+}
+// Mind Bomb: "Each player may discard up to three cards. Mind Bomb deals
+// damage to each player equal to 3 minus the number of cards they discarded
+// this way." Chained numberChoice per player (caster first, then opponent).
+case "mindBomb": {
+  ns = createPendingChoice(ns, {
+    sourceCardId: card.iid,
+    controller: caster,
+    kind: 'numberChoice',
+    handlerKey: 'mindBombDiscard',
+    sourceCardName: card.name,
+    forPlayer: caster,
+    nextPlayer: opp,
+    options: [0, 1, 2, 3].map(n => ({ id: String(n), label: `Discard ${n}` })),
+  });
+  break;
+}
+// Forcefield: "{1}: The next time an unblocked creature of your choice would
+// deal combat damage to you this turn, prevent all but 1 of that damage."
+case "forcefieldShield": {
+  const isUnblocked = tgtC && tgtC.attacking && ![...ns.p.bf, ...ns.o.bf].some(c => c.blocking === tgtC.iid);
+  if (isUnblocked) {
+    ns = { ...ns, [caster]: { ...ns[caster], combatDamageShield: { sourceIid: tgtC.iid, allowThrough: 1, cardName: card.name } } };
+    ns = dlog(ns, `${card.name}: shields against ${tgtC.name} (all but 1 damage prevented).`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- target is not an unblocked attacker.`, "effect");
+  }
+  break;
+}
+// --- END BATCH: COMPLEX-TIER C1 ----------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -2802,7 +3088,7 @@ const attGaseous = isGaseous(att);
 const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
 if (!blockers.length) {
-  if (!attGaseous && attFS) {
+  if (!attGaseous && !att.preventCombatDamageDealt && attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
@@ -2824,8 +3110,10 @@ if (!blockers.length) {
     const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
 
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
-    if (!attackerProtectsFromBl && !attGaseous && blFS) {
-      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
+    // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
+    // specific creature from dealing (source-side), independent of the gaseous receiver checks.
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && blFS) {
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bp) } : c) } };
       if (bp > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
@@ -2834,8 +3122,8 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && attFS) {
-      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) {
+      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, ...dmgWithShield(c, dbl) } : c) } };
       if (dbl > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: attId, targetId: bl.iid, amount: dbl, combat: true } });
@@ -2844,13 +3132,13 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && attFS) ns = hurt(ns, actrl, -dbl);
-    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl);
-    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp);
-    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, actrl, -dbl);
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl);
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
 
 }
@@ -2876,7 +3164,7 @@ const attGaseous = isGaseous(att);
 const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
 if (!blockers.length) {
-  if (!attGaseous && !attFS) {
+  if (!attGaseous && !att.preventCombatDamageDealt && !attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (hasLifelink) ns = hurt(ns, actrl, -ap);
     if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
@@ -2898,8 +3186,10 @@ if (!blockers.length) {
     const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
 
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
-    if (!attackerProtectsFromBl && !attGaseous && !blFS) {
-      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, damage: c.damage+bp } : c) } };
+    // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
+    // specific creature from dealing (source-side), independent of the gaseous receiver checks.
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !blFS) {
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bp) } : c) } };
       if (bp > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
@@ -2908,8 +3198,8 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !attFS) {
-      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: c.damage+dbl } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) {
+      ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, ...dmgWithShield(c, dbl) } : c) } };
       if (dbl > 0) {
         ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: attId, targetId: bl.iid, amount: dbl, turnId: ns.turn }] } };
         ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: attId, targetId: bl.iid, amount: dbl, combat: true } });
@@ -2918,13 +3208,13 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !attFS) ns = hurt(ns, actrl, -dbl);
-    if (!blockerProtectsFromAtt && !blGaseous && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl);
-    if (!attackerProtectsFromBl && !attGaseous && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp);
-    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, actrl, -dbl);
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl);
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
-  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
+  if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
 
 }
@@ -3398,7 +3688,23 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, must
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
   if (ns[w].channelActive) ns = { ...ns, [w]: { ...ns[w], channelActive: false }};
-  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.damageShield ? { ...c, damageShield: 0 } : c) } };
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (c.damageShield || c.preventCombatDamageDealt) ? { ...c, damageShield: 0, preventCombatDamageDealt: false } : c) } };
+  // Player-level "prevent the next N damage this turn" shield (Alabaster Potion,
+  // Conservator, etc.) and Forcefield's identity-scoped combat shield both expire
+  // unconditionally at end of turn, whether or not they were consumed.
+  if (ns[w].damageShield || ns[w].combatDamageShield) ns = { ...ns, [w]: { ...ns[w], damageShield: 0, combatDamageShield: null } };
+}
+// Siren's Call: destroy non-Wall creatures the active player didn't attack with
+// this turn (creatures the effect targeted at cast time -- excludes anything
+// that entered after, per oracle text's "controlled continuously" clause).
+if (ns.pendingSirenSweep) {
+  const { activePlayer, eligibleIids } = ns.pendingSirenSweep;
+  const toDestroy = ns[activePlayer].bf.filter(c =>
+    eligibleIids.includes(c.iid) && isCre(c) && !c.subtype?.includes("Wall") && !ns.turnState.attackedThisCombat.includes(c.iid)
+  );
+  for (const c of toDestroy) ns = zMove(ns, c.iid, activePlayer, activePlayer, "gy");
+  if (toDestroy.length) ns = dlog(ns, `Siren's Call: destroys ${toDestroy.length} creature(s) that didn't attack.`, "effect");
+  ns = { ...ns, pendingSirenSweep: null };
 }
 // Pestilence: at the beginning of the end step, if no creatures are on the
 // battlefield (either side, any color), its controller sacrifices it.
@@ -3820,6 +4126,23 @@ const UPKEEP_CHOICE_HANDLERS = {
       const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
       return dlog(ns, `${choice.cardName} untaps.`, "info");
     },
+  },
+};
+
+// Registry for kind:'numberChoice' pendingChoice resolution, mirroring
+// UPKEEP_CHOICE_HANDLERS. handler(state, choice, n) -> state.
+// Adapted from Card-Forge/forge (m/mind_bomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const NUMBER_CHOICE_HANDLERS = {
+  mindBombDiscard: (s, choice, n) => {
+    const who = choice.forPlayer;
+    const hand = s[who].hand;
+    const discarded = hand.slice(Math.max(0, hand.length - n));
+    const remaining = hand.slice(0, Math.max(0, hand.length - n));
+    let ns = { ...s, [who]: { ...s[who], hand: remaining, gy: [...s[who].gy, ...discarded] } };
+    ns = dlog(ns, `${who} discards ${discarded.length} card(s) to Mind Bomb.`, "effect");
+    const dmg = Math.max(0, 3 - discarded.length);
+    if (dmg > 0) ns = hurt(ns, who, dmg, choice.sourceCardName || "Mind Bomb");
+    return ns;
   },
 };
 
@@ -4944,6 +5267,38 @@ case "RESOLVE_CHOICE": {
     const targetCard = ns[owner].bf.find(c => c.iid === targetIid);
     ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid ? { ...c, color: action.optionId } : c) } };
     return dlog(ns, `${targetCard.name} becomes ${action.optionId}.`, "effect");
+  }
+
+  // Modal spells ("choose one --"): created directly from resolveEff (modalChoice),
+  // not a triggered ability. Unlike 'triggered_ability_choice' below (which resolves
+  // through the narrower resolveTriggeredEffect vocabulary), this re-enters resolveEff
+  // itself so modal spells can use any existing spell-effect case by id.
+  // Adapted from Card-Forge/forge (a/alabaster_potion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (choice.kind === 'modalChoice') {
+    const ns = { ...s, pendingChoice: null };
+    const mode = choice.options.find(m => m.id === action.optionId);
+    if (!mode) return ns;
+    return resolveEff(ns, {
+      card: { ...choice.card, effect: mode.effect },
+      caster: choice.controller,
+      targets: choice.tgt ? [choice.tgt] : [],
+      xVal: choice.xVal,
+    });
+  }
+
+  // Numeric choices ("choose a number between 0 and N"): Mind Bomb chains this
+  // choice per-player (forPlayer/nextPlayer), Shapeshifter uses it standalone.
+  // Adapted from Card-Forge/forge (m/mind_bomb.txt, s/shapeshifter.txt), GPL-3.0.
+  // See THIRD_PARTY_NOTICES.md.
+  if (choice.kind === 'numberChoice') {
+    let ns = { ...s, pendingChoice: null };
+    const n = Number(action.optionId) || 0;
+    const handler = NUMBER_CHOICE_HANDLERS[choice.handlerKey];
+    if (handler) ns = handler(ns, choice, n);
+    if (choice.nextPlayer) {
+      ns = createPendingChoice(ns, { ...choice, controller: choice.nextPlayer, forPlayer: choice.nextPlayer, nextPlayer: null });
+    }
+    return ns;
   }
 
   // Default / 'triggered_ability_choice': resolve back through the triggered

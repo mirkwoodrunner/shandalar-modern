@@ -134,3 +134,16 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Darkpact (`darkpactExchange` spell effect + `pendingAnteExchange`, DuelCore.js/cards.js) | Card-Forge/forge | d/darkpact.txt | GPL-3.0 |
 | 2026-07-05 | Ashnod's Battle Gear (`pumpWhileTapped` activated ability effect + `optionalUntap`/upkeep-choice registry, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | a/ashnods_battle_gear.txt | GPL-3.0 |
 | 2026-07-05 | Tawnos's Weaponry (reused `pumpWhileTapped` activated ability effect + `optionalUntap`, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | t/tawnoss_weaponry.txt | GPL-3.0 |
+| 2026-07-05 | Alabaster Potion (`alabasterPotionChoice`/`gainLifeXTarget`/`preventDamageXAny` + `modalChoice` pendingChoice kind + `hurt()`/`dmgWithShield()` damageShield consumption fix, DuelCore.js) | Card-Forge/forge | a/alabaster_potion.txt | GPL-3.0 |
+| 2026-07-05 | Sewers of Estark (`sewersOfEstark` spell effect + `preventCombatDamageDealt` resolveCombat hook, DuelCore.js) | Card-Forge/forge | s/sewers_of_estark.txt | GPL-3.0 |
+| 2026-07-05 | Siren's Call (`sirensCall` spell effect + `pendingSirenSweep`, DuelCore.js) | Card-Forge/forge | s/sirens_call.txt | GPL-3.0 |
+| 2026-07-05 | Tracker (`trackerDamageExchange` activated ability effect, DuelCore.js) | Card-Forge/forge | t/tracker.txt | GPL-3.0 |
+| 2026-07-05 | Winter Blast (`winterBlastTapX` spell effect, DuelCore.js) | Card-Forge/forge | w/winter_blast.txt | GPL-3.0 |
+| 2026-07-05 | Banshee (`bansheeDrain` activated ability effect, DuelCore.js) | Card-Forge/forge | b/banshee.txt | GPL-3.0 |
+| 2026-07-05 | Eternal Flame (`eternalFlameDrain` spell effect, DuelCore.js) | Card-Forge/forge | e/eternal_flame.txt | GPL-3.0 |
+| 2026-07-05 | Martyr's Cry (`martyrsCry` spell effect, DuelCore.js) | Card-Forge/forge | m/martyrs_cry.txt | GPL-3.0 |
+| 2026-07-05 | Volcanic Eruption (`volcanicEruption` spell effect, DuelCore.js) | Card-Forge/forge | v/volcanic_eruption.txt | GPL-3.0 |
+| 2026-07-05 | Winds of Change (`windsOfChange` spell effect, DuelCore.js) | Card-Forge/forge | w/winds_of_change.txt | GPL-3.0 |
+| 2026-07-05 | Mana Clash (`manaClash` spell effect, DuelCore.js) | Card-Forge/forge | m/mana_clash.txt | GPL-3.0 |
+| 2026-07-05 | Mind Bomb (`mindBomb` spell effect + `numberChoice` pendingChoice kind + `NUMBER_CHOICE_HANDLERS` registry, DuelCore.js) | Card-Forge/forge | m/mind_bomb.txt | GPL-3.0 |
+| 2026-07-05 | Forcefield (`forcefieldShield` activated ability effect + `combatDamageShield` identity-scoped prevention hook in `hurt()`, DuelCore.js) | Card-Forge/forge | f/forcefield.txt | GPL-3.0 |

@@ -13,6 +13,24 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C1 (13 of 25 implemented)
+
+Sub-batch C1 (activated abilities and spells) of the complex-tier
+Card-Forge/forge batch. Implemented: `alabaster_potion`, `sewers_of_estark`,
+`sirenss_call`, `tracker`, `winter_blast`, `banshee`, `eternal_flame`,
+`martyrss_cry`, `volcanic_eruption`, `winds_of_change`, `mana_clash`,
+`mind_bomb`, `forcefield`. Deferred (still `effect:"STUB"`, comment updated
+from `STUB:` to `DEFERRED:` with a reason): `guardian_angel`, `ring_of_maruf`,
+`greater_realm_of_preservation`, `circle_of_protection_artifacts/black/blue/
+green/red/white`, `pyramids`, `eye_for_an_eye`, `aladdinss_lamp`. Root cause
+for 9 of the 12 deferrals: `damageShield` (used by several pre-existing
+cards) was written but never read by `hurt()` -- fixed for the flat,
+source-agnostic case, but full identity/color-aware "prevent damage from a
+chosen source" (needed by Circle of Protection, Greater Realm, Eye for an
+Eye) would require threading source metadata through ~80 additional `hurt()`
+call sites, a cross-cutting change out of scope for a single card. See
+`docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C1.
+
 ### 2026-07-05 — Generalized Choice Mechanisms (4 deferred cards)
 
 The last four cards deferred on choice/picker UI gaps are now implemented (no

@@ -12,6 +12,16 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-07-05)
+- **Complex-Tier C1 -- Activated Abilities and Spells (Forge Reference)** -- 13
+  of 25 targeted stub cards implemented (Alabaster Potion, Sewers of Estark,
+  Siren's Call, Tracker, Winter Blast, Banshee, Eternal Flame, Martyr's Cry,
+  Volcanic Eruption, Winds of Change, Mana Clash, Mind Bomb, Forcefield); 12
+  deferred (Guardian Angel, Ring of Ma'rûf, Greater Realm of Preservation, the
+  full Circle of Protection cycle, Pyramids, Eye for an Eye, Aladdin's Lamp).
+  Fixed a real pre-existing bug: `damageShield` was written by several
+  already-shipped cards but never consumed by `hurt()`. New pendingChoice
+  kinds `modalChoice` and `numberChoice`. See `docs/MECHANICS_INDEX.md` --
+  Batch: Complex-Tier C1.
 - **Generalized Choice Mechanisms** -- three narrow choice mechanisms
   (`pendingChoice`, `TutorModal`'s card-source, `pendingUpkeepChoice`) each
   generalized minimally, unblocking the last four STUB cards deferred on

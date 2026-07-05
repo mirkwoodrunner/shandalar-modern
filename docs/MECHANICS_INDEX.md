@@ -3154,4 +3154,64 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.8
+## Batch: Complex-Tier C1 -- Activated Abilities and Spells (Forge Reference)
+
+**Scope:** 13 of 25 targeted C1 stub cards implemented; 12 deferred.
+
+**Cards implemented:** Alabaster Potion (`alabasterPotionChoice`), Sewers of
+Estark (`sewersOfEstark`), Siren's Call (`sirensCall`), Tracker
+(`trackerDamageExchange`), Winter Blast (`winterBlastTapX`), Banshee
+(`bansheeDrain`), Eternal Flame (`eternalFlameDrain`), Martyr's Cry
+(`martyrsCry`), Volcanic Eruption (`volcanicEruption`), Winds of Change
+(`windsOfChange`), Mana Clash (`manaClash`), Mind Bomb (`mindBomb`),
+Forcefield (`forcefieldShield`).
+
+**Deferred (12):** Guardian Angel, Ring of Ma'rûf, Greater Realm of
+Preservation, Circle of Protection (Artifacts/Black/Blue/Green/Red/White --
+all 6), Pyramids, Eye for an Eye, Aladdin's Lamp. See completion summary for
+per-card reasons; the common thread across 9 of the 12 is a real
+infrastructure gap discovered during pre-flight: `damageShield` was written
+by several existing cards but never consumed anywhere in `hurt()`.
+
+**Real bug fixed (pre-existing, not new to this batch):** `hurt()` never
+read `.damageShield` before this batch -- Conservator, Argivian Blacksmith,
+and Rakalite (all pre-existing cards) had been setting a shield field that
+did nothing. Fixed in `hurt()` (player-level flat shield + new
+`combatDamageShield` identity-scoped variant for Forcefield) and via a new
+`dmgWithShield()` helper used at all 4 creature-vs-creature combat damage
+call sites in `resolveCombat()`. Both expire at end of turn (added to the
+existing CLEANUP cleanup loop, which previously only cleared the
+creature-level field, never the player-level one).
+
+**New engine mechanisms:**
+- `modalChoice` pendingChoice kind (`DuelCore.js` `RESOLVE_CHOICE`) --
+  spell-level "choose one --" effects, re-enters `resolveEff()` directly
+  (unlike the existing `triggered_ability_choice` default, which only
+  reaches the narrower `resolveTriggeredEffect` vocabulary). Alabaster
+  Potion is the first user.
+- `numberChoice` pendingChoice kind + `NUMBER_CHOICE_HANDLERS` registry
+  (mirrors `UPKEEP_CHOICE_HANDLERS`) -- "choose a number" effects, chainable
+  across players via `nextPlayer`. Mind Bomb is the first user.
+- `preventCombatDamageDealt` flag, checked at all 6 attacker/blocker combat
+  damage-dealt sites in `resolveCombat()` (source-side, independent of the
+  existing receiver-side Gaseous Form checks). Sewers of Estark.
+- `pendingSirenSweep` -- one-shot end-of-turn sweep flag consumed in the
+  existing CLEANUP block, reusing `turnState.attackedThisCombat`. Siren's
+  Call.
+
+**Not hard-enforced (documented simplification):** Siren's Call's "cast only
+during an opponent's turn, before attackers are declared" timing restriction
+-- no CAST_SPELL timing-gate mechanism exists yet in this engine.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c1-activated.test.js` (14 cases).
+- Full existing Vitest suite (445 tests) re-run clean after this sub-batch.
+- Playwright: deferred to the consolidated `batch-complex-tier-general.spec.ts`
+  at the end of the full C1-C4 batch (see completion summary).
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.9
