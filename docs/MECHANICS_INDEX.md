@@ -3411,4 +3411,94 @@ ACTIVE (checkpoint B of C4 -- more checkpoints follow)
 
 ---
 
-# End of MECHANICS INDEX v1.13
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint C (final)
+
+**Scope:** Final 7 cards for this checkpoint; no additional deferrals (8
+deferred total across C4's three checkpoints). Across the three checkpoints'
+own "Cards implemented"/"Deferred" lists, C4 accounts for 30 implemented + 8
+deferred = 38 cards by name; checkpoints A and B both cited "41 targeted C4
+stub cards" as the sub-batch total, so 3 cards are unaccounted for between
+that stated total and the itemized lists across all three checkpoint
+entries. This discrepancy predates this checkpoint (present already after
+checkpoint B) and is flagged in the final completion summary rather than
+silently resolved here, since reconciling it needs the original C4 card
+list from the task prompt, not something inferable from the docs alone.
+
+**Cards implemented:** Time Vault, Goblin Artisans, Leviathan, Yawgmoth
+Demon, Magnetic Mountain, Power Leak, Lich.
+
+**New engine mechanisms:**
+- Time Vault's turn-transition skip-turn check (added to the same block that
+  already handles Island Sanctuary's protection-clear) -- "if you would
+  begin your turn while this artifact is tapped, you may skip that turn
+  instead. If you do, untap this artifact." Simplification: always skips
+  (no decline UI), matching the convention already used for other such
+  "may" replacement effects.
+- Magnetic Mountain reuses the `doesNotUntapNormally`-adjacent untap-phase
+  map (a new `magneticMountainOut && c.color === "U"` check) plus a new
+  two-stage upkeep-choice flow (see correctness fix below).
+- Lich required the most new `hurt()` surface of the batch: (a) "if you
+  would gain life, draw that many cards instead" (early-return override),
+  (b) "you don't lose the game for having 0 or less life" (gates the
+  existing `nl <= 0` game-over check), (c) "whenever you're dealt damage,
+  sacrifice that many nontoken permanents; if you can't, you lose the game"
+  (gated on `!meta?.isLifeLoss` so Lich's own ETB life-loss doesn't
+  self-trigger the sacrifice clause). Its own death trigger
+  (`scope:'self'`, `ON_PERMANENT_LEAVES_BF`) reuses the `dyingCard`
+  generalization added in checkpoint A, combined with a new
+  `destinationIsGY` condition so bounce/exile don't also end the game.
+- No new token tracking exists anywhere in this engine (every permanent is
+  treated as nontoken), matching the pre-existing Beasts of Bogardan
+  simplification in layers.js -- Lich's sacrifice clause follows the same
+  convention rather than half-building token infrastructure for one card.
+
+**Real correctness fix mid-checkpoint:** Magnetic Mountain and Power Leak's
+first drafts computed their numberChoice option lists (affordability-gated)
+*inline* at UPKEEP-transition time, the same instant `burnMana()` zeroes
+both players' mana pools. That made the "may pay" numberChoice unreachable
+for a human player in real gameplay, not just in tests -- structurally the
+same bug already fixed for Cosmic Horror/Sunken City/Island Fish Jasconius
+in checkpoint B, just re-introduced by two cards implemented before that
+fix's lesson was applied consistently. Fixed the same way: queue a
+`pendingUpkeepChoice` (`magneticMountainPrompt` / `powerLeakPrompt`) at
+UPKEEP-transition time with no mana-affordability gate, then compute the
+actual numberChoice (and its affordability-based option list) inside the
+`UPKEEP_CHOICE_HANDLERS.resolve` step, a separate non-phase-transition
+dispatch where any mana the player has tapped in response is still present.
+
+**Known UI-wiring gap (flagged, not built):** Goblin Artisans' activated
+ability targets a spell on the stack (an artifact spell you control), not a
+permanent or player. The existing activated-ability targeting UI path
+(`ACTIVATE_TARGET_EFFECTS`/`PLAYER_TARGETABLE_ABILITY_EFFECTS` in
+`useDuelController.ts`) only supports permanent/player targets;
+stack-item targeting UI (`needsStackTarget`) exists only for the
+spell-casting flow (counterspells), not the activated-ability flow. Wiring
+a new "activated ability targets the stack" interaction into both
+`DuelScreen.tsx` and `DuelScreenMobile.tsx` is new cross-cutting UI
+infrastructure beyond this checkpoint's scope -- the engine-side effect
+(`coinFlipDrawOrCounterArtifact`) is fully implemented and covered by a
+direct-dispatch Vitest scenario, but the card cannot yet be activated with
+a target through the UI. This is consistent with the pre-existing gap
+already present for several checkpoint B/C upkeep-choice handlers
+(Farmstead, Erosion, Cosmic Horror, Sunken City, Island Fish Jasconius/
+Leviathan's pay-to-untap, Yawgmoth Demon, and now Magnetic Mountain/Power
+Leak): `UPKEEP_CHOICE_MODALS` in `src/ui/duel/upkeepChoiceRegistry.tsx`
+only has entries for `forceOfNatureUpkeep` and `optionalUntap`, so these
+handlerKeys currently render no prompt UI at all (the engine-side queue and
+resolve logic is correct and tested via direct dispatch, but a human
+player has no on-screen way to trigger `UPKEEP_CHOICE_RESOLVE` for them
+yet). Flagging rather than building 9 new modals inside this batch.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-c.test.js` (16 cases).
+- Full existing Vitest suite (503 tests across `src/engine/__tests__` +
+  `src/hooks/__tests__` + `tests/scenarios`) re-run; all 503 passed, no
+  regressions.
+
+### Status
+COMPLETE (C4 finished: 30 implemented, 8 deferred across all 3 checkpoints;
+C1-C4 combined status recorded in the batch completion summary)
+
+---
+
+# End of MECHANICS INDEX v1.14

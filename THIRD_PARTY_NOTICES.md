@@ -179,3 +179,10 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Shapeshifter (`shapeshifterETB` spell effect + `shapeshifterChoose` numberChoice handler + CDA evaluators, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | s/shapeshifter.txt | GPL-3.0 |
 | 2026-07-05 | Island Fish Jasconius (`doesNotUntapNormally` + `payToUntapSelf` upkeep-choice handler + reused attack/sacrifice fields, DuelCore.js/cards.js) | Card-Forge/forge | i/island_fish_jasconius.txt | GPL-3.0 |
 | 2026-07-05 | Jihad (`jihadETB` spell effect + `jihadColorChoice` pendingChoice kind + layers.js P/T buff, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | j/jihad.txt | GPL-3.0 |
+| 2026-07-05 | Time Vault (`doesNotUntapNormally` + turn-transition skip-turn hook + `extraTurn` activated ability, DuelCore.js/cards.js) | Card-Forge/forge | t/time_vault.txt | GPL-3.0 |
+| 2026-07-05 | Goblin Artisans (`coinFlipDrawOrCounterArtifact` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | g/goblin_artisans.txt | GPL-3.0 |
+| 2026-07-05 | Leviathan (reused `attackRequiresDefenderLand`/`doesNotUntapNormally`/`payToUntapSelf` + `sacIslandsToUntapSelf` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | l/leviathan.txt | GPL-3.0 |
+| 2026-07-05 | Yawgmoth Demon (`yawgmothDemonUpkeep` upkeep case + handler, DuelCore.js/cards.js) | Card-Forge/forge | y/yawgmoth_demon.txt | GPL-3.0 |
+| 2026-07-05 | Magnetic Mountain (`magneticMountainOut` untap-phase hook + `magneticMountainPrompt`/`magneticMountainUntap` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | m/magnetic_mountain.txt | GPL-3.0 |
+| 2026-07-05 | Power Leak (reused `enchantCreature` + `powerLeakPrompt`/`powerLeakPay` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | p/power_leak.txt | GPL-3.0 |
+| 2026-07-05 | Lich (`lichETB` spell effect + `hurt()` lifegain-to-draw/no-zero-loss/damage-forces-sacrifice overrides + `ON_PERMANENT_LEAVES_BF` `scope:'self'` generalization + `destinationIsGY` condition, DuelCore.js/cards.js) | Card-Forge/forge | l/lich.txt | GPL-3.0 |

@@ -271,6 +271,11 @@ function dmgWithShield(c, amount) {
 }
 
 export function hurt(s, who, amt, src = "", meta = null) {
+// Lich: "If you would gain life, draw that many cards instead."
+// Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (amt < 0 && s[who].lichActive) {
+  return drawD(dlog(s, `${who}'s Lich: draws ${-amt} card(s) instead of gaining life.`, "effect"), who, -amt);
+}
 if (amt > 0) {
   const redirectTarget = getDamageRedirectTarget(s, who, meta);
   if (redirectTarget) {
@@ -324,7 +329,26 @@ if (amt > 0) {
 }
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
 if (who === "p" && amt > 0) ns = { ...ns, peakDamage: Math.max(ns.peakDamage || 0, amt) };
-if (nl <= 0 && !ns.over) ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} reached 0 life` } };
+// Lich: "You don't lose the game for having 0 or less life."
+// Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (nl <= 0 && !ns.over && !ns[who].lichActive) ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} reached 0 life` } };
+// Lich: "Whenever you're dealt damage, sacrifice that many nontoken
+// permanents. If you can't, you lose the game." No token tracking exists
+// (every permanent treated as nontoken, matching the Beasts of Bogardan
+// SIMPLIFICATION in layers.js). Gated on !meta?.isLifeLoss so Lich's own
+// "you lose life equal to your life total" ETB (life loss, not damage,
+// per MTG rules) doesn't itself trigger the sacrifice clause.
+// Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (amt > 0 && ns[who].lichActive && !meta?.isLifeLoss) {
+  const perms = ns[who].bf;
+  if (perms.length < amt) {
+    ns = { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} could not sacrifice enough permanents (Lich)` } };
+  } else {
+    let toSac = perms.slice(0, amt);
+    for (const p of toSac) ns = zMove(ns, p.iid, who, who, "gy");
+    ns = dlog(ns, `${who}'s Lich: sacrifices ${amt} permanent(s).`, "effect");
+  }
+}
 return ns;
 }
 
@@ -3174,6 +3198,40 @@ case "jihadETB": {
   });
   break;
 }
+// Lich: "As this enchantment enters, you lose life equal to your life
+// total." Sets lichActive on the controller, read by hurt()'s overrides.
+case "lichETB": {
+  const pArr = { ...card, controller: caster, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr], lichActive: true } };
+  ns = { ...ns, skipEtbPush: true };
+  ns = hurt(ns, caster, ns[caster].life, card.name, { isLifeLoss: true });
+  break;
+}
+// Goblin Artisans: "{T}: Flip a coin. If you win the flip, draw a card. If
+// you lose the flip, counter target artifact spell you control..."
+// SIMPLIFICATION: the "...that isn't the target of an ability from another
+// creature named Goblin Artisans" clause is not enforced (multi-copy edge
+// case). Adapted from Card-Forge/forge (g/goblin_artisans.txt), GPL-3.0. See
+// THIRD_PARTY_NOTICES.md.
+case "coinFlipDrawOrCounterArtifact": {
+  // OBSERVED (out of scope for this prompt): Math.random() here follows the
+  // same already-flagged coin-flip idiom used elsewhere (Mana Clash, Ydwen
+  // Efreet) pending a seeded-RNG migration.
+  const won = Math.random() < 0.5;
+  if (won) {
+    ns = drawD(ns, caster);
+    ns = dlog(ns, `${card.name}: wins the flip -- draws a card.`, "effect");
+  } else {
+    const stackItem = ns.stack.find(i => i.id === tgt && i.caster === caster && isArt(i.card));
+    if (stackItem) {
+      ns = { ...ns, stack: ns.stack.filter(i => i.id !== tgt) };
+      ns = dlog(ns, `${card.name}: loses the flip -- counters ${stackItem.card.name}.`, "effect");
+    } else {
+      ns = dlog(ns, `${card.name}: loses the flip -- no valid artifact spell to counter.`, "effect");
+    }
+  }
+  break;
+}
 // --- END BATCH: COMPLEX-TIER C4 ----------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
@@ -3594,6 +3652,20 @@ ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, sp
 if (ns[ns.active].islandSanctuaryProtected) {
   ns = { ...ns, [ns.active]: { ...ns[ns.active], islandSanctuaryProtected: false } };
 }
+// Time Vault: "If you would begin your turn while this artifact is tapped,
+// you may skip that turn instead. If you do, untap this artifact."
+// SIMPLIFICATION: always skips when tapped -- no "decline" UI exists (same
+// convention as other such "may" replacement effects elsewhere in this file).
+// Adapted from Card-Forge/forge (t/time_vault.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+{
+  const tappedVault = ns[ns.active].bf.find(x => x.id === "time_vault" && x.tapped);
+  if (tappedVault) {
+    ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(x => x.iid === tappedVault.iid ? { ...x, tapped: false } : x) } };
+    ns = dlog(ns, `${ns.active} skips their turn (Time Vault) -- Time Vault untaps.`, "effect");
+    const nx2 = ns.active === "p" ? "o" : "p";
+    ns = { ...ns, active: nx2, turn: ns.turn + 1 };
+  }
+}
 {
 const allBF_s = [...ns.p.bf, ...ns.o.bf];
 // Power Surge: snapshot tapped land count before untapping (SYSTEMS.md S20, Option A)
@@ -3610,6 +3682,10 @@ const smokeOut     = allBF_s.some(x => x.id === "smoke");
 // steps." Same per-turn-counter idiom as winterOrbOut (lands) / smokeOut (creatures).
 // Adapted from Card-Forge/forge (d/damping_field.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 const dampingFieldOut = allBF_s.some(x => x.id === "damping_field");
+// Magnetic Mountain: "Blue creatures don't untap during their controllers'
+// untap steps." Adapted from Card-Forge/forge (m/magnetic_mountain.txt),
+// GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const magneticMountainOut = allBF_s.some(x => x.id === "magnetic_mountain");
 let artifactsUntapped = 0;
 let landsUntapped = 0, cresUntapped = 0;
 // Old Man of the Sea: revert stolen creatures before Old Man untaps.
@@ -3654,6 +3730,7 @@ if (isCre(c)) {
 if (c.skipNextUntap) return { ...base, skipNextUntap: false };
 if (meekstoneOut && getPow(c, ns) >= 3) return base;
 if (smokeOut && cresUntapped >= 1) return base;
+if (magneticMountainOut && c.color === "U") return base;
 // Paralyze: creature never untaps while the aura is attached
 if (c.paralyzed || c.enchantments?.some(e => e.mod?.paralyzed)) return { ...base, tapped: true };
 if (c.optionalUntap && c.optionalUntapAlways) return base; // stays tapped; choice queued below
@@ -3738,6 +3815,21 @@ if (w === ns.active) {
   const curseAura = c.enchantments?.find(e => ["Feedback", "Wanderlust", "Warp Artifact"].includes(e.name));
   if (curseAura) ns = hurt(ns, w, 1, curseAura.name);
 }
+// Power Leak: "that player may pay any amount of mana. This Aura deals 2
+// damage to that player. Prevent X of that damage, where X is the amount
+// paid this way." SIMPLIFICATION: AI never pays (auto-decides 0, takes 2);
+// human is queued via pendingUpkeepChoice first (mana burns at this very
+// transition, so the actual numberChoice -- and its affordability-based
+// option list -- can only be built once the player has had a chance to add
+// mana in response; see powerLeakPrompt in UPKEEP_CHOICE_HANDLERS).
+// Adapted from Card-Forge/forge (p/power_leak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && c.enchantments?.some(e => e.name === "Power Leak")) {
+  if (w === "o") {
+    ns = hurt(ns, "o", 2, "Power Leak");
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Power Leak", handlerKey: "powerLeakPrompt", iid: c.iid });
+  }
+}
 // Erosion: "Enchant land. At the beginning of the upkeep of enchanted land's
 // controller, destroy that land unless that player pays {1} or 1 life."
 // Adapted from Card-Forge/forge (e/erosion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -3768,6 +3860,22 @@ if (w === ns.active && w === 'p' && c.id === "shapeshifter") {
     iid: c.iid,
     options: [0, 1, 2, 3, 4, 5, 6, 7].map(n => ({ id: String(n), label: String(n) })),
   });
+}
+// Magnetic Mountain: "each player may choose any number of tapped blue
+// creatures they control and pay {4} for each. If so, untap those creatures."
+// SIMPLIFICATION: the AI never opts in (auto-chooses 0, no queued choice);
+// the human is queued via pendingUpkeepChoice first -- mana burns at this
+// very transition, so affordability (and thus the numberChoice option list)
+// can only be computed once the player has had a chance to add mana in
+// response; see magneticMountainPrompt in UPKEEP_CHOICE_HANDLERS. Auto-selects
+// which eligible creatures untap (same auto-fill convention as the C1
+// X-target spells).
+// Adapted from Card-Forge/forge (m/magnetic_mountain.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && w === 'p' && c.id === "magnetic_mountain") {
+  const eligible = ns.p.bf.filter(x => isCre(x) && x.tapped && x.color === "U");
+  if (eligible.length > 0) {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "magneticMountainPrompt", iid: c.iid });
+  }
 }
 switch (c.upkeep) {
 case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
@@ -4007,6 +4115,41 @@ case "payToUntapSelf": {
   }
   break;
 }
+// Leviathan: "you may sacrifice two Islands. If you do, untap this creature."
+// Adapted from Card-Forge/forge (l/leviathan.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "sacIslandsToUntapSelf": {
+  if (w !== ns.active || !c.tapped) break;
+  if (w === "o") {
+    const islands = ns.o.bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+    if (islands.length >= 2) {
+      for (const isl of islands.slice(0, 2)) ns = zMove(ns, isl.iid, w, w, "gy");
+      ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: false } : x) } };
+      ns = dlog(ns, `${c.name}: opponent sacrifices two Islands to untap.`, "effect");
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "sacIslandsToUntapSelf", iid: c.iid });
+  }
+  break;
+}
+// Yawgmoth Demon: "you may sacrifice an artifact. If you don't, tap this
+// creature and it deals 2 damage to you."
+// Adapted from Card-Forge/forge (y/yawgmoth_demon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "yawgmothDemonUpkeep": {
+  if (w !== ns.active) break;
+  if (w === "o") {
+    const arts = ns.o.bf.filter(x => isArt(x) && x.iid !== c.iid);
+    if (arts.length) {
+      ns = zMove(ns, arts[0].iid, w, w, "gy");
+      ns = dlog(ns, `${c.name}: opponent sacrifices an artifact.`, "effect");
+    } else {
+      ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+      ns = hurt(ns, "o", 2, c.name);
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "yawgmothDemonUpkeep", iid: c.iid });
+  }
+  break;
+}
 default: break;
 }
 }
@@ -4216,6 +4359,11 @@ function evaluateCondition(state, card, condition, payload) {
   if (condition.type === 'permanentWasLand') {
     return !!payload.wasLand && payload.destination === 'gy';
   }
+  // ON_PERMANENT_LEAVES_BF: restricts to the "...from the battlefield" case
+  // being a destroy/sacrifice (destination gy), not a bounce/exile. Lich.
+  if (condition.type === 'destinationIsGY') {
+    return payload.destination === 'gy';
+  }
   // ON_PERMANENT_LEAVES_BF: "an artifact you control is put into a graveyard" -- Tablet of Epityr.
   if (condition.type === 'ownArtifactLeftBf') {
     return !!payload.wasArtifact && payload.previousController === card.controller && payload.destination === 'gy';
@@ -4260,7 +4408,15 @@ function emitEvent(state, event) {
   const allPlayers = ['p', 'o'];
   let ts = Date.now(); // tie-breaking integer only, not for timing
 
-  const dyingCardId = event.type === 'ON_CREATURE_DIES' ? event.payload?.cardId : null;
+  // dyingCardId: the card (if any) that just left the battlefield as part of
+  // this event, so self-scoped triggers on IT can still fire even though it's
+  // no longer in state[who].bf by the time this runs. Originally
+  // ON_CREATURE_DIES-only (Abu Ja'far etc.); extended to ON_PERMANENT_LEAVES_BF
+  // for Lich's "when this is put into a graveyard, you lose the game" --
+  // same shape, different event/payload field name.
+  const dyingCardId = event.type === 'ON_CREATURE_DIES' ? event.payload?.cardId
+                     : event.type === 'ON_PERMANENT_LEAVES_BF' ? event.payload?.cardIid
+                     : null;
   const dyingCard = dyingCardId ? findLeftBattlefieldCard(state, dyingCardId) : null;
 
   for (const who of allPlayers) {
@@ -4706,6 +4862,71 @@ const UPKEEP_CHOICE_HANDLERS = {
       return { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
     },
   },
+  // Leviathan: "you may sacrifice two Islands. If you do, untap this creature." choice.iid is the creature.
+  // Adapted from Card-Forge/forge (l/leviathan.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  sacIslandsToUntapSelf: {
+    resolve(s, choice, action) {
+      if (action.choice !== "PAY") return s;
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      const islands = s[owner].bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+      if (islands.length < 2) return s;
+      let ns = s;
+      for (const isl of islands.slice(0, 2)) ns = zMove(ns, isl.iid, owner, owner, "gy");
+      return { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
+    },
+  },
+  // Yawgmoth Demon: "you may sacrifice an artifact. If you don't, tap this
+  // creature and it deals 2 damage to you." choice.iid is the creature.
+  // Adapted from Card-Forge/forge (y/yawgmoth_demon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  yawgmothDemonUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "SACRIFICE") {
+        const arts = s[owner].bf.filter(x => isArt(x) && x.iid !== choice.iid);
+        if (!arts.length) return s;
+        return zMove(s, arts[0].iid, owner, owner, "gy");
+      }
+      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
+      return hurt(ns, owner, 2, choice.cardName);
+    },
+  },
+  // Magnetic Mountain: computes the eligible/affordable count at resolve time
+  // (not when the pendingUpkeepChoice was queued) since mana burns at the
+  // UPKEEP transition itself -- the player only has real mana to spend once
+  // they respond to this prompt. Opens the numberChoice for how many to untap.
+  // Adapted from Card-Forge/forge (m/magnetic_mountain.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  magneticMountainPrompt: {
+    resolve(s, choice) {
+      const eligible = s.p.bf.filter(x => isCre(x) && x.tapped && x.color === "U");
+      const maxAffordable = Math.floor(Object.values(s.p.mana).reduce((a, b) => a + b, 0) / 4);
+      const max = Math.min(eligible.length, maxAffordable);
+      if (max <= 0) return s;
+      return createPendingChoice(s, {
+        sourceCardId: choice.iid,
+        controller: 'p',
+        kind: 'numberChoice',
+        handlerKey: 'magneticMountainUntap',
+        options: Array.from({ length: max + 1 }, (_, n) => ({ id: String(n), label: `Untap ${n}` })),
+      });
+    },
+  },
+  // Power Leak: same "compute at resolve time" reasoning as Magnetic Mountain
+  // above -- only the human is queued this way (the AI auto-decides 0
+  // synchronously). forPlayer is always 'p' here.
+  // Adapted from Card-Forge/forge (p/power_leak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  powerLeakPrompt: {
+    resolve(s, choice) {
+      const totalMana = Object.values(s.p.mana).reduce((a, b) => a + b, 0);
+      return createPendingChoice(s, {
+        sourceCardId: choice.iid,
+        controller: 'p',
+        kind: 'numberChoice',
+        handlerKey: 'powerLeakPay',
+        forPlayer: 'p',
+        options: Array.from({ length: Math.min(totalMana, 2) + 1 }, (_, n) => ({ id: String(n), label: `Pay ${n}` })),
+      });
+    },
+  },
 };
 
 // Registry for kind:'numberChoice' pendingChoice resolution, mirroring
@@ -4732,6 +4953,32 @@ const NUMBER_CHOICE_HANDLERS = {
     if (!owner) return s;
     const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, chosenNumber: n } : c) } };
     return dlog(ns, `Shapeshifter becomes ${n}/${7 - n}.`, "effect");
+  },
+  // Magnetic Mountain: untaps N tapped blue creatures the player controls
+  // (auto-selected), paying {4} per creature.
+  // Adapted from Card-Forge/forge (m/magnetic_mountain.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  magneticMountainUntap: (s, choice, n) => {
+    if (n <= 0) return s;
+    const who = choice.controller;
+    const eligible = s[who].bf.filter(x => isCre(x) && x.tapped && x.color === "U").slice(0, n);
+    if (!canPay(s[who].mana, String(n * 4))) return s;
+    let ns = { ...s, [who]: { ...s[who], mana: payMana(s[who].mana, String(n * 4)) } };
+    const ids = eligible.map(x => x.iid);
+    ns = { ...ns, [who]: { ...ns[who], bf: ns[who].bf.map(c => ids.includes(c.iid) ? { ...c, tapped: false } : c) } };
+    return dlog(ns, `Magnetic Mountain: untaps ${ids.length} blue creature(s).`, "effect");
+  },
+  // Power Leak: "that player may pay any amount of mana. This Aura deals 2
+  // damage to that player. Prevent X of that damage, where X is the amount
+  // paid this way." choice.iid is the enchanted enchantment.
+  // Adapted from Card-Forge/forge (p/power_leak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  powerLeakPay: (s, choice, n) => {
+    const who = choice.forPlayer;
+    if (n <= 0) return hurt(s, who, 2, "Power Leak");
+    if (!canPay(s[who].mana, String(n))) return hurt(s, who, 2, "Power Leak");
+    const paid = Math.min(n, 2);
+    const ns = { ...s, [who]: { ...s[who], mana: payMana(s[who].mana, String(n)) } };
+    const remaining = Math.max(0, 2 - paid);
+    return remaining > 0 ? hurt(ns, who, remaining, "Power Leak") : ns;
   },
 };
 

@@ -13,6 +13,35 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C4 checkpoint C, final (30 implemented, 8 deferred across C4)
+
+Third and final checkpoint of sub-batch C4. Implemented: `time_vault`,
+`goblin_artisans`, `leviathan`, `yawgmoth_demon`, `magnetic_mountain`,
+`power_leak`, `lich`. No additional deferrals this checkpoint. Fixed a real
+bug found mid-checkpoint (same class as checkpoint B's fix, re-introduced
+by two cards implemented before that lesson generalized across the whole
+upkeep loop): `magnetic_mountain`/`power_leak`'s numberChoice option lists
+were computed inline at the UPKEEP transition, the same instant
+`burnMana()` zeroes both players' mana -- making the "may pay" choice
+unreachable for a human player in a live game. Corrected to the same
+queue-then-resolve pattern as checkpoint B: queue a `pendingUpkeepChoice`
+with no mana gate, compute the actual numberChoice inside the
+`UPKEEP_CHOICE_HANDLERS.resolve` step where mana tapped in response is
+still present. `lich` required the most new `hurt()` surface of the whole
+complex-tier batch (lifegain-to-draw override, no-zero-loss override,
+damage-forces-sacrifice-or-lose clause) plus reused the
+`ON_PERMANENT_LEAVES_BF`/`scope:'self'` generalization from checkpoint A
+for its own death trigger. Flagged, not built: `goblin_artisans`' activated
+ability targets a stack item (an artifact spell), which the existing
+activated-ability targeting UI (`ACTIVATE_TARGET_EFFECTS`) doesn't support
+-- engine logic is implemented and tested via direct dispatch, but the
+card can't yet be activated with a target through the UI. C4 sub-batch
+complete: 30 cards implemented, 8 deferred by name across all three
+checkpoints (12+11+7 implemented, 7+1+0 deferred) -- note this sums to 38
+against the "41 targeted" figure cited in checkpoints A/B; that 3-card gap
+is flagged in the final batch completion summary rather than resolved here,
+since it needs the original C4 card list to reconcile.
+
 ### 2026-07-05 — Complex-Tier C4 checkpoint B (23 of 41 implemented so far)
 
 Second checkpoint of sub-batch C4. Implemented: `goblins_of_the_flarg`,
