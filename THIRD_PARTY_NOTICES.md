@@ -168,3 +168,14 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Cockatrice (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | c/cockatrice.txt | GPL-3.0 |
 | 2026-07-05 | Infernal Medusa (reused `blocksDestroyFilter`/`blockedByDestroyFilter`, DuelCore.js/cards.js) | Card-Forge/forge | i/infernal_medusa.txt | GPL-3.0 |
 | 2026-07-05 | Time Elemental (`sacrificeAtEndOfCombat` + `endOfCombatSacrifice` + `bounceUnenchanted` activated ability, DuelCore.js/cards.js) | Card-Forge/forge | t/time_elemental.txt | GPL-3.0 |
+| 2026-07-05 | Goblins of the Flarg (CLEANUP-phase sacrifice-if-controls-Dwarf check, DuelCore.js/cards.js) | Card-Forge/forge | g/goblins_of_the_flarg.txt | GPL-3.0 |
+| 2026-07-05 | Cosmic Horror (`cosmicHorrorUpkeep` upkeep case + handler, DuelCore.js/cards.js) | Card-Forge/forge | c/cosmic_horror.txt | GPL-3.0 |
+| 2026-07-05 | Nafs Asp (`queueDrainAtNextDraw` triggered effect + PHASE.DRAW consumption, DuelCore.js/cards.js) | Card-Forge/forge | n/nafs_asp.txt | GPL-3.0 |
+| 2026-07-05 | Sunken City (reused `lordEffect` + `sunkenCityUpkeep` upkeep case, DuelCore.js/cards.js) | Card-Forge/forge | s/sunken_city.txt | GPL-3.0 |
+| 2026-07-05 | Drop of Honey (`dropOfHoneyUpkeep` upkeep case + CLEANUP sacrifice-if-no-creatures check, DuelCore.js/cards.js) | Card-Forge/forge | d/drop_of_honey.txt | GPL-3.0 |
+| 2026-07-05 | Erosion (reused `enchantCreature` + `erosionUpkeep` upkeep-choice handler, DuelCore.js/cards.js) | Card-Forge/forge | e/erosion.txt | GPL-3.0 |
+| 2026-07-05 | Merchant Ship (reused `attackRequiresDefenderLand`/`unblockedAttackGainLife` + `sacrificeIfNoIslands`, DuelCore.js/cards.js) | Card-Forge/forge | m/merchant_ship.txt | GPL-3.0 |
+| 2026-07-05 | Nether Shadow (graveyard-position upkeep scan, DuelCore.js/cards.js) | Card-Forge/forge | n/nether_shadow.txt | GPL-3.0 |
+| 2026-07-05 | Shapeshifter (`shapeshifterETB` spell effect + `shapeshifterChoose` numberChoice handler + CDA evaluators, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | s/shapeshifter.txt | GPL-3.0 |
+| 2026-07-05 | Island Fish Jasconius (`doesNotUntapNormally` + `payToUntapSelf` upkeep-choice handler + reused attack/sacrifice fields, DuelCore.js/cards.js) | Card-Forge/forge | i/island_fish_jasconius.txt | GPL-3.0 |
+| 2026-07-05 | Jihad (`jihadETB` spell effect + `jihadColorChoice` pendingChoice kind + layers.js P/T buff, DuelCore.js/layers.js/cards.js) | Card-Forge/forge | j/jihad.txt | GPL-3.0 |

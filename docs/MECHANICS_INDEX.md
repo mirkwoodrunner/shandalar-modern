@@ -3347,4 +3347,68 @@ ACTIVE (checkpoint A of C4 -- more checkpoints follow)
 
 ---
 
-# End of MECHANICS INDEX v1.12
+## Batch: Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint B
+
+**Scope:** 11 more of 41 targeted C4 stub cards implemented (23/41 total so
+far); 1 more deferred (8 total so far).
+
+**Cards implemented:** Goblins of the Flarg, Cosmic Horror, Nafs Asp, Sunken
+City, Drop of Honey, Erosion, Merchant Ship, Nether Shadow, Shapeshifter,
+Island Fish Jasconius, Jihad.
+
+**Deferred:** Personal Incarnation -- its `{0}` damage-redirect-to-owner
+ability needs creature-damage redirection, which (like the C1 damageShield
+gap) isn't centralized; creature damage is applied via ad hoc inline
+mutation at combat sites and dozens of resolveEff cases. The companion
+death-trigger clause is buildable via existing infra, but implementing only
+that half would misrepresent the card's defining mechanic.
+
+**New engine mechanisms:**
+- Generalized the Pestilence "sacrifice when a battlefield-wide condition is
+  true" idiom (checked at CLEANUP) to Drop of Honey, Goblins of the Flarg,
+  Merchant Ship/Island Fish Jasconius (`sacrificeIfNoIslands`), and Jihad.
+- `doesNotUntapNormally` -- a permanent that never untaps automatically
+  during the untap-phase map, only via an explicit paid action. Island Fish
+  Jasconius; reused later for Leviathan and Time Vault.
+- **Real correctness fix mid-checkpoint:** the first draft of
+  `cosmicHorrorUpkeep`/`sunkenCityUpkeep`/`payToUntapSelf` auto-decided the
+  "pay or else" choice synchronously inline for both players, including the
+  human. Since `burnMana()` runs at every phase boundary before any upkeep
+  check, a human player's mana is always 0 at that exact instant -- this
+  would have made these costs impossible to pay in a live game, not just in
+  tests. Fixed to follow the established Farmstead/Energy Flux convention:
+  auto-decide only for the AI opponent; queue via
+  `UPKEEP_CHOICE_HANDLERS` for the human player, who taps mana in response
+  to the prompt.
+- Nether Shadow needed a graveyard-position scan (not the battlefield loop
+  the rest of the upkeep switch uses) -- "cards above it" reads as "added to
+  the graveyard after it" (higher array index, since new discards are
+  pushed to the end).
+- `numberChoice` extended with a second real user: Shapeshifter (ETB +
+  optional upkeep re-prompt, human-only -- the AI keeps its current value
+  rather than being re-prompted every turn).
+- `jihadColorChoice` pendingChoice kind -- sets fields on the *source* card
+  itself (unlike `colorChoice`, which recolors a separate target).
+
+**Observed, not caused by this checkpoint:** `AI.sim.test.js`'s
+"deterministic given the same initial state" test is empirically flaky
+(~12% failure rate measured over 8 runs) on the pre-checkpoint-B baseline
+(commit with checkpoint A only) -- root cause is the already-documented,
+deliberately-accepted `Math.random()` coin-flip idiom (Mana Clash, Ydwen
+Efreet) reachable in some AI simulation paths, not anything introduced in
+this checkpoint. Confirmed via repeated runs on both the pre- and
+post-checkpoint-B code; the flake rate is consistent across both. Seeding
+the RNG is out of scope per the batch's ground rules.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c4-triggers-b.test.js` (15 cases).
+- Full existing Vitest suite (487 tests) re-run; 486 passed, 1 pre-existing
+  flaky failure diagnosed above and confirmed unrelated to this checkpoint's
+  changes.
+
+### Status
+ACTIVE (checkpoint B of C4 -- more checkpoints follow)
+
+---
+
+# End of MECHANICS INDEX v1.13

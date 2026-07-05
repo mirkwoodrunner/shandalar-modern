@@ -237,6 +237,7 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'lockArtifactWhileTapped', // Phyrexian Gremlins -- "target artifact"
   // Complex-tier Forge batch C4 (see THIRD_PARTY_NOTICES.md):
   'bounceUnenchanted', // Time Elemental -- "target permanent that isn't enchanted"
+  // Erosion reuses 'enchantCreature' (already registered above) for its "enchant land" attach.
 ]);
 
 // Ability effects that can target players (in addition to permanents).

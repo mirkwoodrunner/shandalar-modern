@@ -13,6 +13,19 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C4 checkpoint B (23 of 41 implemented so far)
+
+Second checkpoint of sub-batch C4. Implemented: `goblins_of_the_flarg`,
+`cosmic_horror`, `nafs_asp`, `sunken_city`, `drop_of_honey`, `erosion`,
+`merchant_ship`, `nether_shadow`, `shapeshifter`, `island_fish_jasconius`,
+`jihad`. Deferred: `personal_incarnation`. Fixed a real bug found mid-
+checkpoint: the initial "pay or sacrifice" upkeep implementations
+auto-decided synchronously for both players, which would have made the
+cost literally unpayable for a human player too (mana always burns to 0
+before an inline upkeep check runs) -- corrected to queue via
+`UPKEEP_CHOICE_HANDLERS` for the human, matching the established
+Farmstead/Energy Flux convention. More checkpoints follow.
+
 ### 2026-07-05 — Complex-Tier C4 checkpoint A (12 of 41 implemented so far)
 
 First checkpoint of sub-batch C4 (triggered abilities), the largest of the

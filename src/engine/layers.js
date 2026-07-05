@@ -80,6 +80,10 @@ export const CDA_EVALUATORS = {
     const opp = card.controller === 'p' ? 'o' : 'p';
     return 2 + (state[opp]?.bf.filter(x => isLand(x) && subOf(x).includes('Swamp')).length ?? 0);
   },
+  // Shapeshifter: power equals the last chosen number, toughness is 7 minus it.
+  // Adapted from Card-Forge/forge (s/shapeshifter.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  shapeshifterPower: (card) => card.chosenNumber ?? 0,
+  shapeshifterToughness: (card) => 7 - (card.chosenNumber ?? 0),
 };
 
 function getTs(eff) {
@@ -309,6 +313,20 @@ function collectEffects(card, state) {
   if (card.name === 'Rabid Wombat') {
     const auraCount = card.enchantments?.length ?? 0;
     if (auraCount > 0) effects.push({ layer: '7c', power: auraCount * 2, toughness: auraCount * 2, enterTs: 0 });
+  }
+
+  // 15b. Jihad: "White creatures get +2/+1 as long as the chosen player
+  //      controls a nontoken permanent of the chosen color." No token tracking
+  //      exists (every permanent treated as nontoken, matching the Beasts of
+  //      Bogardan SIMPLIFICATION above).
+  //      Adapted from Card-Forge/forge (j/jihad.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.color === 'W') {
+    for (const src of allBf) {
+      if (src.name !== 'Jihad' || !src.chosenColor || !src.chosenPlayer) continue;
+      if (state[src.chosenPlayer]?.bf.some(x => x.color === src.chosenColor)) {
+        effects.push({ layer: '7c', power: 2, toughness: 1, enterTs: src.enterTs ?? 0 });
+      }
+    }
   }
 
   // 16. Hidden Path: "Green creatures have forestwalk."
