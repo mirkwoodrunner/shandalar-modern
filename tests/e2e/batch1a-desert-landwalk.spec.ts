@@ -58,13 +58,14 @@ async function playLand(page: Page, cardId: string): Promise<string> {
 // Returns { desertIid, attackerIid }.
 async function setupDesertPingScenario(
   page: Page,
-  attackerCardId: string
+  attackerCardId: string,
+  mana: Record<string, number> = { R: 3, C: 3 }
 ): Promise<{ desertIid: string; attackerIid: string }> {
   // Force both cards into hand and set mana for casting.
-  await page.evaluate((atkId) => {
+  await page.evaluate(({ atkId, manaArg }) => {
     const dispatch = (window as any).__duelDispatch;
-    dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['desert', atkId], mana: { R: 3, C: 3 } });
-  }, attackerCardId);
+    dispatch({ type: 'SANDBOX_FORCE_HAND', who: 'p', cardIds: ['desert', atkId], mana: manaArg });
+  }, { atkId: attackerCardId, manaArg: mana });
 
   const desertIid = await playLand(page, 'desert');
   const attackerIid = await castAndResolve(page, attackerCardId);
@@ -146,7 +147,7 @@ function desertLandwalkTests() {
     await waitForDuel(page);
     await waitForMain1(page);
 
-    const { desertIid, attackerIid } = await setupDesertPingScenario(page, 'grizzly_bears');
+    const { desertIid, attackerIid } = await setupDesertPingScenario(page, 'grizzly_bears', { G: 3, C: 3 });
 
     const damageBefore = await page.evaluate((iid) => {
       const s = (window as any).__duelState();

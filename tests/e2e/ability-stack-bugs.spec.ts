@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('@engine @mobile ability stack bugs', () => {
 
-  const BASE = 'http://localhost:5173/?sandbox=true';
+  const BASE = 'http://localhost:5173/?duel=sandbox';
 
   async function waitForDuel(page: any) {
     await page.waitForFunction(() => (window as any).__duelState?.()?.phase != null, { timeout: 10_000 });

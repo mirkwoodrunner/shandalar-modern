@@ -21,7 +21,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     {
       name: 'mobile-chrome',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, hasTouch: true },
       testMatch: [
         'tests/e2e/ability-stack-bugs.spec.ts',
         'tests/e2e/ai-creature-evaluation-smoke.spec.ts',

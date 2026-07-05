@@ -123,8 +123,7 @@ test.describe('@persistence @mobile Duel persistence [desktop]', () => {
   });
 
   test('PERSIST-06: malformed localStorage value is cleared and duel mounts normally', async ({ page }) => {
-    await page.goto('about:blank');
-    await page.evaluate((key) => {
+    await page.addInitScript((key) => {
       localStorage.setItem(key, JSON.stringify({ garbage: true }));
     }, STORAGE_KEY);
 
@@ -150,8 +149,7 @@ test.describe('@persistence @mobile Duel persistence [desktop]', () => {
 
   test('PERSIST-07: stale mid-stack save does not resume; new game starts fresh', async ({ page }) => {
     // Inject a valid-shaped but mid-stack save directly into localStorage BEFORE the app loads.
-    await page.goto('about:blank');
-    await page.evaluate(({ key, save }: any) => {
+    await page.addInitScript(({ key, save }: any) => {
       localStorage.setItem(key, JSON.stringify(save));
     }, { key: STORAGE_KEY, save: makeMidStackSave() });
 
@@ -220,8 +218,7 @@ test.describe('@persistence @mobile Duel persistence [mobile]', () => {
   });
 
   test('PERSIST-06: malformed localStorage value is cleared and duel mounts normally', async ({ page }) => {
-    await page.goto('about:blank');
-    await page.evaluate((key) => {
+    await page.addInitScript((key) => {
       localStorage.setItem(key, JSON.stringify({ garbage: true }));
     }, STORAGE_KEY);
 
@@ -243,8 +240,7 @@ test.describe('@persistence @mobile Duel persistence [mobile]', () => {
   });
 
   test('PERSIST-07: stale mid-stack save does not resume; new game starts fresh', async ({ page }) => {
-    await page.goto('about:blank');
-    await page.evaluate(({ key, save }: any) => {
+    await page.addInitScript(({ key, save }: any) => {
       localStorage.setItem(key, JSON.stringify(save));
     }, { key: STORAGE_KEY, save: makeMidStackSave() });
 

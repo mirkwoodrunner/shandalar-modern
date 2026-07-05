@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Test Infrastructure — Audit Batch 01
+
+- **MCTS test determinism**: `scoreMoves` in `src/engine/MCTS.js` now skips the wall-clock budget entirely when a test iteration cap is set via `setMCTSIterCap`, so tests get a fixed iteration count instead of racing a timer. Production behavior (no test cap set) is unchanged.
+- **`ability-stack-bugs.spec.ts` sandbox URL**: fixed a stale `?sandbox=true` param to the current `?duel=sandbox` convention used by every other e2e spec.
+- **`mobile-chrome` touch support**: the Playwright `mobile-chrome` project now sets `hasTouch: true`, so `.tap()` calls across the mobile spec suite no longer throw "page does not support tap".
+- **Untamed Wilds test**: the test now intercepts the sandbox decklist fetch to swap in an all-basic-land deck for that one test, since the curated default sandbox deck has no basic lands to fetch.
+- **Desert/landwalk 1B mana**: `setupDesertPingScenario` now takes a mana pool per call instead of a hardcoded red-only pool, so the Grizzly Bears (green) scenario can actually afford its cast.
+- **`disintegrate.spec.js` rewrite**: replaced the pre-`?duel=sandbox` stale test with the current sandbox convention (forced hand, cast/resolve, priority passes before stack resolution).
+- **Duel persistence PERSIST-06/07**: localStorage is now seeded via `page.addInitScript` before navigation instead of on `about:blank`, avoiding a `SecurityError` from writing to localStorage on an opaque origin.
+
 ### Tier 5 — AI Strategic Depth
 
 - **Curve-based card selection**: `selectPlayableCards` no longer sorts by CMC descending. A new `selectBestCurve` helper runs a greedy descending pass augmented with up to three "drop the biggest" alternatives to find the card combination that maximises mana utilisation without exceeding the budget. Example: on 4 mana with a 4-drop + two 2-drops, the AI now casts both 2-drops instead of the 4-drop.
