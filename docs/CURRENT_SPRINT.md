@@ -12,6 +12,12 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
 ## Completed (2026-07-05)
+- **Complex-Tier C2 -- Keyword-Line Cards (Forge Reference)** -- 2 of 2
+  targeted stub cards implemented, no deferrals: Phyrexian Gremlins
+  (`lockArtifactWhileTapped`, new `optionalUntapAlways`/`lockedByIid`
+  untap-phase hooks), Wall of Wonder (`wallOfWonderPump`, new
+  `canAttackDespiteDefender` DECLARE_ATTACKER override). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Complex-Tier C2.
 - **Complex-Tier C1 -- Activated Abilities and Spells (Forge Reference)** -- 13
   of 25 targeted stub cards implemented (Alabaster Potion, Sewers of Estark,
   Siren's Call, Tracker, Winter Blast, Banshee, Eternal Flame, Martyr's Cry,

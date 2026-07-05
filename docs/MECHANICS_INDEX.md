@@ -3214,4 +3214,32 @@ ACTIVE
 
 ---
 
-# End of MECHANICS INDEX v1.9
+## Batch: Complex-Tier C2 -- Keyword-Line Cards (Forge Reference)
+
+**Scope:** 2 of 2 targeted C2 stub cards implemented, no deferrals.
+
+**Cards implemented:** Phyrexian Gremlins (`lockArtifactWhileTapped`), Wall of
+Wonder (`wallOfWonderPump`).
+
+**New engine mechanisms:**
+- `optionalUntapAlways` -- generalizes the existing `optionalUntap`
+  mechanism (previously artifact-only, gated on `whileTappedPump`) to
+  creatures with no P/T-pump precondition. Phyrexian Gremlins.
+- `lockedByIid` -- a locked permanent doesn't untap during its controller's
+  untap step for as long as the locking creature (by iid) remains tapped,
+  checked in the UNTAP-phase map alongside the existing Winter Orb/Smoke/
+  Paralyze checks. Phyrexian Gremlins.
+- `canAttackDespiteDefender` -- until-end-of-turn override checked in
+  `DECLARE_ATTACKER` alongside the existing `KEYWORDS.DEFENDER` gate. Wall of
+  Wonder.
+
+### Tests
+- Vitest: `tests/scenarios/complex-c2-keywords.test.js` (4 cases).
+- Full existing Vitest suite (449 tests) re-run clean after this sub-batch.
+
+### Status
+ACTIVE
+
+---
+
+# End of MECHANICS INDEX v1.10

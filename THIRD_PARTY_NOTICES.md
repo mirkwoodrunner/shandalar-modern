@@ -147,3 +147,5 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Mana Clash (`manaClash` spell effect, DuelCore.js) | Card-Forge/forge | m/mana_clash.txt | GPL-3.0 |
 | 2026-07-05 | Mind Bomb (`mindBomb` spell effect + `numberChoice` pendingChoice kind + `NUMBER_CHOICE_HANDLERS` registry, DuelCore.js) | Card-Forge/forge | m/mind_bomb.txt | GPL-3.0 |
 | 2026-07-05 | Forcefield (`forcefieldShield` activated ability effect + `combatDamageShield` identity-scoped prevention hook in `hurt()`, DuelCore.js) | Card-Forge/forge | f/forcefield.txt | GPL-3.0 |
+| 2026-07-05 | Phyrexian Gremlins (`lockArtifactWhileTapped` activated ability effect + `optionalUntapAlways`/`lockedByIid` untap-phase hooks, DuelCore.js/cards.js) | Card-Forge/forge | p/phyrexian_gremlins.txt | GPL-3.0 |
+| 2026-07-05 | Wall of Wonder (`wallOfWonderPump` activated ability effect + `canAttackDespiteDefender` DECLARE_ATTACKER hook, DuelCore.js/cards.js) | Card-Forge/forge | w/wall_of_wonder.txt | GPL-3.0 |

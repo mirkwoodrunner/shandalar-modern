@@ -230,6 +230,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'trackerDamageExchange', // Tracker -- "target creature"
   'bansheeDrain',          // Banshee -- "any target"
   'forcefieldShield',      // Forcefield -- "an unblocked creature of your choice"
+  // Complex-tier Forge batch C2 (see THIRD_PARTY_NOTICES.md):
+  'lockArtifactWhileTapped', // Phyrexian Gremlins -- "target artifact"
 ]);
 
 // Ability effects that can target players (in addition to permanents).

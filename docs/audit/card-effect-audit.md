@@ -13,6 +13,11 @@
 
 ## Batch Completion Log
 
+### 2026-07-05 — Complex-Tier C2 (2 of 2 implemented)
+
+Sub-batch C2 (keyword-line cards) of the complex-tier Card-Forge/forge batch.
+Implemented: `phyrexian_gremlins`, `wall_of_wonder`. No deferrals.
+
 ### 2026-07-05 — Complex-Tier C1 (13 of 25 implemented)
 
 Sub-batch C1 (activated abilities and spells) of the complex-tier

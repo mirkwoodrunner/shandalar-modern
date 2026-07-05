@@ -3048,6 +3048,33 @@ case "forcefieldShield": {
   break;
 }
 // --- END BATCH: COMPLEX-TIER C1 ----------------------------------------------
+// --- BEGIN BATCH: COMPLEX-TIER C2 (keyword-line cards) -----------------------
+// Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+// Phyrexian Gremlins: "{T}: Tap target artifact. It doesn't untap during its
+// controller's untap step for as long as this creature remains tapped."
+// The "you may choose not to untap" clause is handled by optionalUntapAlways
+// (set on the card in cards.js) via the UNTAP-phase optionalUntap machinery.
+case "lockArtifactWhileTapped": {
+  if (tgtC && isArt(tgtC)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, tapped: true, lockedByIid: card.iid } : c
+    ) } };
+    ns = dlog(ns, `${card.name} taps and locks ${tgtC.name}.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid artifact target.`, "effect");
+  }
+  break;
+}
+// Wall of Wonder: "gets +4/-4 until end of turn and can attack this turn as
+// though it didn't have defender."
+case "wallOfWonderPump": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === card.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 4, toughness: -4 }], canAttackDespiteDefender: true } : c
+  ) } };
+  ns = dlog(ns, `${card.name} gets +4/-4 and can attack this turn.`, "effect");
+  break;
+}
+// --- END BATCH: COMPLEX-TIER C2 ----------------------------------------------
 default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 }
 return ns;
@@ -3451,7 +3478,11 @@ for (const om of ns[ns.active].bf.filter(c => c.id === 'old_man_of_the_sea' && c
 // while-tapped bonus in play (whileTappedPump) -- no reason to skip untapping
 // otherwise. Computed from the pre-untap bf snapshot so the .map() below stays
 // a pure per-card transform.
-const optionalUntapTargets = ns[ns.active].bf.filter(c => c.optionalUntap && c.tapped && c.whileTappedPump);
+// optionalUntapAlways (Phyrexian Gremlins): same "you may choose not to untap"
+// idiom as whileTappedPump (Ashnod's Battle Gear/Tawnos's Weaponry) but with no
+// P/T-pump precondition -- the creature just always may decline.
+// Adapted from Card-Forge/forge (p/phyrexian_gremlins.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const optionalUntapTargets = ns[ns.active].bf.filter(c => c.optionalUntap && c.tapped && (c.whileTappedPump || c.optionalUntapAlways));
 ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
 const base = { ...c, summoningSick:false, damage:0 };
 if (isLand(c)) {
@@ -3466,10 +3497,17 @@ if (meekstoneOut && getPow(c, ns) >= 3) return base;
 if (smokeOut && cresUntapped >= 1) return base;
 // Paralyze: creature never untaps while the aura is attached
 if (c.paralyzed || c.enchantments?.some(e => e.mod?.paralyzed)) return { ...base, tapped: true };
+if (c.optionalUntap && c.optionalUntapAlways) return base; // stays tapped; choice queued below
 cresUntapped++;
 return { ...base, tapped:false };
 }
 if (c.optionalUntap && c.tapped && c.whileTappedPump) return base; // stays tapped; choice queued below
+// Phyrexian Gremlins: locked artifact doesn't untap while the locking
+// creature remains tapped.
+if (c.lockedByIid) {
+  const locker = [...ns.p.bf, ...ns.o.bf].find(x => x.iid === c.lockedByIid);
+  if (locker && locker.tapped) return base;
+}
 return { ...base, tapped:false };
 }) } };
 if (ns.active === 'p') {
@@ -3684,6 +3722,10 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => {
 // Clear mustAttack flags at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.mustAttack ? { ...c, mustAttack: false } : c) } };
+}
+// Clear Wall of Wonder's "can attack despite defender" flag at end of turn
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.canAttackDespiteDefender ? { ...c, canAttackDespiteDefender: false } : c) } };
 }
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
@@ -4532,7 +4574,9 @@ case "DECLARE_ATTACKER": {
   const side = s.active;
   const c = s[side].bf.find(x => x.iid === action.iid);
   if (!c || !isCre(c) || c.tapped || (c.summoningSick && !hasKw(c, KEYWORDS.HASTE.id, s))) return s;
-  if (hasKw(c, KEYWORDS.DEFENDER.id, s)) return dlog(s, `${c.name} has defender and cannot attack.`, "rule");
+  // Wall of Wonder: "...can attack this turn as though it didn't have defender."
+  // Adapted from Card-Forge/forge (w/wall_of_wonder.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (hasKw(c, KEYWORDS.DEFENDER.id, s) && !c.canAttackDespiteDefender) return dlog(s, `${c.name} has defender and cannot attack.`, "rule");
   if (c.cantAttackTurn && c.cantAttackTurn >= s.turn) return dlog(s, `${c.name} can't attack this turn (Wall of Dust effect).`, 'rule');
   // Moat: "Creatures without flying can't attack."
   // Adapted from Card-Forge/forge (m/moat.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
