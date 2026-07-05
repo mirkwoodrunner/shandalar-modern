@@ -2538,30 +2538,6 @@ Structure counts per run: towns 18-22, dungeons 14-16, castles 5, ruins 10-14.
 - Loot draw uses weighted pool: common x3, uncommon x2, rare x1
 - No dungeon screen -- single modal interaction only
 
-## 23. Gemini Advisor
-
-### Modules
-- src/engine/GeminiAdvisor.js -- isolated async module; calls Gemini API; returns action index or null
-- src/engine/LegalActions.js  -- enumerates valid AI choices per phase; bridge between AI.js and GeminiAdvisor.js
-
-### Dependency rule
-LegalActions.js imports from AI.js and DuelCore.js.
-AI.js and DuelCore.js must never import from LegalActions.js.
-GeminiAdvisor.js does not import from LegalActions.js -- callers serialize state before passing it in.
-
-### Phase gate
-Gemini is consulted only during: MAIN_1, MAIN_2, COMBAT_ATTACKERS, COMBAT_BLOCKERS.
-All other phases bypass GeminiAdvisor entirely and use heuristic AI.
-
-### Index 0 invariant
-computeLegalActions() always places PASS_PRIORITY at index 0.
-GeminiAdvisor.js defaults to index 0 on any API failure or out-of-bounds return.
-
-### Status
-Scaffolded. Not yet wired to useDuelController.ts.
-
----
-
 # 24. Cast/Activate Flow Redesign (2026-06-19)
 
 ## 24.1 Overview

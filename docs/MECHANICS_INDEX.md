@@ -1841,33 +1841,6 @@ ACTIVE (Phase 6 Sprint 7)
 
 ---
 
-## Gemini LLM Integration (ARZAKON AI)
-
-| Entry | Location |
-|---|---|
-| Advisor | `src/engine/GeminiAdvisor.js` — Gemini API call wrapper; returns `{ index, reasoning, sentPayload }` |
-| Hook integration | `src/hooks/useDuelController.ts` — reads `duelCfg.useGemini`; substitutes Gemini branch for sandbox+useGemini duels |
-| Toggle | `src/ui/layout/GameWrapper.jsx` — `useGemini` state on choose step; passed through `startConfig` |
-| Config threading | `src/hooks/useOverworldController.js` — derives `useGemini` from `startConfig`; passes into `launchArzakon` -> `setDuelCfg` |
-| Legal actions | `src/engine/LegalActions.js` — `computeLegalActions(state, phase)` builds action array; index 0 is always PASS_PRIORITY |
-| Diagnostic log action | `src/engine/DuelCore.js` — `GEMINI_LOG` appends `type:'gemini'` entries to `s.log` (sandbox/dev-gated) |
-| Log rendering | `src/hooks/useDuelController.ts` `adaptLog` — maps `type:'gemini'` -> `LogKind 'gemini'` |
-| Log styling | `src/ui/Mobile/LogSheet.tsx` + `styles.module.css` — steel-blue `logEntryGemini` style |
-| Thinking indicator | `src/ui/Mobile/DuelScreenMobile.tsx` — `isGeminiThinking` div renders below opp banner |
-
-### Behavior
-- Only fires when `config.useGemini === true` AND `config.sandbox === true`.
-- Phases gated: MAIN_1, MAIN_2, COMBAT_ATTACKERS, COMBAT_BLOCKERS.
-- ATTACK_ALL action type expands to individual DECLARE_ATTACKER dispatches.
-- On API failure (`null` result), heuristic `aiDecide` fallback fires automatically.
-- Sandbox diagnostic: `console.group` with full payload + in-game GEMINI_LOG entries per decision.
-- Default is OFF. Each session starts with Gemini disabled.
-- Requires `VITE_GEMINI_API_KEY` env var. If absent, `GeminiAdvisor.js` errors and the heuristic fallback fires automatically.
-- Toggle is not persisted to localStorage.
-
-### Status
-ACTIVE (Sprint — Gemini controller wiring complete)
-
 ## Overworld Tileset Rendering + Connected Terrain
 
 Replaces flat CSS-color terrain backgrounds with layered pixel-art sprite rendering on a
@@ -2219,8 +2192,6 @@ ACTIVE
 - Vitest: `src/hooks/__tests__/ai-driver-blockers-gating.test.ts` (BLOCK-01/02/03)
 - Playwright: `tests/e2e/combat-blockers-priority.spec.ts` (BLOCK-E2E-01/02/03 × desktop + mobile)
 
-**Known related issue (not fixed here):** The Gemini path in `useDuelController.ts` includes `COMBAT_BLOCKERS` in `GEMINI_PHASES` — same bug gated behind `config.useGemini && config.sandbox`. Deferred to a separate fix batch.
-
 ---
 
 ## Bug Fix: Lava Axe / Psionic Blast creature-targeting crash (LAXA-PSIONIC-1) — 2026-06-25
@@ -2296,46 +2267,6 @@ ACTIVE
 - `src/hooks/useOverworldController.js` — import swap + call-site swap
 
 **Tests:** `tests/scenarios/castle-boss-routing.test.js` — 3/3 unit tests pass (`@overworld`). Playwright E2E ejected: no `__overworldSetPos` global exists to deterministically navigate to a castle tile; a follow-up should add this global and the E2E spec.
-
----
-
-## Bug Fix: Gemini thinking indicator desktop parity (GEMINI-THINK-DESKTOP-1) -- 2026-06-25
-
-**Problem:** `isGeminiThinking` was produced by `useDuelController` and rendered in `DuelScreenMobile.tsx` but never destructured or rendered in `DuelScreen.tsx`. Desktop players received no visual feedback while the Gemini AI opponent was deciding.
-
-**Fix:** Added `isGeminiThinking` to the `useDuelController` destructure in `DuelScreen.tsx`. Renders `<div className="gemini-thinking">Gemini is thinking{'…'}</div>` immediately below the opponent Banner (the same structural position as the mobile indicator). Added `.gemini-thinking` CSS rule to `src/styles/global.css` mirroring the mobile `geminiThinking` intent (muted blue, small caps, centered).
-
-**Files changed:**
-- `src/DuelScreen.tsx` -- destructure + JSX render (desktop only)
-- `src/styles/global.css` -- `.gemini-thinking` rule added
-- `tests/e2e/gemini-thinking-parity.spec.ts` -- new spec (`@gemini @mobile`); covers not-visible default state for both desktop and mobile viewports. Thinking=true state cannot be forced deterministically without a live Gemini API call; noted as a spec limitation.
-
-**Mobile impact:** None. Mobile files (`DuelScreenMobile.tsx`, `styles.module.css`) are unchanged. The new global class name (`gemini-thinking`, hyphenated) is distinct from the mobile CSS-module class (`geminiThinking`, camelCase scoped).
-
----
-
-## Per-Mage Gemini System Prompts (GEMINI-MAGE-PROMPTS-1) -- 2026-06-25
-
-**Feature:** `GeminiAdvisor.fetchGeminiMove` previously used a single global `SYSTEM_INSTRUCTION` for every opponent. This adds per-mage strategic personalities for a starter roster of 2-3 bosses, with a base-prompt fallback for all other opponents.
-
-**Implementation:**
-- `MAGE_PROMPTS` table (keyed by `profileId`) and `selectSystemInstruction(profileId)` pure selector live in a new sibling module `src/engine/geminiPrompts.js`. Separated from `GeminiAdvisor.js` to allow unit testing without the `@google/genai` client being instantiated.
-- `fetchGeminiMove(serializedState, profileId = null)` accepts an optional `profileId` argument. Internally calls `selectSystemInstruction(profileId)` to pick the mage-specific or base instruction. All other behavior (empty-actions guard, single-action shortcut, out-of-bounds handling, null fallback) is unchanged.
-- `useDuelController.ts` resolves `oppProfileId` from `ARCHETYPES[config.oppArchKey]?.profileId ?? null` and passes it as the second argument to `fetchGeminiMove`. Non-boss opponents (no `profileId` on the archetype) and unknown ids both yield `null`, which degrades to the base instruction.
-
-**Mage roster (starter pass):**
-- `DELENIA` -- white aggro-control: deploy early, protect creatures, push damage
-- `XYLOS` -- blue control: hold counterspells, trade resources, win the long game
-- `MORTIS` -- black attrition: life-for-advantage, one-for-one removal, resource denial
-
-**Files changed:**
-- `src/engine/geminiPrompts.js` -- new sibling module (`SYSTEM_INSTRUCTION`, `MAGE_PROMPTS`, `selectSystemInstruction`)
-- `src/engine/GeminiAdvisor.js` -- imports from `geminiPrompts.js`; `fetchGeminiMove` gains optional `profileId` parameter
-- `src/hooks/useDuelController.ts` -- imports `ARCHETYPES`; resolves `oppProfileId`; passes it to `fetchGeminiMove`
-- `tests/scenarios/gemini-mage-prompts.test.js` -- 6/6 unit tests (`@gemini`)
-- `tests/e2e/gemini-wiring.spec.ts` -- added no-regression E2E block (`@gemini`)
-
-**Fallback contract:** `selectSystemInstruction` is total -- it never throws. A non-string, null, undefined, or unknown `profileId` returns `SYSTEM_INSTRUCTION` unchanged. The remaining four bosses (KARAG, SYLVARA, and the generic/Arzakon archetypes) continue to use the base prompt until a future expansion pass.
 
 ---
 

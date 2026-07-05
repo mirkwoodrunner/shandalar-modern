@@ -23,5 +23,4 @@ export interface DuelConfig {
   sandbox?: boolean;
   forcedHandIds?: string[];
   oppLife?: number | null;
-  useGemini?: boolean;
 }

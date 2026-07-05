@@ -6,7 +6,7 @@
 
 import { spawnSync } from 'child_process';
 
-const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@gemini', '@persistence', '@premodern'];
+const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@persistence', '@premodern'];
 
 const tags = process.argv.slice(2).filter(a => a.startsWith('@'));
 

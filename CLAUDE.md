@@ -342,14 +342,13 @@ All Playwright e2e specs now live in `tests/e2e/` (consolidated 2026-06-24 from 
 
 ### Tag taxonomy
 
-Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Six tags are defined:
+Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Five tags are defined:
 
 | Tag | Coverage |
 |---|---|
 | `@engine` | Duel engine: DuelCore, AI, MCTS, phases, combat, cardHandlers, cast-flow |
 | `@overworld` | Overworld/map/dungeon/sprite/structure specs and scenario tests |
 | `@mobile` | Any describe with a mobile viewport; desktop/mobile parity pairs |
-| `@gemini` | Gemini AI toggle, wiring, and log entry tests |
 | `@persistence` | Duel state save/load/clear tests (Playwright + Vitest) |
 | `@premodern` | Premodern card pool structural integrity tests |
 
@@ -363,13 +362,12 @@ covered here, fall back to the tag taxonomy table above.
 
 | Path pattern | Tag(s) |
 |---|---|
-| `src/engine/DuelCore.js`, `AI.js`, `MCTS.js`, `cardHandlers.js`, `phases.js`, `LegalActions.js`, `layers.js` | `@engine` |
+| `src/engine/DuelCore.js`, `AI.js`, `MCTS.js`, `cardHandlers.js`, `phases.js`, `layers.js` | `@engine` |
 | `src/hooks/useDuel.js`, `useDuelController.ts`, `usePhaseAdvance.ts` | `@engine` |
 | `src/DuelScreen.tsx`, `src/ui/duel/*`, `src/ui/Battlefield/*`, `src/ui/Card/*`, `src/ui/Hand/*`, `src/ui/Stack/*`, `src/ui/ActionBar/*`, `src/ui/Phase/*` | `@engine` |
 | `src/engine/MapGenerator.js`, `DungeonGenerator.js`, `EnemyAI.js` | `@overworld` |
 | `src/hooks/useOverworldController.js` | `@overworld` |
 | `src/OverworldGame.jsx`, `src/ui/overworld/*`, `src/ui/dungeon/*` | `@overworld` |
-| `src/engine/GeminiAdvisor.js`, `geminiPrompts.js` | `@gemini` |
 | `src/hooks/usePersistence.ts` | `@persistence` |
 | `src/hooks/useIsMobile.ts`, `src/ui/Mobile/*`, `DuelScreenMobile.tsx`, `OverworldGameMobile.jsx`, any `isMobile`/`@media`-guarded code | `@mobile` |
 | `src/data/cardsPremodern.js`, premodern pool structural files | `@premodern` |

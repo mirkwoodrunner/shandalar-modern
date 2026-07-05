@@ -11,21 +11,16 @@ import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
-import { fetchGeminiMove } from '../engine/GeminiAdvisor.js';
-import { computeLegalActions } from '../engine/LegalActions.js';
-import { ARCHETYPES } from '../data/cards.js';
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-type LogKind = 'info' | 'turn' | 'phase' | 'play' | 'opp_play' | 'damage' | 'heal' | 'gemini';
+type LogKind = 'info' | 'turn' | 'phase' | 'play' | 'opp_play' | 'damage' | 'heal';
 
 function adaptLog(rawLog: unknown[]): { kind: LogKind; text: string }[] {
   return (rawLog ?? []).map(entry => {
     const text = typeof entry === 'string' ? entry : (entry as any)?.text ?? String(entry);
-    const rawType = (entry as any)?.type;
     let kind: LogKind = 'info';
-    if (rawType === 'gemini')                                             kind = 'gemini';
-    else if (/^turn \d+/i.test(text))                                    kind = 'turn';
+    if (/^turn \d+/i.test(text))                                    kind = 'turn';
     else if (/phase|upkeep|draw step|main|combat|end step/i.test(text))  kind = 'phase';
     else if (/\byou\b.*(cast|played)/i.test(text))                       kind = 'play';
     else if (/\bopp(onent)?\b.*(cast|played)/i.test(text))               kind = 'opp_play';
@@ -342,7 +337,6 @@ export function useDuelController(
   const [castFlow, setCastFlow] = useState<CastFlowState | null>(null);
   const [pendingActivate, setPendingActivate] = useState<any | null>(null);
   const [pendingMode, setPendingMode] = useState<'counter' | 'destroy' | null>(null);
-  const [isGeminiThinking, setIsGeminiThinking] = useState(false);
   const [endTurnPending, setEndTurnPending] = useState(false);
   const endTurnStartTurn = useRef<number | null>(null);
 
@@ -639,142 +633,6 @@ export function useDuelController(
     // the AI driver runs planBlock against the wrong side and auto-advances
     // the phase before the human gets a chance to declare blockers.
     if (s.phase === 'COMBAT_BLOCKERS') return;
-
-    // ── Gemini path (sandbox + useGemini only) ────────────────────────────
-    const GEMINI_PHASES = new Set(['MAIN_1', 'MAIN_2', 'COMBAT_ATTACKERS', 'COMBAT_BLOCKERS']);
-
-    if (config.useGemini && config.sandbox && GEMINI_PHASES.has(s.phase)) {
-      aiRef.current = true;
-
-      const legalActions = computeLegalActions(s, s.phase);
-
-      const serializedState = {
-        phase: s.phase,
-        turn: s.turn,
-        active: s.active,
-        p: {
-          life: s.p.life,
-          hand: (s.p.hand as any[]).map((c: any) => ({
-            name: c.name, cost: c.cost, type: c.type,
-            power: c.power, toughness: c.toughness, effect: c.effect,
-          })),
-          bf: (s.p.bf as any[]).map((c: any) => ({
-            name: c.name, type: c.type, power: c.power, toughness: c.toughness,
-            tapped: c.tapped, attacking: c.attacking, keywords: c.keywords,
-          })),
-          mana: s.p.mana,
-        },
-        o: {
-          life: s.o.life,
-          hand: (s.o.hand as any[]).length,
-          bf: (s.o.bf as any[]).map((c: any) => ({
-            name: c.name, type: c.type, power: c.power, toughness: c.toughness,
-            tapped: c.tapped, summoningSick: c.summoningSick, keywords: c.keywords,
-          })),
-          mana: s.o.mana,
-        },
-        attackers: s.attackers ?? [],
-        stack: (s.stack ?? []).map((item: any) => ({ name: item.card?.name, caster: item.caster })),
-        legalActions,
-      };
-
-      setIsGeminiThinking(true);
-
-      const oppProfileId = (ARCHETYPES as any)[config.oppArchKey]?.profileId ?? null;
-
-      fetchGeminiMove(serializedState, oppProfileId).then((result) => {
-        setIsGeminiThinking(false);
-
-        if (result === null) {
-          console.warn('[Gemini] API returned null -- falling back to heuristic AI.');
-          const acts = aiDecide(s);
-          const hasCast = acts.some((a: any) => a.type === 'CAST_SPELL');
-          applyAiActionsWithPriority(acts);
-          if (!hasCast) {
-            setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
-          }
-          return;
-        }
-
-        const { index, reasoning, sentPayload } = result;
-        const chosenAction = legalActions[index];
-
-        // ── Diagnostic logging ──────────────────────────────────────────
-        if (config.sandbox) {
-          console.group('[Gemini] Decision');
-          console.log('Sent payload:', JSON.parse(JSON.stringify(sentPayload)));
-          console.log('Chosen action:', chosenAction);
-          console.log('Reasoning:', reasoning);
-          console.groupEnd();
-
-          dispatch({
-            type: 'GEMINI_LOG',
-            entries: [
-              {
-                text: `[Gemini] ${reasoning}`,
-                type: 'gemini',
-              },
-              {
-                text: `[Gemini] Action: ${chosenAction?.description ?? chosenAction?.type ?? '(unknown)'}`,
-                type: 'gemini',
-              },
-            ],
-          });
-        }
-
-        // ── Execute chosen action ───────────────────────────────────────
-        if (!chosenAction || chosenAction.type === 'PASS_PRIORITY') {
-          setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
-          return;
-        }
-
-        if (chosenAction.type === 'ATTACK_ALL') {
-          const ids: string[] = chosenAction.attackerIds ?? [];
-          for (const iid of ids) {
-            dispatch({ type: 'DECLARE_ATTACKER', who: 'o', iid });
-          }
-          setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
-          return;
-        }
-
-        const dcActs = (() => {
-          switch (chosenAction.type) {
-            case 'PLAY_LAND':
-              return [{ type: 'PLAY_LAND', who: 'o', iid: chosenAction.iid }];
-            case 'CAST_SPELL': {
-              // buildTapActions is imported via dynamic require to avoid circular import with AI.js.
-              // Follow-up: extract to LegalActions.js and replace with named import.
-              const { buildTapActions: bta } = require('../engine/AI.js');
-              const { tapActions } = bta(s, chosenAction.cost);
-              const acts: any[] = [...(tapActions ?? [])];
-              if (chosenAction.xVal != null) acts.push({ type: 'SET_X', val: chosenAction.xVal });
-              acts.push({ type: 'CAST_SPELL', who: 'o', iid: chosenAction.iid, tgt: null, xVal: chosenAction.xVal ?? null });
-              return acts;
-            }
-            case 'DECLARE_ATTACKER':
-              return [{ type: 'DECLARE_ATTACKER', who: 'o', iid: chosenAction.iid }];
-            case 'DECLARE_BLOCKER':
-              return [{ type: 'DECLARE_BLOCKER', blId: chosenAction.blId, attId: chosenAction.attId }];
-            default:
-              console.warn('[Gemini] Unrecognised action type:', chosenAction.type);
-              return [];
-          }
-        })();
-
-        if (!dcActs.length) {
-          setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
-          return;
-        }
-
-        const hasCast = dcActs.some((a: any) => a.type === 'CAST_SPELL');
-        applyAiActionsWithPriority(dcActs);
-        if (!hasCast) {
-          setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
-        }
-      });
-
-      return; // async path handled in .then()
-    }
 
     // ── Heuristic path (default) ──────────────────────────────────────────
     aiRef.current = true;
@@ -1339,8 +1197,5 @@ export function useDuelController(
     oLands,
     oCreatures,
     oPerms,
-
-    // Gemini thinking indicator (sandbox + useGemini only)
-    isGeminiThinking,
   };
 }
