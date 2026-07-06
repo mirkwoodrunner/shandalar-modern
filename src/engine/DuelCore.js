@@ -8,6 +8,7 @@
 //   - Deterministic given identical GameState + rngSeed + action sequence
 
 import { CARD_DB, ARCHETYPES } from '../data/cards.js';
+import { TOKEN_DB } from '../data/tokens.js';
 import { PHASE, PHASE_SEQUENCE, SORCERY_SPEED_PHASES } from './phases.js';
 import { CARD_HANDLERS } from './cardHandlers.js';
 import KEYWORDS from '../data/keywords.js';
@@ -92,6 +93,44 @@ enchantments: [],
 tokens: [],
 exerted: false,
 };
+}
+
+// Token instantiation -- same instance shape as makeCardInstance, sourced from
+// TOKEN_DB instead of CARD_DB. isToken:true drives the CR 111.7 "ceases to
+// exist once it leaves the battlefield" rule in zMove below.
+export function makeTokenInstance(tokenId, controller) {
+const def = TOKEN_DB.find(t => t.tokenId === tokenId);
+if (!def) return null;
+return { ...def,
+iid: makeId(),
+controller,
+tapped: false,
+summoningSick: true,
+attacking: false,
+blocking: null,
+damage: 0,
+counters: {},
+enchantments: [],
+tokens: [],
+exerted: false,
+isToken: true,
+};
+}
+
+// Creates `count` copies of tokenId on controller's battlefield. sourceIid,
+// when given, tags each token so later effects can distinguish tokens made by
+// this specific permanent (e.g. Tetravus's remembered-token tracking) from
+// any other source of the same token type.
+export function createToken(state, tokenId, count, controller, sourceIid = null) {
+let ns = state;
+for (let i = 0; i < count; i++) {
+  const token = makeTokenInstance(tokenId, controller);
+  if (!token) continue;
+  const ts = (ns.layerClock ?? 0) + 1;
+  const inst = { ...token, enterTs: ts, sourceIid: sourceIid ?? undefined };
+  ns = { ...ns, layerClock: ts, [controller]: { ...ns[controller], bf: [...ns[controller].bf, inst] } };
+}
+return recomputeTypeEffects(ns);
 }
 
 // --- MANA SYSTEM --------------------------------------------------------------
@@ -402,7 +441,12 @@ if (tz === "gy" || tz === "hand" || tz === "exile" || tz === "lib") {
 a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [],
   typeEff: undefined, subtypeEff: undefined, colorEff: undefined, landTypeOverride: undefined };
 }
-let moved = { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
+// CR 111.7: a token that leaves the battlefield ceases to exist -- do not
+// place it into the destination zone. zMove is the single choke point for
+// every bf -> gy/exile/hand/lib move, so this one check covers every path a
+// token could leave the battlefield (death, bounce, exile, sacrifice).
+const tokenVanishes = card.isToken && fromZone === 'bf' && tz !== 'bf';
+let moved = tokenVanishes ? ns : { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz], a] } };
 
 // ON_PERMANENT_LEAVES_BF: generic leaves-the-battlefield event. Fires alongside
 // ON_CREATURE_DIES (emitted separately by callers such as checkDeath) rather than
@@ -580,7 +624,7 @@ return ns;
 // Checked after every SBE pass. Returns { winner, reason } or null.
 
 export function checkWinConditions(state) {
-  const poisonLimit = state.ruleset?.poisonCountersToWin ?? 5;
+  const poisonLimit = state.ruleset?.poisonCountersToWin ?? 10;
   if (state.p.life <= 0)                         return { winner: 'o', reason: 'LIFE' };
   if (state.o.life <= 0)                         return { winner: 'p', reason: 'LIFE' };
   if ((state.p.poisonCounters || 0) >= poisonLimit) return { winner: 'o', reason: 'POISON' };
@@ -708,6 +752,23 @@ if (card.name && CARD_HANDLERS[card.name]) {
 }
 
 switch (card.effect) {
+// The Hive: "{5}, {T}: Create a 1/1 colorless Insect artifact creature token
+// with flying named Wasp."
+// Adapted from Card-Forge/forge (t/the_hive.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "createWaspToken": {
+  ns = createToken(ns, 'wasp', 1, caster);
+  ns = dlog(ns, `${card.name} creates a 1/1 Wasp token.`, 'effect');
+  break;
+}
+// Serpent Generator: "{4}, {T}: Create a 1/1 colorless Snake artifact
+// creature token. It has 'Whenever this creature deals damage to a player,
+// that player gets a poison counter.'"
+// Adapted from Card-Forge/forge (s/serpent_generator.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "createSerpentToken": {
+  ns = createToken(ns, 'snake_poison', 1, caster);
+  ns = dlog(ns, `${card.name} creates a 1/1 Snake token.`, 'effect');
+  break;
+}
 case "damage3": {
 if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name);
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 3 } : c) } }; ns = checkDeath(ns); }
@@ -1451,8 +1512,7 @@ for (const tid of targets) {
   for (const w of ['p', 'o']) {
     const c = ns[w].bf.find(x => x.iid === tid);
     if (c && !isArt(c)) {
-      ns = { ...ns, [w]: { ...ns[w], exile: [...(ns[w].exile || []), c],
-        bf: ns[w].bf.filter(x => x.iid !== tid) } };
+      ns = zMove(ns, tid, w, w, "exile");
     }
   }
 }
@@ -3603,6 +3663,17 @@ if (next === PHASE.END) {
       ? { ...c, type: c.revertAnimateAtEnd.type, power: c.revertAnimateAtEnd.power, toughness: c.revertAnimateAtEnd.toughness, revertAnimateAtEnd: undefined }
       : c) } };
   }
+  // Rukh Egg: "create a 4/4 red Bird creature token with flying at the
+  // beginning of the next end step." Rukh Egg itself is already dead by the
+  // time this runs, so the pending token is queued state-side (see
+  // queueEndStepToken in resolveTriggeredEffect) rather than living on the card.
+  // Adapted from Card-Forge/forge (r/rukh_egg.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const pending of (ns.pendingEndStepTokens ?? [])) {
+    const tokenDef = TOKEN_DB.find(t => t.tokenId === pending.tokenId);
+    ns = createToken(ns, pending.tokenId, pending.count, pending.controller);
+    ns = dlog(ns, `Creates ${pending.count}x ${tokenDef?.name ?? 'token'} (delayed trigger).`, 'effect');
+  }
+  ns = { ...ns, pendingEndStepTokens: [] };
   // ON_END_STEP: unscoped, like ON_UPKEEP_START -- fires once per turn cycle for
   // the turn's active player (this engine has a single END phase per turn, not a
   // separate end step per player). Khabál Ghoul.
@@ -3875,6 +3946,25 @@ if (w === ns.active && w === 'p' && c.id === "magnetic_mountain") {
   const eligible = ns.p.bf.filter(x => isCre(x) && x.tapped && x.color === "U");
   if (eligible.length > 0) {
     ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "magneticMountainPrompt", iid: c.iid });
+  }
+}
+// Tetravus: "At the beginning of your upkeep, you may remove any number of
+// +1/+1 counters from this creature. If you do, create that many 1/1
+// colorless Tetravite artifact creature tokens." SIMPLIFICATION: only the
+// human player is prompted, same "AI never opts in" convention as
+// Shapeshifter/Magnetic Mountain above.
+// Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && w === 'p' && c.id === "tetravus" && (c.counters?.P1P1 || 0) > 0) {
+  ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "tetravusRemoveCountersPrompt", iid: c.iid });
+}
+// Tetravus: "At the beginning of your upkeep, you may exile any number of
+// tokens created with this creature. If you do, put that many +1/+1 counters
+// on this creature."
+// Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (w === ns.active && w === 'p' && c.id === "tetravus") {
+  const tetraviteCount = ns.p.bf.filter(x => x.isToken && x.tokenId === "tetravite" && x.sourceIid === c.iid).length;
+  if (tetraviteCount > 0) {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "tetravusExileTokensPrompt", iid: c.iid });
   }
 }
 switch (c.upkeep) {
@@ -4355,6 +4445,12 @@ function evaluateCondition(state, card, condition, payload) {
   if (condition.type === 'selfIsDamageSource') {
     return payload.sourceId === card.iid;
   }
+  // ON_DAMAGE_DEALT: restricts a "whenever this creature deals damage to a
+  // player" ability to firing only when the damage target was a player, not a
+  // creature. Marsh Viper, Pit Scorpion, Serpent Generator's Snake token.
+  if (condition.type === 'selfIsDamageSourceToPlayer') {
+    return payload.sourceId === card.iid && (payload.targetId === 'p' || payload.targetId === 'o');
+  }
   // ON_PERMANENT_LEAVES_BF: "put into a graveyard" -- Dingus Egg.
   if (condition.type === 'permanentWasLand') {
     return !!payload.wasLand && payload.destination === 'gy';
@@ -4683,6 +4779,28 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       if (target !== 'p' && target !== 'o') return state;
       return { ...state, [target]: { ...state[target], pendingDrainAtNextDraw: (state[target].pendingDrainAtNextDraw || 0) + 1 } };
     }
+    // Rukh Egg: "When this creature dies, create a 4/4 red Bird creature token
+    // with flying at the beginning of the next end step." Queued here since
+    // sourceCard is already off the battlefield; drained by PHASE.END.
+    // Adapted from Card-Forge/forge (r/rukh_egg.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'queueEndStepToken': {
+      return { ...state, pendingEndStepTokens: [...(state.pendingEndStepTokens || []), { tokenId: effect.tokenId, count: effect.count, controller: sourceCard.controller }] };
+    }
+    // Marsh Viper / Pit Scorpion / Serpent Generator's Snake token: "Whenever
+    // this creature deals damage to a player, that player gets N poison
+    // counter(s)." A player with poisonLimit (10) or more poison counters loses.
+    // Adapted from Card-Forge/forge (m/marsh_viper.txt, p/pit_scorpion.txt,
+    // s/serpent_generator.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'grantPoisonCounters': {
+      const target = payload.targetId;
+      if (target !== 'p' && target !== 'o') return state;
+      const amount = effect.amount ?? 1;
+      return dlog(
+        { ...state, [target]: { ...state[target], poisonCounters: (state[target].poisonCounters || 0) + amount } },
+        `${sourceCard.name} gives ${target} ${amount} poison counter(s).`,
+        'effect'
+      );
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -4927,6 +5045,40 @@ const UPKEEP_CHOICE_HANDLERS = {
       });
     },
   },
+  // Tetravus: "you may remove any number of +1/+1 counters from this
+  // creature." Computed at resolve time so the option range reflects the
+  // counter count as of upkeep, mirroring Magnetic Mountain/Power Leak above.
+  // Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  tetravusRemoveCountersPrompt: {
+    resolve(s, choice) {
+      const card = getBF(s, choice.iid);
+      const max = card?.counters?.P1P1 || 0;
+      if (max <= 0) return s;
+      return createPendingChoice(s, {
+        sourceCardId: choice.iid,
+        controller: 'p',
+        kind: 'numberChoice',
+        handlerKey: 'tetravusCreateTokens',
+        options: Array.from({ length: max + 1 }, (_, n) => ({ id: String(n), label: `Remove ${n}` })),
+      });
+    },
+  },
+  // Tetravus: "you may exile any number of tokens created with this
+  // creature." Only tokens tagged with this Tetravus's iid as sourceIid count.
+  // Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  tetravusExileTokensPrompt: {
+    resolve(s, choice) {
+      const max = s.p.bf.filter(x => x.isToken && x.tokenId === "tetravite" && x.sourceIid === choice.iid).length;
+      if (max <= 0) return s;
+      return createPendingChoice(s, {
+        sourceCardId: choice.iid,
+        controller: 'p',
+        kind: 'numberChoice',
+        handlerKey: 'tetravusExileTokens',
+        options: Array.from({ length: max + 1 }, (_, n) => ({ id: String(n), label: `Exile ${n}` })),
+      });
+    },
+  },
 };
 
 // Registry for kind:'numberChoice' pendingChoice resolution, mirroring
@@ -4979,6 +5131,39 @@ const NUMBER_CHOICE_HANDLERS = {
     const ns = { ...s, [who]: { ...s[who], mana: payMana(s[who].mana, String(n)) } };
     const remaining = Math.max(0, 2 - paid);
     return remaining > 0 ? hurt(ns, who, remaining, "Power Leak") : ns;
+  },
+  // Tetravus: removes N +1/+1 counters, creates N Tetravite tokens tagged
+  // with this Tetravus's iid (remembered-token tracking for the exile ability
+  // below). choice.sourceCardId is Tetravus's iid.
+  // Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  tetravusCreateTokens: (s, choice, n) => {
+    if (n <= 0) return s;
+    const owner = s.p.bf.some(c => c.iid === choice.sourceCardId) ? 'p' : (s.o.bf.some(c => c.iid === choice.sourceCardId) ? 'o' : null);
+    if (!owner) return s;
+    const card = getBF(s, choice.sourceCardId);
+    const have = card?.counters?.P1P1 || 0;
+    const removed = Math.min(n, have);
+    if (removed <= 0) return s;
+    let ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.sourceCardId
+      ? { ...c, counters: { ...c.counters, P1P1: have - removed } } : c) } };
+    ns = createToken(ns, 'tetravite', removed, owner, choice.sourceCardId);
+    return dlog(ns, `Tetravus removes ${removed} +1/+1 counter(s) to create ${removed} Tetravite token(s).`, "effect");
+  },
+  // Tetravus: exiles N of its own Tetravite tokens (tokens cease to exist per
+  // CR 111.7 -- zMove handles this), puts that many +1/+1 counters back on
+  // Tetravus. choice.sourceCardId is Tetravus's iid.
+  // Adapted from Card-Forge/forge (t/tetravus.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  tetravusExileTokens: (s, choice, n) => {
+    if (n <= 0) return s;
+    const owner = s.p.bf.some(c => c.iid === choice.sourceCardId) ? 'p' : (s.o.bf.some(c => c.iid === choice.sourceCardId) ? 'o' : null);
+    if (!owner) return s;
+    const eligible = s[owner].bf.filter(x => x.isToken && x.tokenId === "tetravite" && x.sourceIid === choice.sourceCardId).slice(0, n);
+    if (!eligible.length) return s;
+    let ns = s;
+    for (const t of eligible) ns = zMove(ns, t.iid, owner, owner, "exile");
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === choice.sourceCardId
+      ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + eligible.length } } : c) } };
+    return dlog(ns, `Tetravus exiles ${eligible.length} Tetravite token(s), gaining that many +1/+1 counters.`, "effect");
   },
 };
 
@@ -5060,6 +5245,9 @@ pendingUpkeepChoice: null,
 // on it (ADVANCE_PHASE gate, UI render gate) is unchanged -- when it resolves,
 // UPKEEP_CHOICE_RESOLVE shifts the next entry (if any) off this queue.
 pendingUpkeepChoiceQueue: [],
+// Rukh Egg: "create a token at the beginning of the next end step." Drained
+// in the PHASE.END block alongside returnToHandNextEnd/revertAnimateAtEnd.
+pendingEndStepTokens: [],
 // Darkpact: { caster, cards } where cards are the caster's own ante
 // contributions (anteP/anteExtraP or anteO/anteExtraO). Resolved via
 // RESOLVE_ANTE_EXCHANGE / DECLINE_ANTE_EXCHANGE. Distinct from the unused

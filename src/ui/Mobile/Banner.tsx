@@ -9,6 +9,7 @@ interface BannerPlayer {
   lib: number;
   gy: number;
   handCount?: number;
+  poisonCounters?: number;
 }
 
 export interface CastPromptProps {
@@ -104,6 +105,9 @@ export function Banner({ side, player, onLifeClick, castPrompt }: BannerProps) {
       <div className={s.zoneChips}>
         <ZoneChip glyph="📚" count={player.lib} label="LIB" />
         <ZoneChip glyph="🪦" count={player.gy} label="GY" />
+        {!!player.poisonCounters && (
+          <ZoneChip glyph="☠" count={player.poisonCounters} label="POISON" />
+        )}
         {isOpp && player.handCount !== undefined && (
           <ZoneChip glyph="🂠" count={player.handCount} label="HAND" />
         )}

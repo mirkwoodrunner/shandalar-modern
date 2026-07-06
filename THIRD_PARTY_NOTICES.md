@@ -186,3 +186,9 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-05 | Magnetic Mountain (`magneticMountainOut` untap-phase hook + `magneticMountainPrompt`/`magneticMountainUntap` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | m/magnetic_mountain.txt | GPL-3.0 |
 | 2026-07-05 | Power Leak (reused `enchantCreature` + `powerLeakPrompt`/`powerLeakPay` upkeep/numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | p/power_leak.txt | GPL-3.0 |
 | 2026-07-05 | Lich (`lichETB` spell effect + `hurt()` lifegain-to-draw/no-zero-loss/damage-forces-sacrifice overrides + `ON_PERMANENT_LEAVES_BF` `scope:'self'` generalization + `destinationIsGY` condition, DuelCore.js/cards.js) | Card-Forge/forge | l/lich.txt | GPL-3.0 |
+| 2026-07-06 | The Hive (`createWaspToken` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | t/the_hive.txt | GPL-3.0 |
+| 2026-07-06 | Rukh Egg (`queueEndStepToken` triggered effect + `pendingEndStepTokens` PHASE.END drain, DuelCore.js/cards.js) | Card-Forge/forge | r/rukh_egg.txt | GPL-3.0 |
+| 2026-07-06 | Tetravus (`etbCounters` + `tetravusRemoveCountersPrompt`/`tetravusExileTokensPrompt` upkeep-choice handlers + `tetravusCreateTokens`/`tetravusExileTokens` numberChoice handlers, DuelCore.js/cards.js) | Card-Forge/forge | t/tetravus.txt | GPL-3.0 |
+| 2026-07-06 | Serpent Generator (`createSerpentToken` activated ability effect + Snake token `grantPoisonCounters` trigger, DuelCore.js/cards.js/tokens.js) | Card-Forge/forge | s/serpent_generator.txt | GPL-3.0 |
+| 2026-07-06 | Marsh Viper (`grantPoisonCounters` triggered effect, DuelCore.js/cards.js) | Card-Forge/forge | m/marsh_viper.txt | GPL-3.0 |
+| 2026-07-06 | Pit Scorpion (reused `grantPoisonCounters` triggered effect, DuelCore.js/cards.js) | Card-Forge/forge | p/pit_scorpion.txt | GPL-3.0 |

@@ -11,6 +11,7 @@ interface BannerPlayer {
   mana: Record<string, number>;
   lib: number;
   gy: number;
+  poisonCounters?: number;
 }
 
 export interface CastPromptProps {
@@ -94,6 +95,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
       )}
       <ZoneCount label="Library" count={player.lib} glyph="📚" />
       <ZoneCount label="Graveyard" count={player.gy} glyph="⚰" onClick={onGraveyardClick} />
+      {!!player.poisonCounters && <ZoneCount label="Poison" count={player.poisonCounters} glyph="☠" />}
 
       {showPool && (
         <div style={{

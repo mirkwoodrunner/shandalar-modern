@@ -408,7 +408,7 @@ Turn calculation is budgeted at 500ms p95 on a mid-range device. If profiling sh
 
 `evaluateCreatureValue(card, state)` (AI.js) replaces the old flat `getPow()` sum inside `sumCreaturePower()` / `evaluateBoard()`. It scores a single creature's board value with per-keyword nuance instead of treating all same-power creatures as equal, ported from Card-Forge/forge's `CreatureEvaluator.java` (GPL-3.0; see `THIRD_PARTY_NOTICES.md`). Only the algorithm and point weights were ported -- the Java is not mechanically translated line-for-line.
 
-Base value 80 + 20 (this engine has no token concept, so every creature counts as "non-token"), then:
+Base value 80 + 20 (the AI evaluator does not distinguish token from non-token creatures -- out of scope for the S28 token-creation work, since `AI.js` is a protected read-only-planner file -- so every creature still counts as "non-token" for this formula), then:
 - Power * 15, toughness * 10, cmc * 5.
 - Evasion: flying (power*10), fear (power*6), menace (power*4). Horsemanship/intimidate/skulk are not in this engine's keyword set and are not scored.
 - Double strike (10 + power*15) else first strike (10 + power*5), deathtouch (+25 flat), lifelink (power*10), trample when power>1 ((power-1)*5), vigilance (power*5 + toughness*5).
@@ -417,7 +417,7 @@ Base value 80 + 20 (this engine has no token concept, so every creature counts a
 - Defender: `-(power*9 + 40)`.
 - Untapped: +1.
 
-Deliberately not ported (no Shandalar equivalent -- verified against `src/data/keywords.js` and the engine's combat/SBE code, not assumed from the Forge source): token/counter-based scoring (shielded counters, stun counters, paired/soulbond, encode), energy/detain/goad, cumulative upkeep/echo/fading/vanishing upkeep triggers, infect/wither/toxic (the `INFECT` keyword exists in `keywords.js` but has no combat-damage implementation in `DuelCore.js` -- not "live" in this engine), and Eldrazi/bushido/flanking/exalted/melee/prowess/absorb/outlast (no counterpart keywords at all).
+Deliberately not ported (no Shandalar equivalent -- verified against `src/data/keywords.js` and the engine's combat/SBE code, not assumed from the Forge source): token/counter-based scoring (shielded counters, stun counters, paired/soulbond, encode), energy/detain/goad, cumulative upkeep/echo/fading/vanishing upkeep triggers, infect/wither/toxic (the `INFECT` keyword still exists in `keywords.js` but still has no combat-damage implementation in `DuelCore.js` -- see S28.5 for what poison-counter support now covers, which is narrower than the `Infect` keyword), and Eldrazi/bushido/flanking/exalted/melee/prowess/absorb/outlast (no counterpart keywords at all).
 
 `evaluateBoard(state)` itself is unchanged in shape -- still `(myPower * 2) + lifeDelta + (cardDelta * 1.5) - (theirPower * 1.5)` -- only `sumCreaturePower()`'s per-creature term changed from raw power to `evaluateCreatureValue()`. Both functions are exported for direct testability; no other AI.js call site changed.
 
@@ -2926,4 +2926,163 @@ file). This is why no opponent-side AI wiring was added to
 target to a creature the caster controls; Tawnos's Weaponry omits it (targets
 "target creature," either side).
 
-# End of SYSTEMS v1.7
+# Section 28 — Token Creation and Poison Counters (2026-07-06)
+
+## 28.1 Token Registry (`src/data/tokens.js`)
+
+Tokens are defined in `TOKEN_DB`, a separate array from `CARD_DB` (per the
+World Map / Duel Engine / Card Database separation rule) so token definitions
+never leak into deckbuilding, binder, or card-search UIs that enumerate
+`CARD_DB`. A token entry mirrors a card definition minus deckbuilding-only
+fields (no `cost`/`cmc`/`rarity`): `{ tokenId, name, type, subtype, power,
+toughness, color, keywords, triggeredAbilities }`.
+
+`makeTokenInstance(tokenId, controller)` (`DuelCore.js`, alongside
+`makeCardInstance`) produces the same instance shape as
+`makeCardInstance` (`iid, controller, tapped, summoningSick, attacking,
+blocking, damage, counters, enchantments, tokens, exerted`), sourced from
+`TOKEN_DB` instead of `CARD_DB`, plus `isToken: true`.
+
+`createToken(state, tokenId, count, controller, sourceIid = null)` places
+`count` copies onto `controller`'s battlefield (assigning `enterTs` the same
+way `zMove` does for layer ordering). `sourceIid`, when given, tags each
+token so later effects can distinguish tokens made by one specific permanent
+from any other source of the same token type (Tetravus's remembered-token
+tracking, S28.3).
+
+## 28.2 Token Lifecycle — CR 111.7 "Ceases to Exist"
+
+A token that leaves the battlefield ceases to exist rather than moving into
+its destination zone. Enforced at a single choke point: `zMove` (`DuelCore.js`)
+is already the sole path every bf -> gy/exile/hand/lib move takes (death via
+`checkDeath`, bounce, exile, sacrifice, activated-ability sac costs all call
+it) -- `zMove` checks `card.isToken && fromZone === 'bf' && tz !== 'bf'` and,
+if true, skips appending the card into the destination zone entirely. The
+`ON_PERMANENT_LEAVES_BF` emission (and `ON_CREATURE_DIES` for a dying token,
+emitted by `checkDeath` independently of `zMove`) still fires normally, so
+"when a permanent/creature leaves/dies" triggers still see a vanishing token
+correctly as having died -- only the zone-placement is skipped.
+
+One call site bypassed `zMove` (`ashesToAshes`'s manual `bf`/`exile` splice)
+and was converted to call `zMove(ns, tid, w, w, "exile")` instead, both for
+token correctness and to remove a duplicate zone-move implementation.
+
+## 28.3 Cards Implemented
+
+### The Hive, Serpent Generator — plain token creation
+
+`{5},{T}` / `{4},{T}` activated abilities (`activated: { cost, effect }`,
+resolved via the same `ACTIVATE_ABILITY` -> stack -> `RESOLVE_STACK` path
+every other activated ability uses). `createWaspToken` / `createSerpentToken`
+are `resolveEff` switch cases that call `createToken(ns, tokenId, 1, caster)`.
+Adapted from Card-Forge/forge (`t/the_hive.txt`, `s/serpent_generator.txt`),
+GPL-3.0. See `THIRD_PARTY_NOTICES.md`.
+
+### Rukh Egg — delayed token creation at the next end step
+
+"When this creature dies, create a token at the beginning of the next end
+step" needs a delayed trigger, but Rukh Egg itself is off the battlefield by
+the time the end step arrives, so the pending creation can't live on the
+card. `triggeredAbilities: [{ trigger: { event: "ON_CREATURE_DIES", scope:
+"self" }, effect: { type: "queueEndStepToken", tokenId, count } }]` appends
+`{ tokenId, count, controller }` to a new state-level array,
+`state.pendingEndStepTokens: []`. The `PHASE.END` block (already draining
+`returnToHandNextEnd`/`revertAnimateAtEnd` one-offs) drains this array too --
+calling `createToken` per entry and clearing the array. Adapted from
+Card-Forge/forge (`r/rukh_egg.txt`), GPL-3.0.
+
+### Tetravus — remembered-token tracking + variable-count choice
+
+Enters with three +1/+1 counters via the existing `etbCounters: { P1P1: 3 }`
+mechanism (no new infrastructure -- same field Transmute Artifact and normal
+`RESOLVE_STACK` ETB already read).
+
+Both upkeep abilities are optional and variable-count ("remove **any
+number**"/"exile **any number**"), so neither is expressed as a declarative
+`triggeredAbilities` entry -- like Magnetic Mountain and Shapeshifter before
+it, Tetravus is checked directly in the `PHASE.UPKEEP` block
+(`c.id === "tetravus"`), gated `w === ns.active && w === 'p'`
+(**SIMPLIFICATION**: same "AI never opts in" convention as Magnetic
+Mountain/Shapeshifter -- an opponent-controlled Tetravus never activates
+either ability). Each ability queues an upkeep choice
+(`tetravusRemoveCountersPrompt` / `tetravusExileTokensPrompt` in
+`UPKEEP_CHOICE_HANDLERS`) that, on resolve, computes the *actual* eligible
+range (current `counters.P1P1`, or the count of this Tetravus's own Tetravite
+tokens still on the battlefield) and opens a `kind: 'numberChoice'`
+`pendingChoice` with one discrete option per count from 0 to max -- the same
+"numeric-input variant of the pending-choice shape" Magnetic Mountain/Power
+Leak/Shapeshifter already use (discrete 0..N options), not a new modal type.
+
+Remembered-token tracking: `createToken`'s `sourceIid` parameter tags every
+Tetravite token created with this Tetravus's `iid`
+(`NUMBER_CHOICE_HANDLERS.tetravusCreateTokens`). The exile ability
+(`tetravusExileTokens`) filters eligible tokens by
+`x.isToken && x.tokenId === "tetravite" && x.sourceIid === choice.sourceCardId`,
+so a Tetravite token from a hypothetical different source (or a different
+Tetravus) is never eligible. Exiling calls `zMove(..., "exile")` -- which,
+per S28.2, makes the token cease to exist -- and adds one +1/+1 counter to
+Tetravus per token exiled.
+
+`cantBeEnchanted: true` on the Tetravite token definition is data-only and
+unenforced, matching the existing unenforced `noOtherAuras` flag on
+Consecrate Land -- no aura-targeting restriction is checked anywhere in this
+engine for either flag. This is a known simplification, not a bug.
+
+Adapted from Card-Forge/forge (`t/tetravus.txt`), GPL-3.0.
+
+### Marsh Viper, Pit Scorpion, Serpent Generator's Snake token — poison-granting
+
+A new condition type, `selfIsDamageSourceToPlayer`
+(`payload.sourceId === card.iid && (payload.targetId === 'p' ||
+payload.targetId === 'o')`), mirrors the existing `selfIsDamageSource`
+(El-Hajjâj) but additionally restricts to player-targeted damage -- a
+creature-targeted hit (blocked/blocking) does not grant poison. A new effect
+type, `grantPoisonCounters` (`{ type: "grantPoisonCounters", amount }`),
+adds `amount` to `state[payload.targetId].poisonCounters`. Both follow the
+exact `triggeredAbilities: [{ trigger: { event: "ON_DAMAGE_DEALT" },
+condition, effect }]` declarative shape El-Hajjâj already established --
+no bespoke per-card dispatch. Marsh Viper grants 2, Pit Scorpion grants 1,
+Serpent Generator's Snake token grants 1 (defined directly on the
+`snake_poison` `TOKEN_DB` entry, so every Snake the artifact creates carries
+the trigger automatically). Adapted from Card-Forge/forge
+(`m/marsh_viper.txt`, `p/pit_scorpion.txt`, `s/serpent_generator.txt`),
+GPL-3.0.
+
+## 28.4 Poison Counters — Win Condition and Display
+
+`checkWinConditions()`'s `poisonLimit` default was `?? 5`; the real MTG rule
+(and both Marsh Viper's and Pit Scorpion's own oracle text) is ten. Fixed to
+`?? 10`. `state.p.poisonCounters` / `state.o.poisonCounters` (already present
+on `PlayerState`, previously always 0) are now actually written to by
+`grantPoisonCounters`, and the existing `checkWinConditions()` alt-loss check
+(`poisonCounters >= poisonLimit`) is exercised for the first time.
+
+Display: `Banner.tsx` (desktop, `src/ui/Battlefield/`) and `Banner.tsx`
+(mobile, `src/ui/Mobile/`) are two independent components (not shared) --
+both were given a `poisonCounters?: number` field on their `BannerPlayer`
+prop and a conditionally-rendered indicator (`!!player.poisonCounters`),
+reusing each file's own existing zone-stat idiom: `ZoneCount` (desktop,
+alongside Library/Graveyard) and `ZoneChip` (mobile, alongside LIB/GY/HAND).
+`DuelScreen.tsx` and `DuelScreenMobile.tsx`'s `pData`/`oData` were updated to
+pass `poisonCounters: s.p.poisonCounters` / `s.o.poisonCounters` through.
+
+## 28.5 What Poison Support Covers vs. Does Not
+
+Section 6.10 previously stated poison/infect was "deliberately not ported" /
+"not live in this engine" (and individual card stub comments repeated this).
+That is now only partially true:
+
+- **Poison-granting is live.** `grantPoisonCounters` +
+  `selfIsDamageSourceToPlayer` are real, tested mechanisms; Marsh Viper, Pit
+  Scorpion, and Serpent Generator's Snake token all grant poison counters on
+  unblocked combat damage to a player, and a player reaching the (now
+  correct) ten-counter threshold loses the game.
+- **The `Infect` keyword itself is still not implemented.** `KEYWORDS.INFECT`
+  still has no combat-damage implementation in `DuelCore.js` -- a creature
+  with infect still deals ordinary damage (reducing life, not toughness via
+  -1/-1 counters) and does not convert its combat damage to players into
+  poison counters automatically. Only cards with an explicit
+  `grantPoisonCounters` triggered ability grant poison; no general
+  infect/toxic/wither mechanic exists.
+
+# End of SYSTEMS v1.8

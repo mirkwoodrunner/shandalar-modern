@@ -7,6 +7,29 @@
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 
+## Completed (2026-07-06)
+- **Token Creation Infrastructure + Poison Counters** -- new `TOKEN_DB`
+  (`src/data/tokens.js`, separate from `CARD_DB`), `makeTokenInstance`/
+  `createToken` in `DuelCore.js`, and the CR 111.7 "tokens cease to exist
+  once they leave the battlefield" rule enforced at `zMove`'s single
+  choke point (covers death, bounce, exile, sacrifice from one call site;
+  also fixed `ashesToAshes`'s manual zone splice to route through `zMove`).
+  Six cards implemented: The Hive, Serpent Generator (token creation +
+  poison-granting Snake token), Rukh Egg (delayed token creation via new
+  `state.pendingEndStepTokens: []`, drained in the existing `PHASE.END`
+  block), Tetravus (`etbCounters`, two optional variable-count upkeep
+  abilities via the existing numberChoice pattern, remembered-token
+  tracking via `sourceIid`), Marsh Viper, Pit Scorpion. Real bug fixed:
+  `checkWinConditions()`'s poison-counter win threshold defaulted to 5,
+  not the correct 10 (both real MTG rules and the affected cards' own
+  oracle text say ten). New `selfIsDamageSourceToPlayer` condition and
+  `grantPoisonCounters` effect follow El-Hajjâj's existing declarative
+  `triggeredAbilities` shape. Poison-counter display added independently
+  to both `Banner.tsx` components (desktop `src/ui/Battlefield/`, mobile
+  `src/ui/Mobile/` -- confirmed separate, not shared). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Token Creation Infrastructure +
+  Poison Counters, and `docs/SYSTEMS.md` Section 28.
+
 ## Completed (2026-07-05)
 - **Gemini LLM opponent integration removed at owner's request.** `src/engine/GeminiAdvisor.js`, `src/engine/LegalActions.js`, and `src/engine/geminiPrompts.js` deleted, along with all associated tests. The `useGemini` config flag, title-screen toggle, in-duel Gemini decision path, "thinking" indicator, and Gemini log-entry styling were removed from `useDuelController.ts`, `GameWrapper.jsx`, `useOverworldController.js`, `DuelScreen.tsx`, `DuelScreenMobile.tsx`, `LogSheet.tsx`, and both CSS files. The heuristic AI (`aiDecide` in `AI.js`) is now the sole opponent decision path for every opponent, including ARZAKON.
 - **Complex-Tier C4 -- Triggered Abilities (Forge Reference), Checkpoint C

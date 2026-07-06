@@ -13,6 +13,26 @@
 
 ## Batch Completion Log
 
+### 2026-07-06 — Token Creation Infrastructure + Poison Counters (6 cards)
+
+`serpent_generator` and `the_hive` are no longer deferred (previously
+`effect:"STUB"` -- see the 2026-07-01 entry below, "no token-creation
+mechanic exists anywhere in this engine yet"); rows are left in place below
+for historical reference. New `TOKEN_DB` (`src/data/tokens.js`, separate
+from `CARD_DB`), `makeTokenInstance`/`createToken` (`DuelCore.js`), and the
+CR 111.7 cease-to-exist rule enforced at `zMove`. Implemented: `the_hive`
+(`createWaspToken`), `serpent_generator` (`createSerpentToken`, its Snake
+token carries `grantPoisonCounters`), `rukh_egg` (delayed token
+creation via new `state.pendingEndStepTokens: []`), `tetravus`
+(`etbCounters` + two optional variable-count upkeep abilities via the
+existing numberChoice pattern + remembered-token tracking via `sourceIid`),
+`marsh_viper` (`amount: 2`), `pit_scorpion` (`amount: 1`). Real bug fixed:
+`checkWinConditions()`'s poison-counter win threshold defaulted to 5, not
+the correct 10. New `selfIsDamageSourceToPlayer` condition +
+`grantPoisonCounters` effect follow `el_hajjaj`'s existing declarative
+`triggeredAbilities` shape. See `docs/MECHANICS_INDEX.md` -- Batch: Token
+Creation Infrastructure + Poison Counters, and `docs/SYSTEMS.md` Section 28.
+
 ### 2026-07-05 — Complex-Tier C4 checkpoint C, final (30 implemented, 8 deferred across C4)
 
 Third and final checkpoint of sub-batch C4. Implemented: `time_vault`,
