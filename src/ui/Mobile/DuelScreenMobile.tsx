@@ -276,6 +276,16 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         />
       )}
 
+      {s_state.pendingDamageShieldChoice && s_state.pendingDamageShieldChoice.caster === 'p' && (
+        <TutorModal
+          library={s_state.pendingDamageShieldChoice.pool}
+          filter="any"
+          onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
+          onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
+          titleOverride={`${s_state.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
+
       {s_state.pendingChoice && s_state.pendingChoice.controller === 'p' && (
         <ChoiceModal
           pendingChoice={s_state.pendingChoice}

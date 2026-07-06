@@ -72,6 +72,7 @@ export function makeState({
     pendingUpkeepChoice: null,
     pendingUpkeepChoiceQueue: [],
     pendingAnteExchange: null,
+    pendingDamageShieldChoice: null,
     p: makePlayerState({ bf: pBf, hand: pHand }),
     o: makePlayerState({ bf: oBf, hand: oHand }),
   };

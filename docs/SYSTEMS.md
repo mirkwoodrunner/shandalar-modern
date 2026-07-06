@@ -3151,4 +3151,105 @@ That is now only partially true:
   `grantPoisonCounters` triggered ability grant poison; no general
   infect/toxic/wither mechanic exists.
 
-# End of SYSTEMS v1.8
+## 29. Damage Shields — `hurt()` Source Metadata + Exact-Identity Prevention/Redirect
+
+### 29.1 `hurt()` source metadata coverage
+
+`hurt(s, who, amt, src, meta)`'s `meta` param carries `{ sourceIid, sourceType,
+combat, unblocked, isLifeLoss }`. `sourceType` is one of `'creature' |
+'artifact' | 'enchantment' | 'land' | 'planeswalker' | 'spell'`, computed by
+`inferSourceType(card)` (`DuelCore.js`, next to `isCre`/`isArt`/etc.). As of
+this section, essentially every `hurt()` call site in `DuelCore.js` populates
+`meta` wherever a source card object is actually in scope at the call site.
+The handful of call sites where no real source card is in scope (mana burn;
+Nafs Asp's delayed draw-step drain, which only persists a counter, not an
+iid, past the triggering combat damage; Castle Inferno, a game modifier with
+no card identity; Channel, whose life payment leaves no battlefield trace)
+correctly pass `meta: null` -- CoP-style effects legitimately cannot target an
+untraceable source, this is not a gap to close.
+
+### 29.2 `turnState.damageShields`
+
+`turnState.damageShields: { p: [], o: [] }`, reset at CLEANUP alongside
+`damageBySourceType`. Each entry: `{ chosenSourceIid, chosenSourceController,
+mode: 'prevent' | 'redirect', shieldSourceIid, shieldSourceName }`.
+`chosenSourceController` and `shieldSourceName` are captured at pick time
+(not re-derived later) specifically so Eye for an Eye's redirect still works
+correctly after both the chosen threat and Eye for an Eye itself may have left
+the battlefield/stack.
+
+This models a *specific, already-chosen* source (Forge's `ChosenCardStrict` /
+"target card in the ante" precedent) -- not a standing color-based ward
+re-checked generically. Choosing Sengir Vampire as your "black source of your
+choice" does not shield you from a different black creature dealing damage
+later; only that exact permanent or spell (by `iid`) is shielded, once.
+
+`hurt()` checks `meta?.sourceIid` against the target player's
+`damageShields` list at the top of its `amt > 0` branch, before the existing
+`combatDamageShield`/flat `damageShield` checks (unrelated mechanisms). On an
+exact match, the shield entry is removed (one-time consumption) and:
+
+- `mode: 'prevent'` -- returns state unmodified by this damage instance (no
+  life change, no `damageBySourceType` bump), matching how other prevention
+  effects in the engine already short-circuit.
+- `mode: 'redirect'` (Eye for an Eye) -- re-enters `hurt()` with the shield
+  already consumed so the primary damage applies completely normally (with
+  its original, unmodified `meta` -- all other meta-driven bookkeeping for
+  that source, e.g. `damageBySourceType`, still fires), then issues a second,
+  independent `hurt()` call dealing the same amount to
+  `chosenSourceController`, sourced from the shield card itself with
+  `meta: null`. `meta: null` is a hard recursion guard, not just a
+  convention -- since the shield check requires `meta?.sourceIid`, a null
+  meta can never match any shield entry, so this second instance can never
+  itself be prevented or redirected, however many shields either player has
+  armed.
+
+### 29.3 Choosing a source (`chooseDamageShieldSource`)
+
+All eight cards share one resolveEff effect key. `card.damageShieldColors`
+(e.g. `['B']`, or `['B','R']` for Greater Realm of Preservation) and/or
+`card.damageShieldTypes` (e.g. `['artifact']` for Circle of Protection:
+Artifacts) gate the legal pool via `damageShieldMatches(card, candidate)`;
+neither set (Eye for an Eye) matches any source. `card.damageShieldMode` is
+`'prevent'` for all six Circles of Protection and Greater Realm of
+Preservation, `'redirect'` for Eye for an Eye.
+
+`buildDamageShieldPool(state, card)` returns every matching permanent on
+either battlefield plus every matching spell currently on the stack (spell
+entries carry `controller: item.caster` so a chosen spell can still be
+attributed correctly). If the pool is empty the ability/spell fizzles (no
+`pendingDamageShieldChoice` opens, matching this codebase's existing
+"no legal target" fizzle convention).
+
+For the human player, this pool is handed to `pendingDamageShieldChoice: {
+caster, mode, shieldSourceIid, shieldSourceName, pool }` and rendered via the
+existing generalized `TutorModal` (`library={pool} filter="any"`) -- the same
+precedent as Darkpact's `pendingAnteExchange` picker (`docs/SYSTEMS.md`
+S27.2), not a fourth bespoke picker. `RESOLVE_DAMAGE_SHIELD_CHOICE` /
+`DECLINE_DAMAGE_SHIELD_CHOICE` resolve it. `DuelScreen.tsx` /
+`DuelScreenMobile.tsx` dispatch these two actions directly (raw `dispatch`,
+already used elsewhere in both screens for one-off actions like
+`CITY_OF_BRASS_DAMAGE`) rather than adding wrapper functions to
+`useDuel.js`/`useDuelController.ts`.
+
+For the opponent (`caster === 'o'`), there is no picker UI to drive, so
+`chooseDamageShieldSource` auto-chooses the first legal pool entry
+synchronously within the same resolveEff case -- same "no UI to choose which
+X" auto-decide convention used elsewhere in this file (e.g. `sacArt`/`sacCre`
+costs above) -- rather than ever leaving a `pendingDamageShieldChoice` with
+`caster: 'o'` outstanding, which nothing would resolve. Because of this,
+`useDuelController.ts`'s auto-pass-priority/phase-advance gate only needed
+`s.pendingDamageShieldChoice` added to its "any player-required choice pauses
+the loop" list (mirroring `pendingAnteExchange` etc.) -- no opponent-side
+auto-decide effect was needed there, unlike Darkpact's ante-exchange picker.
+
+### 29.4 Cards
+
+| Card | Cast cost | Activation cost | Filter | Mode |
+|---|---|---|---|---|
+| Circle of Protection: Black/Blue/Green/Red/White | `{1}{W}` | `{1}` | matching color | prevent |
+| Circle of Protection: Artifacts | `{1}{W}` | `{2}` | artifact type | prevent |
+| Greater Realm of Preservation | `{1}{W}` | `{1}{W}` | black or red | prevent |
+| Eye for an Eye | `{W}{W}` (Instant, no activation) | -- | any source | redirect |
+
+# End of SYSTEMS v1.9
