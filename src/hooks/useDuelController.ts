@@ -144,7 +144,13 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
 export type CastFlowMode = 'xSelect' | 'targeting' | 'mana' | null;
 
 export interface CastFlowState {
-  kind: 'spell' | 'ability';
+  // 'trigger': a suspended triggered ability that needs a fresh battlefield
+  // target (Vesuvan Doppelganger's upkeep re-copy -- see s.pendingTriggerTarget).
+  // Reuses the same targeting UI as 'spell'/'ability' (selectedTargets,
+  // handleCardClick's castFlow?.mode === 'targeting' routing, the cast prompt's
+  // skip/confirm buttons) but advanceCastFlow dispatches RESOLVE_TRIGGER_TARGET
+  // instead of CAST_SPELL/ACTIVATE_ABILITY, and there is no mana step.
+  kind: 'spell' | 'ability' | 'trigger';
   sourceIid: string;
   abilityId: string | null;
   mode: CastFlowMode;
@@ -294,6 +300,7 @@ export function useDuelController(
     openPriorityWindow,
     passPriority,
     resolveChoice,
+    resolveTriggerTarget,
     resolveUpkeepChoice,
     resolveConditionalCounter,
     useChannel,
@@ -373,7 +380,7 @@ export function useDuelController(
     // these; once cleared, this effect re-fires (state changed) and resumes.
     if (
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
-      s.pendingChoice || s.pendingTutor || s.pendingTransmuteSacrifice ||
+      s.pendingChoice || s.pendingTriggerTarget || s.pendingTutor || s.pendingTransmuteSacrifice ||
       s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange
     ) {
       return;
@@ -401,7 +408,7 @@ export function useDuelController(
   }, [
     endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
-    s.pendingChoice, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
+    s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
     s.pendingLotus, s.pendingBop, s.pendingAnteExchange, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -626,6 +633,22 @@ export function useDuelController(
       return;
     }
 
+    // AI resolves a suspended requiresTarget trigger (Vesuvan Doppelganger's
+    // upkeep re-copy): pick the best creature on either battlefield by
+    // power+toughness, excluding the copying permanent itself (copying itself
+    // is a legal but pointless target). Decline if no other creature exists.
+    if (s.pendingTriggerTarget && s.pendingTriggerTarget.controller === 'o') {
+      const candidates = ([...s.p.bf, ...s.o.bf] as any[]).filter(
+        (c: any) => isCre(c) && c.iid !== s.pendingTriggerTarget.sourceCardId
+      );
+      if (!candidates.length) { resolveTriggerTarget(null); return; }
+      const best = candidates.reduce((a: any, b: any) =>
+        ((b.power || 0) + (b.toughness || 0)) > ((a.power || 0) + (a.toughness || 0)) ? b : a
+      );
+      resolveTriggerTarget(best.iid);
+      return;
+    }
+
     if (s.active !== 'o' || aiRef.current) return;
     if (s.active === 'p' && (s.phase === 'COMBAT_ATTACKERS' || s.phase === 'COMBAT_BLOCKERS')) return;
     // COMBAT_BLOCKERS always belongs to the defending player's action, even
@@ -645,7 +668,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -755,6 +778,17 @@ export function useDuelController(
   // ── Cast/Activate flow handlers ────────────────────────────────────────────
 
   const cancelCastFlow = useCallback(() => {
+    // A 'trigger' flow isn't a cast/activation the player initiated -- it's
+    // Vesuvan Doppelganger's upkeep trigger already suspended in the engine
+    // (s.pendingTriggerTarget). There's nothing to "cancel" back to; the X
+    // button here can only mean "decline the target," same as the skip button.
+    if (castFlow?.kind === 'trigger') {
+      resolveTriggerTarget(null);
+      setCastFlow(null);
+      selectCard(null);
+      selectTarget(null);
+      return;
+    }
     if (s.manaTapSnapshot !== null) {
       dispatch({ type: 'UNDO_MANA_TAPS' });
     }
@@ -762,7 +796,7 @@ export function useDuelController(
     selectCard(null);
     selectTarget(null);
     setPendingActivate(null);
-  }, [s.manaTapSnapshot, dispatch, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [castFlow, s.manaTapSnapshot, dispatch, selectCard, selectTarget, resolveTriggerTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectCastTarget = useCallback((iid: string) => {
     setCastFlow(prev => {
@@ -782,6 +816,16 @@ export function useDuelController(
   // Advance from targeting → mana or immediate cast.
   // Called by confirmCastTargets and beginCastFlow (no-target path).
   const advanceCastFlow = useCallback((flow: CastFlowState) => {
+    if (flow.kind === 'trigger') {
+      // No mana step -- the triggered ability itself has no cost. Dispatch
+      // straight from targeting, whether a target was picked or declined.
+      const tgt = flow.selectedTargets[0] ?? null;
+      resolveTriggerTarget(tgt);
+      setCastFlow(null);
+      selectCard(null);
+      selectTarget(null);
+      return;
+    }
     if (flow.kind === 'spell') {
       const card = (s.p.hand as any[]).find((c: any) => c.iid === flow.sourceIid);
       if (!card) { setCastFlow(null); return; }
@@ -816,7 +860,7 @@ export function useDuelController(
         setCastFlow({ ...flow, mode: 'mana' });
       }
     }
-  }, [s, castSpell, activateAbility, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, castSpell, activateAbility, resolveTriggerTarget, selectCard, selectTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const confirmCastTargets = useCallback(() => {
     setCastFlow(prev => {
@@ -882,6 +926,29 @@ export function useDuelController(
       }
     }
   }, [s.p.mana, castFlow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Vesuvan Doppelganger's upkeep re-copy: the engine suspends the trigger
+  // queue in s.pendingTriggerTarget (see resolveTrigger's requiresTarget
+  // branch in DuelCore.js) instead of presenting a fixed pendingChoice option
+  // list, because it needs a fresh battlefield target. When that's the human
+  // player's own trigger, open the same targeting UI used for casts/activations
+  // (castFlow kind:'trigger') so battlefield clicks route through the existing
+  // selectCastTarget/handleCardClick machinery. The AI's own triggers are
+  // resolved directly in the AI loop effect below, never through castFlow.
+  useEffect(() => {
+    if (!s.pendingTriggerTarget || s.pendingTriggerTarget.controller !== 'p') return;
+    if (castFlow?.kind === 'trigger') return; // already open
+    setCastFlow({
+      kind: 'trigger',
+      sourceIid: s.pendingTriggerTarget.sourceCardId,
+      abilityId: s.pendingTriggerTarget.triggerId,
+      mode: 'targeting',
+      selectedTargets: [],
+      requiresTarget: false,
+      maxTargets: 1,
+      canTargetPlayers: false,
+    });
+  }, [s.pendingTriggerTarget, castFlow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const beginCastFlow = useCallback((card: any) => {
     if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
@@ -1114,6 +1181,7 @@ export function useDuelController(
     cancelLotus,
     applyAiActions,
     resolveChoice,
+    resolveTriggerTarget,
     resolveUpkeepChoice,
     resolveConditionalCounter,
     resolveSphereTrigger,

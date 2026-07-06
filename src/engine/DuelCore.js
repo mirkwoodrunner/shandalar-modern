@@ -733,6 +733,68 @@ function findStackTarget(stack, tgt, counterItemId) {
   return stack[stack.length - 1] ?? null;
 }
 
+// applyPermanentCopy: generalized Layer 1 copy helper (CR 707.2 -- copies
+// printed/copiable values from CARD_DB, never the live battlefield object,
+// so counters/auras/damage on the source creature are never copied).
+// Two callers, two shapes:
+//   - ETB copy (Copy Artifact, Vesuvan Doppelganger's initial copy): sourceCardIid
+//     is not yet on any battlefield. Returns `copied` only; the caller builds
+//     the fresh permanent (iid, controller, entering-battlefield defaults) and
+//     pushes it themselves -- this function does not guess a controller.
+//   - Re-copy (Vesuvan Doppelganger's upkeep trigger): sourceCardIid IS already
+//     on a battlefield. `copied` is merged onto that existing object in place,
+//     so iid/controller/counters/tapped/damage/attacking/blocking/summoningSick/
+//     eotBuffs/enchantments/tokens/exerted/triggeredAbilities are all preserved
+//     (none of those keys appear in `copied`) -- which is also how the recurring
+//     copy ability survives being re-copied without any extra plumbing.
+// `targetCard` must already be a legality-validated target (isArt/isCre, etc.)
+// -- that check is the caller's job, not this helper's.
+function applyPermanentCopy(state, sourceCardIid, targetCard, opts = {}) {
+  const { typeSuffix, colorOverride } = opts;
+  const staticDef = CARD_DB.find(c => c.id === targetCard.id);
+  if (!staticDef) throw new Error(`applyPermanentCopy: no CARD_DB entry for id="${targetCard.id}"`);
+  const baseType = staticDef.type ?? '';
+  const newType = typeSuffix
+    ? (baseType.includes(typeSuffix) ? baseType : (baseType ? `${baseType} ${typeSuffix}` : typeSuffix))
+    : baseType;
+  const copied = {
+    name: staticDef.name, cost: staticDef.cost, cmc: staticDef.cmc,
+    color: colorOverride !== undefined ? colorOverride : staticDef.color,
+    type: newType, subtype: staticDef.subtype, power: staticDef.power, toughness: staticDef.toughness,
+    text: staticDef.text, keywords: [...(staticDef.keywords ?? [])], effect: staticDef.effect,
+    rarity: staticDef.rarity, id: staticDef.id, layerDef: staticDef.layerDef,
+    activated: staticDef.activated, upkeep: staticDef.upkeep, mod: staticDef.mod,
+  };
+  for (const who of ['p', 'o']) {
+    if (state[who].bf.some(c => c.iid === sourceCardIid)) {
+      return {
+        copied,
+        state: { ...state, [who]: { ...state[who], bf: state[who].bf.map(c => c.iid === sourceCardIid ? { ...c, ...copied } : c) } },
+      };
+    }
+  }
+  return { copied, state };
+}
+
+// Vesuvan Doppelganger is printed blue (verified against current Scryfall
+// oracle text/mana cost, not trusted from Forge's `SetColor$ Blue` literal) --
+// both the initial ETB copy and every subsequent upkeep re-copy force this
+// color instead of the copied creature's own color.
+const VESUVAN_DOPPELGANGER_COLOR = 'U';
+const VESUVAN_RECOPY_TRIGGER_ID = 'vesuvan_doppelganger_upkeep_recopy';
+// The recurring ability granted alongside every copy (ETB or re-copy) --
+// stored on the permanent's own triggeredAbilities, never on the printed
+// CARD_DB entry, so declining the initial ETB copy leaves a plain 0/0
+// Shapeshifter with no upkeep ability (matches the printed card's "except it
+// doesn't copy... and it has [ability]" wording -- the ability only exists on
+// the copy, not on Vesuvan's own printed characteristics).
+const VESUVAN_RECOPY_ABILITY = {
+  id: VESUVAN_RECOPY_TRIGGER_ID,
+  trigger: { event: 'ON_UPKEEP_START', scope: 'controller' },
+  requiresTarget: true,
+  effect: { type: 'vesuvanRecopy' },
+};
+
 export function resolveEff(s, item) {
 const { card, caster, targets, xVal } = item;
 const opp = caster === "p" ? "o" : "p";
@@ -1973,23 +2035,39 @@ case "copyPermanentCharacteristics": {
   // Layer 1: Copy Artifact. Copies printed (copiable) values from the target artifact's
   // CARD_DB entry -- not the live battlefield object, which may carry counters/auras.
   if (!tgtC || !isArt(tgtC)) break; // no legal artifact target; Copy Artifact stays inert
-  const staticDef = CARD_DB.find(c => c.id === tgtC.id);
-  if (!staticDef) throw new Error(`copyPermanentCharacteristics: no CARD_DB entry for id="${tgtC.id}"`);
-  const baseType = staticDef.type ?? '';
-  const newType = baseType.includes('Enchantment') ? baseType : (baseType ? baseType + ' Enchantment' : 'Enchantment');
+  const { copied } = applyPermanentCopy(ns, card.iid, tgtC, { typeSuffix: 'Enchantment' });
   const newPerm = {
-    name: staticDef.name, cost: staticDef.cost, cmc: staticDef.cmc, color: staticDef.color,
-    type: newType, subtype: staticDef.subtype, power: staticDef.power, toughness: staticDef.toughness,
-    text: staticDef.text, keywords: [...(staticDef.keywords ?? [])], effect: staticDef.effect,
-    rarity: staticDef.rarity, id: staticDef.id, layerDef: staticDef.layerDef,
-    activated: staticDef.activated, upkeep: staticDef.upkeep, mod: staticDef.mod,
-    iid: card.iid, controller: caster, enterTs: ns.layerClock ?? 0,
+    ...copied, iid: card.iid, controller: caster, enterTs: ns.layerClock ?? 0,
     tapped: false, summoningSick: true, attacking: false, blocking: null,
     damage: 0, counters: {}, eotBuffs: [], enchantments: [], tokens: [], exerted: false,
   };
   // Push newPerm directly to bf -- RESOLVE_STACK's alreadyOnBf guard will skip adding pArr.
   ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, newPerm] } };
-  ns = dlog(ns, `${card.name} enters as a copy of ${staticDef.name}.`, 'effect');
+  ns = dlog(ns, `${card.name} enters as a copy of ${copied.name}.`, 'effect');
+  break;
+}
+// Vesuvan Doppelganger: "You may have this creature enter as a copy of any
+// creature on the battlefield, except it doesn't copy that creature's color
+// and it has 'At the beginning of your upkeep, you may have this creature
+// become a copy of target creature, except it doesn't copy that creature's
+// color and it has this ability.'" Layer 1 copy via applyPermanentCopy,
+// generalized from Copy Artifact above (creature target instead of artifact,
+// colorOverride instead of typeSuffix). Declining (no target) leaves the
+// printed 0/0 Shapeshifter, which dies to state-based actions (checkDeath's
+// toughness<=0 check) at the next opportunity -- not new logic.
+// Adapted from Card-Forge/forge (v/vesuvan_doppelganger.txt), GPL-3.0. See
+// THIRD_PARTY_NOTICES.md.
+case "vesuvanEtbCopy": {
+  if (!tgtC || !isCre(tgtC)) break; // declined or no legal target -- enters as a 0/0 Shapeshifter
+  const { copied } = applyPermanentCopy(ns, card.iid, tgtC, { colorOverride: VESUVAN_DOPPELGANGER_COLOR });
+  const newPerm = {
+    ...copied, iid: card.iid, controller: caster, enterTs: ns.layerClock ?? 0,
+    tapped: false, summoningSick: true, attacking: false, blocking: null,
+    damage: 0, counters: {}, eotBuffs: [], enchantments: [], tokens: [], exerted: false,
+    triggeredAbilities: [VESUVAN_RECOPY_ABILITY],
+  };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, newPerm] } };
+  ns = dlog(ns, `${card.name} enters as a copy of ${copied.name}.`, 'effect');
   break;
 }
 case "aladdinsSteal": {
@@ -2304,6 +2382,28 @@ case "colorChoiceTarget": {
       { id: 'B', label: 'Black' },
       { id: 'R', label: 'Red' },
       { id: 'G', label: 'Green' },
+    ],
+  });
+  break;
+}
+// Primal Clay: "As this creature enters, it becomes your choice of a 3/3
+// artifact creature, a 2/2 artifact creature with flying, or a 1/6 Wall
+// artifact creature with defender in addition to its other types." A fixed
+// three-mode ETB choice, NOT a copy effect (confirmed against current
+// Scryfall oracle text -- not routed through applyPermanentCopy). Same
+// direct-from-resolveEff pendingChoice convention as colorChoiceTarget above
+// (kind: 'primalClayChoice'); no triggered ability involved.
+// Adapted from Card-Forge/forge (p/primal_clay.txt), GPL-3.0. See
+// THIRD_PARTY_NOTICES.md.
+case "primalClayChoice": {
+  ns = createPendingChoice(ns, {
+    sourceCardId: card.iid,
+    controller: caster,
+    kind: 'primalClayChoice',
+    options: [
+      { id: 'vanilla', label: '3/3 artifact creature', power: 3, toughness: 3, keywords: [] },
+      { id: 'flying', label: '2/2 artifact creature with flying', power: 2, toughness: 2, keywords: [KEYWORDS.FLYING.id] },
+      { id: 'wall', label: '1/6 Wall artifact creature with defender', power: 1, toughness: 6, keywords: [KEYWORDS.DEFENDER.id], subtypeSuffix: 'Wall' },
     ],
   });
   break;
@@ -4801,6 +4901,25 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         'effect'
       );
     }
+    // Vesuvan Doppelganger's upkeep re-copy. payload.tgtC is attached by the
+    // RESOLVE_TRIGGER_TARGET action (see below) once the controller picks a
+    // fresh target creature -- this is the first triggered ability in the
+    // codebase to prompt for a battlefield target at trigger-resolution time
+    // rather than from a fixed option list (see ability.requiresTarget in
+    // resolveTrigger). Uses the same applyPermanentCopy helper as the ETB
+    // copy and Copy Artifact; since sourceCard is already on the battlefield,
+    // applyPermanentCopy takes the merge-in-place path, preserving iid,
+    // counters, and battlefield state (tapped/damage/etc.) -- and, because
+    // triggeredAbilities is never one of the copied fields, this ability
+    // survives onto the newly-copied form automatically.
+    // Adapted from Card-Forge/forge (v/vesuvan_doppelganger.txt), GPL-3.0.
+    // See THIRD_PARTY_NOTICES.md.
+    case 'vesuvanRecopy': {
+      const tgtC = payload?.tgtC;
+      if (!tgtC || !isCre(tgtC)) return dlog(state, `${sourceCard.name} fizzles -- no legal creature target.`, 'effect');
+      const { state: ns, copied } = applyPermanentCopy(state, sourceCard.iid, tgtC, { colorOverride: VESUVAN_DOPPELGANGER_COLOR });
+      return dlog(ns, `${sourceCard.name} becomes a copy of ${copied.name}.`, 'effect');
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -4848,12 +4967,31 @@ function resolveTrigger(state, inst) {
     };
   }
 
+  if (ability.requiresTarget) {
+    // Suspend queue and prompt the controller to click a fresh battlefield
+    // target, same suspend/re-insert shape as requiresChoice above but for a
+    // permanent target instead of a fixed option list. RESOLVE_TRIGGER_TARGET
+    // (below) resumes it. The UI side extends the existing cast/activate
+    // targeting flow (castFlow kind:'trigger' in useDuelController.ts) rather
+    // than a parallel targeting mechanism.
+    return {
+      ...state,
+      pendingTriggerTarget: {
+        sourceCardId: inst.sourceCardId,
+        controller: inst.controller,
+        triggerId: inst.triggerId,
+        eventPayload: inst.eventPayload,
+      },
+      triggerQueue: [inst, ...state.triggerQueue],
+    };
+  }
+
   return resolveTriggeredEffect(state, sourceCard, ability.effect, inst.eventPayload);
 }
 
 function processTriggerQueue(state) {
   let s = state;
-  while (s.triggerQueue.length > 0 && !s.pendingChoice) {
+  while (s.triggerQueue.length > 0 && !s.pendingChoice && !s.pendingTriggerTarget) {
     const [next, ...rest] = s.triggerQueue;
     s = { ...s, triggerQueue: rest };
     if (next.triggerId === 'sengirCounter') {
@@ -5239,6 +5377,11 @@ pendingBop: false,
 turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [] },
 triggerQueue: [],
 pendingChoice: null,
+// Suspends processTriggerQueue for a triggered ability that needs a fresh
+// battlefield target (Vesuvan Doppelganger's upkeep re-copy) rather than a
+// fixed option list -- see ability.requiresTarget in resolveTrigger() and
+// the RESOLVE_TRIGGER_TARGET action.
+pendingTriggerTarget: null,
 pendingUpkeepChoice: null,
 // Extra queued upkeep choices for the same untap step (Part 3: upkeep-choice
 // registry). pendingUpkeepChoice always holds the front slot; the null check
@@ -6377,6 +6520,29 @@ case "RESOLVE_CHOICE": {
     return dlog(ns, `${targetCard.name} becomes ${action.optionId}.`, "effect");
   }
 
+  // Primal Clay: ETB choice created directly from resolveEff (primalClayChoice),
+  // not a triggered ability. Sets the entering permanent's power/toughness/
+  // keywords (and, for the Wall mode, appends a subtype) in place -- same
+  // find-by-iid-and-map shape as colorChoice above, applied to different fields.
+  if (choice.kind === 'primalClayChoice') {
+    let ns = { ...s, pendingChoice: null };
+    const targetIid = choice.sourceCardId;
+    const owner = ns.p.bf.some(c => c.iid === targetIid) ? 'p'
+                : ns.o.bf.some(c => c.iid === targetIid) ? 'o'
+                : null;
+    if (!owner) return dlog(ns, "Primal Clay fizzles -- it's no longer on the battlefield.", "effect");
+    const mode = choice.options.find(m => m.id === action.optionId);
+    if (!mode) return ns;
+    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid ? {
+      ...c,
+      power: mode.power,
+      toughness: mode.toughness,
+      keywords: [...(c.keywords || []), ...mode.keywords],
+      subtype: mode.subtypeSuffix ? (c.subtype ? `${c.subtype} ${mode.subtypeSuffix}` : mode.subtypeSuffix) : c.subtype,
+    } : c) } };
+    return dlog(ns, `Primal Clay becomes a ${mode.label}.`, "effect");
+  }
+
   // Modal spells ("choose one --"): created directly from resolveEff (modalChoice),
   // not a triggered ability. Unlike 'triggered_ability_choice' below (which resolves
   // through the narrower resolveTriggeredEffect vocabulary), this re-enters resolveEff
@@ -6463,6 +6629,27 @@ case "RESOLVE_CHOICE": {
     selectedOption.effect,
     pendingTrigger?.eventPayload || {}
   );
+  return processTriggerQueue(ns);
+}
+
+// Resumes a triggered ability suspended by ability.requiresTarget (see
+// resolveTrigger) once the controller has picked a battlefield target --
+// or declined, if action.iid is null (the ability is always optional,
+// mirroring the printed "you may" wording on every card that currently uses
+// this mechanism). Same suspend/re-insert/resume shape as RESOLVE_CHOICE's
+// 'triggered_ability_choice' path above, but for a permanent target instead
+// of a fixed option list.
+case "RESOLVE_TRIGGER_TARGET": {
+  if (!s.pendingTriggerTarget) return s;
+  const pend = s.pendingTriggerTarget;
+  const [pendingTrigger, ...remainingQueue] = s.triggerQueue;
+  let ns = { ...s, pendingTriggerTarget: null, triggerQueue: remainingQueue };
+  const sourceCard = [...ns.p.bf, ...ns.o.bf].find(c => c.iid === pend.sourceCardId);
+  const ability = sourceCard?.triggeredAbilities?.find(a => a.id === pend.triggerId);
+  if (!sourceCard || !ability) return processTriggerQueue(ns);
+  if (!action.iid) return processTriggerQueue(ns);
+  const tgtC = getBF(ns, action.iid);
+  ns = resolveTriggeredEffect(ns, sourceCard, ability.effect, { ...(pendingTrigger?.eventPayload ?? {}), tgtC });
   return processTriggerQueue(ns);
 }
 

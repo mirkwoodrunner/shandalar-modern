@@ -2013,20 +2013,86 @@ To implement a card that modifies characteristics:
 - `DuelCore.js` imports `computeCharacteristics` from `layers.js`.
 - No other file imports from `layers.js` directly; go through `getPow`/`getTou`/`hasKw`.
 
-## 18.6 Layer 1 — Copiable-Values Snapshot (Copy Artifact)
+## 18.6 Layer 1 — Copiable-Values Snapshot (`applyPermanentCopy`)
 
 Layer 1 (copy effects) is handled at resolution time in `DuelCore.js`, not as a continuous
-pass in `computeCharacteristics`. When Copy Artifact resolves:
+pass in `computeCharacteristics`. The mechanism is a single generalized helper,
+`applyPermanentCopy(state, sourceCardIid, targetCard, { typeSuffix, colorOverride })`,
+extracted from Copy Artifact's original one-shot `copyPermanentCharacteristics` case and
+now shared by Copy Artifact and Vesuvan Doppelganger:
 
-- `resolveEff` looks up the target artifact's static record in `CARD_DB` by `id`.
-- A `newPerm` object is built from the CARD_DB entry (printed values only: name, cost, cmc,
-  color, type, subtype, power, toughness, text, keywords, effect, layerDef, activated, mod).
-  Live battlefield state (counters, auras/enchantments[], eotBuffs) is NOT copied.
-- The type string is extended to include "Enchantment" (Copy Artifact retains its Enchantment
-  type in addition to the copied types).
-- `newPerm` is placed on the bf directly from `resolveEff`. RESOLVE_STACK's normal ETB push
-  is skipped by the `alreadyOnBf` guard added in Sprint A1.
-- If no legal artifact target exists, Copy Artifact enters as a plain inert Enchantment.
+- It looks up the target's static record in `CARD_DB` by `id` and builds a `copied` object
+  from printed values only: name, cost, cmc, color, type, subtype, power, toughness, text,
+  keywords, effect, rarity, id, layerDef, activated, upkeep, mod. Live battlefield state
+  (counters, auras/enchantments[], eotBuffs, damage, tapped, etc.) is never in `copied`, so
+  it is never copied.
+- `typeSuffix` appends a type to the copied type string if not already present (Copy
+  Artifact: `'Enchantment'`). `colorOverride` forces a specific color instead of the copied
+  source's own color (Vesuvan Doppelganger: always blue, its own printed color, never the
+  copied creature's).
+- Legality of the target (`isArt`/`isCre`/etc.) is the caller's job, not this helper's --
+  it assumes an already-validated target.
+- Two shapes, both handled by the same call:
+  - **ETB copy** (source not yet on any battlefield -- Copy Artifact, Vesuvan's initial
+    entry): the helper returns `{ copied }` only. The caller builds the fresh permanent
+    (iid, controller, entering-battlefield defaults: tapped/summoningSick/damage/counters/
+    etc.) and pushes it to `bf` directly from `resolveEff`, skipping RESOLVE_STACK's normal
+    ETB push via the `alreadyOnBf` guard (Sprint A1). If no legal target exists, the source
+    enters as itself (Copy Artifact: a plain inert Enchantment; Vesuvan: a 0/0 Shapeshifter
+    that dies to state-based actions).
+  - **Re-copy** (source already on a battlefield -- Vesuvan's recurring upkeep ability,
+    the only current user of this path): the helper finds the existing permanent by
+    `sourceCardIid` and returns `{ copied, state }`, where `state` has `copied` merged onto
+    that permanent in place. Because none of `copied`'s keys touch iid, controller,
+    counters, tapped, damage, or `triggeredAbilities`, all of that battlefield state (and
+    the recurring copy ability itself) survives the re-copy untouched -- no separate
+    persistence logic is needed.
+
+### Triggered-ability targeting (`ability.requiresTarget` / `pendingTriggerTarget`)
+
+Vesuvan Doppelganger's upkeep ability ("At the beginning of your upkeep, you may have this
+creature become a copy of target creature...") is the first triggered ability in this
+codebase to need a *fresh battlefield target* at trigger-resolution time, rather than a
+fixed option list. The existing `ability.requiresChoice` mechanism (Soul Net and others)
+only supports presenting a small set of named options via `pendingChoice` -- it has no
+concept of clicking a permanent. Rather than build a second, parallel targeting system,
+this extends the two places targeting already exists:
+
+- **Engine (`DuelCore.js`)**: `resolveTrigger()` gained a second suspend branch,
+  `ability.requiresTarget`, parallel to `requiresChoice` -- it suspends `processTriggerQueue`
+  by setting `state.pendingTriggerTarget = { sourceCardId, controller, triggerId,
+  eventPayload }` and re-inserting the trigger at the front of `triggerQueue`, exactly like
+  `requiresChoice` does for `pendingChoice`. A new action, `RESOLVE_TRIGGER_TARGET { iid }`,
+  resumes it: `iid: null` means the (always-optional) ability was declined; otherwise the
+  targeted permanent is attached to the resolving effect's payload as `tgtC` and
+  `resolveTriggeredEffect` runs normally.
+- **UI (`useDuelController.ts`)**: the existing cast/activate targeting flow (`castFlow`,
+  `selectCastTarget`, `handleCardClick`'s `castFlow?.mode === 'targeting'` battlefield-click
+  routing, the cast-prompt confirm/skip buttons) gained a third `castFlow.kind`, `'trigger'`,
+  alongside the pre-existing `'spell'`/`'ability'`. A `useEffect` watches
+  `s.pendingTriggerTarget` and auto-opens `castFlow` with `mode: 'targeting'`,
+  `requiresTarget: false` (the ability is always "you may") when it belongs to the human
+  player; `advanceCastFlow`'s `'trigger'` branch dispatches `RESOLVE_TRIGGER_TARGET` directly
+  (no mana step -- the ability has no cost) instead of `CAST_SPELL`/`ACTIVATE_ABILITY`.
+  Neither `DuelScreen.tsx` nor `DuelScreenMobile.tsx` needed any changes: both already derive
+  the cast-prompt's source card and cost generically (`kind === 'spell' ? hand : bf` lookup,
+  cost falls back to `undefined` when no ability/cost is found), so the existing rendering
+  covers the new kind automatically. The AI loop (still in `useDuelController.ts`, per this
+  file's ownership rule) resolves its own `pendingTriggerTarget` directly: it picks the best
+  creature on either battlefield by power+toughness (excluding the copying permanent itself)
+  and declines if none exists.
+
+### Primal Clay's ETB modal choice (not a copy effect)
+
+Primal Clay ("As this creature enters, it becomes your choice of a 3/3 artifact creature, a
+2/2 artifact creature with flying, or a 1/6 Wall artifact creature with defender...") looks
+similar to a copy effect but is not one -- its oracle text (re-verified against Scryfall) is
+a fixed three-mode choice with no target creature involved, so it does not use
+`applyPermanentCopy`. It resolves through the same direct-from-`resolveEff`
+`createPendingChoice` convention as Alchor's Tomb's `colorChoiceTarget` (kind:
+`'primalClayChoice'`, handled in `RESOLVE_CHOICE`): the chosen mode's power/toughness/
+keywords are set directly on the entering permanent, and the Wall mode appends `Wall` to its
+subtype ("in addition to its other types") rather than replacing it.
 
 ## 18.7 Layer 2 — Conditional Control Change (Aladdin, Old Man of the Sea, Guardian Beast)
 

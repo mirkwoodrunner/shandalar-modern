@@ -91,6 +91,9 @@ dispatch({ type: "AI_ACTS", acts }), []);
 const resolveChoice = useCallback((optionId) =>
 dispatch({ type: "RESOLVE_CHOICE", optionId }), []);
 
+const resolveTriggerTarget = useCallback((iid = null) =>
+dispatch({ type: "RESOLVE_TRIGGER_TARGET", iid }), []);
+
 const resolveUpkeepChoice = useCallback((choice) =>
 dispatch({ type: "UPKEEP_CHOICE_RESOLVE", choice }), []);
 
@@ -158,6 +161,7 @@ cancelLotus,
 setPendingLotus,
 applyAiActions,
 resolveChoice,
+resolveTriggerTarget,
 resolveUpkeepChoice,
 resolveConditionalCounter,
 openPriorityWindow,

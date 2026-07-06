@@ -13,6 +13,30 @@
 
 ## Batch Completion Log
 
+### 2026-07-06 — Copy Mechanism Generalization (Vesuvan Doppelganger) + Primal Clay Modal Choice
+
+`vesuvan_doppelganger` and `primal_clay` are no longer deferred (previously
+`effect:"STUB"`, listed in Group O below -- rows left in place for historical
+reference). `copy_artifact`'s row is also left in place; its handler was
+refactored, not behaviorally changed. Extracted `applyPermanentCopy` from
+`copy_artifact`'s original one-shot `copyPermanentCharacteristics` case
+(now a thin wrapper, byte-for-byte regression-tested) so it also covers
+`vesuvan_doppelganger`'s optional ETB copy (creature target, `colorOverride`
+keeps it printed-blue) and its recurring upkeep re-copy. The upkeep re-copy
+required new infrastructure -- `ability.requiresTarget` / `state.
+pendingTriggerTarget` / `RESOLVE_TRIGGER_TARGET` in `DuelCore.js`, and a
+third `castFlow.kind: 'trigger'` extending the existing cast/activate
+targeting flow in `useDuelController.ts` (no screen-component changes
+needed) -- since no existing triggered ability previously needed a fresh
+battlefield target at trigger-resolution time. `primal_clay`'s oracle text
+was re-verified against Scryfall and confirmed to be a fixed three-mode ETB
+choice, not a copy effect (Forge's script reflects an older printing);
+routed through the existing direct-`resolveEff` `createPendingChoice`
+convention (`kind: 'primalClayChoice'`), same shape as `alchorss_tomb`'s
+`colorChoiceTarget`. Stub count: 41 -> 39. See `docs/MECHANICS_INDEX.md` --
+`copy_artifact` (updated), `vesuvan_doppelganger`, `primal_clay`, and
+`docs/SYSTEMS.md` Section 18.6.
+
 ### 2026-07-06 — Token Creation Infrastructure + Poison Counters (6 cards)
 
 `serpent_generator` and `the_hive` are no longer deferred (previously

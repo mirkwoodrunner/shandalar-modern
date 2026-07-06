@@ -2288,11 +2288,27 @@ See `docs/SYSTEMS.md` Sections 18.6, 18.7, 18.8 for authoritative specs.
 
 ### copy_artifact
 
-**Effect:** `copyPermanentCharacteristics` (Layer 1 -- copiable-values snapshot)
+**Effect:** `copyPermanentCharacteristics` (Layer 1 -- copiable-values snapshot, now a thin wrapper around the generalized `applyPermanentCopy` helper)
 
-**Handler:** `resolveEff` case `"copyPermanentCharacteristics"` in `DuelCore.js`. Looks up the target artifact's static definition via `CARD_DB.find(c => c.id === tgtC.id)` and builds a new permanent from printed values only (no counters, no enchantments, no eotBuffs). Adds `"Enchantment"` to the type string. Pushed directly onto caster's bf; `RESOLVE_STACK`'s `alreadyOnBf` guard skips the normal ETB push so the original card object is never double-added. Fizzles (inert enchantment) when no legal artifact target exists. Throws if the target artifact has no CARD_DB entry.
+**Handler:** `resolveEff` case `"copyPermanentCharacteristics"` in `DuelCore.js`. Calls `applyPermanentCopy(ns, card.iid, tgtC, { typeSuffix: 'Enchantment' })`, which looks up the target artifact's static definition via `CARD_DB.find(c => c.id === tgtC.id)` and returns printed values only (no counters, no enchantments, no eotBuffs). The case builds the entering permanent from those values plus entering-battlefield defaults and pushes it directly onto caster's bf; `RESOLVE_STACK`'s `alreadyOnBf` guard skips the normal ETB push so the original card object is never double-added. Fizzles (inert enchantment) when no legal artifact target exists. Throws if the target artifact has no CARD_DB entry. Behavior is unchanged from before the generalization (see `tests/scenarios/copy-mechanism-generalized.test.js` regression coverage).
 
 **cards.js entry:** `effect: "copyPermanentCharacteristics"`
+
+### vesuvan_doppelganger
+
+**Effect:** `vesuvanEtbCopy` (ETB) + `vesuvanRecopy` (recurring upkeep triggered effect) -- Layer 1 copy via `applyPermanentCopy`, generalized alongside Copy Artifact above.
+
+**Handler:** `resolveEff` case `"vesuvanEtbCopy"` in `DuelCore.js` -- optional (`optionalTarget:true` in cards.js), any creature on the battlefield. Calls `applyPermanentCopy(ns, card.iid, tgtC, { colorOverride: VESUVAN_DOPPELGANGER_COLOR })` (always blue, its own printed color, verified against Scryfall) and attaches `VESUVAN_RECOPY_ABILITY` to the entering permanent's `triggeredAbilities`. Declining (no target) leaves a printed 0/0 Shapeshifter, which dies to `checkDeath`'s toughness<=0 state-based action check (not new logic). The recurring ability (`trigger:{event:'ON_UPKEEP_START',scope:'controller'}, requiresTarget:true, effect:{type:'vesuvanRecopy'}`) is the first triggered ability in this codebase to prompt for a fresh battlefield target at trigger-resolution time -- see `docs/SYSTEMS.md` "Triggered-ability targeting" for the full `ability.requiresTarget`/`pendingTriggerTarget`/`RESOLVE_TRIGGER_TARGET` mechanism this required in `DuelCore.js` and the `castFlow` kind:`'trigger'` extension in `useDuelController.ts`. On resolution, `applyPermanentCopy` finds the existing permanent already on the battlefield and merges the copied fields in place, so iid/counters/tapped/damage/`triggeredAbilities` (the ability itself) all survive the re-copy untouched.
+
+**cards.js entry:** `effect: "vesuvanEtbCopy"`, `optionalTarget: true`
+
+### primal_clay
+
+**Effect:** `primalClayChoice` -- fixed three-mode ETB choice, NOT a copy effect (oracle text re-verified against Scryfall; Forge's script for this card reflects an older printing and was not used).
+
+**Handler:** `resolveEff` case `"primalClayChoice"` calls `createPendingChoice` directly (kind: `'primalClayChoice'`), same direct-from-`resolveEff` convention as Alchor's Tomb's `colorChoiceTarget`. `RESOLVE_CHOICE`'s `'primalClayChoice'` branch sets power/toughness/keywords on the entering permanent per the chosen mode (3/3 vanilla, 2/2 flying, 1/6 Wall+defender) and, for the Wall mode only, appends `"Wall"` to `subtype` ("in addition to its other types").
+
+**cards.js entry:** `effect: "primalClayChoice"`
 
 ### sleight_of_mind
 
