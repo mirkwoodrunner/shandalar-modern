@@ -320,10 +320,9 @@ to a full-suite run because it "feels safer."
 `npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
 plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+
 individual test executions). Do not run these bare commands by default. Only run the
-full suite in one of these two situations:
-1. A `test:audit` run fails -- the documented STOP/escalation path below explicitly
-   calls for a full-suite diagnosis.
-2. The user explicitly asks for a full-suite or pre-merge/pre-release validation.
+full suite when Chris explicitly asks for it -- a full-suite or
+pre-merge/pre-release validation request. A `test:audit` failure is NOT
+itself permission to run the full suite. See the escalation path below.
 
 Doc-only changes (nothing under `src/` touched) need no test run at all.
 
@@ -380,9 +379,12 @@ covered here, fall back to the tag taxonomy table above.
 `npm run test:audit -- @tag1` picks one random tag from the untargeted remainder, runs its full suite, and exits non-zero with a **STOP** message if anything fails. **An audit failure is a hard stop** -- it means the current change has a side effect outside its declared scope:
 
 ```
-1. Run full suite: npm test && npm run test:e2e
-2. Diagnose and fix the regression
-3. Only then resume the original task
+1. STOP. Do not run the full suite automatically.
+2. Report to Chris: which tag failed, which specific test(s), and your
+   diagnosis if you have one.
+3. Wait for Chris's permission before running `npm test && npm run
+   test:e2e` or any broader diagnostic command.
+4. Only resume the original task once Chris has responded.
 ```
 
 ### Playwright setup (one-time)
