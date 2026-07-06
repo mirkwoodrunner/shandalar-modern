@@ -53,6 +53,7 @@ See `gdd.md` §3.2.9 (AI Engine) and §3.4 (AI Archetypes) for the existing impl
 - **Revisit MCTS scope.** Currently gated to one high-aggression profile. Reassess now that castle fights route to real `BOSS_*` decks.
 - **Retune boss/archetype decks** now that castle routing sends real boss decks instead of generic archetypes.
 - **Combat AI port (attack/block decisions + simulation-based lookahead).** Scoped in `docs/AI_COMBAT_PORT_PLAN.md`, not yet batched into sprint work.
+- **mage-go pattern reference.** `docs/MAGE_GO_AI_REFERENCE.md` collects pattern-level notes (combat-solver enumeration strategy, Zobrist hashing, turn-plan replay) from `benprew/mage-go` (GPL-2.0, not license-compatible for code adaptation) to weigh when this milestone's combat-AI work is actually planned. Reference only -- not a batch plan.
 
 ## Milestone D — Loop polish
 
