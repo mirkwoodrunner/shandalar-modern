@@ -34,6 +34,7 @@ export default defineConfig({
         'tests/e2e/batch-simple-tier-forge-1.spec.ts',
         'tests/e2e/card-type-line.spec.ts',
         'tests/e2e/copy-and-modal-choice.spec.ts',
+        'tests/e2e/damage-shields.spec.ts',
         'tests/e2e/deferral-sweep-1.spec.ts',
         'tests/e2e/deferral-sweep-2-typechange.spec.ts',
         'tests/e2e/duel-controller.spec.ts',

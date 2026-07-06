@@ -194,3 +194,11 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-06 | Pit Scorpion (reused `grantPoisonCounters` triggered effect, DuelCore.js/cards.js) | Card-Forge/forge | p/pit_scorpion.txt | GPL-3.0 |
 | 2026-07-06 | Vesuvan Doppelganger (`applyPermanentCopy` generalized copy helper + `vesuvanEtbCopy`/`vesuvanRecopy` effects + `ability.requiresTarget`/`pendingTriggerTarget`/`RESOLVE_TRIGGER_TARGET` triggered-ability targeting mechanism, DuelCore.js/cards.js/useDuelController.ts/useDuel.js) | Card-Forge/forge | v/vesuvan_doppelganger.txt | GPL-3.0 |
 | 2026-07-06 | Primal Clay (`primalClayChoice` spell effect + pendingChoice kind, DuelCore.js/cards.js) | Card-Forge/forge | p/primal_clay.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: Artifacts (`chooseDamageShieldSource` activated ability effect + `turnState.damageShields`, DuelCore.js/cards.js/DuelScreen.tsx/DuelScreenMobile.tsx) | Card-Forge/forge | c/circle_of_protection_artifacts.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: Black (reused `chooseDamageShieldSource` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | c/circle_of_protection_black.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: Blue (reused `chooseDamageShieldSource` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | c/circle_of_protection_blue.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: Green (reused `chooseDamageShieldSource` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | c/circle_of_protection_green.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: Red (reused `chooseDamageShieldSource` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | c/circle_of_protection_red.txt | GPL-3.0 |
+| 2026-07-06 | Circle of Protection: White (reused `chooseDamageShieldSource` activated ability effect, DuelCore.js/cards.js) | Card-Forge/forge | c/circle_of_protection_white.txt | GPL-3.0 |
+| 2026-07-06 | Eye for an Eye (reused `chooseDamageShieldSource` spell effect, `mode:'redirect'`, DuelCore.js/cards.js) | Card-Forge/forge | e/eye_for_an_eye.txt | GPL-3.0 |
+| 2026-07-06 | Greater Realm of Preservation (reused `chooseDamageShieldSource` activated ability effect, black-or-red filter, DuelCore.js/cards.js) | Card-Forge/forge | g/greater_realm_of_preservation.txt | GPL-3.0 |

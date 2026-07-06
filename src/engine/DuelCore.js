@@ -49,6 +49,18 @@ export const isSort   = c => c?.type === "Sorcery";
 export const isArt    = c => !!c?.type?.includes("Artifact");
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
+// Maps a source card object to the coarse sourceType bucket used by hurt()'s
+// meta param (damageBySourceType tracking, damage shields, CoP-style effects).
+export function inferSourceType(card) {
+  if (!card) return null;
+  if (card.type === "Planeswalker") return 'planeswalker';
+  if (isCre(card)) return 'creature';
+  if (isArt(card)) return 'artifact';
+  if (isEnch(card)) return 'enchantment';
+  if (isLand(card)) return 'land';
+  if (isInst(card) || isSort(card)) return 'spell';
+  return 'spell';
+}
 export function hasKw(c, kw, state = null) {
   if (!state) {
     // No state: only check static card keywords (used pre-battlefield).
@@ -299,6 +311,34 @@ function getDamageRedirectTarget(s, who, meta) {
   return null;
 }
 
+// Circle of Protection / Eye for an Eye / Greater Realm of Preservation: builds
+// the "source of your choice" matcher for a shield-granting card. `card.
+// damageShieldColors` (e.g. ['B']) matches by colorEff-or-color; `card.
+// damageShieldTypes` (e.g. ['artifact']) matches by inferSourceType. Neither set
+// (Eye for an Eye) matches any source. See docs/SYSTEMS.md -- Damage Shields.
+function damageShieldMatches(card, candidate) {
+  const colors = card.damageShieldColors;
+  const types = card.damageShieldTypes;
+  if (!colors && !types) return true;
+  if (colors && colors.includes(candidate.colorEff ?? candidate.color)) return true;
+  if (types && types.includes(inferSourceType(candidate))) return true;
+  return false;
+}
+
+// Legal "source of your choice" pool for a damage-shield activation: every
+// permanent on either battlefield plus every spell currently on the stack that
+// matches the shield card's filter. Spell entries carry `controller` (the
+// caster) alongside the usual card fields so a chosen spell target can still
+// be attributed correctly if it goes on to deal damage (Eye for an Eye's
+// redirect needs "that source's controller").
+function buildDamageShieldPool(state, card) {
+  const perms = [...state.p.bf, ...state.o.bf].filter(c => damageShieldMatches(card, c));
+  const spells = state.stack
+    .map(item => ({ ...item.card, controller: item.caster }))
+    .filter(c => damageShieldMatches(card, c));
+  return [...perms, ...spells];
+}
+
 // Applies combat damage to a creature, consuming its flat damageShield first (if any).
 // Used at the resolveCombat call sites, which mutate c.damage inline rather than via hurt().
 // Adapted from Card-Forge/forge (a/alabaster_potion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -314,6 +354,32 @@ export function hurt(s, who, amt, src = "", meta = null) {
 // Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 if (amt < 0 && s[who].lichActive) {
   return drawD(dlog(s, `${who}'s Lich: draws ${-amt} card(s) instead of gaining life.`, "effect"), who, -amt);
+}
+if (amt > 0 && meta?.sourceIid) {
+  // Circle of Protection / Eye for an Eye / Greater Realm of Preservation:
+  // "the next time [a source of your choice] would deal damage to you this
+  // turn" -- a one-time shield against one specific, already-chosen source
+  // (exact iid match), not a standing color/type ward re-checked generically.
+  // See docs/SYSTEMS.md -- Damage Shields.
+  const shields = s.turnState.damageShields?.[who] || [];
+  const matchIdx = shields.findIndex(sh => sh.chosenSourceIid === meta.sourceIid);
+  if (matchIdx >= 0) {
+    const shield = shields[matchIdx];
+    const remaining = [...shields.slice(0, matchIdx), ...shields.slice(matchIdx + 1)];
+    const ns0 = { ...s, turnState: { ...s.turnState, damageShields: { ...s.turnState.damageShields, [who]: remaining } } };
+    if (shield.mode === 'prevent') {
+      return dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} prevents ${amt} damage to ${who}${src ? ` from ${src}` : ''}.`, 'effect');
+    }
+    // redirect (Eye for an Eye): re-enter hurt() with the shield already
+    // consumed so the primary damage applies normally (and any other
+    // meta-driven bookkeeping for the original source still fires), then deal
+    // an equal, independent instance of damage to the original source's
+    // controller from Eye for an Eye itself. meta:null on the second call is a
+    // recursion guard -- it cannot match any shield entry.
+    let ns = hurt(ns0, who, amt, src, meta);
+    ns = hurt(ns, shield.chosenSourceController, amt, shield.shieldSourceName, null);
+    return ns;
+  }
 }
 if (amt > 0) {
   const redirectTarget = getDamageRedirectTarget(s, who, meta);
@@ -550,7 +616,7 @@ while (changed) {
       const tou = getTou(dyingCard, ns);
       for (const aura of (dyingCard.enchantments ?? [])) {
         if (aura.mod?.creatureBond && tou > 0) {
-          ns = hurt(ns, w, tou, 'Creature Bond');
+          ns = hurt(ns, w, tou, 'Creature Bond', { sourceIid: aura.iid, sourceType: 'enchantment' });
           ns = dlog(ns, `Creature Bond deals ${tou} damage to ${w}.`, 'damage');
         }
       }
@@ -674,8 +740,9 @@ if (allBF_tap.some(x => x.id === "mana_flare")) {
 ns = { ...ns, [who]: { ...ns[who], mana: { ...ns[who].mana, [m]: (ns[who].mana[m] || 0) + 1 } } };
 ns = dlog(ns, `Mana Flare: ${who} gets +1${m}.`, "mana");
 }
-if (allBF_tap.some(x => x.id === "manabarbs")) {
-ns = hurt(ns, who, 1, "Manabarbs");
+const manabarbsCard = allBF_tap.find(x => x.id === "manabarbs");
+if (manabarbsCard) {
+ns = hurt(ns, who, 1, "Manabarbs", { sourceIid: manabarbsCard.iid, sourceType: inferSourceType(manabarbsCard) });
 }
 // Wild Growth: enchanted land produces +1G when tapped
 if (c.enchantments?.some(e => e.mod?.wildGrowth)) {
@@ -710,8 +777,9 @@ if (isLand(c) && c.subtype?.includes("Mountain") && [...ns.p.bf, ...ns.o.bf].som
 // See THIRD_PARTY_NOTICES.md.
 if (isLand(c) && c.subtype?.includes("Mountain")) {
   const oppOfTapper = who === "p" ? "o" : "p";
-  if (ns[oppOfTapper].bf.some(x => x.name === "Lifeblood")) {
-    ns = hurt(ns, oppOfTapper, -1, "Lifeblood");
+  const lifebloodCard = ns[oppOfTapper].bf.find(x => x.name === "Lifeblood");
+  if (lifebloodCard) {
+    ns = hurt(ns, oppOfTapper, -1, "Lifeblood", { sourceIid: lifebloodCard.iid, sourceType: inferSourceType(lifebloodCard) });
   }
 }
 return ns;
@@ -799,11 +867,11 @@ export function resolveEff(s, item) {
 const { card, caster, targets, xVal } = item;
 const opp = caster === "p" ? "o" : "p";
 let ns = s;
-// Artifact-source damage meta (Reverse Polarity, Martyrs of Korlis). `card` here is
-// the spell or activated permanent dealing the damage, so isArt(card) generically
-// covers both current artifacts (Rod of Ruin, Rocket Launcher, Aladdin's Ring) and
-// any future artifact reusing these damage effect keys.
-const srcMeta = isArt(card) ? { sourceIid: card.iid, sourceType: 'artifact', combat: false } : null;
+// Source damage meta for the small ping/damage1/damage2 effect keys below. `card`
+// here is the spell or activated permanent dealing the damage -- covers artifacts
+// (Rod of Ruin, Rocket Launcher, Aladdin's Ring, read by Reverse Polarity/Martyrs
+// of Korlis via damageBySourceType.artifact) as well as any other source type.
+const srcMeta = { sourceIid: card.iid, sourceType: inferSourceType(card), combat: false };
 const tgt = targets?.[0];
 const tgtC = tgt ? getBF(ns, tgt) : null;
 
@@ -832,22 +900,22 @@ case "createSerpentToken": {
   break;
 }
 case "damage3": {
-if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name);
+if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 3 } : c) } }; ns = checkDeath(ns); }
 break;
 }
-case "damage5":    { const t5 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t5, 5, card.name); break; }
-case "damageX":    { const t2 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t2, xVal, card.name); break; }
+case "damage5":    { const t5 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t5, 5, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break; }
+case "damageX":    { const t2 = tgt === "p" || tgt === "o" ? tgt : opp; ns = hurt(ns, t2, xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break; }
 case "psionicBlast": {
 if (tgt === "p" || tgt === "o") {
-  ns = hurt(ns, tgt, 4, card.name);
+  ns = hurt(ns, tgt, 4, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 } else if (tgtC) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 4 } : c) } };
   ns = checkDeath(ns);
 } else {
-  ns = hurt(ns, opp, 4, card.name);
+  ns = hurt(ns, opp, 4, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 }
-ns = hurt(ns, caster, 2, "Psionic Blast");
+ns = hurt(ns, caster, 2, "Psionic Blast", { sourceIid: card.iid, sourceType: inferSourceType(card) });
 break;
 }
 case "counter": {
@@ -906,17 +974,17 @@ return { ...ns, pendingConditionalCounter: {
 case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
 case "draw1":   ns = drawD(ns, caster, 1); break;
 case "drawX":   ns = drawD(ns, caster, xVal); break;
-case "gainLife3": ns = hurt(ns, caster, -3); break;
-case "gainLifeX": ns = hurt(ns, caster, -xVal); break;
-case "gainLife1": ns = hurt(ns, caster, -1); break;
-case "gainLife2": ns = hurt(ns, caster, -2); break;
-case "gainLife6": ns = hurt(ns, caster, -6); break;
+case "gainLife3": ns = hurt(ns, caster, -3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
+case "gainLifeX": ns = hurt(ns, caster, -xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
+case "gainLife1": ns = hurt(ns, caster, -1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
+case "gainLife2": ns = hurt(ns, caster, -2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
+case "gainLife6": ns = hurt(ns, caster, -6, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
 // Reverse Polarity: "You gain X life, where X is twice the damage dealt to you
 // so far this turn by artifacts."
 // Adapted from Card-Forge/forge (r/reverse_polarity.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 case "reversePolarityGain": {
   const artDmg = ns.turnState.damageBySourceType?.[caster]?.artifact || 0;
-  ns = hurt(ns, caster, -(artDmg * 2), card.name);
+  ns = hurt(ns, caster, -(artDmg * 2), card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 case "bounce": {
@@ -927,7 +995,7 @@ case "exileCreature": {
 if (tgtC) {
 const lf = getPow(tgtC, ns);
 ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "exile");
-ns = hurt(ns, tgtC.controller, -lf, "Swords to Plowshares");
+ns = hurt(ns, tgtC.controller, -lf, "Swords to Plowshares", { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name} exiles ${tgtC.name}.`, "effect");
 }
 break;
@@ -1158,7 +1226,7 @@ break;
 }
 case "hurricane": {
 for (const w of ["p","o"]) {
-ns = hurt(ns, w, xVal, "Hurricane");
+ns = hurt(ns, w, xVal, "Hurricane", { sourceIid: card.iid, sourceType: inferSourceType(card) });
 const fl = ns[w].bf.filter(c => isCre(c) && hasKw(c, KEYWORDS.FLYING.id));
 for (const c of fl) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
@@ -1167,7 +1235,7 @@ break;
 }
 case "earthquake": {
 for (const w of ["p","o"]) {
-ns = hurt(ns, w, xVal, "Earthquake");
+ns = hurt(ns, w, xVal, "Earthquake", { sourceIid: card.iid, sourceType: inferSourceType(card) });
 const ground = ns[w].bf.filter(c => isCre(c) && !hasKw(c, KEYWORDS.FLYING.id));
 for (const c of ground) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage + xVal } : x) } };
 }
@@ -1475,15 +1543,15 @@ break;
 }
 case "pestilence": {
 for (const w of ["p","o"]) {
-ns = hurt(ns, w, 1, "Pestilence");
+ns = hurt(ns, w, 1, "Pestilence", { sourceIid: card.iid, sourceType: inferSourceType(card) });
 for (const c of ns[w].bf.filter(isCre)) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, damage: x.damage+1 } : x) } };
 }
 ns = checkDeath(ns);
 break;
 }
 case "orcishArtillery": {
-ns = hurt(ns, tgt === "o" || tgt === "p" ? tgt : opp, 2, card.name);
-ns = hurt(ns, caster, 3, card.name);
+ns = hurt(ns, tgt === "o" || tgt === "p" ? tgt : opp, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+ns = hurt(ns, caster, 3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 break;
 }
 case "fog": {
@@ -1527,7 +1595,7 @@ break;
 }
 case "inferno6": {
 for (const w of ['p', 'o']) {
-  ns = hurt(ns, w, 6, card.name);
+  ns = hurt(ns, w, 6, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   const cresSnap = ns[w].bf.filter(isCre).map(c => c.iid);
   ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
     cresSnap.includes(c.iid) ? { ...c, damage: c.damage + 6 } : c
@@ -1556,7 +1624,7 @@ case "jovialEvil": {
 const victim = tgt === 'p' || tgt === 'o' ? tgt : opp;
 const whiteCount = ns[victim].bf.filter(c => isCre(c) && c.color === 'W').length;
 const dmg = whiteCount * 2;
-if (dmg > 0) ns = hurt(ns, victim, dmg, card.name);
+if (dmg > 0) ns = hurt(ns, victim, dmg, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name}: deals ${dmg} damage to ${victim} (${whiteCount} white creatures x 2).`, 'effect');
 break;
 }
@@ -1578,14 +1646,14 @@ for (const tid of targets) {
     }
   }
 }
-ns = hurt(ns, caster, 5, card.name);
+ns = hurt(ns, caster, 5, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name}: exiled ${targets.length} creature(s); ${caster} loses 5 life.`, 'effect');
 break;
 }
 case "stormSeeker": {
 const victim = tgt === 'p' || tgt === 'o' ? tgt : opp;
 const handSize = ns[victim].hand.length;
-if (handSize > 0) ns = hurt(ns, victim, handSize, card.name);
+if (handSize > 0) ns = hurt(ns, victim, handSize, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name}: deals ${handSize} damage to ${victim}.`, 'effect');
 break;
 }
@@ -1600,7 +1668,7 @@ break;
 case "typhoon": {
 const oppSide = caster === 'p' ? 'o' : 'p';
 const islandCount = ns[oppSide].bf.filter(c => isLand(c) && c.subtype?.toLowerCase().includes('island')).length;
-if (islandCount > 0) ns = hurt(ns, oppSide, islandCount, card.name);
+if (islandCount > 0) ns = hurt(ns, oppSide, islandCount, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name}: ${islandCount} damage to ${oppSide} (${islandCount} islands).`, 'effect');
 break;
 }
@@ -1622,7 +1690,7 @@ if (tgtC && isArt(tgtC) && (tgtC.cmc || 0) === (item.xVal || 0)) {
   const xDmg = tgtC.cmc || 0;
   const victim = tgtC.controller;
   ns = zMove(ns, tgtC.iid, victim, victim, 'gy');
-  if (xDmg > 0) ns = hurt(ns, victim, xDmg, card.name);
+  if (xDmg > 0) ns = hurt(ns, victim, xDmg, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   ns = dlog(ns, `${card.name}: destroyed ${tgtC.name}; dealt ${xDmg} damage to ${victim}.`, 'effect');
 }
 break;
@@ -1702,7 +1770,7 @@ if (tgtC) {
 break;
 }
 case "psionicEntity": {
-if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 2, card.name);
+if (tgt === 'p' || tgt === 'o') ns = hurt(ns, tgt, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 else if (tgtC) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
     c.iid === tgtC.iid ? { ...c, damage: c.damage + 2 } : c
@@ -1862,7 +1930,7 @@ case "addManaWithSelfDamage": {
 const manaColor = item.card.mana || 'B';
 const selfDmg = item.card.selfDamage || (item.card.mod?.selfDamage) || 1;
 ns = { ...ns, [caster]: { ...ns[caster], mana: { ...ns[caster].mana, [manaColor]: (ns[caster].mana[manaColor] || 0) + 1 } } };
-ns = hurt(ns, caster, selfDmg, card.name);
+ns = hurt(ns, caster, selfDmg, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 ns = dlog(ns, `${card.name}: added {${manaColor}}; ${caster} takes ${selfDmg} damage.`, 'mana');
 break;
 }
@@ -1908,7 +1976,7 @@ case "cuombajjWitches": {
 // highest-effective-toughness creature on the caster's side, or the caster player if none.
 // True opponent-choice UI is deferred to a future batch.
 if (tgt === "p" || tgt === "o") {
-  ns = hurt(ns, tgt, 1, card.name);
+  ns = hurt(ns, tgt, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   ns = dlog(ns, `${card.name} deals 1 damage to ${tgt} (player choice).`, "effect");
 } else if (tgtC) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } };
@@ -1929,7 +1997,7 @@ if (cwCasterCres.length > 0) {
   ns = checkDeath(ns);
   ns = dlog(ns, `${card.name} deals 1 damage to ${cwOppTgt.name} (opponent's choice, deterministic).`, "effect");
 } else {
-  ns = hurt(ns, caster, 1, card.name);
+  ns = hurt(ns, caster, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   ns = dlog(ns, `${card.name} deals 1 damage to ${caster} (opponent's choice, deterministic).`, "effect");
 }
 break;
@@ -2150,14 +2218,14 @@ case "drainLife": {
 if (tgtC) {
 ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage+xVal } : c) } };
 ns = checkDeath(ns);
-ns = hurt(ns, caster, -xVal);
+ns = hurt(ns, caster, -xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 } else if (tgt === "p" || tgt === "o") {
-ns = hurt(ns, tgt, xVal, "Drain Life");
-ns = hurt(ns, caster, -xVal);
+ns = hurt(ns, tgt, xVal, "Drain Life", { sourceIid: card.iid, sourceType: inferSourceType(card) });
+ns = hurt(ns, caster, -xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 }
 break;
 }
-case "syphonSoul": ns = hurt(hurt(ns, opp, 2, "Syphon Soul"), caster, -2); break;
+case "syphonSoul": ns = hurt(hurt(ns, opp, 2, "Syphon Soul", { sourceIid: card.iid, sourceType: inferSourceType(card) }), caster, -2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
 case "shuffleGraveyardIn": {
 const who3 = tgt || caster;
 ns = { ...ns, [who3]: { ...ns[who3], lib: shuffle([...ns[who3].lib, ...ns[who3].gy]), gy: [] } };
@@ -2219,7 +2287,7 @@ case "triskelionPing": {
         ? { ...c, counters: { ...c.counters, P1P1: (c.counters.P1P1 || 0) - 1 } }
         : c
     ) } };
-    if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+    if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
     else if (tgtC) {
       ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
         c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c
@@ -2233,7 +2301,7 @@ case "triskelionPing": {
 // --- GROUP A NEW EFFECTS (Batch 2) -------------------------------------------
 case "disintegrate": {
   if (tgt === "p" || tgt === "o") {
-    ns = hurt(ns, tgt, xVal, card.name);
+    ns = hurt(ns, tgt, xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   } else if (tgtC) {
     ns = { ...ns, exileNextDeath: true,
       [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
@@ -2531,7 +2599,7 @@ case "bouncePermanentControlled": {
 }
 case "damage2Any": {
   // Adapted from Card-Forge/forge (o/orcish_mechanics.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-  if (tgt === "p" || tgt === "o") { ns = hurt(ns, tgt, 2, card.name); }
+  if (tgt === "p" || tgt === "o") { ns = hurt(ns, tgt, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); }
   else if (tgtC) {
     ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 2 } : c) } };
     ns = checkDeath(ns);
@@ -2620,9 +2688,9 @@ case "skipNextUntap": {
 }
 case "damage1AnySelf1": {
   // Adapted from Card-Forge/forge (b/brothers_of_fire.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-  if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name);
+  if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   else if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + 1 } : c) } }; ns = checkDeath(ns); }
-  ns = hurt(ns, caster, 1, card.name);
+  ns = hurt(ns, caster, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 case "untapXLands": {
@@ -2645,7 +2713,7 @@ case "destroyArtifactGainCMC": {
     if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) { ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect'); break; }
     const cmcGain = tgtC.cmc || 0;
     ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy");
-    ns = hurt(ns, caster, -cmcGain, card.name);
+    ns = hurt(ns, caster, -cmcGain, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
     ns = dlog(ns, `${card.name} destroys ${tgtC.name}; ${caster} gains ${cmcGain} life.`, "effect");
   }
   break;
@@ -2701,7 +2769,7 @@ case "damageByWhiteCardsInHand": {
   const whiteCount = ns[revWho2].hand.filter(c => c.color === 'W').length;
   const names2 = ns[revWho2].hand.map(c => c.name).join(', ') || '(empty hand)';
   ns = dlog(ns, `${card.name}: ${revWho2} reveals hand (${names2}).`, "effect");
-  if (whiteCount > 0) ns = hurt(ns, revWho2, whiteCount, card.name);
+  if (whiteCount > 0) ns = hurt(ns, revWho2, whiteCount, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 case "drawThenDiscardOwn": {
@@ -2719,7 +2787,7 @@ case "drawThenDiscardOwn": {
 case "gainLifeSacrificedToughness": {
   // Adapted from Card-Forge/forge (l/life_chisel.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   const tou2 = item.sacrificedCard?.toughness || 0;
-  if (tou2 > 0) ns = hurt(ns, caster, -tou2, card.name);
+  if (tou2 > 0) ns = hurt(ns, caster, -tou2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   ns = dlog(ns, `${card.name}: ${caster} gains ${tou2} life.`, "effect");
   break;
 }
@@ -2747,7 +2815,7 @@ case "preventDamage1AnyReturnEnd": {
 case "gainAndDealDamageThisTurn": {
   // Adapted from Card-Forge/forge (s/simulacrum.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   const dmgAmt = ns.turnState.damageTakenThisTurn?.[caster] || 0;
-  ns = hurt(ns, caster, -dmgAmt, card.name);
+  ns = hurt(ns, caster, -dmgAmt, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   if (tgtC && tgtC.controller === caster && dmgAmt > 0) {
     ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c => c.iid === tgtC.iid ? { ...c, damage: c.damage + dmgAmt } : c) } };
     ns = checkDeath(ns);
@@ -3001,7 +3069,7 @@ case "alabasterPotionChoice": {
 }
 case "gainLifeXTarget": {
   const who = tgt === 'p' || tgt === 'o' ? tgt : (tgtC ? tgtC.controller : null);
-  if (who) ns = hurt(ns, who, -xVal, card.name);
+  if (who) ns = hurt(ns, who, -xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   else ns = dlog(ns, `${card.name} fizzles -- no valid player target.`, "effect");
   break;
 }
@@ -3113,7 +3181,7 @@ case "bansheeDrain": {
   const down = Math.floor(xVal / 2);
   const up = Math.ceil(xVal / 2);
   if (tgt === 'p' || tgt === 'o') {
-    ns = hurt(ns, tgt, down, card.name);
+    ns = hurt(ns, tgt, down, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   } else if (tgtC) {
     ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
       c.iid === tgtC.iid ? { ...c, ...dmgWithShield(c, down) } : c
@@ -3122,7 +3190,7 @@ case "bansheeDrain": {
   } else {
     ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
   }
-  ns = hurt(ns, caster, up, card.name);
+  ns = hurt(ns, caster, up, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 // Eternal Flame: "deals X damage to target opponent or planeswalker and half X
@@ -3130,8 +3198,8 @@ case "bansheeDrain": {
 // No planeswalkers in this engine -- target is always the opponent player.
 case "eternalFlameDrain": {
   const mountains = ns[caster].bf.filter(c => isLand(c) && c.subtype?.includes("Mountain")).length;
-  ns = hurt(ns, opp, mountains, card.name);
-  ns = hurt(ns, caster, Math.ceil(mountains / 2), card.name);
+  ns = hurt(ns, opp, mountains, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+  ns = hurt(ns, caster, Math.ceil(mountains / 2), card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 // Martyr's Cry: "Exile all white creatures. For each creature exiled this way,
@@ -3166,8 +3234,8 @@ case "volcanicEruption": {
       const owner = ns.p.bf.some(x => x.iid === c.iid) ? 'p' : 'o';
       ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(x => x.iid === c.iid ? { ...x, ...dmgWithShield(x, destroyedCount) } : x) } };
     }
-    ns = hurt(ns, 'p', destroyedCount, card.name);
-    ns = hurt(ns, 'o', destroyedCount, card.name);
+    ns = hurt(ns, 'p', destroyedCount, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+    ns = hurt(ns, 'o', destroyedCount, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
     ns = checkDeath(ns);
   }
   ns = dlog(ns, `${card.name}: destroys ${destroyedCount} Mountain(s), deals ${destroyedCount} damage to each creature and player.`, "effect");
@@ -3197,8 +3265,8 @@ case "manaClash": {
     rounds++;
     const casterHeads = Math.random() < 0.5;
     const oppHeads = Math.random() < 0.5;
-    if (!casterHeads) ns = hurt(ns, caster, 1, card.name);
-    if (!oppHeads) ns = hurt(ns, opp, 1, card.name);
+    if (!casterHeads) ns = hurt(ns, caster, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+    if (!oppHeads) ns = hurt(ns, opp, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
     bothHeads = casterHeads && oppHeads;
     if (ns.over) break;
   }
@@ -3231,6 +3299,55 @@ case "forcefieldShield": {
   } else {
     ns = dlog(ns, `${card.name} fizzles -- target is not an unblocked attacker.`, "effect");
   }
+  break;
+}
+// Circle of Protection (all six) / Greater Realm of Preservation (activated
+// ability, {1}/{2}/{1}{W} per card) and Eye for an Eye (cast trigger, no
+// activation): "The next time a [color/type] source of your choice would deal
+// damage to you this turn, prevent that damage [or redirect it, for Eye for an
+// Eye]." Opens a TutorModal-style picker over every matching permanent plus
+// every matching spell on the stack; RESOLVE_DAMAGE_SHIELD_CHOICE records the
+// specific chosen iid in turnState.damageShields, checked by exact-identity
+// match in hurt() (see docs/SYSTEMS.md -- Damage Shields). `card` here is
+// either the CoP/Greater Realm permanent itself (activated ability) or Eye for
+// an Eye (still resolving as an Instant, before it moves to the graveyard) --
+// card.iid is stable across both and becomes shieldSourceIid.
+case "chooseDamageShieldSource": {
+  const pool = buildDamageShieldPool(ns, card);
+  if (!pool.length) {
+    ns = dlog(ns, `${card.name}: no legal source to choose -- fizzles.`, "effect");
+    break;
+  }
+  // SIMPLIFICATION: no UI exists for the opponent to browse this picker (same
+  // convention as other "no UI to choose which X" auto-decides in this file,
+  // e.g. sacArt/sacCre above); the opponent auto-chooses the first legal
+  // source instead of opening pendingDamageShieldChoice (which only the human
+  // player's screens render).
+  if (caster === 'o') {
+    const chosen = pool[0];
+    ns = {
+      ...ns,
+      turnState: { ...ns.turnState, damageShields: { ...ns.turnState.damageShields, o: [...(ns.turnState.damageShields?.o || []), {
+        chosenSourceIid: chosen.iid,
+        chosenSourceController: chosen.controller,
+        mode: card.damageShieldMode || 'prevent',
+        shieldSourceIid: card.iid,
+        shieldSourceName: card.name,
+      }] } },
+    };
+    ns = dlog(ns, `${card.name}: shields against ${chosen.name}.`, "effect");
+    break;
+  }
+  ns = {
+    ...ns,
+    pendingDamageShieldChoice: {
+      caster,
+      mode: card.damageShieldMode || 'prevent',
+      shieldSourceIid: card.iid,
+      shieldSourceName: card.name,
+      pool,
+    },
+  };
   break;
 }
 // --- END BATCH: COMPLEX-TIER C1 ----------------------------------------------
@@ -3364,7 +3481,7 @@ case "lichETB": {
   const pArr = { ...card, controller: caster, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
   ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr], lichActive: true } };
   ns = { ...ns, skipEtbPush: true };
-  ns = hurt(ns, caster, ns[caster].life, card.name, { isLifeLoss: true });
+  ns = hurt(ns, caster, ns[caster].life, card.name, { isLifeLoss: true, sourceIid: card.iid, sourceType: inferSourceType(card) });
   break;
 }
 // Goblin Artisans: "{T}: Flip a coin. If you win the flip, draw a card. If
@@ -3436,11 +3553,11 @@ if (!blockers.length) {
   if (!attGaseous && !att.preventCombatDamageDealt && attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (ap > 0) ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: att.iid, targetId: defW, amount: ap, combat: true } });
-    if (hasLifelink) ns = hurt(ns, actrl, -ap);
-    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
+    if (hasLifelink) ns = hurt(ns, actrl, -ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
     // Merchant Ship: "Whenever this creature attacks and isn't blocked, you gain 2 life."
     // Adapted from Card-Forge/forge (m/merchant_ship.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name);
+    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
   }
 } else {
   let rem = ap;
@@ -3482,9 +3599,9 @@ if (!blockers.length) {
       }
     }
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, actrl, -dbl);
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl);
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
@@ -3516,11 +3633,11 @@ if (!blockers.length) {
   if (!attGaseous && !att.preventCombatDamageDealt && !attFS) {
     ns = hurt(ns, defW, ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: true });
     if (ap > 0) ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: att.iid, targetId: defW, amount: ap, combat: true } });
-    if (hasLifelink) ns = hurt(ns, actrl, -ap);
-    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap);
+    if (hasLifelink) ns = hurt(ns, actrl, -ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (ap > 0 && spiritLinkGain(att)) ns = hurt(ns, actrl, -ap, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
     // Merchant Ship: "Whenever this creature attacks and isn't blocked, you gain 2 life."
     // Adapted from Card-Forge/forge (m/merchant_ship.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name);
+    if (att.unblockedAttackGainLife) ns = hurt(ns, actrl, -att.unblockedAttackGainLife, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
   }
 } else {
   let rem = ap;
@@ -3562,9 +3679,9 @@ if (!blockers.length) {
       }
     }
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, actrl, -dbl);
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl);
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
@@ -3743,7 +3860,7 @@ if (next === PHASE.COMBAT_END) {
     if (who) {
       const c = ns[who].bf.find(x => x.iid === iid);
       ns = zMove(ns, iid, who, who, 'gy');
-      ns = hurt(ns, who, 5, c?.name || 'Time Elemental');
+      ns = hurt(ns, who, 5, c?.name || 'Time Elemental', c ? { sourceIid: c.iid, sourceType: inferSourceType(c) } : null);
     }
   }
   ns = { ...ns, turnState: { ...ns.turnState, endOfCombatSacrifice: [] } };
@@ -3964,11 +4081,12 @@ if (w === ns.active && isArt(c) && [...ns.p.bf, ...ns.o.bf].some(x => x.name ===
 // {W}{W}. If you do, you gain 1 life.'" Checked via the attached aura's name
 // rather than the land's own card.upkeep field.
 // Adapted from Card-Forge/forge (f/farmstead.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-if (w === ns.active && isLand(c) && c.enchantments?.some(e => e.name === "Farmstead")) {
+const farmsteadAura = c.enchantments?.find(e => e.name === "Farmstead");
+if (w === ns.active && isLand(c) && farmsteadAura) {
   if (w === "o") {
     if ((ns.o.mana.W ?? 0) >= 2) {
       ns = { ...ns, o: { ...ns.o, mana: { ...ns.o.mana, W: ns.o.mana.W - 2 } } };
-      ns = hurt(ns, "o", -1, "Farmstead");
+      ns = hurt(ns, "o", -1, "Farmstead", { sourceIid: farmsteadAura.iid, sourceType: 'enchantment' });
     }
   } else {
     ns = queueUpkeepChoice(ns, { cardName: "Farmstead", handlerKey: "farmsteadUpkeep", iid: c.iid });
@@ -3984,7 +4102,7 @@ if (w === ns.active && isLand(c) && c.enchantments?.some(e => e.name === "Farmst
 // w/warp_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 if (w === ns.active) {
   const curseAura = c.enchantments?.find(e => ["Feedback", "Wanderlust", "Warp Artifact"].includes(e.name));
-  if (curseAura) ns = hurt(ns, w, 1, curseAura.name);
+  if (curseAura) ns = hurt(ns, w, 1, curseAura.name, { sourceIid: curseAura.iid, sourceType: 'enchantment' });
 }
 // Power Leak: "that player may pay any amount of mana. This Aura deals 2
 // damage to that player. Prevent X of that damage, where X is the amount
@@ -3994,9 +4112,10 @@ if (w === ns.active) {
 // option list -- can only be built once the player has had a chance to add
 // mana in response; see powerLeakPrompt in UPKEEP_CHOICE_HANDLERS).
 // Adapted from Card-Forge/forge (p/power_leak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-if (w === ns.active && c.enchantments?.some(e => e.name === "Power Leak")) {
+const powerLeakAura = c.enchantments?.find(e => e.name === "Power Leak");
+if (w === ns.active && powerLeakAura) {
   if (w === "o") {
-    ns = hurt(ns, "o", 2, "Power Leak");
+    ns = hurt(ns, "o", 2, "Power Leak", { sourceIid: powerLeakAura.iid, sourceType: 'enchantment' });
   } else {
     ns = queueUpkeepChoice(ns, { cardName: "Power Leak", handlerKey: "powerLeakPrompt", iid: c.iid });
   }
@@ -4004,12 +4123,13 @@ if (w === ns.active && c.enchantments?.some(e => e.name === "Power Leak")) {
 // Erosion: "Enchant land. At the beginning of the upkeep of enchanted land's
 // controller, destroy that land unless that player pays {1} or 1 life."
 // Adapted from Card-Forge/forge (e/erosion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-if (w === ns.active && isLand(c) && c.enchantments?.some(e => e.name === "Erosion")) {
+const erosionAura = c.enchantments?.find(e => e.name === "Erosion");
+if (w === ns.active && isLand(c) && erosionAura) {
   if (w === "o") {
     if (canPay(ns.o.mana, "1")) {
       ns = { ...ns, o: { ...ns.o, mana: payMana(ns.o.mana, "1") } };
     } else if (ns.o.life > 1) {
-      ns = hurt(ns, "o", 1, "Erosion");
+      ns = hurt(ns, "o", 1, "Erosion", { sourceIid: erosionAura.iid, sourceType: 'enchantment' });
     } else {
       ns = zMove(ns, c.iid, w, w, "gy");
       ns = dlog(ns, "Erosion destroys the enchanted land.", "effect");
@@ -4068,7 +4188,7 @@ if (w === ns.active && w === 'p' && c.id === "tetravus") {
   }
 }
 switch (c.upkeep) {
-case "selfDamage1": ns = hurt(ns, w, 1, c.name); break;
+case "selfDamage1": ns = hurt(ns, w, 1, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) }); break;
 case "forceOfNatureUpkeep": {
 if (w !== ns.active) break;
 if (w === "o") {
@@ -4076,13 +4196,14 @@ if (w === "o") {
     ns = { ...ns, o: { ...ns.o, mana: { ...ns.o.mana, G: ns.o.mana.G - 4 } } };
     ns = dlog(ns, "Force of Nature: opponent paid GGGG upkeep.", "mana");
   } else {
-    ns = hurt(ns, "o", 8, "Force of Nature");
+    ns = hurt(ns, "o", 8, "Force of Nature", { sourceIid: c.iid, sourceType: inferSourceType(c) });
     ns = dlog(ns, "Force of Nature: opponent takes 8 damage (could not pay GGGG).", "damage");
   }
 } else {
   ns = queueUpkeepChoice(ns, {
     cardName: "Force of Nature",
     handlerKey: "forceOfNatureUpkeep",
+    iid: c.iid,
     options: ["PAY_GGGG", "TAKE_DAMAGE"],
   });
 }
@@ -4091,7 +4212,7 @@ break;
 case "lordsUpkeep": {
 const others = ns[w].bf.filter(x => isCre(x) && x.iid !== c.iid);
 if (others.length) { ns = { ...ns, turnState: { ...ns.turnState, sacrificedIids: [...(ns.turnState.sacrificedIids || []), others[0].iid] } }; ns = zMove(ns, others[0].iid, w, w, "gy"); ns = dlog(ns, `Lord of the Pit devours ${others[0].name}.`, "death"); }
-else ns = hurt(ns, w, 7, "Lord of the Pit");
+else ns = hurt(ns, w, 7, "Lord of the Pit", { sourceIid: c.iid, sourceType: inferSourceType(c) });
 break;
 }
 case "sacrificeSelf": if (next === PHASE.CLEANUP) { ns = { ...ns, turnState: { ...ns.turnState, sacrificedIids: [...(ns.turnState.sacrificedIids || []), c.iid] } }; ns = zMove(ns, c.iid, w, w, "gy"); } break;
@@ -4105,7 +4226,7 @@ case "blackVise": {
 const opp2 = w === "p" ? "o" : "p";
 if (ns.active !== opp2) break;
 const over = Math.max(0, ns[opp2].hand.length - 4);
-if (over > 0) ns = hurt(ns, opp2, over, "Black Vise");
+if (over > 0) ns = hurt(ns, opp2, over, "Black Vise", { sourceIid: c.iid, sourceType: inferSourceType(c) });
 break;
 }
 case "rackUpkeep": {
@@ -4119,11 +4240,11 @@ case "rackUpkeep": {
 const rackOpp = w === "p" ? "o" : "p";
 if (ns.active !== rackOpp) break;
 const rackDmg = Math.max(0, 3 - ns[rackOpp].hand.length);
-if (rackDmg > 0) ns = hurt(ns, rackOpp, rackDmg, c.name);
+if (rackDmg > 0) ns = hurt(ns, rackOpp, rackDmg, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
 break;
 }
 case "howlingMine": for (const dw of ["p","o"]) ns = drawD(ns, dw, 1); ns = dlog(ns, "Howling Mine: each player draws a card.", "draw"); break;
-case "ivoryTower": { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, "Ivory Tower"); break; }
+case "ivoryTower": { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, "Ivory Tower", { sourceIid: c.iid, sourceType: inferSourceType(c) }); break; }
 case "sylvanLibrary": {
 ns = drawD(ns, w, 2);
 if (w === "o" && ns[w].hand.length >= 2) {
@@ -4135,7 +4256,7 @@ break;
 }
 case "karmaUpkeep": {
 const kSwamps = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes("Swamp")).length;
-if (kSwamps > 0) ns = hurt(ns, w, kSwamps, "Karma");
+if (kSwamps > 0) ns = hurt(ns, w, kSwamps, "Karma", { sourceIid: c.iid, sourceType: inferSourceType(c) });
 break;
 }
 case "landTax": {
@@ -4176,7 +4297,7 @@ case "demonicHordesUpkeep": {
     ns = dlog(ns, `${c.name}: paid BBB upkeep.`, "mana");
   } else {
     ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
-    ns = hurt(ns, w, 3, c.name);
+    ns = hurt(ns, w, 3, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
     ns = dlog(ns, `${c.name}: failed to pay BBB ? tapped and took 3 damage.`, "damage");
   }
   break;
@@ -4184,7 +4305,7 @@ case "demonicHordesUpkeep": {
 case "powerSurgeUpkeep": {
   const dmg = ns.turnState.powerSurgeUntappedCount ?? 0;
   if (dmg > 0) {
-    ns = hurt(ns, ns.active, dmg, "Power Surge");
+    ns = hurt(ns, ns.active, dmg, "Power Surge", { sourceIid: c.iid, sourceType: inferSourceType(c) });
     ns = dlog(ns, `Power Surge: ${ns.active} takes ${dmg} damage (${dmg} land(s) did not untap).`, "damage");
   } else {
     ns = dlog(ns, "Power Surge: no damage (all lands untapped).", "effect");
@@ -4243,7 +4364,7 @@ case "cosmicHorrorUpkeep": {
       ns = dlog(ns, `${c.name}: opponent pays {3}{B}{B}{B}.`, "mana");
     } else {
       ns = zMove(ns, c.iid, w, w, "gy");
-      ns = hurt(ns, w, 7, c.name);
+      ns = hurt(ns, w, 7, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
       ns = dlog(ns, `${c.name}: destroyed -- deals 7 damage to you.`, "death");
     }
   } else {
@@ -4333,7 +4454,7 @@ case "yawgmothDemonUpkeep": {
       ns = dlog(ns, `${c.name}: opponent sacrifices an artifact.`, "effect");
     } else {
       ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
-      ns = hurt(ns, "o", 2, c.name);
+      ns = hurt(ns, "o", 2, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
     }
   } else {
     ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "yawgmothDemonUpkeep", iid: c.iid });
@@ -4404,7 +4525,7 @@ if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
 }
 
 if (next === PHASE.CLEANUP) {
-ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] } };
+ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -4768,7 +4889,7 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     // Adapted from Card-Forge/forge (o/onulet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
     case 'gainLifeController': {
       const who = sourceCard.controller;
-      return hurt(state, who, -effect.amount, sourceCard.name);
+      return hurt(state, who, -effect.amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     // Soul Net: optional-cost trigger, resolved via the RESOLVE_CHOICE/pendingChoice
     // pipeline (options presented through the existing ChoiceModal UI).
@@ -4779,7 +4900,7 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       if (totalMana < effect.cost) return dlog(state, `${sourceCard.name}: not enough mana to pay.`, 'effect');
       const paid = payMana(state[who].mana, String(effect.cost));
       const s = { ...state, [who]: { ...state[who], mana: paid } };
-      return hurt(s, who, -effect.amount, sourceCard.name);
+      return hurt(s, who, -effect.amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     case 'noop':
       return state;
@@ -4846,14 +4967,14 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     case 'gainLifeIfControlsPlains': {
       const who = payload.activePlayer;
       if (!who || !state[who].bf.some(c => isLand(c) && c.subtype?.includes('Plains'))) return state;
-      return hurt(state, who, -1, sourceCard.name);
+      return hurt(state, who, -1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     // El-Hajjâj: "Whenever this creature deals damage, you gain that much life."
     // Adapted from Card-Forge/forge (e/el_hajjaj.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
     case 'gainLifeEqualToDamageDealt': {
       const amount = payload.amount ?? 0;
       if (amount <= 0) return state;
-      return hurt(state, sourceCard.controller, -amount, sourceCard.name);
+      return hurt(state, sourceCard.controller, -amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     // Personal Incarnation: "When this creature dies, its owner loses half
     // their life, rounded up."
@@ -4861,7 +4982,7 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     case 'loseHalfLifeRoundedUp': {
       const who = sourceCard.controller;
       const amount = Math.ceil(state[who].life / 2);
-      return hurt(state, who, amount, sourceCard.name);
+      return hurt(state, who, amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     // Lich: "When this enchantment is put into a graveyard from the
     // battlefield, you lose the game."
@@ -5021,12 +5142,12 @@ function processTriggerQueue(state) {
 // UPKEEP_CHOICE_RESOLVE branch.
 const UPKEEP_CHOICE_HANDLERS = {
   forceOfNatureUpkeep: {
-    resolve(s, _choice, action) {
+    resolve(s, choice, action) {
       if (action.choice === "PAY_GGGG") {
         let ns = { ...s, p: { ...s.p, mana: { ...s.p.mana, G: (s.p.mana.G ?? 0) - 4 } } };
         return dlog(ns, "Force of Nature: paid GGGG upkeep.", "mana");
       }
-      const ns = hurt(s, "p", 8, "Force of Nature");
+      const ns = hurt(s, "p", 8, "Force of Nature", choice?.iid ? { sourceIid: choice.iid, sourceType: 'creature' } : null);
       return dlog(ns, "Force of Nature: player takes 8 damage.", "damage");
     },
   },
@@ -5066,7 +5187,8 @@ const UPKEEP_CHOICE_HANDLERS = {
       const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
       if ((s[owner].mana.W ?? 0) < 2) return dlog(s, "Farmstead: not enough mana to pay {W}{W}.", "info");
       const ns = { ...s, [owner]: { ...s[owner], mana: { ...s[owner].mana, W: s[owner].mana.W - 2 } } };
-      return hurt(ns, owner, -1, "Farmstead");
+      const farmsteadAura = getBF(ns, choice.iid)?.enchantments?.find(e => e.name === "Farmstead");
+      return hurt(ns, owner, -1, "Farmstead", farmsteadAura ? { sourceIid: farmsteadAura.iid, sourceType: 'enchantment' } : null);
     },
   },
   // Erosion: "destroy that land unless that player pays {1} or 1 life." choice.iid is the enchanted land.
@@ -5078,7 +5200,8 @@ const UPKEEP_CHOICE_HANDLERS = {
         return { ...s, [owner]: { ...s[owner], mana: payMana(s[owner].mana, "1") } };
       }
       if (action.choice === "PAY_1_LIFE") {
-        return hurt(s, owner, 1, "Erosion");
+        const erosionAura = getBF(s, choice.iid)?.enchantments?.find(e => e.name === "Erosion");
+        return hurt(s, owner, 1, "Erosion", erosionAura ? { sourceIid: erosionAura.iid, sourceType: 'enchantment' } : null);
       }
       const ns = zMove(s, choice.iid, owner, owner, "gy");
       return dlog(ns, "Erosion destroys the enchanted land.", "effect");
@@ -5092,8 +5215,9 @@ const UPKEEP_CHOICE_HANDLERS = {
       if (action.choice === "PAY" && canPay(s[owner].mana, "3BBB")) {
         return { ...s, [owner]: { ...s[owner], mana: payMana(s[owner].mana, "3BBB") } };
       }
+      const chSrc = getBF(s, choice.iid);
       const ns = zMove(s, choice.iid, owner, owner, "gy");
-      return hurt(ns, owner, 7, choice.cardName);
+      return hurt(ns, owner, 7, choice.cardName, chSrc ? { sourceIid: chSrc.iid, sourceType: inferSourceType(chSrc) } : null);
     },
   },
   // Sunken City: "sacrifice unless pay {U}{U}." choice.iid is the enchantment.
@@ -5143,7 +5267,8 @@ const UPKEEP_CHOICE_HANDLERS = {
         return zMove(s, arts[0].iid, owner, owner, "gy");
       }
       const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
-      return hurt(ns, owner, 2, choice.cardName);
+      const ydSrc = getBF(ns, choice.iid);
+      return hurt(ns, owner, 2, choice.cardName, ydSrc ? { sourceIid: ydSrc.iid, sourceType: inferSourceType(ydSrc) } : null);
     },
   },
   // Magnetic Mountain: computes the eligible/affordable count at resolve time
@@ -5231,7 +5356,7 @@ const NUMBER_CHOICE_HANDLERS = {
     let ns = { ...s, [who]: { ...s[who], hand: remaining, gy: [...s[who].gy, ...discarded] } };
     ns = dlog(ns, `${who} discards ${discarded.length} card(s) to Mind Bomb.`, "effect");
     const dmg = Math.max(0, 3 - discarded.length);
-    if (dmg > 0) ns = hurt(ns, who, dmg, choice.sourceCardName || "Mind Bomb");
+    if (dmg > 0) ns = hurt(ns, who, dmg, choice.sourceCardName || "Mind Bomb", choice.sourceCardId ? { sourceIid: choice.sourceCardId, sourceType: 'spell' } : null);
     return ns;
   },
   // Shapeshifter: "choose a number between 0 and 7" -- sets chosenNumber on the
@@ -5263,12 +5388,14 @@ const NUMBER_CHOICE_HANDLERS = {
   // Adapted from Card-Forge/forge (p/power_leak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   powerLeakPay: (s, choice, n) => {
     const who = choice.forPlayer;
-    if (n <= 0) return hurt(s, who, 2, "Power Leak");
-    if (!canPay(s[who].mana, String(n))) return hurt(s, who, 2, "Power Leak");
+    const plAura = getBF(s, choice.sourceCardId)?.enchantments?.find(e => e.name === "Power Leak");
+    const plMeta = plAura ? { sourceIid: plAura.iid, sourceType: 'enchantment' } : null;
+    if (n <= 0) return hurt(s, who, 2, "Power Leak", plMeta);
+    if (!canPay(s[who].mana, String(n))) return hurt(s, who, 2, "Power Leak", plMeta);
     const paid = Math.min(n, 2);
     const ns = { ...s, [who]: { ...s[who], mana: payMana(s[who].mana, String(n)) } };
     const remaining = Math.max(0, 2 - paid);
-    return remaining > 0 ? hurt(ns, who, remaining, "Power Leak") : ns;
+    return remaining > 0 ? hurt(ns, who, remaining, "Power Leak", plMeta) : ns;
   },
   // Tetravus: removes N +1/+1 counters, creates N Tetravite tokens tagged
   // with this Tetravus's iid (remembered-token tracking for the exile ability
@@ -5374,7 +5501,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [] },
 triggerQueue: [],
 pendingChoice: null,
 // Suspends processTriggerQueue for a triggered ability that needs a fresh
@@ -5396,6 +5523,11 @@ pendingEndStepTokens: [],
 // RESOLVE_ANTE_EXCHANGE / DECLINE_ANTE_EXCHANGE. Distinct from the unused
 // pendingAnteChoice scaffold above (never wired to a reducer case).
 pendingAnteExchange: null,
+// Circle of Protection / Eye for an Eye / Greater Realm of Preservation:
+// { caster, mode, shieldSourceIid, shieldSourceName, pool } where pool is
+// every legal "source of your choice" (matching permanents + stack spells).
+// Resolved via RESOLVE_DAMAGE_SHIELD_CHOICE / DECLINE_DAMAGE_SHIELD_CHOICE.
+pendingDamageShieldChoice: null,
 pendingConditionalCounter: null,
 priorityWindow: false,
 priorityPasser: null,
@@ -5483,7 +5615,8 @@ case "UNDO_MANA_TAPS": {
 case "PLAY_LAND": {
   const w = action.who;
   const c = s[w].hand.find(x => x.iid === action.iid);
-  const fastbondActive = s[w].bf.some(x => x.id === "fastbond");
+  const fastbondCard = s[w].bf.find(x => x.id === "fastbond");
+  const fastbondActive = !!fastbondCard;
   if (s.stack?.length > 0) return dlog(s, 'Cannot play a land while spells are on the stack.', 'rule');
   if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || (s.landsPlayed >= 1 && !fastbondActive)) return s;
   const prevLandsPlayed = s.landsPlayed;
@@ -5497,7 +5630,7 @@ case "PLAY_LAND": {
   const lArr = { ...c, controller: w, tapped: kismetTapsLand, summoningSick: !hasKw(c, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: {} };
   s = { ...s, [w]: { ...s[w], hand: s[w].hand.filter(x => x.iid !== action.iid), bf: [...s[w].bf, lArr] }, landsPlayed: s.landsPlayed + 1 };
   if (fastbondActive && prevLandsPlayed >= 1) {
-    s = hurt(s, w, 1, "Fastbond");
+    s = hurt(s, w, 1, "Fastbond", { sourceIid: fastbondCard.iid, sourceType: inferSourceType(fastbondCard) });
     s = dlog(s, `Fastbond: ${w} takes 1 damage for playing an extra land.`, "damage");
   }
   s = recomputeTypeEffects(s);
@@ -6011,7 +6144,7 @@ case "ACTIVATE_ABILITY": {
       if (!canPay(s[w].mana, ab.mana)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
       let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, ab.mana) } };
       ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [ab.walkKeyword] }] } : c) } };
-      ns = hurt(ns, w, 2, card.name);
+      ns = hurt(ns, w, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
       return dlog(ns, `${card.name} gains ${ab.walkName} until end of turn.`, "effect");
     }
 
@@ -6252,7 +6385,8 @@ case "CANCEL_LOTUS": {
 case "SET_PENDING_LOTUS": return { ...s, pendingLotus: true, pendingLotusIid: action.iid };
 
 case "CITY_OF_BRASS_DAMAGE": {
-  const ns = hurt(s, 'p', 1, 'City of Brass');
+  const cobCard = s.p.bf.find(c => c.id === 'city_of_brass');
+  const ns = hurt(s, 'p', 1, 'City of Brass', cobCard ? { sourceIid: cobCard.iid, sourceType: inferSourceType(cobCard) } : null);
   return dlog(ns, 'City of Brass deals 1 damage to you.', 'damage');
 }
 
@@ -6347,6 +6481,37 @@ case "DECLINE_ANTE_EXCHANGE": {
   if (!s.pendingAnteExchange) return s;
   const { caster } = s.pendingAnteExchange;
   return dlog({ ...s, pendingAnteExchange: null }, `${caster} declines Darkpact's exchange.`, 'effect');
+}
+
+case "RESOLVE_DAMAGE_SHIELD_CHOICE": {
+  // Circle of Protection / Eye for an Eye / Greater Realm of Preservation:
+  // reuses TutorModal for the picker (see pendingDamageShieldChoice.pool).
+  // Records the exact chosen iid (and its controller, needed for Eye for an
+  // Eye's redirect) in turnState.damageShields, checked by hurt().
+  const pdsc = s.pendingDamageShieldChoice;
+  if (!pdsc) return s;
+  const { caster, mode, shieldSourceIid, shieldSourceName, pool } = pdsc;
+  const chosen = pool.find(c => c.iid === action.iid);
+  if (!chosen) return s;
+  const entry = {
+    chosenSourceIid: chosen.iid,
+    chosenSourceController: chosen.controller,
+    mode,
+    shieldSourceIid,
+    shieldSourceName,
+  };
+  const ns = {
+    ...s,
+    pendingDamageShieldChoice: null,
+    turnState: { ...s.turnState, damageShields: { ...s.turnState.damageShields, [caster]: [...(s.turnState.damageShields?.[caster] || []), entry] } },
+  };
+  return dlog(ns, `${shieldSourceName}: shields against ${chosen.name}.`, 'effect');
+}
+
+case "DECLINE_DAMAGE_SHIELD_CHOICE": {
+  if (!s.pendingDamageShieldChoice) return s;
+  const { shieldSourceName } = s.pendingDamageShieldChoice;
+  return dlog({ ...s, pendingDamageShieldChoice: null }, `${shieldSourceName}: no source chosen.`, 'effect');
 }
 
 case "CONFIRM_TRANSMUTE_SACRIFICE": {
@@ -6707,7 +6872,7 @@ case "CONDITIONAL_COUNTER_CHOICE": {
 
 case "SPHERE_TRIGGER_RESOLVE": {
   if (!s.pendingSphereTrigger) return s;
-  const { sphereCardId: _scid, sphereCardName, controller, queue } = s.pendingSphereTrigger;
+  const { sphereCardId, sphereCardName, controller, queue } = s.pendingSphereTrigger;
   const nextTrigger = queue && queue.length > 0
     ? { sphereCardId: queue[0].sphereCardId, sphereCardName: queue[0].sphereCardName, controller: queue[0].controller, queue: queue.slice(1) }
     : null;
@@ -6723,7 +6888,8 @@ case "SPHERE_TRIGGER_RESOLVE": {
     }
     ns = { ...ns, [controller]: { ...ns[controller], mana: pool } };
     ns = dlog(ns, `${controller} pays {1} for ${sphereCardName}.`, "effect");
-    ns = hurt(ns, controller, -1, sphereCardName);
+    const sphereCard = [...ns.p.bf, ...ns.o.bf].find(c => c.id === sphereCardId);
+    ns = hurt(ns, controller, -1, sphereCardName, sphereCard ? { sourceIid: sphereCard.iid, sourceType: inferSourceType(sphereCard) } : null);
   } else {
     ns = dlog(ns, `${controller} declines ${sphereCardName} trigger.`, "effect");
   }

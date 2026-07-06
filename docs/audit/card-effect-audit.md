@@ -13,6 +13,25 @@
 
 ## Batch Completion Log
 
+### 2026-07-06 — Damage Shields + hurt() Source Metadata Retrofit (8 cards)
+
+`circle_of_protection_black/white/blue/red/green/artifacts`,
+`greater_realm_of_preservation`, and `eye_for_an_eye` are no longer deferred
+(previously `effect:"STUB"`, citing "only 6 of 87 hurt() call sites carry
+sourceIid/sourceType" -- rows left in place below for historical reference;
+their stale cost/filter text predates this batch, see `docs/SYSTEMS.md`
+Section 29 for the current, oracle-verified mechanics). Retrofitted
+essentially every `hurt()` call site in `DuelCore.js` with structured source
+metadata, then added `turnState.damageShields` -- a one-time, exact-identity
+prevention/redirect shield against a specific chosen source, not a standing
+color re-check. One shared resolveEff case (`chooseDamageShieldSource`)
+parameterized per-card by `damageShieldColors`/`damageShieldTypes`/
+`damageShieldMode` backs all eight cards; the human player picks via the
+existing generalized `TutorModal` (same precedent as Darkpact's
+`pendingAnteExchange`), the opponent auto-picks the first legal source (no
+UI). Stub count: 39 -> 31. See `docs/MECHANICS_INDEX.md` -- Batch: Damage
+Shields + hurt() Source Metadata Retrofit, and `docs/SYSTEMS.md` Section 29.
+
 ### 2026-07-06 — Copy Mechanism Generalization (Vesuvan Doppelganger) + Primal Clay Modal Choice
 
 `vesuvan_doppelganger` and `primal_clay` are no longer deferred (previously

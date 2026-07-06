@@ -1099,6 +1099,16 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           titleOverride="Darkpact — Choose a Card in the Ante"
         />
       )}
+
+      {s.pendingDamageShieldChoice && s.pendingDamageShieldChoice.caster === 'p' && (
+        <TutorModal
+          library={s.pendingDamageShieldChoice.pool}
+          filter="any"
+          onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
+          onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
+          titleOverride={`${s.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
     </div>
   );
 }

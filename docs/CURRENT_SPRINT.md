@@ -9,6 +9,24 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-06)
+- **Damage Shields + hurt() Source Metadata Retrofit** -- retrofitted
+  essentially every `hurt()` call site in `DuelCore.js` with
+  `{ sourceIid, sourceType }` metadata (Deferral Sweep 1 left only 6 of
+  ~118 tagged), then implemented `turnState.damageShields`, a one-time,
+  exact-identity prevention/redirect shield against a *specific chosen*
+  source (Forge's `ChosenCardStrict`, not a standing color ward). Backs
+  eight cards: Circle of Protection (Black/Blue/Green/Red/White at `{1}`,
+  Artifacts at `{2}`), Greater Realm of Preservation (`{1}{W}`, black or
+  red), and Eye for an Eye (Instant, `mode: 'redirect'`). One shared
+  resolveEff case (`chooseDamageShieldSource`) parameterized by
+  per-card `damageShieldColors`/`damageShieldTypes`/`damageShieldMode`
+  fields, reusing the generalized `TutorModal` picker (same precedent as
+  Darkpact's `pendingAnteExchange`) for the human player; the opponent
+  auto-picks the first legal source (no UI, matching the `sacArt`/`sacCre`
+  auto-decide convention) so no pending choice is ever left outstanding for
+  the AI. Stub count: -8. See `docs/MECHANICS_INDEX.md` -- Batch: Damage
+  Shields + hurt() Source Metadata Retrofit, and `docs/SYSTEMS.md`
+  Section 29.
 - **Token Creation Infrastructure + Poison Counters** -- new `TOKEN_DB`
   (`src/data/tokens.js`, separate from `CARD_DB`), `makeTokenInstance`/
   `createToken` in `DuelCore.js`, and the CR 111.7 "tokens cease to exist

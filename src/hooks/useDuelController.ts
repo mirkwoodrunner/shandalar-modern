@@ -381,7 +381,8 @@ export function useDuelController(
     if (
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
       s.pendingChoice || s.pendingTriggerTarget || s.pendingTutor || s.pendingTransmuteSacrifice ||
-      s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange
+      s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange ||
+      s.pendingDamageShieldChoice
     ) {
       return;
     }
@@ -409,7 +410,7 @@ export function useDuelController(
     endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
-    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, passPriority, requestPhaseAdvance,
+    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────

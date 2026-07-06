@@ -3510,4 +3510,83 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.15
+## Batch: Damage Shields + hurt() Source Metadata Retrofit (2026-07-06)
+
+Retrofits `hurt()` source metadata across essentially every call site in
+`DuelCore.js` (Deferral Sweep 1 left only 6 of ~118 tagged), and adds
+`turnState.damageShields` -- a one-time, exact-identity prevention/redirect
+shield backing the six Circles of Protection, Eye for an Eye, and Greater
+Realm of Preservation. See `docs/SYSTEMS.md` Section 29 for the full spec.
+
+**`hurt()` meta retrofit:** every call site with a source card object in
+scope now passes `{ sourceIid, sourceType: inferSourceType(card) }` (new
+helper, next to `isCre`/`isArt`/etc.). A few sites needed a small,
+behavior-preserving restructure to get the object into scope at all (e.g.
+Manabarbs/Lifeblood/Farmstead/Erosion/Power Leak's `bf.some(...)` ->
+`bf.find(...)`), never changing which cards trigger. The generic
+`ping`/`damage1`/`damage2` `srcMeta` local (previously artifact-only) is now
+built from `inferSourceType(card)` unconditionally. Combat lifelink/spirit-link
+life-gain calls also now carry their attacker's/blocker's meta, though this
+has no behavioral effect today (only the `amt > 0` damage branch reads
+`sourceType`). A handful of sites legitimately have no source card in scope
+(mana burn, Nafs Asp's delayed draw-step drain, Castle Inferno, Channel) and
+correctly keep `meta: null`.
+
+**Damage shields:** one resolveEff case, `chooseDamageShieldSource`, backs
+all eight cards -- `card.damageShieldColors`/`damageShieldTypes`/
+`damageShieldMode` (set per-card in `cards.js`) parameterize a shared
+`damageShieldMatches`/`buildDamageShieldPool` pair rather than eight
+near-duplicate cases. The human player picks via the existing generalized
+`TutorModal` (`pendingDamageShieldChoice`, same precedent as Darkpact's
+`pendingAnteExchange`); the opponent auto-picks the first legal source
+synchronously (no UI, matching the `sacArt`/`sacCre` auto-decide convention)
+so no `pendingDamageShieldChoice` is ever left outstanding for `caster: 'o'`.
+`hurt()`'s shield check runs before the pre-existing `combatDamageShield`/flat
+`damageShield` checks and is a hard exact-`iid` match, not a color re-check.
+Eye for an Eye's `mode: 'redirect'` re-enters `hurt()` with the shield already
+consumed (so the primary damage's own meta-driven bookkeeping still fires),
+then deals a second, independent instance of damage to the original source's
+controller with `meta: null` -- a hard recursion guard, since a null meta can
+never match any shield entry.
+
+### Cards implemented (8)
+
+| Card | Activation cost | Filter | Mode |
+|---|---|---|---|
+| Circle of Protection: Black/Blue/Green/Red/White | `{1}` | matching color | prevent |
+| Circle of Protection: Artifacts | `{2}` | artifact type | prevent |
+| Greater Realm of Preservation | `{1}{W}` | black or red | prevent |
+| Eye for an Eye | -- (Instant, resolves directly) | any source | redirect |
+
+### UI
+
+`pendingDamageShieldChoice` rendering added to `DuelScreen.tsx` and
+`DuelScreenMobile.tsx` (mirroring the `pendingAnteExchange`/`TutorModal`
+block exactly); `RESOLVE_DAMAGE_SHIELD_CHOICE`/`DECLINE_DAMAGE_SHIELD_CHOICE`
+are dispatched directly via each screen's existing raw `dispatch` (same
+one-off-action pattern already used for `CITY_OF_BRASS_DAMAGE`), so no new
+wrapper functions were added to `useDuel.js`. `useDuelController.ts`'s
+auto-pass-priority/phase-advance gate gained `s.pendingDamageShieldChoice` in
+its "any player-required choice pauses the loop" list (mirroring
+`pendingAnteExchange`) -- without it, a stack that empties in the same
+transition `pendingDamageShieldChoice` opens in would otherwise auto-advance
+past the human's picker.
+
+### Tests
+
+- Vitest: `tests/scenarios/hurt-meta-retrofit.test.js` (spot-checks a
+  representative sample of retrofitted call sites; regression checks proving
+  Part 1 is behavior-invisible on its own), `tests/scenarios/damage-shields.test.js`
+  (pool building, exact-identity matching, one-time consumption, CLEANUP
+  expiry, redirect mode + its recursion guard), `tests/scenarios/circle-of-protection.test.js`
+  (all six CoPs + Greater Realm, each read live from `CARD_DB` so the test
+  exercises the card's own real cost/filter), `tests/scenarios/eye-for-an-eye.test.js`.
+- Playwright: `tests/e2e/damage-shields.spec.ts`, tagged `@engine @mobile`,
+  added to the `mobile-chrome` project's `testMatch` allowlist.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.16
