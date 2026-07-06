@@ -208,6 +208,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     mana: s_state.p.mana,
     lib: (s_state.p.lib as any[]).length,
     gy: (s_state.p.gy as any[]).length,
+    poisonCounters: s_state.p.poisonCounters,
   };
   const oData = {
     life: s_state.o.life,
@@ -216,6 +217,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     lib: (s_state.o.lib as any[]).length,
     gy: (s_state.o.gy as any[]).length,
     handCount: (s_state.o.hand as any[]).length,
+    poisonCounters: s_state.o.poisonCounters,
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────

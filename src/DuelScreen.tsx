@@ -572,6 +572,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               mana: s.o.mana,
               lib: s.o.lib.length,
               gy: s.o.gy.length,
+              poisonCounters: s.o.poisonCounters,
             }}
             onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
             onLifeClick={
@@ -623,6 +624,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               mana: s.p.mana,
               lib: s.p.lib.length,
               gy: s.p.gy.length,
+              poisonCounters: s.p.poisonCounters,
             }}
             onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
             onLifeClick={

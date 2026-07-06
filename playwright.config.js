@@ -58,6 +58,7 @@ export default defineConfig({
         'tests/e2e/ruins.spec.js',
         'tests/e2e/sandbox.spec.ts',
         'tests/e2e/structure-icons.spec.ts',
+        'tests/e2e/tokens-and-poison.spec.ts',
         'tests/e2e/tutor-modal.spec.ts',
         'tests/e2e/undo-mana-taps-all-phases.spec.js',
       ],

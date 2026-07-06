@@ -3432,4 +3432,66 @@ C1-C4 combined status recorded in the batch completion summary)
 
 ---
 
-# End of MECHANICS INDEX v1.14
+## Batch: Token Creation Infrastructure + Poison Counters (2026-07-06)
+
+New token-creation subsystem (`TOKEN_DB`, `makeTokenInstance`, `createToken`,
+CR 111.7 cease-to-exist rule in `zMove`) plus a poison-counter win-condition
+fix and `grantPoisonCounters` trigger effect. Six cards implemented across
+both mechanisms. See `docs/SYSTEMS.md` Section 28 for the full mechanical
+spec.
+
+**Token infrastructure:** `TOKEN_DB` (`src/data/tokens.js`) is a separate
+array from `CARD_DB` so token definitions never leak into deckbuilding/
+binder/search UIs. `makeTokenInstance`/`createToken` (`DuelCore.js`) mirror
+`makeCardInstance`, adding `isToken: true` and an optional `sourceIid` tag.
+`zMove` -- already the single choke point for every bf -> gy/exile/hand/lib
+move -- now skips the destination-zone append for `card.isToken` permanents
+leaving the battlefield, covering death, bounce, exile, and sacrifice from
+one call site. One pre-existing bypass (`ashesToAshes`'s manual `bf`/`exile`
+splice) was converted to call `zMove` for the same correctness reason.
+
+**Cards implemented:** The Hive (`createWaspToken`), Serpent Generator
+(`createSerpentToken`, its Snake token also carries `grantPoisonCounters`),
+Rukh Egg (delayed token creation via a new `state.pendingEndStepTokens: []`
+array, drained in the existing `PHASE.END` one-off block), Tetravus
+(`etbCounters`, two upkeep abilities via the existing
+`UPKEEP_CHOICE_HANDLERS`/`NUMBER_CHOICE_HANDLERS` numberChoice pattern,
+remembered-token tracking via `sourceIid`), Marsh Viper (`amount: 2`), Pit
+Scorpion (`amount: 1`).
+
+**Poison counters:** `checkWinConditions()`'s `poisonLimit` default was
+`?? 5` -- a bug, since both real MTG rules and Marsh Viper/Pit Scorpion's own
+oracle text say ten. Fixed to `?? 10`. New condition type
+`selfIsDamageSourceToPlayer` (restricts an `ON_DAMAGE_DEALT` trigger to
+player-targeted damage only) and new effect type `grantPoisonCounters`
+(`{ amount }`) follow El-Hajjâj's existing `triggeredAbilities` declarative
+shape -- no bespoke per-card dispatch.
+
+**Tetravus's variable-count choice:** used the existing discrete
+`kind: 'numberChoice'` pending-choice shape (0..max options), the same
+pattern Magnetic Mountain/Power Leak/Shapeshifter already use, rather than a
+new numeric-input modal type. Per the existing "AI never opts in" convention
+for optional numberChoice abilities (Magnetic Mountain, Shapeshifter), an
+opponent-controlled Tetravus never activates either upkeep ability.
+
+**UI:** poison-counter display added independently to both `Banner.tsx`
+(desktop, `src/ui/Battlefield/`) and `Banner.tsx` (mobile, `src/ui/Mobile/`)
+-- confirmed these are two separate components, not shared -- each reusing
+its own file's existing zone-stat idiom (`ZoneCount` / `ZoneChip`).
+
+### Tests
+- Vitest: `tests/scenarios/token-creation.test.js`,
+  `the-hive-rukh-egg.test.js`, `tetravus.test.js`, `poison-counters.test.js`
+  (29 new cases).
+- Full existing Vitest suite (577 tests) re-run after the change; all 577
+  passed, no regressions.
+- Playwright: `tests/e2e/tokens-and-poison.spec.ts` (desktop + mobile-chrome,
+  4 cases x 2 projects) -- The Hive token creation and poison-counter
+  display verified on both `Banner` components independently.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.15
