@@ -192,3 +192,5 @@ adapted from a third-party GPL-3.0 source, per the policy in `CLAUDE.md`.
 | 2026-07-06 | Serpent Generator (`createSerpentToken` activated ability effect + Snake token `grantPoisonCounters` trigger, DuelCore.js/cards.js/tokens.js) | Card-Forge/forge | s/serpent_generator.txt | GPL-3.0 |
 | 2026-07-06 | Marsh Viper (`grantPoisonCounters` triggered effect, DuelCore.js/cards.js) | Card-Forge/forge | m/marsh_viper.txt | GPL-3.0 |
 | 2026-07-06 | Pit Scorpion (reused `grantPoisonCounters` triggered effect, DuelCore.js/cards.js) | Card-Forge/forge | p/pit_scorpion.txt | GPL-3.0 |
+| 2026-07-06 | Vesuvan Doppelganger (`applyPermanentCopy` generalized copy helper + `vesuvanEtbCopy`/`vesuvanRecopy` effects + `ability.requiresTarget`/`pendingTriggerTarget`/`RESOLVE_TRIGGER_TARGET` triggered-ability targeting mechanism, DuelCore.js/cards.js/useDuelController.ts/useDuel.js) | Card-Forge/forge | v/vesuvan_doppelganger.txt | GPL-3.0 |
+| 2026-07-06 | Primal Clay (`primalClayChoice` spell effect + pendingChoice kind, DuelCore.js/cards.js) | Card-Forge/forge | p/primal_clay.txt | GPL-3.0 |

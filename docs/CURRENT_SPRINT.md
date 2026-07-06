@@ -30,6 +30,29 @@
   `src/ui/Mobile/` -- confirmed separate, not shared). See
   `docs/MECHANICS_INDEX.md` -- Batch: Token Creation Infrastructure +
   Poison Counters, and `docs/SYSTEMS.md` Section 28.
+- **Copy Mechanism Generalization (Vesuvan Doppelganger) + Primal Clay Modal
+  Choice** -- extracted `applyPermanentCopy` from Copy Artifact's original
+  one-shot `copyPermanentCharacteristics` case (now a thin wrapper, behavior
+  unchanged) so it also covers Vesuvan Doppelganger's optional ETB copy
+  (creature target, `colorOverride` keeps it printed-blue instead of adding
+  a type) and its recurring upkeep re-copy. The upkeep re-copy required
+  genuinely new infrastructure: no existing triggered ability previously
+  needed a fresh battlefield target at trigger-resolution time (only fixed
+  option lists via `requiresChoice`/`pendingChoice`). Added
+  `ability.requiresTarget` to `resolveTrigger()`, a new
+  `state.pendingTriggerTarget` suspend field, and a `RESOLVE_TRIGGER_TARGET`
+  action -- and extended (not duplicated) the existing cast/activate
+  targeting flow in `useDuelController.ts` with a third `castFlow.kind`,
+  `'trigger'`, so the same battlefield-click targeting UI and cast-prompt
+  confirm/skip buttons drive it; neither screen component needed changes.
+  Primal Clay was re-verified against Scryfall and found to be a fixed
+  three-mode ETB choice, not a copy effect (Forge's script reflects an
+  older printing) -- routed through the existing direct-`resolveEff`
+  `createPendingChoice` convention (`kind: 'primalClayChoice'`), same shape
+  as Alchor's Tomb's `colorChoiceTarget`. Stub count: 41 -> 39. See
+  `docs/SYSTEMS.md` Section 18.6 (and its new Triggered-ability-targeting /
+  Primal Clay subsections), and `docs/MECHANICS_INDEX.md` -- copy_artifact
+  (updated), vesuvan_doppelganger, primal_clay.
 
 ## Completed (2026-07-05)
 - **Gemini LLM opponent integration removed at owner's request.** `src/engine/GeminiAdvisor.js`, `src/engine/LegalActions.js`, and `src/engine/geminiPrompts.js` deleted, along with all associated tests. The `useGemini` config flag, title-screen toggle, in-duel Gemini decision path, "thinking" indicator, and Gemini log-entry styling were removed from `useDuelController.ts`, `GameWrapper.jsx`, `useOverworldController.js`, `DuelScreen.tsx`, `DuelScreenMobile.tsx`, `LogSheet.tsx`, and both CSS files. The heuristic AI (`aiDecide` in `AI.js`) is now the sole opponent decision path for every opponent, including ARZAKON.
