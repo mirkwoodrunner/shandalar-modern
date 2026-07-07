@@ -283,6 +283,14 @@ if (defBf) {
     if (hasKw(at, kw, state) && defBf.some(c => isLand(c) && c.subtype?.toLowerCase().includes(sub))) return false;
   }
 }
+// Amrou Kithkin / Bog Rats / Elder Spawn: attacker-side "can't be blocked by
+// ..." restrictions declared via card.mod. cantBlockedByPower and
+// cantBlockedByWalls existed on cards.js entries but were never read anywhere
+// until this check was added.
+// Adapted from Card-Forge/forge (a/amrou_kithkin.txt, b/bog_rats.txt, e/elder_spawn.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (at.mod?.cantBlockedByPower !== undefined && getPow(bl, state) >= at.mod.cantBlockedByPower) return false;
+if (at.mod?.cantBlockedByWalls && bl.subtype?.includes('Wall')) return false;
+if (at.mod?.cantBlockedByColor && blColor === at.mod.cantBlockedByColor) return false;
 return true;
 }
 
@@ -431,6 +439,13 @@ if (amt > 0) {
     } } };
   }
   ns = dlog(ns, `${who} takes ${amt} damage${src ? ` from ${src}` : ""}.`, "damage");
+  // Living Artifact: "Whenever you're dealt damage, put that many vitality
+  // counters on this Aura." Distinct from ON_DAMAGE_DEALT (which fires at
+  // specific combat call sites and would double-count here) -- this is the
+  // single hurt() choke point, so it fires exactly once per net amount
+  // actually applied to a player, after all shields/redirects/floor logic.
+  // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  ns = emitEvent(ns, { type: 'ON_PLAYER_DAMAGED', payload: { who, amount: amt, sourceIid: meta?.sourceIid, sourceType: meta?.sourceType } });
 }
 else if (amt < 0) ns = dlog(ns, `${who} gains ${-amt} life.`, "heal");
 if (who === "p" && amt > 0) ns = { ...ns, peakDamage: Math.max(ns.peakDamage || 0, amt) };
@@ -1353,6 +1368,21 @@ if (tgtC && isLand(tgtC)) {
   }
 }
 break;
+}
+case "enchantArtifact": {
+  // Living Artifact: Kudzu-style bf-permanent aura -- must remain a first-class
+  // permanent (not an embedded enchantments[] record) so its triggeredAbilities
+  // (ON_PLAYER_DAMAGED) and its own upkeep field are dispatched normally by the
+  // existing per-permanent scan loops (emitEvent, the UPKEEP switch).
+  // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (tgtC && isArt(tgtC)) {
+    const pArr = { ...card, controller: caster, tapped: false, summoningSick: false,
+      attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [],
+      enchantedArtifactIid: tgtC.iid };
+    ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
+    ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, "effect");
+  }
+  break;
 }
 case "pumpPower": {
 if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, power: (c.power||0)+1 } : c) } }; ns = dlog(ns, `${tgtC.name} gets +1/+0.`, "effect"); }
@@ -2296,6 +2326,114 @@ case "triskelionPing": {
     }
     ns = dlog(ns, `${card.name} removes a counter and deals 1 damage.`, "effect");
   }
+  break;
+}
+// Osai Vultures: "Remove two carrion counters from this creature: This
+// creature gets +1/+1 until end of turn." Cost-availability is also gated at
+// the ACTIVATE_ABILITY pre-flight step (mirrors the sacArt/sacCre gate); this
+// inline check mirrors Triskelion's belt-and-suspenders pattern.
+// Adapted from Card-Forge/forge (o/osai_vultures.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "osaiVulturesPump": {
+  const ov = ns[caster].bf.find(c => c.iid === card.iid);
+  if (ov && (ov.counters?.CARRION || 0) >= 2) {
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+      c.iid === card.iid
+        ? { ...c, counters: { ...c.counters, CARRION: c.counters.CARRION - 2 }, eotBuffs: [...(c.eotBuffs || []), { power: 1, toughness: 1 }] }
+        : c
+    ) } };
+    ns = dlog(ns, `${card.name} removes two carrion counters and gets +1/+1 until end of turn.`, "effect");
+  }
+  break;
+}
+// Scavenging Ghoul: "Remove a corpse counter from this creature: Regenerate
+// this creature." Checked inline (Triskelion's counter-cost convention), not
+// via a generic pre-flight gate.
+// Adapted from Card-Forge/forge (s/scavenging_ghoul.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "scavengingGhoulRegen": {
+  const sg = ns[caster].bf.find(c => c.iid === card.iid);
+  if (sg && (sg.counters?.CORPSE || 0) > 0) {
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+      c.iid === card.iid
+        ? { ...c, counters: { ...c.counters, CORPSE: c.counters.CORPSE - 1 }, regenerating: true }
+        : c
+    ) } };
+    ns = dlog(ns, `${card.name} removes a corpse counter and will regenerate.`, "effect");
+  }
+  break;
+}
+// Sage of Lat-Nam: "{T}, Sacrifice an artifact: Draw a card." Same shape as
+// Priest of Yawgmoth's addBBySacrificedCmc (cost: T,sacArt), but the drawn
+// amount is fixed at 1 -- no CMC scaling.
+// Adapted from Card-Forge/forge (s/sage_of_lat_nam.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "drawCardSacArt": {
+  ns = drawD(ns, caster, 1);
+  ns = dlog(ns, `${card.name} draws a card.`, "effect");
+  break;
+}
+// Island of Wak-Wak: "Target creature with flying has base power 0 until end
+// of turn." Same shape as Singing Tree's setAttackerPower0EOT, but the
+// legality check is "has flying" instead of "is attacking".
+// Adapted from Card-Forge/forge (i/island_of_wak_wak.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "setFlyingCreaturePower0EOT": {
+  if (tgtC && isCre(tgtC) && hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { layerDef: { layer: '7b', setPower: 0 } }] } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} has base power 0 until end of turn.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name}'s ability fizzles -- target does not have flying.`, "effect");
+  }
+  break;
+}
+// Urza's Avenger: "{0}: This creature gets -1/-1 and gains your choice of
+// banding, flying, first strike, or trample until end of turn." Reuses the
+// generic modalChoice pendingChoice kind (Alabaster Potion); each option
+// re-enters resolveEff via its own effect id below.
+// Adapted from Card-Forge/forge (u/urzas_avenger.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "urzasAvengerChoice": {
+  ns = createPendingChoice(ns, {
+    sourceCardId: card.iid,
+    controller: caster,
+    kind: 'modalChoice',
+    card: { name: card.name, iid: card.iid },
+    tgt: null,
+    xVal,
+    options: [
+      { id: 'banding', label: 'Gains banding', effect: 'urzasAvengerBanding' },
+      { id: 'flying', label: 'Gains flying', effect: 'urzasAvengerFlying' },
+      { id: 'firststrike', label: 'Gains first strike', effect: 'urzasAvengerFirstStrike' },
+      { id: 'trample', label: 'Gains trample', effect: 'urzasAvengerTrample' },
+    ],
+  });
+  break;
+}
+// Urza's Avenger option resolutions: flat -1/-1 applies regardless of choice.
+// Banding itself is a currently-unenforced keyword in this engine (tracked as
+// its own batch) -- choosing it is legal and tags the keyword, but it won't
+// affect combat damage division yet.
+// Adapted from Card-Forge/forge (u/urzas_avenger.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "urzasAvengerBanding": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(x => x.iid === card.iid
+    ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: -1, toughness: -1, keywords: [KEYWORDS.BANDING.id] }] } : x) } };
+  ns = dlog(ns, `${card.name} gets -1/-1 and gains banding until end of turn.`, "effect");
+  break;
+}
+case "urzasAvengerFlying": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(x => x.iid === card.iid
+    ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: -1, toughness: -1, keywords: [KEYWORDS.FLYING.id] }] } : x) } };
+  ns = dlog(ns, `${card.name} gets -1/-1 and gains flying until end of turn.`, "effect");
+  break;
+}
+case "urzasAvengerFirstStrike": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(x => x.iid === card.iid
+    ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: -1, toughness: -1, keywords: [KEYWORDS.FIRST_STRIKE.id] }] } : x) } };
+  ns = dlog(ns, `${card.name} gets -1/-1 and gains first strike until end of turn.`, "effect");
+  break;
+}
+case "urzasAvengerTrample": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(x => x.iid === card.iid
+    ? { ...x, eotBuffs: [...(x.eotBuffs || []), { power: -1, toughness: -1, keywords: [KEYWORDS.TRAMPLE.id] }] } : x) } };
+  ns = dlog(ns, `${card.name} gets -1/-1 and gains trample until end of turn.`, "effect");
   break;
 }
 // --- GROUP A NEW EFFECTS (Batch 2) -------------------------------------------
@@ -4337,6 +4475,48 @@ case "kudzuUpkeep": {
   }
   break;
 }
+// Living Artifact: "At the beginning of your upkeep, you may remove a
+// vitality counter from this Aura. If you do, you gain 1 life." "Your" is the
+// Aura's own controller (this Aura can legally be cast on an opponent's
+// artifact), matching Kudzu's "own controller's upkeep" shape above rather
+// than the Farmstead/Power Leak "enchanted permanent's controller" shape.
+// Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "livingArtifactUpkeep": {
+  if (w !== ns.active) break;
+  const enchArt = [...ns.p.bf, ...ns.o.bf].find(a => isArt(a) && a.iid === c.enchantedArtifactIid);
+  if (!enchArt) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, "Living Artifact: not attached to an artifact — goes to graveyard.", "effect");
+    break;
+  }
+  if ((c.counters?.VITALITY || 0) <= 0) break;
+  if (w === "o") {
+    ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, counters: { ...x.counters, VITALITY: x.counters.VITALITY - 1 } } : x) } };
+    ns = hurt(ns, "o", -1, c.name, { sourceIid: c.iid, sourceType: 'enchantment' });
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "livingArtifactUpkeep", iid: c.iid });
+  }
+  break;
+}
+// Elder Spawn: "unless you sacrifice an Island, sacrifice this creature and
+// it deals 6 damage to you."
+// Adapted from Card-Forge/forge (e/elder_spawn.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "elderSpawnUpkeep": {
+  if (w !== ns.active) break;
+  if (w === "o") {
+    const islands = ns.o.bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+    if (islands.length) {
+      ns = zMove(ns, islands[0].iid, w, w, "gy");
+      ns = dlog(ns, `${c.name}: opponent sacrifices an Island.`, "effect");
+    } else {
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = hurt(ns, "o", 6, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "elderSpawnUpkeep", iid: c.iid });
+  }
+  break;
+}
 // Wall of Tombstones: "change this creature's base toughness to 1 plus the
 // number of creature cards in your graveyard. (This effect lasts indefinitely.)"
 // Directly mutates the base toughness field rather than a continuous buff --
@@ -4704,6 +4884,11 @@ function evaluateCondition(state, card, condition, payload) {
   if (condition.type === 'opponentCastArtifactSpell') {
     return !!payload.isArtifact && payload.casterId !== card.controller;
   }
+  // ON_PLAYER_DAMAGED: "whenever you're dealt damage" -- Living Artifact.
+  // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (condition.type === 'auraControllerWasDamaged') {
+    return payload.who === card.controller;
+  }
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
 
@@ -4950,6 +5135,44 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + amount } } : c
       ) } };
       return dlog(s, `${sourceCard.name} gets ${amount} +1/+1 counter${amount === 1 ? '' : 's'} (creatures died this turn).`, 'effect');
+    }
+    // Living Artifact: "put that many vitality counters on this Aura" -- amount
+    // comes from the ON_PLAYER_DAMAGED payload, not a computed board count.
+    // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'addVitalityCounters': {
+      const who = sourceCard.controller;
+      const amount = payload.amount || 0;
+      if (amount <= 0) return state;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, VITALITY: (c.counters?.VITALITY || 0) + amount } } : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gets ${amount} vitality counter${amount === 1 ? '' : 's'}.`, 'effect');
+    }
+    // Osai Vultures: "put a carrion counter on this creature" -- ONE counter
+    // per end step regardless of how many creatures died (ruling: "Only gets
+    // one counter per turn, not one per creature"), unlike Khabál Ghoul/
+    // Scavenging Ghoul's per-death count below.
+    // Adapted from Card-Forge/forge (o/osai_vultures.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'addCarrionCounterIfDeath': {
+      if (!(state.turnState.creaturesDiedThisTurn || []).length) return state;
+      const who = sourceCard.controller;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, CARRION: (c.counters?.CARRION || 0) + 1 } } : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gets a carrion counter.`, 'effect');
+    }
+    // Scavenging Ghoul: "put a corpse counter on this creature for each
+    // creature that died this turn" -- same per-death shape as Khabál Ghoul's
+    // addCounterEqualToCreatureDeaths above, writing CORPSE instead of P1P1.
+    // Adapted from Card-Forge/forge (s/scavenging_ghoul.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'addCorpseCounterEqualToCreatureDeaths': {
+      const who = sourceCard.controller;
+      const amount = (state.turnState.creaturesDiedThisTurn || []).length;
+      if (amount === 0) return state;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, CORPSE: (c.counters?.CORPSE || 0) + amount } } : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gets ${amount} corpse counter${amount === 1 ? '' : 's'} (creatures died this turn).`, 'effect');
     }
     // Urza's Miter: optional-cost trigger that draws a card instead of gaining life.
     // Adapted from Card-Forge/forge (u/urzas_miter.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -5269,6 +5492,35 @@ const UPKEEP_CHOICE_HANDLERS = {
       const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
       const ydSrc = getBF(ns, choice.iid);
       return hurt(ns, owner, 2, choice.cardName, ydSrc ? { sourceIid: ydSrc.iid, sourceType: inferSourceType(ydSrc) } : null);
+    },
+  },
+  // Living Artifact: "you may remove a vitality counter. If you do, you gain
+  // 1 life." choice.iid is the Aura itself.
+  // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  livingArtifactUpkeep: {
+    resolve(s, choice, action) {
+      if (action.choice !== "PAY") return dlog(s, `${choice.cardName}: declines to remove a counter.`, "info");
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      const laSrc = getBF(s, choice.iid);
+      if (!laSrc || (laSrc.counters?.VITALITY || 0) <= 0) return s;
+      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, counters: { ...c.counters, VITALITY: c.counters.VITALITY - 1 } } : c) } };
+      return hurt(ns, owner, -1, choice.cardName, { sourceIid: laSrc.iid, sourceType: 'enchantment' });
+    },
+  },
+  // Elder Spawn: "unless you sacrifice an Island, sacrifice this creature and
+  // it deals 6 damage to you." choice.iid is the creature.
+  // Adapted from Card-Forge/forge (e/elder_spawn.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  elderSpawnUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "SACRIFICE_ISLAND") {
+        const islands = s[owner].bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+        if (!islands.length) return s;
+        return zMove(s, islands[0].iid, owner, owner, "gy");
+      }
+      const esSrc = getBF(s, choice.iid);
+      const ns = zMove(s, choice.iid, owner, owner, "gy");
+      return hurt(ns, owner, 6, choice.cardName, esSrc ? { sourceIid: esSrc.iid, sourceType: inferSourceType(esSrc) } : null);
     },
   },
   // Magnetic Mountain: computes the eligible/affordable count at resolve time
@@ -6225,6 +6477,12 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("discardLastDrawn") && !s[w].hand.length) {
     return dlog(s, `${card.name}: no card to discard.`, "info");
   }
+  // Osai Vultures: "Remove two carrion counters..." -- same pre-flight shape
+  // as sacArt/sacCre above, gating on counter availability instead.
+  // Adapted from Card-Forge/forge (o/osai_vultures.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (act.cost.includes("counter2") && (card.counters?.CARRION || 0) < 2) {
+    return dlog(s, `${card.name}: not enough carrion counters to activate.`, "info");
+  }
   // Gate to Phyrexia / Life Chisel: "Activate only during your upkeep".
   if (act.myUpkeepOnly && (s.phase !== PHASE.UPKEEP || s.active !== w)) {
     return dlog(s, `${card.name} can only be activated during your upkeep.`, "info");
@@ -6320,9 +6578,10 @@ case "ACTIVATE_ABILITY": {
     .replace(/,/g, "")
     .replace(/X/g, String(xValPaid))
     .trim();
-  // Counter-cost abilities (e.g. Triskelion): cost is paid by removing a counter,
-  // not by spending mana. The effect handler validates and removes the counter.
-  if (manaPart && manaPart !== 'counter') {
+  // Counter-cost abilities (e.g. Triskelion, Osai Vultures): cost is paid by
+  // removing counter(s), not by spending mana. The effect handler (and, for
+  // Osai Vultures, the pre-flight gate above) validates and removes the counter(s).
+  if (manaPart && manaPart !== 'counter' && manaPart !== 'counter2') {
     if (!canPay(s[w].mana, manaPart)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
     s = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, manaPart) } };
   }

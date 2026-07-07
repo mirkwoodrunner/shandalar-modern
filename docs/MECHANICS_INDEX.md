@@ -3589,4 +3589,66 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.16
+## Batch 14: Quick-Win Stubs (2026-07-07)
+
+Seven stub cards, each reusing existing engine patterns. Two touch shared
+`DuelCore.js` functions (`hurt()`, `canBlockDuel()`) rather than only adding
+new `switch`/`resolveEff` cases, and incidentally fix two silently-broken
+existing cards along the way.
+
+**New event: `ON_PLAYER_DAMAGED`** -- emitted once near the end of `hurt()`,
+only when the final applied `amt > 0` (after all shields/redirects/floor
+logic), payload `{ who, amount, sourceIid, sourceType }`. Distinct from the
+pre-existing `ON_DAMAGE_DEALT` (emitted separately at specific combat call
+sites) to avoid double-firing for combat damage to players -- verified by a
+dedicated test proving the counter Living Artifact gains from an unblocked
+attack equals the damage dealt exactly once, not twice.
+
+**New counter types:** `VITALITY` (Living Artifact), `CARRION` (Osai
+Vultures), `CORPSE` (Scavenging Ghoul) -- joining the existing `P1P1`/`M1M1`
+keys in the same `counters` object shape.
+
+**Block-restriction infrastructure:** `canBlockDuel()` gained a single check
+covering three "can't be blocked by ..." shapes read from the attacker's
+`card.mod`: `cantBlockedByPower` (power threshold), `cantBlockedByWalls`
+(Wall subtype), and new `cantBlockedByColor` (color match). The first two
+fields already existed on Amrou Kithkin and Bog Rats but were never read
+anywhere -- both cards were silently non-functional until this batch; fixing
+them was a necessary side effect of building the general check for Elder
+Spawn, not separately scoped work.
+
+### Cards implemented (7)
+
+| Card | Mechanism |
+|---|---|
+| Living Artifact | `enchantArtifact` spell effect (Kudzu-style bf-standalone Aura, `enchantedArtifactIid`) + `ON_PLAYER_DAMAGED` triggered `addVitalityCounters` effect (`auraControllerWasDamaged` condition) + `livingArtifactUpkeep` upkeep case/handler (pay a `VITALITY` counter to gain 1 life) |
+| Elder Spawn | `elderSpawnUpkeep` upkeep case/handler (sacrifice an Island or sacrifice self + take 6), mirrors `yawgmothDemonUpkeep`'s structure; `mod:{cantBlockedByColor:"R"}` |
+| Osai Vultures | `addCarrionCounterIfDeath` triggered effect (ONE counter per end step regardless of death count, per ruling -- not Khabál Ghoul's per-death shape) + `osaiVulturesPump` activated ability (`counter2` cost, pre-flight-gated like `sacArt`/`sacCre`) |
+| Scavenging Ghoul | `addCorpseCounterEqualToCreatureDeaths` triggered effect (per-death count, same shape as Khabál Ghoul) + `scavengingGhoulRegen` activated ability (`counter` cost, checked inline like Triskelion) |
+| Sage of Lat-Nam | `drawCardSacArt` activated ability (`T,sacArt`), same shape as Priest of Yawgmoth's `addBBySacrificedCmc` minus the CMC scaling |
+| Island of Wak-Wak | `setFlyingCreaturePower0EOT` activated ability, same shape as Singing Tree's `setAttackerPower0EOT` with a flying-check instead of an attacking-check; inherits the pre-existing `getDisplayPT()` UI-approximation gap (already true for Plague Rats/Sorceress Queen/Kormus-Bell-animated Swamps) |
+| Urza's Avenger | `urzasAvengerChoice` reuses the generic `modalChoice` pendingChoice kind (Alabaster Potion); 4 options each re-enter `resolveEff` via their own effect id (`urzasAvengerBanding`/`Flying`/`FirstStrike`/`Trample`), applying a flat -1/-1 plus the chosen keyword. Banding itself remains an unenforced keyword (tracked as its own future batch) |
+
+### Bug fixes (side effect of Elder Spawn's block-restriction work)
+
+- Amrou Kithkin: `cantBlockedByPower` now actually enforced.
+- Bog Rats: `cantBlockedByWalls` now actually enforced.
+
+### Tests
+
+- Vitest: `tests/scenarios/batch-14-quick-win-stubs.test.js` (all 7 cards,
+  plus the Amrou Kithkin/Bog Rats bugfix regressions). Includes the two
+  specifically-required cases: `ON_PLAYER_DAMAGED` fires exactly once for
+  combat damage to a player, and Osai Vultures gets exactly 1 counter
+  regardless of how many creatures died in a turn.
+- Regression checkpoints (hand-picked, no regressions): `src/engine/__tests__/blocking.test.js`,
+  `tests/scenarios/damage-source-meta.test.js`, `tests/scenarios/combat-damage.test.js`,
+  `src/engine/__tests__/counter-targeting.test.js`, `tests/scenarios/poison-counters.test.js`.
+- Playwright: dual-viewport (1280x800, 390x844), tagged `@engine`.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.17

@@ -8,6 +8,19 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-07)
+- **Batch 14: Quick-Win Stubs** -- Living Artifact, Elder Spawn, Osai
+  Vultures, Scavenging Ghoul, Sage of Lat-Nam, Island of Wak-Wak, and Urza's
+  Avenger (closing out the last deferral from the 2026-07-01 simple-tier
+  batch, which originally punted it for lacking a generalized "choose one of
+  N keywords" picker -- the `modalChoice` mechanism added 2026-07-05 covers
+  it directly). New `ON_PLAYER_DAMAGED` event in `hurt()`; new counter types
+  `VITALITY`/`CARRION`/`CORPSE`; new `canBlockDuel()` block-restriction check
+  covering `cantBlockedByPower`/`cantBlockedByWalls`/`cantBlockedByColor`,
+  which also fixed two silently-broken existing cards (Amrou Kithkin, Bog
+  Rats) whose `mod` fields were declared but never read. Stub count: 31 -> 24.
+  See `docs/MECHANICS_INDEX.md` -- Batch 14: Quick-Win Stubs.
+
 ## Completed (2026-07-06)
 - **Damage Shields + hurt() Source Metadata Retrofit** -- retrofitted
   essentially every `hurt()` call site in `DuelCore.js` with
