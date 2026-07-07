@@ -20,6 +20,12 @@
   which also fixed two silently-broken existing cards (Amrou Kithkin, Bog
   Rats) whose `mod` fields were declared but never read. Stub count: 31 -> 24.
   See `docs/MECHANICS_INDEX.md` -- Batch 14: Quick-Win Stubs.
+- **Vitest scoping fix in `test:targeted`/`test:audit`** -- `--testNamePattern`
+  doesn't reliably scope Vitest in this repo (a tag string isn't embedded in
+  most `describe`/`it` names), so both scripts gained a `--files`/`--pw-files`
+  mode that runs Vitest/Playwright directly against explicit file lists,
+  gated by a declared-vs-actual test-case/file-count check and a 75/20
+  backstop ceiling. The existing `@tag` path is unchanged.
 
 ## Completed (2026-07-06)
 - **Damage Shields + hurt() Source Metadata Retrofit** -- retrofitted
