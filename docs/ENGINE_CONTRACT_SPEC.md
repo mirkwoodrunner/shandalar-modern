@@ -175,6 +175,28 @@ Rules:
 
 ---
 
+## 3.7 FORM_BAND (CR 702.22c)
+
+```json
+{
+  "iids": string[]
+}
+```
+
+Rules:
+- only valid during `COMBAT_ATTACKERS`
+- every iid must already be a declared attacker (`s.attackers`) controlled by
+  the active player
+- rejected if any iid already carries a `bandId` from an earlier `FORM_BAND`
+  call this combat
+- rejected unless at least one member has banding and at most one lacks it
+- one call forms exactly one band (shared `bandId`); a player may call this
+  repeatedly in the same declare-attackers step to form multiple bands
+- see `docs/SYSTEMS.md` S5.4 for the full band data model and the
+  live-membership design that gives 702.22e/f for free
+
+---
+
 # 4. Engine Pipeline
 
 ## 4.1 Action Flow
@@ -316,6 +338,28 @@ DuelCore executes actions in this order:
 4. Resolve stack
 5. Apply state changes
 6. Emit updated GameState
+
+---
+
+## 7.3 Banding Damage-Division Choices (CR 702.22j/k)
+
+`resolveCombat` may pause mid-resolution by returning `state.pendingChoice`
+instead of applying damage, when a still-unanswered 702.22j/k order choice
+exists (see `docs/SYSTEMS.md` S5.4). Two `pendingChoice.kind` values, both
+created directly by `resolveCombat`, not via a triggered ability:
+
+| kind | who chooses (`controller`) | `options[].order` |
+|---|---|---|
+| `bandAttackerDamageOrder` | defending player | permutation of the attacker's 2+ effective blockers |
+| `bandBlockerDamageOrder` | active player (`s.active`) | permutation of the blocker's 2+ band-member recipients |
+
+`RESOLVE_CHOICE` stores the chosen `order` under a stable key in
+`turnState.combatDamageOrders` and re-invokes `resolveCombat`, which either
+surfaces the next unanswered choice or (once none remain) resolves damage for
+real. No UI-level distinction is required for AI-controlled choices --
+`options[0]` is always the natural/pre-existing order, so the existing
+generic AI pendingChoice fallback in `useDuelController.ts` reproduces
+identical behavior with zero changes to that file.
 
 ---
 
