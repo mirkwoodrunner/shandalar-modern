@@ -3779,4 +3779,93 @@ COMPLETE (phase 2 of 3)
 
 ---
 
+## Banding Target Cards (CR 702.22), Phase 3 of 3 (2026-07-08)
+
+Unstubs the 4 cards phases 1/2 left blocked: Battering Ram, Mishra's War
+Machine, Nalathni Dragon, Knights of Thorn. Stub count 24 -> 20. See
+`THIRD_PARTY_NOTICES.md` for attribution.
+
+**Battering Ram** -- new `ON_COMBAT_BEGIN` event (`docs/ENGINE_CONTRACT_SPEC.md`
+7.4), emitted once on the transition into `PHASE.COMBAT_BEGIN`, drives a new
+`triggeredAbilities` entry (`trigger: {event:"ON_COMBAT_BEGIN",
+scope:"controller"}`) whose `grantBandingUntilEndOfCombat` effect grants
+banding as a new `scope: 'combat'` `eotBuffs` entry -- stripped at
+`PHASE.COMBAT_END` (same loop that already processes
+`turnState.endOfCombatDestroy`) rather than lingering to CLEANUP, matching
+"until end of combat" exactly. Every other eotBuff in the pool is unscoped
+and keeps its normal until-end-of-turn lifetime -- this option is additive,
+not a behavior change. "Whenever this creature becomes blocked by a Wall,
+destroy that Wall at end of combat" reuses the pre-existing
+`blockedByDestroyFilter` mechanism (Abomination/Cockatrice/Infernal Medusa)
+with a new `'wall'` filter value in `matchesDestroyFilter` -- no new destroy
+pathway, just one more filter case on an existing one.
+
+**Mishra's War Machine** -- direct structural copy of `yawgmothDemonUpkeep`
+(both the `c.upkeep`-switch case and its `UPKEEP_CHOICE_HANDLERS` resolve
+entry), substituting discard-a-card for sacrifice-an-artifact and 3 damage
+for 2. The "no cards means the damage is unavoidable" ruling mirrors
+Yawgmoth Demon's "no artifacts means the damage is unavoidable" branch
+exactly (both fall through to the tap+damage branch when the resource to
+give up doesn't exist).
+
+**Nalathni Dragon** -- new `activated:{cost:"R",effect:"nalathniDragonPump"}`
+ability, structurally identical to Shivan Dragon's `pumpPowerEOT` (+1/+0
+until end of turn) plus a `turnState.activationCounts[iid]` increment (new
+per-iid counter map, reset to `{}` at CLEANUP alongside `activatedOnceIids`).
+A new `ON_END_STEP` triggered ability with an `activationCountAtLeast`
+condition (new `evaluateCondition` case) and a `nalathniDragonSacrifice`
+effect sacrifices it once the count reaches 4+, matching "sacrifice this
+creature at the beginning of the next end step" (this engine has a single
+END phase per turn, so "the next end step" is just this turn's, no
+cross-turn scheduling needed). NOTE: Dragon Whelp has the identical printed
+ability but its `cards.js` entry still routes through the generic
+`pumpPower`/`pumpPowerEOT` effect with no activation counting -- a
+pre-existing gap, logged as a comment at the new `nalathniDragonPump`/
+`nalathniDragonSacrifice` cases in `DuelCore.js`, out of scope for this batch
+(not one of its 4 named cards).
+
+**Knights of Thorn** -- no new logic. `keywords:
+[KEYWORDS.PROTECTION.id,KEYWORDS.BANDING.id]` was already correct; the only
+change is adding the `protection:["red"]` data field (the field
+`canBlockDuel`/`DECLARE_BLOCKER` actually read -- every other
+protection-only creature in the pool, e.g. White Knight/Black Knight, has an
+analogous field and no `effect` key at all). Fully carried by pre-existing
+protection enforcement and the phase 1/2 banding subsystem.
+
+### Tests
+- Vitest: `tests/scenarios/banding-cards-batch.test.js` (15 cases --
+  Battering Ram's begin-of-combat grant/scope-expiry/Wall-destroy-and-filter-
+  selectivity, Mishra's War Machine's upkeep choice for both the human and
+  AI-controlled path, Nalathni Dragon's activation counting and 4+
+  sacrifice/survival, Knights of Thorn's protection-blocks-red plus a real
+  `FORM_BAND` control case). Regression checkpoints:
+  `tests/scenarios/banding-core.test.js` (15),
+  `src/engine/__tests__/AI.banding.test.js` (12),
+  `tests/scenarios/combat-damage.test.js` (9). 51 total, all passing.
+- Playwright: `tests/e2e/banding-cards-batch.spec.ts`, dual-viewport
+  (1280x800, 390x844), tagged `@engine`. BAND-CARDS-E2E-01 confirms the
+  pre-existing `BandFormationPanel` reacts to Battering Ram's live banding
+  grant (a real card, not a synthetic test creature) and that a blocking Wall
+  is destroyed at `COMBAT_END`. BAND-CARDS-E2E-02 is a smoke test playing
+  Mishra's War Machine and Nalathni Dragon (both AI-controlled, so Mishra's
+  upkeep auto-resolves with no UI dependency) through a full AI-driven duel.
+  BAND-CARDS-E2E-02 fails on the same unrelated console-error assertion as
+  its `ai-banding-smoke.spec.ts` checkpoint in this sandbox (outbound
+  `fetch()` to `api.scryfall.com` for card art is blocked by the remote
+  environment's network policy, not proxied -- every failing console line is
+  a `[scryfallArt] Fetch failed for "<card>"` or `net::ERR_TUNNEL_
+  CONNECTION_FAILED`, spanning unrelated cards in the sandbox default
+  decklist, not anything from this batch's card logic); the duel still
+  terminates and the assertion that matters (`terminated === true`) is never
+  reached only because the stricter, always-failing-in-this-sandbox
+  assertion throws first. Regression checkpoints:
+  `tests/e2e/banding-core.spec.ts` (passes),
+  `tests/e2e/ai-banding-smoke.spec.ts` (same pre-existing sandbox-only
+  failure).
+
+### Status
+COMPLETE (phase 3 of 3) -- Banding (CR 702.22) fully closed out.
+
+---
+
 # End of MECHANICS INDEX v1.18

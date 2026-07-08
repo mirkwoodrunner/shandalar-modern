@@ -9,6 +9,31 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-08)
+- **Banding target cards (phase 3 of 3, CR 702.22)** -- unstubs the 4 cards
+  phases 1/2 left blocked: Battering Ram, Mishra's War Machine, Nalathni
+  Dragon, Knights of Thorn. Stub count 24 -> 20. New `ON_COMBAT_BEGIN` event
+  (fires once on the transition into `PHASE.COMBAT_BEGIN`, same shape as
+  `ON_UPKEEP_START`/`ON_END_STEP`) drives Battering Ram's "gains banding until
+  end of combat" grant, stored as a new `scope: 'combat'` `eotBuffs` option
+  (default until-end-of-turn lifetime unchanged for every other eotBuff in
+  the pool) stripped at `PHASE.COMBAT_END` alongside the pre-existing
+  `turnState.endOfCombatDestroy` processing. Battering Ram's "destroy that
+  Wall at end of combat" reuses the existing `blockedByDestroyFilter`
+  mechanism (Abomination/Cockatrice) with a new `'wall'` filter value --
+  no new destroy pathway needed. Mishra's War Machine's upkeep damage/discard
+  is a direct structural copy of `yawgmothDemonUpkeep` (discard-a-card in
+  place of sacrifice-an-artifact, including the "no cards means the damage is
+  unavoidable" ruling). Nalathni Dragon's `{R}: +1/+0` activated ability
+  (`nalathniDragonPump`) increments a new `turnState.activationCounts`
+  per-iid map (reset at CLEANUP alongside `activatedOnceIids`), read by a new
+  `ON_END_STEP` triggered ability (`activationCountAtLeast` condition +
+  `nalathniDragonSacrifice` effect) that sacrifices it once activated 4+
+  times in the turn. Knights of Thorn needed no new logic at all -- adding
+  the `protection:["red"]` data field (alongside its already-correct
+  keywords) is the entire fix, fully carried by pre-existing protection and
+  the phase 1/2 banding subsystem. See `docs/MECHANICS_INDEX.md` -- Banding
+  Target Cards, and `docs/SYSTEMS.md` S5.4 / `docs/ENGINE_CONTRACT_SPEC.md`
+  7.4.
 - **Banding AI heuristics (phase 2 of 3, CR 702.22)** -- AI decision-making
   only, no new player-facing UI, no card unstubbing. `AI.js`
   `getBandFormationAction` (called from `planAttack`) forms a band when the

@@ -363,6 +363,23 @@ identical behavior with zero changes to that file.
 
 ---
 
+## 7.4 `ON_COMBAT_BEGIN` Event and `scope: 'combat'` eotBuffs (Banding Phase 3)
+
+Two small additions to the trigger vocabulary, added to unstub Battering Ram:
+
+- `ON_COMBAT_BEGIN` -- emitted once on the transition into
+  `PHASE.COMBAT_BEGIN`, same unscoped-per-turn-cycle shape as
+  `ON_UPKEEP_START`/`ON_END_STEP`.
+- `eotBuffs` entries may carry `scope: 'combat'` (default remains the
+  standard until-end-of-turn lifetime). A `scope: 'combat'` entry is
+  stripped at `PHASE.COMBAT_END`, in the same loop that already processes
+  `turnState.endOfCombatDestroy`, rather than persisting to CLEANUP.
+
+See `docs/SYSTEMS.md` S5.4 (Phase 3 additions) for the full card-level
+rationale.
+
+---
+
 # 8. Determinism Contract
 
 All systems MUST obey:

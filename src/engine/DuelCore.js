@@ -1435,6 +1435,30 @@ ns = dlog(ns, `${host.name} gets +1/+0 until end of turn.`, "effect");
 }
 break;
 }
+case "nalathniDragonPump": {
+// Nalathni Dragon {R}: +1/+0 until end of turn -- same shape as
+// pumpPowerEOT above, plus turnState.activationCounts[iid] tracking for the
+// "if this ability has been activated four or more times this turn,
+// sacrifice this creature at the beginning of the next end step" clause
+// (see the activationCountAtLeast condition / nalathniDragonSacrifice
+// triggered effect).
+// Adapted from Card-Forge/forge (n/nalathni_dragon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const self = ns[caster].bf.find(c => c.iid === item.card.iid);
+if (self) {
+ns = { ...ns,
+[caster]: { ...ns[caster],
+bf: ns[caster].bf.map(c =>
+c.iid === self.iid
+? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1 }] }
+: c
+),
+},
+};
+ns = { ...ns, turnState: { ...ns.turnState, activationCounts: { ...ns.turnState.activationCounts, [self.iid]: (ns.turnState.activationCounts?.[self.iid] || 0) + 1 } } };
+ns = dlog(ns, `${self.name} gets +1/+0 until end of turn.`, "effect");
+}
+break;
+}
 case "gainFlyingEOT": {
 // Goblin Balloon Brigade R: gains flying until end of turn.
 // Stored in eotBuffs[], purged at CLEANUP. hasKw() reads eotBuffs. SYSTEMS.md S9
@@ -4128,6 +4152,15 @@ let ns = { ...s, phase: next };
 // Mana burns at every phase boundary (Classic rule per GDD Bug B6)
 for (const w of ["p","o"]) ns = burnMana(ns, w, ns.ruleset);
 
+// ON_COMBAT_BEGIN: fires once on the transition into PHASE.COMBAT_BEGIN --
+// same unscoped-per-turn-cycle idiom as ON_END_STEP/ON_UPKEEP_START above.
+// Battering Ram ("at the beginning of combat on your turn, this creature
+// gains banding until end of combat").
+if (next === PHASE.COMBAT_BEGIN) {
+  ns = emitEvent(ns, { type: 'ON_COMBAT_BEGIN', payload: { activePlayer: ns.active } });
+  ns = processTriggerQueue(ns);
+}
+
 // ON_ATTACKS_DECLARED: fires once when leaving COMBAT_ATTACKERS with at least one
 // attacker committed -- the same boundary the B14 skip logic above uses to count
 // declared attackers (s.attackers, pre-transition).
@@ -4192,6 +4225,16 @@ if (next === PHASE.COMBAT_END) {
     }
   }
   ns = { ...ns, turnState: { ...ns.turnState, endOfCombatDestroy: [] } };
+  // scope: 'combat' eotBuffs expire here rather than lingering to CLEANUP's
+  // normal until-end-of-turn wipe -- Battering Ram's "gains banding until end
+  // of combat" grant is narrower than the standard eotBuff lifetime. Default
+  // (unscoped) eotBuffs are untouched and still expire at CLEANUP as before.
+  // Adapted from Card-Forge/forge (b/battering_ram.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.some(b => b.scope === 'combat')
+      ? { ...c, eotBuffs: c.eotBuffs.filter(b => b.scope !== 'combat') }
+      : c) } };
+  }
   // End-of-combat delayed self-sacrifice: Time Elemental ("at end of combat,
   // sacrifice it and it deals 5 damage to you").
   // Adapted from Card-Forge/forge (t/time_elemental.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -4828,6 +4871,30 @@ case "yawgmothDemonUpkeep": {
   }
   break;
 }
+// Mishra's War Machine: "this creature deals 3 damage to you unless you
+// discard a card. If it deals damage to you this way, tap it." Direct
+// structural copy of yawgmothDemonUpkeep above, substituting discard-a-card
+// for sacrifice-an-artifact -- including the "no cards means the damage is
+// unavoidable" ruling (mirrors Yawgmoth Demon's "no artifacts means the
+// damage is unavoidable" case).
+// Adapted from Card-Forge/forge (m/mishras_war_machine.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "mishrasWarMachineUpkeep": {
+  if (w !== ns.active) break;
+  if (w === "o") {
+    const h = ns.o.hand;
+    if (h.length) {
+      const disc = h[h.length - 1];
+      ns = { ...ns, o: { ...ns.o, hand: h.slice(0, -1), gy: [...ns.o.gy, disc] } };
+      ns = dlog(ns, `${c.name}: opponent discards ${disc.name}.`, "effect");
+    } else {
+      ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+      ns = hurt(ns, "o", 3, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "mishrasWarMachineUpkeep", iid: c.iid });
+  }
+  break;
+}
 default: break;
 }
 }
@@ -4892,7 +4959,7 @@ if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
 }
 
 if (next === PHASE.CLEANUP) {
-ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [] } };
+ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
@@ -5075,6 +5142,13 @@ function evaluateCondition(state, card, condition, payload) {
   // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (condition.type === 'auraControllerWasDamaged') {
     return payload.who === card.controller;
+  }
+  // ON_END_STEP: "if this ability has been activated four or more times this
+  // turn" -- Nalathni Dragon. turnState.activationCounts is incremented by
+  // nalathniDragonPump (see resolveEff) and reset to {} at CLEANUP.
+  // Adapted from Card-Forge/forge (n/nalathni_dragon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (condition.type === 'activationCountAtLeast') {
+    return (state.turnState.activationCounts?.[card.iid] || 0) >= (condition.amount ?? 0);
   }
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
@@ -5451,6 +5525,38 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       const { state: ns, copied } = applyPermanentCopy(state, sourceCard.iid, tgtC, { colorOverride: VESUVAN_DOPPELGANGER_COLOR });
       return dlog(ns, `${sourceCard.name} becomes a copy of ${copied.name}.`, 'effect');
     }
+    // Battering Ram: "at the beginning of combat on your turn, this creature
+    // gains banding until end of combat." Stored as a scope:'combat' eotBuff
+    // so it's stripped at PHASE.COMBAT_END rather than lingering to CLEANUP
+    // (see the scope:'combat' handling there).
+    // Adapted from Card-Forge/forge (b/battering_ram.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'grantBandingUntilEndOfCombat': {
+      const who = sourceCard.controller;
+      const s = { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid
+          ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [KEYWORDS.BANDING.id], scope: 'combat' }] }
+          : c
+      ) } };
+      return dlog(s, `${sourceCard.name} gains banding until end of combat.`, 'effect');
+    }
+    // Nalathni Dragon: "if this ability has been activated four or more times
+    // this turn, sacrifice this creature at the beginning of the next end
+    // step." turnState.activationCounts is incremented by nalathniDragonPump
+    // (see resolveEff) and checked by the activationCountAtLeast condition
+    // below. NOTE: Dragon Whelp has the identical printed ability
+    // ("{R}: +1/+0... activated four or more times...") but its cards.js
+    // entry still routes through the generic pumpPower/pumpPowerEOT effect
+    // with no activation counting -- a pre-existing gap, out of scope here
+    // (not one of this batch's 4 cards); a future batch could point it at
+    // nalathniDragonPump/this trigger instead.
+    // Adapted from Card-Forge/forge (n/nalathni_dragon.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'nalathniDragonSacrifice': {
+      const current = getBF(state, sourceCard.iid);
+      if (!current) return state;
+      const who = current.controller;
+      const s = zMove(state, current.iid, who, who, 'gy');
+      return dlog(s, `${sourceCard.name} is sacrificed (activated four or more times this turn).`, 'effect');
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -5679,6 +5785,25 @@ const UPKEEP_CHOICE_HANDLERS = {
       const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
       const ydSrc = getBF(ns, choice.iid);
       return hurt(ns, owner, 2, choice.cardName, ydSrc ? { sourceIid: ydSrc.iid, sourceType: inferSourceType(ydSrc) } : null);
+    },
+  },
+  // Mishra's War Machine: "this creature deals 3 damage to you unless you
+  // discard a card. If it deals damage to you this way, tap it." Direct
+  // structural copy of yawgmothDemonUpkeep above (discard-a-card in place of
+  // sacrifice-an-artifact). choice.iid is the creature.
+  // Adapted from Card-Forge/forge (m/mishras_war_machine.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  mishrasWarMachineUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "DISCARD") {
+        const h = s[owner].hand;
+        if (!h.length) return s;
+        const disc = h[h.length - 1];
+        return { ...s, [owner]: { ...s[owner], hand: h.slice(0, -1), gy: [...s[owner].gy, disc] } };
+      }
+      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
+      const mwmSrc = getBF(ns, choice.iid);
+      return hurt(ns, owner, 3, choice.cardName, mwmSrc ? { sourceIid: mwmSrc.iid, sourceType: inferSourceType(mwmSrc) } : null);
     },
   },
   // Living Artifact: "you may remove a vitality counter. If you do, you gain
@@ -5940,7 +6065,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {}, endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
 triggerQueue: [],
 pendingChoice: null,
 // Suspends processTriggerQueue for a triggered ability that needs a fresh
@@ -6414,13 +6539,18 @@ case "DECLARE_BLOCKER": {
   // becomes blocked by [a filtered creature], destroy that creature at end of
   // combat." card.blocksDestroyFilter checks the OTHER creature when THIS one
   // is declared as a blocker; card.blockedByDestroyFilter checks the blocker
-  // when THIS one is the attacker being blocked. Only fires on a new block
+  // when THIS one is the attacker being blocked. Battering Ram reuses this
+  // same mechanism with the 'wall' filter ("whenever this creature becomes
+  // blocked by a Wall, destroy that Wall at end of combat").
+  // Adapted from Card-Forge/forge (b/battering_ram.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  // Only fires on a new block
   // (not when un-declaring one via the toggle below).
   // Adapted from Card-Forge/forge (a/abomination.txt, i/infernal_medusa.txt,
   // c/cockatrice.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   const matchesDestroyFilter = (card, filter) => {
     if (filter === 'any') return true;
     if (filter === 'nonWall') return !card.subtype?.includes('Wall');
+    if (filter === 'wall') return !!card.subtype?.includes('Wall');
     if (filter === 'greenOrWhite') return card.color === 'G' || card.color === 'W';
     return false;
   };

@@ -356,6 +356,32 @@ first principles in a future session)**:
   restrictions). Same documentation convention as Brainwash's payment-UI
   simplification -- noted here, not built.
 
+**Phase 3 additions (card unstubbing)**: Battering Ram, Mishra's War Machine,
+Nalathni Dragon, and Knights of Thorn are unstubbed, closing out all 3 phases
+of this feature. Two small additions to the trigger vocabulary, both
+structural rather than card-specific:
+- `ON_COMBAT_BEGIN` event, emitted once on the transition into
+  `PHASE.COMBAT_BEGIN` -- same unscoped-per-turn-cycle shape as
+  `ON_UPKEEP_START`/`ON_END_STEP`. Used by Battering Ram's "at the beginning
+  of combat on your turn, this creature gains banding until end of combat."
+- `scope: 'combat'` option on `eotBuffs` entries (default remains the
+  standard until-end-of-turn lifetime, unchanged for every existing eotBuff
+  in the card pool). A `scope: 'combat'` entry is stripped at
+  `PHASE.COMBAT_END`, in the same loop that already processes
+  `turnState.endOfCombatDestroy` -- narrower than the normal CLEANUP-purged
+  lifetime, matching "until end of combat" wording exactly. Battering Ram's
+  banding grant is the only card using it.
+
+Mishra's War Machine's upkeep damage/discard and Battering Ram's blocked-by-
+Wall destruction reuse pre-existing mechanisms unchanged (the
+`yawgmothDemonUpkeep`-style upkeep switch and the `blockedByDestroyFilter`
+end-of-combat-destroy idiom, respectively -- see `docs/MECHANICS_INDEX.md`
+for the full per-card breakdown). Nalathni Dragon adds a
+`turnState.activationCounts` per-iid counter, reset at CLEANUP alongside
+`activatedOnceIids`, read by an `ON_END_STEP` triggered ability. Knights of
+Thorn required no new logic at all -- protection (pre-existing) and banding
+(phases 1/2) fully cover its printed text.
+
 ---
 
 # 6. AI System
