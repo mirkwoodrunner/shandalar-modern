@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
-import { aiDecide } from '../engine/AI.js';
+import { aiDecide, chooseBandingDamageOrder } from '../engine/AI.js';
 import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
@@ -546,6 +546,16 @@ export function useDuelController(
 
     if (s.pendingChoice && s.pendingChoice.controller === 'o') {
       const choice = s.pendingChoice;
+
+      // CR 702.22j/k: banding damage-division order choices. Decision logic
+      // lives in AI.js (chooseBandingDamageOrder); this just dispatches it.
+      // Sits ahead of the pay_gggg-specific logic below so it doesn't fall
+      // through to that unrelated branch or its blind options[0] fallback.
+      if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder') {
+        resolveChoice(chooseBandingDamageOrder(choice, s));
+        return;
+      }
+
       const payOption = choice.options.find((o: any) => o.id === 'pay_gggg');
       const damageOption = choice.options.find((o: any) => o.effect?.type === 'dealDamageToController');
       let aiCanPay = false;
