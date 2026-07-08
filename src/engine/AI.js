@@ -894,6 +894,78 @@ function planMain(state, profile, phase) {
   return { phase, actions };
 }
 
+// --- BANDING (CR 702.22) -------------------------------------------------
+// AI.js remains strictly read-only: this only ever returns a FORM_BAND
+// action for planAttack to append to its plan, it never mutates state.
+
+// Same aggression tier planAttack already uses for other risky/tactical
+// judgment calls (the MCR-evaluated risky-attack branch below).
+const BAND_AGGRESSION_THRESHOLD = 0.8;
+// Banding is only a clear win for the attacker when there's a lower-value
+// creature worth sacrificing (via the 702.22k damage-order choice) to
+// protect a higher-value one -- an evenly-matched pair gains nothing and
+// eats the 702.22h downside (one block now stops the whole group) for free.
+const BAND_VALUE_GAP_RATIO = 0.6;
+
+// getBandFormationAction: decides whether the AI's already-declared attacker
+// set contains a CR 702.22c-legal, value-justified band to form, and if so
+// returns the FORM_BAND action for it (or null). Pure function -- reads
+// `state` and the attackerIds planAttack already committed to, mutates
+// nothing.
+function getBandFormationAction(state, profile, attackerIds) {
+  if (profile.aggression < BAND_AGGRESSION_THRESHOLD) return null;
+  if (attackerIds.length < 2) return null;
+
+  const attackers = attackerIds.map(iid => getBF(state, iid)).filter(Boolean);
+  const bandingMembers = attackers.filter(c => hasKw(c, KEYWORDS.BANDING.id, state));
+  if (!bandingMembers.length) return null;
+
+  const nonBandingMembers = attackers.filter(c => !hasKw(c, KEYWORDS.BANDING.id, state));
+
+  // CR 702.22c: at least one member must have banding, at most one may lack it.
+  let eligible;
+  if (bandingMembers.length >= 2) {
+    eligible = bandingMembers;
+  } else if (nonBandingMembers.length >= 1) {
+    // Only one banding attacker -- pair it with the highest-value non-banding
+    // attacker (the one most worth protecting via the 702.22k choice).
+    const bestPartner = nonBandingMembers.reduce((best, c) =>
+      evaluateCreatureValue(c, state) > evaluateCreatureValue(best, state) ? c : best
+    );
+    eligible = [bandingMembers[0], bestPartner];
+  } else {
+    return null; // lone banding attacker, nobody to band with
+  }
+
+  const values = eligible.map(c => evaluateCreatureValue(c, state));
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  if (lo >= hi * BAND_VALUE_GAP_RATIO) return null; // evenly matched -- skip
+
+  return { type: 'FORM_BAND', iids: eligible.map(c => c.iid) };
+}
+
+// chooseBandingDamageOrder: answers either 702.22j (bandAttackerDamageOrder,
+// the defending player orders the blockers) or 702.22k (bandBlockerDamageOrder,
+// the active player orders the band members) with the same heuristic --
+// lowest evaluateCreatureValue absorbs lethal damage first, so higher-value
+// creatures are spared. `choice` is the full pendingChoice object (kind,
+// options[], each option's `order` array of iids); returns the id of the
+// option whose order matches the ascending-value sort, or the first option
+// if nothing matches (shouldn't happen -- permutations() always covers every
+// ordering of the same recipient set).
+export function chooseBandingDamageOrder(choice, state) {
+  const options = choice?.options || [];
+  if (!options.length) return null;
+  const sorted = [...options[0].order].sort(
+    (a, b) => evaluateCreatureValue(getBF(state, a), state) - evaluateCreatureValue(getBF(state, b), state)
+  );
+  const match = options.find(o =>
+    o.order.length === sorted.length && o.order.every((id, i) => id === sorted[i])
+  );
+  return (match || options[0]).id;
+}
+
 function planAttack(state, profile) {
   const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
   if (!candidates.length) return passPlan(PHASE.COMBAT_ATTACKERS);
@@ -963,13 +1035,29 @@ function planAttack(state, profile) {
 
   if (!attackerIds.length) return passPlan(PHASE.COMBAT_ATTACKERS);
 
+  const actions = [{ type: 'ATTACK', attackerIds, defenderId: 'player' }];
+  const bandAction = getBandFormationAction(state, profile, attackerIds);
+  if (bandAction) actions.push(bandAction);
+  actions.push({ type: 'PASS_PRIORITY' });
+
   return {
     phase: PHASE.COMBAT_ATTACKERS,
-    actions: [
-      { type: 'ATTACK', attackerIds, defenderId: 'player' },
-      { type: 'PASS_PRIORITY' },
-    ],
+    actions,
   };
+}
+
+// getBandRiskPower: the damage a blocker actually risks taking by blocking
+// `att`. CR 702.22h means blocking one band member counts as blocking every
+// member of its band, so the blocker is exposed to the whole band's combined
+// power, not just att's own -- this is distinct from att's own getPow(),
+// which still governs how much damage att itself deals to the *player* if
+// left unblocked (band membership doesn't change that).
+function getBandRiskPower(att, state) {
+  if (!att?.bandId) return getPow(att, state);
+  const members = (state.attackers || [])
+    .map(id => getBF(state, id))
+    .filter(c => c && c.bandId === att.bandId);
+  return members.reduce((sum, c) => sum + getPow(c, state), 0);
 }
 
 function planBlock(state, profile) {
@@ -1035,6 +1123,11 @@ function planBlock(state, profile) {
 
     const ap = getPow(att, state);
     const at = getTou(att, state);
+    // Damage the blocker itself risks taking -- combined band power when att
+    // is banded (702.22h), not just att's own ap. ap stays att's own power
+    // for the player-facing-damage checks below (preventLethal/preventDamage),
+    // which band membership doesn't change.
+    const blockRiskPow = getBandRiskPower(att, state);
 
     const valid = available.filter(b =>
       !alreadyBlocking.has(b.iid) && canBlockDuel(b, att)
@@ -1044,9 +1137,9 @@ function planBlock(state, profile) {
 
     // Priority: favorable trade > survive > prevent lethal > pass
     const favorableTrade = valid.find(b =>
-      getPow(b, state) >= at && getTou(b, state) > ap
+      getPow(b, state) >= at && getTou(b, state) > blockRiskPow
     );
-    const survives = valid.find(b => getTou(b, state) > ap);
+    const survives = valid.find(b => getTou(b, state) > blockRiskPow);
     const preventLethal = state.o.life <= ap ? valid[0] : null;
 
     // Chump fallback: block to prevent free damage even when our blocker dies.
@@ -1343,6 +1436,12 @@ export function aiDecide(state) {
 
       case 'BLOCK': {
         dcActions.push({ type: 'DECLARE_BLOCKER', blId: action.blockerId, attId: action.attackerId });
+        break;
+      }
+
+      case 'FORM_BAND': {
+        // Already a raw DuelCore action (see getBandFormationAction) -- pass through.
+        dcActions.push({ type: 'FORM_BAND', iids: action.iids });
         break;
       }
 

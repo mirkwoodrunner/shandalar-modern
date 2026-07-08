@@ -3705,4 +3705,78 @@ COMPLETE (phase 1 of 3)
 
 ---
 
+## Banding AI Heuristics (CR 702.22), Phase 2 of 3 (2026-07-08)
+
+AI decision-making only -- no new player-facing UI, no card unstubbing
+(phase 3: Battering Ram, Mishra's War Machine, Nalathni Dragon, Knights of
+Thorn). Replaces phase 1's "AI never forms a band, both choices default to
+`options[0]`" placeholder with real heuristics, all in `src/engine/AI.js`
+(pure functions, no `GameState` mutation) plus a thin dispatch branch in
+`src/hooks/useDuelController.ts`.
+
+**Band formation (`planAttack`):** new `getBandFormationAction(state,
+profile, attackerIds)`, called after `planAttack`'s existing attacker-set
+logic decides `attackerIds`. Gated to `profile.aggression >= 0.8` (same tier
+`planAttack` already uses for its MCR-evaluated risky-attack branch) --
+below that, never forms a band. At or above it, builds the CR
+702.22c-eligible set from the attacker set (all banding-keyword attackers if
+2+, or the lone banding attacker paired with the highest-value non-banding
+attacker if only one exists) and only forms the band if the lowest
+`evaluateCreatureValue` score in that set is under 60% of the highest
+(`BAND_VALUE_GAP_RATIO`) -- an evenly-matched pair gains nothing from
+banding and eats the 702.22h downside (one block stops the whole group) for
+free. Dispatches the existing `FORM_BAND` action; no new action type. `AITurnPlan`'s
+`aiDecide()` compatibility adapter gained a `FORM_BAND` passthrough case
+(it was already a raw DuelCore action, just needed a switch case so it
+doesn't fall into the "unknown action type" warning).
+
+**Both damage-division choices:** new exported `chooseBandingDamageOrder(choice,
+state)` answers `bandAttackerDamageOrder` (CR 702.22j) and
+`bandBlockerDamageOrder` (CR 702.22k) with the same rule -- picks the option
+whose `order` array sorts ascending by `evaluateCreatureValue`, so the
+lowest-value creature absorbs lethal damage first and higher-value creatures
+are spared. Wired into `useDuelController.ts`'s existing `pendingChoice.controller
+=== 'o'` branch as a new case ahead of the pre-existing `pay_gggg`-specific
+logic (untouched, still the fallback for that unrelated choice kind).
+
+**`planBlock` band-power awareness:** new `getBandRiskPower(att, state)` --
+returns the combined `getPow()` of every live creature sharing `att.bandId`
+(or just `att`'s own power if unbanded). The per-candidate block-risk
+comparisons (`favorableTrade`/`survives`, both checking whether the
+candidate blocker's toughness exceeds the damage it's about to take) now use
+this instead of the attacker's own power, since CR 702.22h means blocking
+one band member exposes the blocker to the whole band's damage. The
+player-facing-damage checks (`preventLethal`, the chump-threshold
+`preventDamage`) still use the attacker's own unmodified power -- an
+unblocked band member still only deals its own damage to the player, band
+membership doesn't change that. The aggregate lethal-check chump pass
+(unrelated -- it sums each attacker's own power, which banding doesn't
+change) is untouched.
+
+### Tests
+- Vitest: `src/engine/__tests__/AI.banding.test.js` (12 cases -- aggression
+  and value-spread gating for band formation, the mixed banding/non-banding
+  eligible-set case, both `chooseBandingDamageOrder` choice kinds, three
+  `planBlock` band-power-awareness cases, and two no-banding-present control
+  cases). Regression checkpoints: `src/engine/__tests__/AI.attack.test.js`
+  (4), `src/engine/__tests__/AI.sim.test.js` (5),
+  `src/hooks/__tests__/ai-driver-blockers-gating.test.ts` (3). 24 total, all
+  passing.
+- Playwright: `tests/e2e/ai-banding-smoke.spec.ts`, dual-viewport (1280x800,
+  390x844), tagged `@engine`. Drives the AI through the real
+  `useDuelController` loop (not a direct `AI.js`/`DuelCore` call), confirms
+  it actually forms a band during `COMBAT_ATTACKERS` for a value-gap pair,
+  then plays the duel to completion. Regression checkpoint:
+  `tests/e2e/ai-creature-evaluation-smoke.spec.ts`. Both this spec and its
+  checkpoint fail on an unrelated console-error assertion in this sandbox
+  (outbound `fetch()` to `api.scryfall.com` from the browser page is blocked
+  by the remote environment's network policy, not proxied) -- the
+  band-formation assertion itself passes before that unrelated check runs;
+  see the phase-2 completion summary for detail.
+
+### Status
+COMPLETE (phase 2 of 3)
+
+---
+
 # End of MECHANICS INDEX v1.18

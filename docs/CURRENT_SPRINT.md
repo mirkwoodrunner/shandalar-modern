@@ -9,6 +9,28 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-08)
+- **Banding AI heuristics (phase 2 of 3, CR 702.22)** -- AI decision-making
+  only, no new player-facing UI, no card unstubbing. `AI.js`
+  `getBandFormationAction` (called from `planAttack`) forms a band when the
+  AI's already-declared attacker set has 2+ CR 702.22c-eligible members
+  (aggression >= 0.8, same tier already used elsewhere in `planAttack`) and
+  there's a meaningful value gap between the lowest and highest
+  `evaluateCreatureValue` scores in that eligible set (lowest under 60% of
+  highest); dispatches the existing `FORM_BAND` action, no new action type.
+  New exported `chooseBandingDamageOrder(choice, state)` answers both
+  702.22j/k `pendingChoice` kinds identically -- lowest-value-first order, so
+  a lower-value creature absorbs lethal damage to spare a higher-value one --
+  wired into `useDuelController.ts`'s existing `pendingChoice.controller ===
+  'o'` branch as a new `bandAttackerDamageOrder`/`bandBlockerDamageOrder`
+  case ahead of the pre-existing `pay_gggg`-specific logic, which is
+  otherwise untouched. `planBlock` now uses a new `getBandRiskPower` helper
+  so a per-candidate block-risk comparison against a banded attacker accounts
+  for the whole band's combined power (CR 702.22h: blocking one member blocks
+  them all), not just the targeted member's own power -- the aggregate
+  lethal-check pass was already correct and is untouched. `AI.js` remains
+  strictly read-only; every addition is a pure function, `DuelCore.js`
+  remains the sole mutator via the existing `FORM_BAND`/`RESOLVE_CHOICE`
+  actions. See `docs/MECHANICS_INDEX.md` -- Banding AI heuristics.
 - **Banding core subsystem (phase 1 of 3, CR 702.22)** -- structural combat-
   engine addition, not a card batch. New `bandId` field + `FORM_BAND` action
   (band formation validity per 702.22c) in `DuelCore.js`; a live-computed
