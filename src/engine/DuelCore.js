@@ -591,6 +591,8 @@ export function recomputeTypeEffects(state) {
         lostCombatIids.push(c.iid);
         next.attacking = false;
         next.blocking = null;
+        // CR 702.22f: removed from combat means removed from its band too.
+        next.bandId = null;
       }
       return next;
     });
@@ -3430,7 +3432,7 @@ case "mindBomb": {
 // Forcefield: "{1}: The next time an unblocked creature of your choice would
 // deal combat damage to you this turn, prevent all but 1 of that damage."
 case "forcefieldShield": {
-  const isUnblocked = tgtC && tgtC.attacking && ![...ns.p.bf, ...ns.o.bf].some(c => c.blocking === tgtC.iid);
+  const isUnblocked = tgtC && tgtC.attacking && getEffectiveBlockers(ns, tgtC.iid).length === 0;
   if (isUnblocked) {
     ns = { ...ns, [caster]: { ...ns[caster], combatDamageShield: { sourceIid: tgtC.iid, allowThrough: 1, cardName: card.name } } };
     ns = dlog(ns, `${card.name}: shields against ${tgtC.name} (all but 1 damage prevented).`, "effect");
@@ -3653,6 +3655,157 @@ default:      ns = dlog(ns, `${card.name} resolves.`, "effect");
 return ns;
 }
 
+// --- BANDING (CR 702.22) -----------------------------------------------------
+// Band membership is looked up live against s.attackers/bandId rather than
+// cached at declaration time, so CR 702.22f ("a creature removed from combat
+// is also removed from its band") and 702.22e ("a band lasts the rest of
+// combat even if banding is later removed from a member") both fall out for
+// free -- membership only depends on (a) still being in s.attackers and
+// (b) still carrying the bandId assigned at FORM_BAND time, never on still
+// having the banding keyword.
+// SIMPLIFICATION: the "bands with other [quality]" variant (702.22b/c) is not
+// modeled -- no card in this project's pool uses it. Banding also does not
+// let a band satisfy a blocker's "must block a specific creature" restriction
+// -- out of scope for this phase. See docs/SYSTEMS.md Banding section.
+
+// getBandMemberIds: all currently-attacking iids sharing attId's bandId (or
+// just [attId] if it isn't banded). Dead/removed members drop out naturally
+// because getBF returns null for them and null?.bandId never matches.
+function getBandMemberIds(ns, attId) {
+  const att = getBF(ns, attId);
+  if (!att?.bandId) return [attId];
+  return ns.attackers.filter(id => getBF(ns, id)?.bandId === att.bandId);
+}
+
+// getEffectiveBlockers (CR 702.22h/i): every creature blocking ANY member of
+// attId's band counts as blocking attId too. Recomputing this live on every
+// call (rather than caching at block-declaration time) is what makes it cover
+// 702.22i ("becomes blocked due to an effect") for free.
+function getEffectiveBlockers(ns, attId) {
+  const members = getBandMemberIds(ns, attId);
+  return [...ns.p.bf, ...ns.o.bf].filter(c => members.includes(c.blocking));
+}
+
+// Small helper: all permutations of a short array. Band/blocker-side recipient
+// counts in this card pool are tiny (2-3), so a plain permutation list is
+// simpler and safer than a generic reorder-UI widget.
+function permutations(arr) {
+  if (arr.length <= 1) return [arr];
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const p of permutations(rest)) out.push([arr[i], ...p]);
+  }
+  return out;
+}
+
+// Resolves a stored damage-assignment order against the CURRENT recipient
+// set, preserving as much of the stored relative order as survived (a
+// recipient can only have left the set by dying between the first-strike and
+// regular damage passes -- see the resolveCombat gating comment below).
+function resolveStoredOrder(storedOrder, recipients) {
+  if (!storedOrder) return recipients;
+  const filtered = storedOrder.filter(id => recipients.includes(id));
+  return filtered.length === recipients.length ? filtered : recipients;
+}
+
+// CR 702.22j: if any of attId's blockers has banding, the DEFENDING player
+// (not the attacker's controller) chooses how attId's damage is divided
+// among them. Only meaningful with 2+ blockers -- a single blocker has
+// nothing to divide between.
+function bandAttackerChoiceKey(attId) { return `att_${attId}`; }
+// CR 702.22k: if a blocker is blocking 2+ band members (via 702.22h
+// propagation), the ACTIVE player chooses how the blocker's damage is
+// divided among them.
+function bandBlockerChoiceKey(blId) { return `blk_${blId}`; }
+
+// getNextBandingChoice: scans current combat for the first still-unanswered
+// 702.22j/k choice, or null if none remain. "Unanswered" = no entry yet in
+// ns.turnState.combatDamageOrders under that interaction's key. Called once
+// before the first-strike pass and again before the regular pass (deaths
+// during first strike can only shrink a recipient set, never introduce a
+// pairing that wasn't already a candidate, so no third check is needed).
+function getNextBandingChoice(ns) {
+  const answered = ns.turnState?.combatDamageOrders || {};
+  for (const attId of ns.attackers) {
+    const att = getBF(ns, attId);
+    if (!att || !isCre(att)) continue;
+    const blockers = getEffectiveBlockers(ns, attId);
+    const key = bandAttackerChoiceKey(attId);
+    if (blockers.length >= 2 && blockers.some(b => hasKw(b, KEYWORDS.BANDING.id, ns)) && !answered[key]) {
+      const defW = att.controller === 'p' ? 'o' : 'p';
+      return {
+        sourceCardId: attId,
+        controller: defW,
+        kind: 'bandAttackerDamageOrder',
+        key,
+        options: permutations(blockers.map(b => b.iid)).map((order, i) => ({
+          id: `order_${i}`,
+          order,
+          label: order.map(id => getBF(ns, id)?.name || id).join(' -> '),
+        })),
+      };
+    }
+  }
+  const seenBlockers = new Set();
+  for (const w of ['p', 'o']) {
+    for (const bl of ns[w].bf) {
+      if (!bl.blocking || seenBlockers.has(bl.iid)) continue;
+      seenBlockers.add(bl.iid);
+      const recipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+      const key = bandBlockerChoiceKey(bl.iid);
+      if (recipients.length >= 2 && !answered[key]) {
+        return {
+          sourceCardId: bl.iid,
+          controller: ns.active,
+          kind: 'bandBlockerDamageOrder',
+          key,
+          options: permutations(recipients).map((order, i) => ({
+            id: `order_${i}`,
+            order,
+            label: order.map(id => getBF(ns, id)?.name || id).join(' -> '),
+          })),
+        };
+      }
+    }
+  }
+  return null;
+}
+
+// computeBandBlockerShares: for every blocker effectively blocking 2+ band
+// members, precompute how much of its power each member receives (CR
+// 702.22k), using the same lethal-then-remainder assignment order already
+// used elsewhere in this file for an attacker dividing damage among multiple
+// blockers. Computed once per pass, off the pass's pre-damage snapshot, so
+// re-deriving it per attId iteration can't see partially-applied damage from
+// a sibling band member processed earlier in the same pass. Blockers with a
+// single recipient are skipped entirely -- callers fall back to dealing full
+// power, identical to pre-banding behavior.
+function computeBandBlockerShares(ns) {
+  const shareMap = {};
+  const answered = ns.turnState?.combatDamageOrders || {};
+  const seenBlockers = new Set();
+  for (const w of ['p', 'o']) {
+    for (const bl of ns[w].bf) {
+      if (!bl.blocking || seenBlockers.has(bl.iid)) continue;
+      seenBlockers.add(bl.iid);
+      const recipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+      if (recipients.length <= 1) continue;
+      const order = resolveStoredOrder(answered[bandBlockerChoiceKey(bl.iid)], recipients);
+      const bp = getPow(bl, ns);
+      let rem = bp;
+      for (const rid of order) {
+        const rCard = getBF(ns, rid);
+        const lethal = Math.max(0, getTou(rCard, ns) - (rCard?.damage || 0));
+        const share = Math.min(rem, lethal);
+        shareMap[`${bl.iid}|${rid}`] = share;
+        rem = Math.max(0, rem - share);
+      }
+    }
+  }
+  return shareMap;
+}
+
 // --- COMBAT RESOLUTION -------------------------------------------------------
 
 export function resolveCombat(s) {
@@ -3666,11 +3819,18 @@ for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => 
 return ns;
 }
 
+// Pause for an unanswered CR 702.22j/k damage-division choice before doing any
+// damage math. Re-entrant: RESOLVE_CHOICE stores the answer and calls
+// resolveCombat again, so this runs once per still-unanswered choice.
+const bandingChoice = getNextBandingChoice(ns);
+if (bandingChoice) return createPendingChoice(ns, bandingChoice);
+
 ns = dlog(ns, "First strike damage.", "combat");
 
 const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
 // Spirit Link: returns 1 when host has a Spirit Link aura (caller multiplies by damage dealt).
 const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink) ? 1 : 0;
+const fsBlockerShares = computeBandBlockerShares(ns);
 
 // First-strike pass: only combatants with FIRST_STRIKE deal their damage here.
 for (const attId of ns.attackers) {
@@ -3683,7 +3843,9 @@ const ap = getPow(att, ns);
 const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
 const hasLifelink = hasKw(att, KEYWORDS.LIFELINK.id) || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
-const blockers = ns[defW].bf.filter(c => c.blocking === attId);
+const rawBlockers = getEffectiveBlockers(ns, attId);
+const attOrder = resolveStoredOrder((ns.turnState?.combatDamageOrders || {})[bandAttackerChoiceKey(attId)], rawBlockers.map(b => b.iid));
+const blockers = attOrder.map(id => rawBlockers.find(b => b.iid === id));
 const attGaseous = isGaseous(att);
 const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
@@ -3703,6 +3865,12 @@ if (!blockers.length) {
   for (const bl of blockers) {
     const blGaseous = isGaseous(bl);
     const bp = getPow(bl, ns);
+    // CR 702.22k: if bl is blocking 2+ band members (via 702.22h propagation),
+    // its power is divided among them instead of dealt in full to each --
+    // fsBlockerShares is empty/absent for an ordinary single-recipient block,
+    // so bpForAtt === bp there and nothing about non-banding combat changes.
+    const bandRecipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+    const bpForAtt = bandRecipients.length > 1 ? (fsBlockerShares[`${bl.iid}|${attId}`] ?? 0) : bp;
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
     const blFS = hasKw(bl, KEYWORDS.FIRST_STRIKE.id);
@@ -3717,10 +3885,10 @@ if (!blockers.length) {
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
     // specific creature from dealing (source-side), independent of the gaseous receiver checks.
     if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && blFS) {
-      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bp) } : c) } };
-      if (bp > 0) {
-        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
-        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bpForAtt) } : c) } };
+      if (bpForAtt > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bpForAtt, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bpForAtt, combat: true } });
         if (bl.name === "Sengir Vampire") {
           ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), attId] } };
         }
@@ -3739,7 +3907,7 @@ if (!blockers.length) {
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) rem = Math.max(0, rem - dbl);
     if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bp, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bpForAtt > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
@@ -3752,6 +3920,7 @@ ns = checkDeath(ns);
 
 // Regular damage pass: combatants without FIRST_STRIKE deal their damage here.
 ns = dlog(ns, "Combat damage resolving.", "combat");
+const regBlockerShares = computeBandBlockerShares(ns);
 
 for (const attId of ns.attackers) {
 const att = getBF(ns, attId);
@@ -3763,7 +3932,9 @@ const ap = getPow(att, ns);
 const actrl = att.controller;
 const defW = actrl === "p" ? "o" : "p";
 const hasLifelink = hasKw(att, KEYWORDS.LIFELINK.id) || (ns.castleMod?.name === "Death's Embrace" && actrl === "o");
-const blockers = ns[defW].bf.filter(c => c.blocking === attId);
+const rawBlockers2 = getEffectiveBlockers(ns, attId);
+const attOrder2 = resolveStoredOrder((ns.turnState?.combatDamageOrders || {})[bandAttackerChoiceKey(attId)], rawBlockers2.map(b => b.iid));
+const blockers = attOrder2.map(id => rawBlockers2.find(b => b.iid === id));
 const attGaseous = isGaseous(att);
 const attFS = hasKw(att, KEYWORDS.FIRST_STRIKE.id);
 
@@ -3783,6 +3954,8 @@ if (!blockers.length) {
   for (const bl of blockers) {
     const blGaseous = isGaseous(bl);
     const bp = getPow(bl, ns);
+    const bandRecipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+    const bpForAtt = bandRecipients.length > 1 ? (regBlockerShares[`${bl.iid}|${attId}`] ?? 0) : bp;
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
     const blFS = hasKw(bl, KEYWORDS.FIRST_STRIKE.id);
@@ -3797,10 +3970,10 @@ if (!blockers.length) {
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
     // specific creature from dealing (source-side), independent of the gaseous receiver checks.
     if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !blFS) {
-      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bp) } : c) } };
-      if (bp > 0) {
-        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bp, turnId: ns.turn }] } };
-        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bp, combat: true } });
+      ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bpForAtt) } : c) } };
+      if (bpForAtt > 0) {
+        ns = { ...ns, turnState: { ...ns.turnState, damageLog: [...ns.turnState.damageLog, { sourceId: bl.iid, targetId: attId, amount: bpForAtt, turnId: ns.turn }] } };
+        ns = emitEvent(ns, { type: 'ON_DAMAGE_DEALT', payload: { sourceId: bl.iid, targetId: attId, amount: bpForAtt, combat: true } });
         if (bl.name === "Sengir Vampire") {
           ns = { ...ns, turnState: { ...ns.turnState, sengirDamagedIids: [...(ns.turnState.sengirDamagedIids || []), attId] } };
         }
@@ -3819,7 +3992,7 @@ if (!blockers.length) {
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) rem = Math.max(0, rem - dbl);
     if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
     if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bp > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bp, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bpForAtt > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
     if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
@@ -3858,7 +4031,7 @@ for (const w of ['p', 'o']) {
 }
 // Murk Dwellers: gets +2/+0 when attacks and isn't blocked.
 for (const attId of ns.attackers) {
-  const isBlocked = Object.values(ns.blockers || {}).flat().includes(attId);
+  const isBlocked = getEffectiveBlockers(ns, attId).length > 0;
   if (!isBlocked) {
     for (const w of ['p', 'o']) {
       const c = ns[w].bf.find(x => x.iid === attId && x.name === 'Murk Dwellers');
@@ -3874,6 +4047,35 @@ ns = checkDeath(ns);
 ns = { ...ns, attackers:[], blockers:{} };
 for (const w of ["p","o"]) ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => ({ ...c, attacking:false, blocking:null })) } };
 return ns;
+}
+
+// Runs once combat damage has actually resolved (resolveCombat returned with
+// no pendingChoice) -- shared by advPhase's normal COMBAT_DAMAGE transition
+// and by RESOLVE_CHOICE, which re-invokes resolveCombat after storing a
+// 702.22j/k damage-order answer and must run these same post-steps once no
+// further choice is pending.
+function finishCombatDamagePostSteps(ns) {
+  // ON_DAMAGE_DEALT triggers (El-Hajjaj, "whenever this creature deals damage,
+  // you gain that much life") are queued by emitEvent() calls inside
+  // resolveCombat() but were never actually processed anywhere -- this is the
+  // first card needing that queue drained. Safe to add unconditionally: no
+  // pre-existing triggeredAbilities entry keys off ON_DAMAGE_DEALT (Sengir
+  // Vampire's counter uses a separate hardcoded ON_CREATURE_DIES path).
+  ns = processTriggerQueue(ns);
+  for (const iid of ns.turnState.mustAttackEligible ?? []) {
+    if (!ns.turnState.attackedThisCombat.includes(iid)) {
+      const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
+      if (who) {
+        const c = ns[who].bf.find(x => x.iid === iid);
+        ns = zMove(ns, iid, who, who, 'gy');
+        ns = dlog(ns, `${c?.name ?? iid} destroyed for failing to attack.`, 'effect');
+      }
+    }
+  }
+  // Check win conditions after combat damage resolves.
+  const combatWin = checkWinConditions(ns);
+  if (combatWin && !ns.over) ns = { ...ns, over: { winner: combatWin.winner, reason: combatWin.reason } };
+  return ns;
 }
 
 // --- PHASE ADVANCEMENT -------------------------------------------------------
@@ -4038,27 +4240,12 @@ if (next === PHASE.END) {
 
 if (next === PHASE.COMBAT_DAMAGE) {
 ns = resolveCombat(ns);
-// ON_DAMAGE_DEALT triggers (El-Hajjâj, "whenever this creature deals damage,
-// you gain that much life") are queued by emitEvent() calls inside
-// resolveCombat() but were never actually processed anywhere -- this is the
-// first card needing that queue drained. Safe to add unconditionally: no
-// pre-existing triggeredAbilities entry keys off ON_DAMAGE_DEALT (Sengir
-// Vampire's counter uses a separate hardcoded ON_CREATURE_DIES path).
-ns = processTriggerQueue(ns);
-for (const iid of ns.turnState.mustAttackEligible ?? []) {
-  if (!ns.turnState.attackedThisCombat.includes(iid)) {
-    const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
-    if (who) {
-      const c = ns[who].bf.find(x => x.iid === iid);
-      ns = zMove(ns, iid, who, who, 'gy');
-      ns = dlog(ns, `${c?.name ?? iid} destroyed for failing to attack.`, 'effect');
-    }
-  }
-}
-// Check win conditions after combat damage resolves.
-const combatWin = checkWinConditions(ns);
-if (combatWin && !ns.over) ns = { ...ns, over: { winner: combatWin.winner, reason: combatWin.reason } };
-return ns;
+// A CR 702.22j/k damage-division choice is pending (see getNextBandingChoice
+// in resolveCombat) -- combat hasn't actually resolved yet. Stay here; once
+// RESOLVE_CHOICE answers it, that handler re-invokes resolveCombat and runs
+// finishCombatDamagePostSteps itself once combat truly finishes.
+if (ns.pendingChoice) return ns;
+return finishCombatDamagePostSteps(ns);
 }
 
 if (turnChange) {
@@ -4072,7 +4259,7 @@ ns = { ...ns, active: nx };
 ns = dlog(ns, `-- Turn ${ns.turn + 1} — ${nx} --`, "phase");
 }
 ns = { ...ns, turn: ns.turn + 1, landsPlayed: 0, attackers: [], blockers: {}, spellsThisTurn: 0,
-  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [] } };
+  turnState: { ...ns.turnState, sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], combatDamageOrders: {} } };
 // Island Sanctuary: protection lasts "until your next turn" -- cleared once
 // that player's own turn comes back around.
 if (ns[ns.active].islandSanctuaryProtected) {
@@ -5753,7 +5940,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [] },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
 triggerQueue: [],
 pendingChoice: null,
 // Suspends processTriggerQueue for a triggered ability that needs a fresh
@@ -6157,11 +6344,39 @@ case "DECLARE_ATTACKER": {
   // sacrifice it and it deals 5 damage to you." Only queued on a NEW attack
   // declaration (not when un-declaring via the toggle above).
   // Adapted from Card-Forge/forge (t/time_elemental.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-  let ns3 = { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id), ...goblinRockSledFlag } : x) } };
+  // CR 702.22f: un-declaring an attacker removes it from combat, so any band
+  // it had joined this combat is left behind too.
+  const bandIdReset = att ? { bandId: null } : {};
+  let ns3 = { ...s, attackers: atts, turnState: { ...s.turnState, attackedThisCombat: atc }, [side]: { ...s[side], bf: s[side].bf.map(x => x.iid === action.iid ? { ...x, attacking: !att, tapped: !att && !hasKw(x, KEYWORDS.VIGILANCE.id), ...goblinRockSledFlag, ...bandIdReset } : x) } };
   if (!att && c.sacrificeAtEndOfCombat) {
     ns3 = { ...ns3, turnState: { ...ns3.turnState, endOfCombatSacrifice: [...(ns3.turnState.endOfCombatSacrifice || []), c.iid] } };
   }
   return ns3;
+}
+
+// CR 702.22c: declares one new band from a set of currently-declared attacker
+// iids, all controlled by the active player. One call = one band; a player
+// may call this repeatedly during the same declare-attackers step to form
+// several bands. Membership itself is looked up live elsewhere (see the
+// banding helpers above resolveCombat) -- this action only records the
+// grouping via a shared bandId.
+case "FORM_BAND": {
+  if (s.phase !== PHASE.COMBAT_ATTACKERS) return s;
+  const iids = Array.isArray(action.iids) ? [...new Set(action.iids)] : [];
+  if (iids.length < 1) return s;
+  const side = s.active;
+  const members = iids.map(iid => s[side].bf.find(c => c.iid === iid));
+  if (members.some(c => !c)) return dlog(s, "Can't form a band -- a selected creature isn't on the battlefield.", "rule");
+  if (members.some(c => !s.attackers.includes(c.iid))) return dlog(s, "Can't form a band -- every member must be a declared attacker.", "rule");
+  if (members.some(c => c.bandId)) return dlog(s, "Can't form a band -- a selected creature is already in a band this combat.", "rule");
+  const withBanding = members.filter(c => hasKw(c, KEYWORDS.BANDING.id, s));
+  const withoutBanding = members.filter(c => !hasKw(c, KEYWORDS.BANDING.id, s));
+  if (withBanding.length < 1) return dlog(s, "Can't form a band -- at least one member must have banding.", "rule");
+  if (withoutBanding.length > 1) return dlog(s, "Can't form a band -- at most one member may lack banding.", "rule");
+  const bandId = `band_${makeId()}`;
+  let ns = { ...s, [side]: { ...s[side], bf: s[side].bf.map(c => iids.includes(c.iid) ? { ...c, bandId } : c) } };
+  ns = dlog(ns, `${side} forms a band: ${members.map(c => c.name).join(', ')}.`, "effect");
+  return ns;
 }
 
 case "DECLARE_BLOCKER": {
@@ -6928,6 +7143,25 @@ case "USE_CHANNEL": {
 case "RESOLVE_CHOICE": {
   if (!s.pendingChoice) return s;
   const choice = s.pendingChoice;
+
+  // CR 702.22j/k: banding damage-division order choices, created directly by
+  // resolveCombat (getNextBandingChoice) rather than from a triggered ability.
+  // Stores the chosen order under its key in turnState.combatDamageOrders,
+  // then re-invokes resolveCombat -- either another still-unanswered choice
+  // comes back (kind/options differ, same pendingChoice shape) or combat
+  // actually resolves, in which case the post-steps normally run from
+  // advPhase's COMBAT_DAMAGE transition run here instead.
+  if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder') {
+    const chosen = choice.options.find(o => o.id === action.optionId) || choice.options[0];
+    let ns = {
+      ...s,
+      pendingChoice: null,
+      turnState: { ...s.turnState, combatDamageOrders: { ...(s.turnState.combatDamageOrders || {}), [choice.key]: chosen.order } },
+    };
+    ns = resolveCombat(ns);
+    if (!ns.pendingChoice) ns = finishCombatDamagePostSteps(ns);
+    return ns;
+  }
 
   // Alchor's Tomb: color choice created directly from resolveEff (colorChoiceTarget),
   // not a triggered ability. Resolves by setting the targeted permanent's color

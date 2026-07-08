@@ -260,6 +260,104 @@ Combat is resolved entirely by DuelCore:
 
 ---
 
+## 5.4 Banding (CR 702.22)
+
+Core subsystem only (phase 1 of 3) -- no card's own stub effect (Battering Ram,
+Mishra's War Machine, Nalathni Dragon, Knights of Thorn) is unstubbed here.
+Several non-stub cards already carry the BANDING keyword (Mesa Pegasus,
+Benalish Hero, Pikemen, War Elephant, Timber Wolves, Camel, Fortified Area's
+grant to Walls, Helm of Chatzuk's temporary grant), so this is live gameplay
+behavior, not a no-op keyword tag.
+
+**Data model**: attacking creatures carry an optional `bandId` field (string,
+default null). Members of the same band share the same `bandId`, assigned by
+`FORM_BAND` (see below). Band membership is never cached -- every helper
+computes it live off `s.attackers` + each card's current `bandId`, which is
+what makes 702.22e ("a band lasts the rest of combat even if banding is later
+removed from a member") and 702.22f ("a creature removed from combat is also
+removed from its band") fall out for free, with no separate bookkeeping.
+
+**`FORM_BAND` action** (`{ type: 'FORM_BAND', iids: string[] }`, dispatched
+only during `COMBAT_ATTACKERS`): declares one new band from currently-declared
+attacker iids belonging to the active player. Validity per CR 702.22c: every
+iid must be a declared attacker, none may already have a `bandId`, at least
+one member must have banding, and at most one member may lack it. One call
+forms one band; a player may call it repeatedly in the same declare-attackers
+step to form several bands. Un-declaring an attacker (`DECLARE_ATTACKER`
+toggle-off) clears its `bandId` (702.22f).
+
+**Propagation helpers** (`getBandMemberIds`, `getEffectiveBlockers` in
+DuelCore.js, just above `resolveCombat`): `getEffectiveBlockers(ns, attId)`
+returns every creature blocking *any* member of attId's band, not just attId
+itself -- this is CR 702.22h/i. Because it's a live computed query rather than
+something that only fires at block-declaration time, it also covers 702.22i
+("becomes blocked due to an effect") automatically. It replaces every
+"is this attacker blocked" check in `resolveCombat` (`!blockers.length` branch
+in both the first-strike and regular damage passes) plus the Forcefield
+`isUnblocked` check and the Murk Dwellers "attacked and isn't blocked" check.
+
+**Damage-division choices** (CR 702.22j/k): two new `pendingChoice` kinds,
+created directly by `resolveCombat` via `getNextBandingChoice` (not from a
+triggered ability):
+
+- `bandAttackerDamageOrder` (702.22j): queued when an attacker has 2+
+  effective blockers and at least one of them has banding. Normally the
+  attacker's controller's order governs damage assignment; here the
+  **defending** player picks the order instead (`options` are the 2+
+  permutations of the blocker set; `controller` is the defending side).
+- `bandBlockerDamageOrder` (702.22k): queued when a blocker is effectively
+  blocking 2+ band members (via 702.22h propagation). The **active** player
+  picks the order the blocker's power is divided among them (`options` are
+  permutations of the recipient set; `controller` is `s.active`).
+
+Both are gated to require 2+ candidates -- with only one blocker or one
+recipient there is nothing to divide, so no prompt is created and behavior is
+identical to before this feature. Chosen orders are stored in
+`turnState.combatDamageOrders` (keyed `att_<iid>` / `blk_<iid>`) and consumed
+by the same lethal-then-remainder damage-assignment loop already used
+elsewhere in `resolveCombat` -- only the order fed into that loop changes.
+
+`resolveCombat` is re-entrant: it checks for an unanswered choice before doing
+any damage math and, if one exists, returns with `pendingChoice` set instead
+of mutating anything. `RESOLVE_CHOICE` stores the answer and calls
+`resolveCombat` again; this repeats until no choice remains, at which point
+combat actually resolves and the shared `finishCombatDamagePostSteps` helper
+runs (trigger queue drain, must-attack-eligible cleanup, win check) -- shared
+between `advPhase`'s normal `COMBAT_DAMAGE` transition and `RESOLVE_CHOICE`'s
+resumption path.
+
+**AI**: `AI.js` is untouched (still strictly read-only) and never calls
+`FORM_BAND`, so the AI never forms a band. Neither damage-division choice is
+AI-aware by design -- `DuelCore.js` has no notion of "AI-controlled side" at
+all (that's a controller-layer concept). Both choices are still always
+offered, with option index 0 always equal to the natural/pre-existing order
+(the `permutations()` helper is defined so its first result is always the
+input array's own order). `useDuelController.ts`'s existing generic AI
+pendingChoice fallback (picks `options[0]` for any `pendingChoice.controller
+=== 'o'`) reproduces the original automatic order with no changes to that
+file. Phase 2 will replace this default with real AI heuristics for both
+band formation and both choices.
+
+**UI**: `BandFormationPanel` (`src/ui/Card/` desktop, `src/ui/Mobile/`
+mobile) renders during `COMBAT_ATTACKERS` only when a declared attacker
+actually has banding; it lets the active human player toggle a subset of
+not-yet-banded attackers and dispatches `FORM_BAND`. The 702.22j/k choices
+need no new choice UI -- they render through the existing generic
+`ChoiceModal` (`src/ui/duel/ChoiceModal.tsx`), which already renders whatever
+`{id,label}[]` options array is attached to `s.pendingChoice` for
+`controller === 'p'`, regardless of which system created the choice.
+
+**Explicit simplifications (out of scope for phase 1, do not re-derive from
+first principles in a future session)**:
+- The "bands with other [quality]" variant (CR 702.22b/c) is not modeled --
+  no card in this project's pool uses it.
+- Banding does not let a band satisfy a blocker's "must block a specific
+  creature" restriction (the CR 702.22c parenthetical about bypassing block
+  restrictions). Same documentation convention as Brainwash's payment-UI
+  simplification -- noted here, not built.
+
+---
+
 # 6. AI System
 
 ## 6.1 AI Role Definition

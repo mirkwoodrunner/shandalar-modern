@@ -3651,4 +3651,58 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.17
+## Banding Core Subsystem (CR 702.22), Phase 1 of 3 (2026-07-08)
+
+Structural combat-engine addition, not a card batch -- phase 1 of 3 (phase 2:
+AI band/choice heuristics; phase 3: Battering Ram, Mishra's War Machine,
+Nalathni Dragon, Knights of Thorn unstub). Several non-stub cards already
+carry the BANDING keyword (Mesa Pegasus, Benalish Hero, Pikemen, War
+Elephant, Timber Wolves, Camel, Fortified Area's grant to Walls, Helm of
+Chatzuk's temporary grant), so this batch makes that keyword actually affect
+gameplay for the first time.
+
+**New data model:** `bandId` field on attacking creatures, live-computed
+against `s.attackers` rather than cached, per `docs/SYSTEMS.md` S5.4.
+
+**New action:** `FORM_BAND` (CR 702.22c band formation, `docs/
+ENGINE_CONTRACT_SPEC.md` 3.7).
+
+**New propagation helpers:** `getBandMemberIds`/`getEffectiveBlockers` (CR
+702.22h/i), replacing every existing "is this attacker blocked" check in
+`resolveCombat`'s two damage passes plus the Forcefield `isUnblocked` check
+and the Murk Dwellers unblocked check.
+
+**New pendingChoice kinds:** `bandAttackerDamageOrder` (CR 702.22j, defending
+player) and `bandBlockerDamageOrder` (CR 702.22k, active player), both gated
+to 2+ candidates, both rendered through the pre-existing generic
+`ChoiceModal` with no new choice-UI component. See `docs/
+ENGINE_CONTRACT_SPEC.md` 7.3.
+
+**New UI:** `BandFormationPanel` (`src/ui/Card/`, `src/ui/Mobile/`), gated to
+render only when a declared attacker actually has banding.
+
+### Explicitly out of scope (see docs/SYSTEMS.md S5.4)
+- "Bands with other [quality]" (CR 702.22b/c) -- no card in this pool uses it.
+- Banding satisfying a blocker's "must block a specific creature" restriction
+  (same documentation convention as Brainwash's payment-UI simplification).
+- `AI.js` untouched -- the AI never forms a band; both choices default to the
+  pre-existing automatic order via `useDuelController.ts`'s existing generic
+  AI pendingChoice fallback (no controller changes needed).
+
+### Tests
+- Vitest: `tests/scenarios/banding-core.test.js` (15 cases -- band formation
+  validity, 702.22f/h/i propagation, 702.22j/k gating and division, 702.22e
+  persistence). Regression checkpoints: `src/engine/__tests__/blocking.test.js`
+  (3), `tests/scenarios/combat-damage.test.js` (9). 27 total, all passing.
+- Playwright: `tests/e2e/banding-core.spec.ts`, dual-viewport (1280x800,
+  390x844), tagged `@engine`. Covers the band-formation-panel-to-choice-modal
+  flow and a zero-banding-creature regression (no new UI at all). Regression
+  checkpoints: `tests/e2e/first-strike-combat.spec.ts`,
+  `tests/e2e/combat-blockers-priority.spec.ts`.
+
+### Status
+COMPLETE (phase 1 of 3)
+
+---
+
+# End of MECHANICS INDEX v1.18

@@ -3,8 +3,9 @@
 // Reads from useDuel — same engine as desktop DuelScreen, no fork in data layer.
 
 import { useState, useCallback } from 'react';
-import { isLand } from '../../engine/DuelCore.js';
+import { isLand, hasKw } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
+import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
 import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
@@ -33,6 +34,7 @@ import { ActionBar } from './ActionBar';
 import type { Selection } from './ActionBar';
 import { LogSheet } from './LogSheet';
 import { StackDisplay } from '../Stack/StackDisplay';
+import { BandFormationPanel } from './BandFormationPanel';
 
 import s from './styles.module.css';
 
@@ -563,6 +565,22 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             bottomOffset={56}
             onItemClick={stackTargeting ? (id) => selectCastTarget(id) : undefined}
             selectedItemId={castFlow?.selectedTargets[0] ?? null}
+          />
+        );
+      })()}
+
+      {/* Band formation (CR 702.22c): only ever appears when a declared
+          attacker actually has banding -- otherwise this list is empty and
+          nothing renders, leaving the mobile attack-declaration screen unchanged. */}
+      {s_state.phase === 'COMBAT_ATTACKERS' && s_state.active === 'p' && (() => {
+        const unbandedAttackers = (s_state.p.bf as any[])
+          .filter(c => s_state.attackers.includes(c.iid) && !c.bandId)
+          .map(c => ({ iid: c.iid, name: c.name, hasBanding: hasKw(c, KEYWORDS.BANDING.id, s_state) }));
+        if (!unbandedAttackers.some(c => c.hasBanding)) return null;
+        return (
+          <BandFormationPanel
+            attackers={unbandedAttackers}
+            onFormBand={(iids: string[]) => dispatch({ type: 'FORM_BAND', iids })}
           />
         );
       })()}

@@ -5,8 +5,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { isLand, isArt, isInst } from './engine/DuelCore.js';
+import { isLand, isArt, isInst, hasKw } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
+import KEYWORDS from './data/keywords.js';
 
 // -- New design system components ----------------------------------------------
 import { Topbar } from './ui/Topbar/Topbar';
@@ -21,6 +22,7 @@ import { GameOverModal } from './ui/GameOver/GameOverModal';
 import { MulliganModal } from './ui/Mulligan/MulliganModal';
 import type { CardData } from './ui/Card/types';
 import { StackDisplay } from './ui/Stack/StackDisplay';
+import { BandFormationPanel } from './ui/Card/BandFormationPanel';
 
 // -- New hooks -----------------------------------------------------------------
 import { useFlash } from './hooks/useFlash';
@@ -694,6 +696,22 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 opponentBf={s.o.bf}
                 onSetMode={(mode: 'counter' | 'destroy') => setPendingMode(mode)}
                 onCancel={() => { selectCard(null); selectTarget(null); setPendingMode(null); }}
+              />
+            );
+          })()}
+
+          {/* Band formation (CR 702.22c): only ever appears when a declared
+              attacker actually has banding -- otherwise this list is empty and
+              nothing renders, leaving the attack-declaration screen unchanged. */}
+          {s.phase === PHASE.COMBAT_ATTACKERS && s.active === 'p' && (() => {
+            const unbandedAttackers = (s.p.bf as any[])
+              .filter(c => s.attackers.includes(c.iid) && !c.bandId)
+              .map(c => ({ iid: c.iid, name: c.name, hasBanding: hasKw(c, KEYWORDS.BANDING.id, s) }));
+            if (!unbandedAttackers.some(c => c.hasBanding)) return null;
+            return (
+              <BandFormationPanel
+                attackers={unbandedAttackers}
+                onFormBand={(iids: string[]) => dispatch({ type: 'FORM_BAND', iids })}
               />
             );
           })()}

@@ -8,6 +8,28 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-08)
+- **Banding core subsystem (phase 1 of 3, CR 702.22)** -- structural combat-
+  engine addition, not a card batch. New `bandId` field + `FORM_BAND` action
+  (band formation validity per 702.22c) in `DuelCore.js`; a live-computed
+  `getEffectiveBlockers`/`getBandMemberIds` propagation helper (702.22h/i)
+  replacing every "is this attacker blocked" check in `resolveCombat`, the
+  Forcefield `isUnblocked` check, and the Murk Dwellers unblocked check; two
+  new `pendingChoice` kinds (`bandAttackerDamageOrder` for 702.22j,
+  `bandBlockerDamageOrder` for 702.22k), both gated to require 2+ candidates
+  and both rendered for free through the existing generic `ChoiceModal` (no
+  new choice-UI component needed). New `BandFormationPanel` in `src/ui/Card/`
+  and `src/ui/Mobile/`, gated to render only when a declared attacker has
+  banding -- a full attack/block flow with zero banding creatures is
+  unchanged. `AI.js` untouched; the AI never forms a band, and both choices
+  default to the pre-existing automatic order via `useDuelController.ts`'s
+  existing generic AI pendingChoice fallback (no controller changes needed).
+  Out of scope: the "bands with other" variant and the block-restriction
+  bypass (documented in `docs/SYSTEMS.md` S5.4), and the 4 target cards'
+  own stub effects (phase 3). See `docs/MECHANICS_INDEX.md` -- Banding core
+  subsystem, and `docs/SYSTEMS.md` S5.4 / `docs/ENGINE_CONTRACT_SPEC.md`
+  3.7 and 7.3.
+
 ## Completed (2026-07-07)
 - **Batch 14: Quick-Win Stubs** -- Living Artifact, Elder Spawn, Osai
   Vultures, Scavenging Ghoul, Sage of Lat-Nam, Island of Wak-Wak, and Urza's
