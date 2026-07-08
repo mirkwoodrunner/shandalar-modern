@@ -1,6 +1,7 @@
 // src/ui/Mobile/OverworldGameMobile.jsx
 // Compact mobile overworld layout (<= 640px). Receives ctrl prop from OverworldGame.jsx.
 // Local state: drawerOpen, drawerTab. No game logic here.
+// Theme mirrors OverworldGameDesktop.jsx's gilded dark-fantasy styling.
 
 import React, { useState } from 'react';
 import { WorldMap, ManaLinkAlert } from '../overworld/WorldMap.jsx';
@@ -13,12 +14,252 @@ import { CARD_DB } from '../../data/cards.js';
 import RULESETS from '../../data/rulesets.js';
 
 const MANA_SYM_LOCAL = {
-  W: '☀️',
+  W: '\u{2600}\u{FE0F}',
   U: '\u{1F4A7}',
   B: '\u{1F480}',
   R: '\u{1F525}',
   G: '\u{1F33F}',
 };
+
+const OW_MOBILE_THEME_STYLES = `
+  .ow-mobile-root {
+    height: 100dvh;
+    width: 100vw;
+    background-color: #0a0e08;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Crimson Text', serif;
+  }
+
+  .game-over-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 3, 2, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 6000;
+    flex-direction: column;
+    gap: 12px;
+    backdrop-filter: blur(4px);
+  }
+  .game-over-title {
+    font-size: 22px;
+    font-family: 'Cinzel', serif;
+    color: #e04040;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(224, 64, 64, 0.4);
+  }
+  .game-over-subtitle {
+    font-size: 12px;
+    color: #a06040;
+    font-style: italic;
+  }
+
+  .arzakon-ready-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 3, 2, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    flex-direction: column;
+    gap: 16px;
+    backdrop-filter: blur(3px);
+  }
+  .arzakon-ready-title {
+    font-size: 20px;
+    font-family: 'Cinzel', serif;
+    color: #e0c040;
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px rgba(224, 192, 64, 0.3);
+  }
+  .arzakon-ready-desc {
+    font-size: 13px;
+    color: #c0a060;
+    font-style: italic;
+    text-align: center;
+    max-width: 320px;
+  }
+  .arzakon-btn-charge {
+    background: linear-gradient(135deg, #2a0808, #5a1010);
+    border: 2px solid rgba(200, 60, 40, 0.6);
+    color: #ff8060;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 2px;
+    box-shadow: 0 0 25px rgba(200, 40, 20, 0.5);
+    transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
+  }
+  .arzakon-btn-charge:hover {
+    filter: brightness(1.2);
+    transform: scale(1.02);
+  }
+  .arzakon-btn-defer {
+    background: transparent;
+    border: 1px solid rgba(160, 120, 60, 0.3);
+    color: #806040;
+    padding: 8px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'Cinzel', serif;
+    transition: background 0.2s;
+  }
+  .arzakon-btn-defer:hover {
+    background: rgba(160, 120, 60, 0.05);
+  }
+
+  .ow-mobile-topbar {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 8px;
+    background: rgba(10, 12, 8, 0.9);
+    border-bottom: 2px solid rgba(212, 175, 55, 0.25);
+    backdrop-filter: blur(5px);
+    flex-shrink: 0;
+  }
+  .ow-mobile-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 11px;
+    color: #d0a030;
+    letter-spacing: 2px;
+    flex-shrink: 0;
+  }
+  .ow-mobile-hp-bar {
+    width: 48px;
+    height: 8px;
+    background: #140d09;
+    border-radius: 3px;
+    border: 1px solid #3d2311;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .ow-mobile-menu-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(200, 160, 60, 0.35);
+    color: #c0a040;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .ow-mobile-menu-btn:hover {
+    background: rgba(200, 160, 60, 0.1);
+  }
+
+  .ow-mobile-tilestrip {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 8px;
+    background: rgba(10, 12, 8, 0.65);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    flex-shrink: 0;
+  }
+
+  .ow-mobile-quickstat {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 10px;
+    background: rgba(10, 12, 8, 0.85);
+    border-top: 1px solid rgba(212, 175, 55, 0.15);
+    cursor: pointer;
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ow-mobile-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 300;
+  }
+  .ow-mobile-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    background: linear-gradient(180deg, #14110c 0%, #0a0907 100%);
+    border: 1px solid #362e1e;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    z-index: 301;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.75);
+  }
+  .ow-mobile-drawer-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+    flex-shrink: 0;
+  }
+  .ow-mobile-drawer-tab {
+    flex: 1;
+    height: 36px;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 1px;
+    transition: background 0.15s;
+  }
+  .ow-mobile-drawer-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+  }
+
+  .ow-mobile-quit-btn {
+    background: transparent;
+    border: 1px solid rgba(180, 80, 40, 0.4);
+    color: #a06040;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: 'Cinzel', serif;
+    width: 100%;
+    transition: background 0.15s;
+  }
+  .ow-mobile-quit-btn:hover {
+    background: rgba(180, 80, 40, 0.1);
+  }
+
+  .ow-mobile-manage-btn {
+    background: rgba(200, 160, 40, 0.1);
+    border: 1px solid rgba(200, 160, 40, 0.3);
+    color: #c0a040;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 9px;
+    font-family: 'Cinzel', serif;
+    transition: background 0.15s;
+  }
+  .ow-mobile-manage-btn:hover {
+    background: rgba(200, 160, 40, 0.2);
+  }
+`;
 
 export default function OverworldGameMobile({ ctrl, onQuit }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -51,24 +292,15 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
   } = ctrl;
 
   return (
-    <div style={{
-      height: '100dvh', width: '100vw',
-      background: '#0a0e08',
-      display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
-      fontFamily: "'Crimson Text', serif",
-    }}>
+    <div className="ow-mobile-root">
+      <style>{OW_MOBILE_THEME_STYLES}</style>
 
       {/* -- GAME-LOSS OVERLAY ----------------------------------------------- */}
       {(gameLost || conquestLost) && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600,
-          flexDirection: 'column', gap: 12,
-        }}>
+        <div className="game-over-screen">
           <div style={{ fontSize: 40 }}>{'\u{1F480}'}</div>
-          <div style={{ fontSize: 24, fontFamily: "'Cinzel',serif", color: '#e04040' }}>The Plane Falls</div>
-          <div style={{ fontSize: 12, color: '#a06040', fontStyle: 'italic' }}>
+          <div className="game-over-title">The Plane Falls</div>
+          <div className="game-over-subtitle">
             {conquestLost && !gameLost
               ? "Arzakon's armies have overrun Shandalar's towns--"
               : "Arzakon's mana links have consumed Shandalar--"}
@@ -78,81 +310,47 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
 
       {/* -- ARZAKON READY OVERLAY ------------------------------------------- */}
       {arzakonReady && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500,
-          flexDirection: 'column', gap: 16,
-        }}>
+        <div className="arzakon-ready-screen">
           <div style={{ fontSize: 36 }}>{'\u{1F3C6}'}</div>
-          <div style={{ fontSize: 22, fontFamily: "'Cinzel',serif", color: '#e0c040' }}>
-            All Five Mages Defeated!
-          </div>
-          <div style={{ fontSize: 13, color: '#c0a060', fontStyle: 'italic', textAlign: 'center', maxWidth: 320 }}>
+          <div className="arzakon-ready-title">All Five Mages Defeated!</div>
+          <div className="arzakon-ready-desc">
             Arzakon himself rises to defend the conquered plane. The final battle awaits.
           </div>
-          <button
-            onClick={launchArzakon}
-            style={{
-              background: 'linear-gradient(135deg,#2a0808,#5a1010)',
-              border: '2px solid rgba(200,60,40,.6)',
-              color: '#ff8060', padding: '12px 24px', borderRadius: 6,
-              cursor: 'pointer', fontSize: 15, fontFamily: "'Cinzel',serif", letterSpacing: 2,
-              boxShadow: '0 0 20px rgba(200,40,20,.4)',
-            }}
-          >
-            {'⚡'} Face Arzakon
+          <button onClick={launchArzakon} className="arzakon-btn-charge">
+            {'\u{26A1}'} Face Arzakon
           </button>
-          <button
-            onClick={() => {/* dismiss */}}
-            style={{
-              background: 'transparent', border: '1px solid rgba(160,120,60,.3)',
-              color: '#806040', padding: '8px 20px', borderRadius: 5,
-              cursor: 'pointer', fontSize: 12, fontFamily: "'Cinzel',serif",
-            }}
-          >
+          <button onClick={() => {/* dismiss */}} className="arzakon-btn-defer">
             Prepare further--
           </button>
         </div>
       )}
 
-      {/* -- TOPBAR (~44px) -------------------------------------------------- */}
-      <div style={{
-        height: 44, display: 'flex', alignItems: 'center',
-        padding: '0 10px', gap: 8,
-        background: 'rgba(0,0,0,.85)',
-        borderBottom: '1px solid rgba(200,160,40,.25)',
-        flexShrink: 0,
-      }}>
-        <span style={{
-          fontFamily: "'Cinzel Decorative',serif", fontSize: 11,
-          color: '#d0a030', letterSpacing: 2, flexShrink: 0,
-        }}>
-          SHANDALAR
-        </span>
+      {/* -- TOPBAR ------------------------------------------------------------ */}
+      <div className="ow-mobile-topbar">
+        <span className="ow-mobile-title">SHANDALAR</span>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <div style={{
-            width: 48, height: 6, background: 'rgba(255,255,255,.1)',
-            borderRadius: 3, overflow: 'hidden',
-          }}>
+          <div className="ow-mobile-hp-bar">
             <div style={{
               height: '100%', borderRadius: 3,
               width: `${Math.max(0, (player.hp / player.maxHP) * 100)}%`,
               background: player.hp > player.maxHP * 0.5
-                ? '#e05030' : player.hp > player.maxHP * 0.25 ? '#e09020' : '#c03020',
+                ? 'linear-gradient(90deg, #992211 0%, #d63622 100%)'
+                : 'linear-gradient(90deg, #590a0a 0%, #991111 100%)',
+              transition: 'width .4s ease-in-out',
             }} />
           </div>
-          <span style={{ fontSize: 10, color: '#c0a060', fontFamily: "'Cinzel',serif" }}>
+          <span style={{ fontSize: 10, color: '#e07c5e', fontFamily: "'Cinzel',serif" }}>
             {player.hp}/{player.maxHP}
           </span>
         </div>
 
-        <span style={{ fontSize: 10, color: '#c0a060', fontFamily: "'Cinzel',serif", flexShrink: 0 }}>
-          {'\u{1F319}'}{player.gold}g
+        <span style={{ fontSize: 10, color: '#e5b842', fontFamily: "'Cinzel',serif", flexShrink: 0 }}>
+          {'\u{1FA99}'}{player.gold}g
         </span>
 
-        <span style={{ fontSize: 10, color: '#60c0ff', fontFamily: "'Cinzel',serif", flexShrink: 0 }}>
-          {'\u{1F4A0}'}{player.gems ?? 0}
+        <span style={{ fontSize: 10, color: '#b396f0', fontFamily: "'Cinzel',serif", flexShrink: 0 }}>
+          {'\u{1F48E}'}{player.gems ?? 0}
         </span>
 
         {activeDelivery && (
@@ -166,20 +364,13 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
         <button
           onClick={() => setDrawerOpen(o => !o)}
           data-testid="ow-mobile-menu-btn"
-          style={{
-            background: 'rgba(255,255,255,.06)',
-            border: '1px solid rgba(200,160,60,.3)',
-            color: '#c0a040', borderRadius: 4,
-            width: 32, height: 32,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', fontSize: 16, flexShrink: 0,
-          }}
+          className="ow-mobile-menu-btn"
         >
-          {drawerOpen ? '✕' : '☰'}
+          {drawerOpen ? '\u{2715}' : '\u{2630}'}
         </button>
       </div>
 
-      {/* -- TILE STRIP (~24px) ---------------------------------------------- */}
+      {/* -- TILE STRIP -------------------------------------------------------- */}
       {(() => {
         const t = tiles[pos.y]?.[pos.x];
         if (!t) return null;
@@ -194,13 +385,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
           t.structure === 'RUIN'    ? t.ruinData?.name :
           t.terrain.label;
         return (
-          <div style={{
-            height: 24, display: 'flex', alignItems: 'center',
-            padding: '0 10px', gap: 8,
-            background: 'rgba(0,0,0,.6)',
-            borderBottom: '1px solid rgba(200,160,40,.1)',
-            flexShrink: 0,
-          }}>
+          <div className="ow-mobile-tilestrip">
             <span style={{ fontSize: 10, color: '#c0a060', fontFamily: "'Cinzel',serif", flex: 1 }}>
               {label}
             </span>
@@ -237,18 +422,11 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
         />
       </div>
 
-      {/* -- QUICK-STAT BAR (~28px) ------------------------------------------ */}
+      {/* -- QUICK-STAT BAR ---------------------------------------------------- */}
       <div
         onClick={() => { setDrawerTab('mages'); setDrawerOpen(true); }}
         data-testid="ow-mobile-quickstat"
-        style={{
-          height: 28, display: 'flex', alignItems: 'center',
-          padding: '0 10px', gap: 10,
-          background: 'rgba(0,0,0,.75)',
-          borderTop: '1px solid rgba(200,160,40,.15)',
-          cursor: 'pointer', flexShrink: 0, overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-        }}
+        className="ow-mobile-quickstat"
       >
         <span style={{ fontSize: 9, color: '#8a6030', fontFamily: "'Cinzel',serif", flexShrink: 0 }}>
           MOVE {moves}
@@ -261,7 +439,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
             <span key={c} style={{ fontSize: 11, flexShrink: 0 }}>
               {MANA_SYM_LOCAL[c]}
               <span style={{ fontSize: 8, color: count > 0 ? '#e06040' : '#3a3020' }}>
-                {'●'.repeat(count)}{'○'.repeat(Math.max(0, 3 - count))}
+                {'\u{25CF}'.repeat(count)}{'\u{25CB}'.repeat(Math.max(0, 3 - count))}
               </span>
             </span>
           );
@@ -278,30 +456,14 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
         <>
           <div
             onClick={() => setDrawerOpen(false)}
-            style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)',
-              zIndex: 300,
-            }}
+            className="ow-mobile-drawer-backdrop"
           />
           <div
             data-testid="ow-mobile-drawer"
-            style={{
-              position: 'fixed', bottom: 0, left: 0, right: 0,
-              maxHeight: '70vh',
-              background: 'linear-gradient(180deg,#0e0c08,#0a0a06)',
-              border: '1px solid rgba(200,160,40,.2)',
-              borderBottom: 'none',
-              borderRadius: '12px 12px 0 0',
-              zIndex: 301,
-              display: 'flex', flexDirection: 'column',
-              overflow: 'hidden',
-            }}
+            className="ow-mobile-drawer"
           >
             {/* Tab bar */}
-            <div style={{
-              display: 'flex', borderBottom: '1px solid rgba(200,160,40,.15)',
-              flexShrink: 0,
-            }}>
+            <div className="ow-mobile-drawer-tabs">
               {[
                 { key: 'info',   label: 'Info'   },
                 { key: 'mages',  label: 'Mages'  },
@@ -312,14 +474,13 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
                   key={tab.key}
                   onClick={() => setDrawerTab(tab.key)}
                   data-testid={`ow-mobile-tab-${tab.key}`}
+                  className="ow-mobile-drawer-tab"
                   style={{
-                    flex: 1, height: 36, border: 'none', cursor: 'pointer',
                     background: drawerTab === tab.key
                       ? 'rgba(200,160,40,.12)' : 'transparent',
                     borderBottom: drawerTab === tab.key
                       ? '2px solid #c0a040' : '2px solid transparent',
                     color: drawerTab === tab.key ? '#c0a040' : '#6a5020',
-                    fontSize: 10, fontFamily: "'Cinzel',serif", letterSpacing: 1,
                   }}
                 >
                   {tab.label}
@@ -328,7 +489,7 @@ export default function OverworldGameMobile({ ctrl, onQuit }) {
             </div>
 
             {/* Tab content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
+            <div className="ow-mobile-drawer-content">
               {drawerTab === 'info'   && <DrawerInfo ctrl={ctrl} onQuit={onQuit} />}
               {drawerTab === 'mages'  && <DrawerMages ctrl={ctrl} />}
               {drawerTab === 'deck'   && <DrawerDeck ctrl={ctrl} />}
@@ -562,10 +723,10 @@ function DrawerInfo({ ctrl, onQuit }) {
         </div>
         {[
           ['\u{1F9D9}', 'You'],
-          ['\u{1F3D8}️', 'Town'],
-          ['⚔️', 'Dungeon'],
+          ['\u{1F3D8}\u{FE0F}', 'Town'],
+          ['\u{2694}\u{FE0F}', 'Dungeon'],
           ['\u{1F3F0}', 'Castle'],
-          ['\u{1F3DB}️', 'Ruins'],
+          ['\u{1F3DB}\u{FE0F}', 'Ruins'],
         ].map(([icon, label]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
             <span style={{ fontSize: 14 }}>{icon}</span>
@@ -587,7 +748,7 @@ function DrawerInfo({ ctrl, onQuit }) {
               value={ruleset.id}
               onChange={e => setRuleset(RULESETS[e.target.value])}
               style={{
-                background: '#1a1208', border: '1px solid rgba(200,160,60,.3)',
+                background: '#14120e', border: '1px solid rgba(200,160,60,.35)',
                 color: '#c0a040', borderRadius: 4, padding: '4px 8px',
                 fontSize: 11, fontFamily: "'Cinzel',serif", cursor: 'pointer',
                 width: '100%',
@@ -619,15 +780,7 @@ function DrawerInfo({ ctrl, onQuit }) {
         </div>
       </div>
 
-      <button
-        onClick={onQuit}
-        style={{
-          background: 'transparent', border: '1px solid rgba(180,80,40,.4)',
-          color: '#a06040', padding: '8px', borderRadius: 5,
-          cursor: 'pointer', fontSize: 11, fontFamily: "'Cinzel',serif",
-          width: '100%',
-        }}
-      >
+      <button onClick={onQuit} className="ow-mobile-quit-btn">
         {'\u{1F6AA}'} Quit
       </button>
     </div>
@@ -637,11 +790,11 @@ function DrawerInfo({ ctrl, onQuit }) {
 function DrawerMages({ ctrl }) {
   const { manaLinks, magesDefeated } = ctrl;
   const MAGE_DATA = [
-    { color: 'W', icon: '☀️', name: 'Delenia'  },
-    { color: 'U', icon: '\u{1F4A7}',    name: 'Xylos'    },
-    { color: 'B', icon: '\u{1F480}',    name: 'Mortis'   },
-    { color: 'R', icon: '\u{1F525}',    name: 'Karag'    },
-    { color: 'G', icon: '\u{1F33F}',    name: 'Sylvara'  },
+    { color: 'W', icon: '\u{2600}\u{FE0F}', name: 'Delenia'  },
+    { color: 'U', icon: '\u{1F4A7}',        name: 'Xylos'    },
+    { color: 'B', icon: '\u{1F480}',        name: 'Mortis'   },
+    { color: 'R', icon: '\u{1F525}',        name: 'Karag'    },
+    { color: 'G', icon: '\u{1F33F}',        name: 'Sylvara'  },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -685,14 +838,7 @@ function DrawerDeck({ ctrl }) {
         <div style={{ fontSize: 9, color: '#8a6030', fontFamily: "'Cinzel',serif", letterSpacing: 1 }}>
           DECK ({deck.length})
         </div>
-        <button
-          onClick={() => setModal('deck')}
-          style={{
-            background: 'rgba(200,160,40,.1)', border: '1px solid rgba(200,160,40,.3)',
-            color: '#c0a040', padding: '3px 10px', borderRadius: 4,
-            cursor: 'pointer', fontSize: 9, fontFamily: "'Cinzel',serif",
-          }}
-        >
+        <button onClick={() => setModal('deck')} className="ow-mobile-manage-btn">
           Manage
         </button>
       </div>
@@ -718,7 +864,7 @@ function DrawerDeck({ ctrl }) {
         {binder.slice(-10).map((c, i) => (
           <div key={i} style={{
             width: 11, height: 15, borderRadius: 1,
-            background: '#888', opacity: 0.7,
+            background: '#504838', opacity: 0.9,
           }} title={c.name} />
         ))}
         {binder.length > 10 && (

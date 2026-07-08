@@ -51,6 +51,25 @@ function getSheet(key) {
   return s && s.ok ? s.img : null;
 }
 
+// Presentation-only visual framework tokens shared by the panels/alerts below.
+const MAP_THEME_GLOBAL_STYLES = `
+  .ow-panel-fantasy {
+    background: linear-gradient(135deg, #14110c 0%, #0a0907 100%);
+    border: 1px solid #362e1e !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75), inset 0 1px 3px rgba(255, 255, 255, 0.02);
+  }
+  .ow-btn-alert-action {
+    transition: all 0.2s ease-in-out;
+  }
+  .ow-btn-alert-action:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 10px var(--alert-glow-color, rgba(216, 172, 74, 0.2));
+  }
+  .ow-btn-alert-action:active {
+    transform: translateY(1px);
+  }
+`;
+
 function _notify() {
   _subs.forEach((fn) => fn());
 }
@@ -213,7 +232,7 @@ const TERRAIN_BG = {
 
 // --- SINGLE TILE -------------------------------------------------------------
 
-// Deterministic tile variant — coord hash, no Math.random()
+// Deterministic tile variant -- coord hash, no Math.random()
 // Returns a CSS class string. Mountain and no-transform always return ''.
 const VARIANT_TRANSFORMS = {
   PLAINS:   ['', 'tile-icon-v1', 'tile-icon-v2', 'tile-icon-v3', 'tile-icon-v4', 'tile-icon-v5'],
@@ -420,7 +439,7 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
               textShadow: '0 0 3px #000',
               pointerEvents: 'none',
               zIndex: 3,
-            }}>{'⚔'}</div>
+            }}>{'\u{2694}'}</div>
           )}
           {s === 'CASTLE' && tile.castleData?.mage && (
             <div className="ow-label" style={{ color: castleColor }}>
@@ -438,7 +457,7 @@ export function MapTile({ tile, isPlayer, enemy = null, fogSides = null, tileSiz
         <>
           <div style={{
             position: 'absolute', inset: 0,
-            boxShadow: 'inset 0 0 8px rgba(245,217,122,0.3)',
+            boxShadow: 'inset 0 0 8px rgba(245,217,122,0.4)',
             pointerEvents: 'none',
             zIndex: 10,
           }} />
@@ -535,14 +554,14 @@ const OW_STYLES = `
   );
 }
 
-/* Tile icon transform variants — applied via coord hash, never Math.random() */
+/* Tile icon transform variants -- applied via coord hash, never Math.random() */
 .tile-icon-v1 { transform: scaleX(-1); }
 .tile-icon-v2 { transform: rotate(90deg); }
 .tile-icon-v3 { transform: rotate(180deg); }
 .tile-icon-v4 { transform: rotate(270deg); }
 .tile-icon-v5 { transform: scaleX(-1) rotate(90deg); }
 
-/* Biome-matched tile borders — replaces hard grid edges */
+/* Biome-matched tile borders -- replaces hard grid edges */
 .ow-plains   { box-shadow: inset 0 0 0 0.5px rgba(80,55,15,.25); }
 .ow-forest   { box-shadow: inset 0 0 0 0.5px rgba(10,25,8,.35); }
 .ow-swamp    { box-shadow: inset 0 0 0 0.5px rgba(47,79,79,.30); }
@@ -596,15 +615,16 @@ const OW_STYLES = `
 
 .ow-label {
   position: absolute;
-  bottom: 1px;
+  bottom: 2px;
   left: 0;
   right: 0;
   font-family: 'Cinzel', serif;
-  font-size: 5.5px;
-  letter-spacing: .08em;
+  font-size: 6px;
+  font-weight: bold;
+  letter-spacing: .05em;
   text-align: center;
-  color: rgba(240,210,140,.90);
-  text-shadow: 0 1px 0 #000, 0 0 3px #000;
+  color: #f7dfa3;
+  text-shadow: 0 1px 2px #000, 0 0 4px #000;
   text-transform: uppercase;
   line-height: 1;
   pointer-events: none;
@@ -627,16 +647,16 @@ const OW_STYLES = `
 
 @media (max-width: 600px) {
   .ow-hud {
-    padding: 4px 8px;
-    gap: 6px;
+    padding: 6px 10px;
+    gap: 8px;
     font-size: 10px;
   }
   .ow-hud-hp-bar {
-    width: 56px;
+    width: 60px;
     height: 10px;
   }
   .ow-hud-links {
-    gap: 3px;
+    gap: 4px;
   }
   .ow-hud-link-pip {
     width: 6px;
@@ -652,7 +672,6 @@ const OW_STYLES = `
 
 export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 34, onTileClick, canvasRef, enemies = [], playerAnim = null, enemyAnim = 0 }) {
   const tileAt = (x, y) => tiles[y]?.[x] ?? null;
-  const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
   const enemyByTile = {};
   for (const e of enemies) {
@@ -685,10 +704,11 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <style>{OW_STYLES}</style>
+      <style>{MAP_THEME_GLOBAL_STYLES}</style>
       <SpriteStyles />
       <div style={{ transform: `scale(${scale})`, transformOrigin: 'center center', flexShrink: 0 }}>
       <div style={{ position: 'relative', display: 'inline-block' }}>
-        {/* Terrain grid — unchanged */}
+        {/* Terrain grid -- unchanged */}
         <div
           className="ow-grid-wrapper"
           style={{
@@ -698,8 +718,9 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
           gap: 0,
           padding: 8,
           background: 'radial-gradient(ellipse at center, #0c0906 0%, #050302 100%)',
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,.80)',
-          borderRadius: 2,
+          boxShadow: 'inset 0 0 60px rgba(0,0,0,.80), 0 10px 30px rgba(0,0,0,0.8)',
+          borderRadius: 4,
+          border: '1px solid #1c1811',
         }}>
           {Array.from({ length: viewH }, (_, vy) =>
             Array.from({ length: viewW }, (_, vx) => {
@@ -769,7 +790,7 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
           )}
         </div>
 
-        {/* Canvas overlay — characters only, pointer-events:none so clicks pass through */}
+        {/* Canvas overlay -- characters only, pointer-events:none so clicks pass through */}
         <canvas
           ref={canvasRef}
           width={gridWidth}
@@ -791,174 +812,216 @@ export function WorldMap({ tiles, playerPos, viewport, viewW, viewH, tileSize = 
 // --- HUD BAR -----------------------------------------------------------------
 
 export function HUDBar({ player, manaLinks, magesDefeated, artifacts, moves }) {
-const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
-const threshold = hasWard ? 5 : 3;
+  const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
+  const threshold = hasWard ? 5 : 3;
 
-return (
-<div className="ow-hud" style={{
-display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap",
-padding: "6px 12px", background: "rgba(0,0,0,.5)",
-borderBottom: "1px solid rgba(200,160,60,.3)",
-}}>
-{/* HP bar */}
-<div style={{ display:"flex", alignItems:"center", gap:5 }}>
-<span style={{ fontSize:11, color:"#c8a060", fontFamily:"'Cinzel',serif" }}>HP</span>
-<div className="ow-hud-hp-bar" style={{ width:78, height:12, background:"#1a0a00", borderRadius:6, border:"1px solid #5a3010", overflow:"hidden" }}>
-<div style={{
-width: `${(player.hp / player.maxHP) * 100}%`, height:"100%",
-background: player.hp > player.maxHP*.5 ? "linear-gradient(90deg,#c04020,#e06040)" : "linear-gradient(90deg,#800010,#c01020)",
-transition: "width .4s", borderRadius: 6,
-}} />
-</div>
-<span style={{ fontSize:11, color:"#e08060", fontFamily:"'Cinzel',serif", minWidth:36 }}>{player.hp}/{player.maxHP}</span>
-</div>
+  return (
+    <div className="ow-hud" style={{
+      display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap",
+      padding: "8px 16px",
+      background: "linear-gradient(180deg, #16130f 0%, #0c0a08 100%)",
+      borderBottom: "1px solid #282217",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
+    }}>
+      {/* HP ticker */}
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ fontSize:11, color:"#d8ac4a", fontFamily:"'Cinzel',serif", fontWeight: 'bold', letterSpacing: 0.5 }}>VIT</span>
+        <div className="ow-hud-hp-bar" style={{ width:84, height:10, background:"#140d09", borderRadius:2, border:"1px solid #3d2311", overflow:"hidden", boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.6)' }}>
+          <div style={{
+            width: `${(player.hp / player.maxHP) * 100}%`, height:"100%",
+            background: player.hp > player.maxHP * 0.5
+              ? "linear-gradient(90deg, #992211 0%, #d63622 100%)"
+              : "linear-gradient(90deg, #590a0a 0%, #991111 100%)",
+            transition: "width .4s ease-in-out",
+          }} />
+        </div>
+        <span style={{ fontSize:11, color:"#e07c5e", fontFamily:"'Cinzel',serif", minWidth:40, letterSpacing: 0.5 }}>{player.hp}/{player.maxHP}</span>
+      </div>
 
-  <span style={{ fontSize:12, color:"#f0c040", fontFamily:"'Cinzel',serif" }}>🪙 {player.gold}g</span>
-  <span style={{ fontSize:12, color:"#a080e0", fontFamily:"'Cinzel',serif" }}>💎 {player.gems}</span>
-  <span style={{ fontSize:10, color:"#8090a0", fontFamily:"'Cinzel',serif" }}>Move {moves}</span>
+      <div style={{ height: 12, width: 1, background: '#2d2417' }} />
 
-  {/* Mana link pips */}
-  <div className="ow-hud-links" style={{ display:"flex", gap:5, alignItems:"center" }}>
-    <span style={{ fontSize:10, color:"#a08060", fontFamily:"'Cinzel',serif" }}>LINKS:</span>
-    {COLORS.map(c => {
-      const lnk = manaLinks[c] || 0;
-      const def = magesDefeated.includes(c);
-      return (
-        <div key={c} title={`${MAGE_NAMES[c]}: ${lnk}/${threshold}${def?" (defeated)":""}`}
-          style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1 }}>
-          <div style={{ fontSize:10, color:def?"#405030":lnk>=threshold?"#ff2020":lnk>=threshold-1?"#f08020":"#a09070" }}>
-            {MANA_SYM[c]}
-          </div>
-          <div style={{ display:"flex", gap:1 }}>
-            {Array.from({ length: threshold }).map((_, i) => (
-              <div key={i} className="ow-hud-link-pip" style={{
-                width:5, height:5, borderRadius:1,
-                background: def?"#2a3020":i<lnk?MANA_HEX[c]:"rgba(255,255,255,.1)",
-                border:"1px solid rgba(255,255,255,.1)",
-              }} />
+      <span style={{ fontSize:12, color:"#e5b842", fontFamily:"'Cinzel',serif", fontWeight: 'bold' }}>{'\u{1FA99}'} {player.gold}<span style={{fontSize: 10, color: '#8c7335', fontWeight: 'normal'}}>g</span></span>
+      <span style={{ fontSize:12, color:"#b396f0", fontFamily:"'Cinzel',serif", fontWeight: 'bold' }}>{'\u{1F48E}'} {player.gems}</span>
+      <span style={{ fontSize:11, color:"#7ca0ba", fontFamily:"'Cinzel',serif" }}>Pace: <span style={{color: '#fff', fontWeight: 'bold'}}>{moves}</span></span>
+
+      <div style={{ height: 12, width: 1, background: '#2d2417', marginLeft: 'auto' }} />
+
+      {/* Mana link conduits */}
+      <div className="ow-hud-links" style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <span style={{ fontSize:10, color:"#8c714c", fontFamily:"'Cinzel',serif", letterSpacing: 1 }}>CONDUITS:</span>
+        {COLORS.map(c => {
+          const lnk = manaLinks[c] || 0;
+          const def = magesDefeated.includes(c);
+          return (
+            <div key={c} title={`${MAGE_NAMES[c]}: ${lnk}/${threshold}${def?" (severed)":""}`}
+              style={{ display:"flex", alignItems:"center", gap:3, background: 'rgba(0,0,0,0.15)', padding: '2px 5px', borderRadius: 3, border: '1px solid #211c14' }}>
+              <div style={{ fontSize:11, color:def?"#404d32":lnk>=threshold?"#ff3333":lnk>=threshold-1?"#f58c38":"#bfa37a", textShadow: def ? 'none' : '0 0 4px rgba(255,255,255,0.1)' }}>
+                {MANA_SYM[c]}
+              </div>
+              <div style={{ display:"flex", gap:1.5 }}>
+                {Array.from({ length: threshold }).map((_, i) => (
+                  <div key={i} className="ow-hud-link-pip" style={{
+                    width:5, height:5, borderRadius:1,
+                    background: def?"#252b1d":i<lnk?MANA_HEX[c]:"rgba(255,255,255,0.04)",
+                    border: i < lnk ? `1px solid ${MANA_HEX[c]}` : "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: (i < lnk && !def) ? `0 0 4px ${MANA_HEX[c]}` : 'none',
+                  }} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Owned artifacts */}
+      {artifacts.some(a => a.owned) && (
+        <>
+          <div style={{ height: 12, width: 1, background: '#2d2417' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            {artifacts.filter(a => a.owned).map(a => (
+              <div key={a.id} title={`${a.name}: ${a.desc}`}
+                style={{ fontSize:14, filter:"drop-shadow(0 0 4px rgba(229,184,66,0.4))", cursor:"help" }}>
+                {a.icon}
+              </div>
             ))}
           </div>
-        </div>
-      );
-    })}
-  </div>
-
-  {/* Artifact icons */}
-  {artifacts.filter(a => a.owned).map(a => (
-    <div key={a.id} title={`${a.name}: ${a.desc}`}
-      style={{ fontSize:14, filter:"drop-shadow(0 0 3px rgba(200,160,80,.6))", cursor:"help" }}>
-      {a.icon}
+        </>
+      )}
     </div>
-  ))}
-</div>
-
-);
+  );
 }
 
 // --- MAP LEGEND ---------------------------------------------------------------
 
 export function MapLegend() {
-return (
-<div className="ow-legend" style={{
-position:"absolute", top:8, left:8, zIndex:10,
-background:"rgba(0,0,0,.75)", borderRadius:6, padding:"8px 12px",
-border:"1px solid rgba(200,160,60,.2)", fontSize:10, color:"#8a7050",
-fontFamily:"'Cinzel',serif",
-}}>
-<div style={{ marginBottom:4, fontSize:9, color:"#6a5030", letterSpacing:1 }}>LEGEND</div>
-{[['\u{1F9D9}','You'],['\u{1F3D8}','Town'],['⚔','Dungeon'],['\u{1F3F0}','Castle'],['\u{1F3DB}','Ruins']].map(([ic, lb]) => (
-<div key={lb} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:2 }}>
-<span style={{ fontSize:12 }}>{ic}</span>{lb}
-</div>
-))}
-</div>
-);
+  return (
+    <div className="ow-legend ow-panel-fantasy" style={{
+      position:"absolute", top:12, left:12, zIndex:10,
+      borderRadius:4, padding: "10px 14px",
+    }}>
+      <div style={{ marginBottom:6, fontSize:10, color:"#8c714c", fontFamily: "'Cinzel', serif", letterSpacing:1.5, borderBottom: '1px solid #241f15', paddingBottom: 2 }}>GRID MAP</div>
+      {[
+        ['\u{1F9D9}', 'Explorer'],
+        ['\u{1F3D8}', 'Settlement'],
+        ['\u{2694}', 'Dungeon Stronghold'],
+        ['\u{1F3F0}', 'Mage Citadel'],
+        ['\u{1F3DB}', 'Ancient Ruins'],
+      ].map(([ic, lb]) => (
+        <div key={lb} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, fontSize: 11, color: '#bda682' }}>
+          <span style={{ fontSize:13, width: 16, textAlign: 'center', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>{ic}</span>
+          <span style={{ fontFamily: "'Crimson Text', serif" }}>{lb}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // --- MAGE STATUS PANEL -------------------------------------------------------
 
 export function MageStatusPanel({ manaLinks, magesDefeated, artifacts }) {
-const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
-const threshold = hasWard ? 5 : 3;
+  const hasWard = artifacts.some(a => a.id === "ward" && a.owned);
+  const threshold = hasWard ? 5 : 3;
 
-return (
-<div className="ow-mage-panel" style={{
-position:"absolute", top:8, right:8, zIndex:10,
-background:"rgba(0,0,0,.75)", borderRadius:6, padding:"8px 12px",
-border:"1px solid rgba(200,160,60,.2)", fontSize:10, fontFamily:"'Cinzel',serif",
-}}>
-<div style={{ fontSize:9, color:"#6a5030", letterSpacing:1, marginBottom:6 }}>FIVE MAGES</div>
-{COLORS.map(c => {
-const def = magesDefeated.includes(c);
-const lnk = manaLinks[c] || 0;
-return (
-<div key={c} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:3 }}>
-<span style={{
-fontSize:10,
-color: def?"#405030":lnk>=threshold?"#e02020":lnk>=threshold-1?"#e08020":"#a09070",
-}}>{MANA_SYM[c]}</span>
-<span style={{ color:def?"#405030":lnk>=threshold?"#e02020":"#a09070", fontSize:10 }}>{MAGE_NAMES[c]}</span>
-<span style={{ color:"#6a5030", fontSize:9 }}>{def?"✓":lnk+"/"+threshold}</span>
-</div>
-);
-})}
-</div>
-);
+  return (
+    <div className="ow-mage-panel ow-panel-fantasy" style={{
+      position:"absolute", top:12, right:12, zIndex:10,
+      borderRadius:4, padding:"10px 14px", minWidth: 130,
+    }}>
+      <div style={{ fontSize:10, color:"#8c714c", letterSpacing:1.5, marginBottom:6, borderBottom: '1px solid #241f15', paddingBottom: 2 }}>PLANAR ARCHMAGES</div>
+      {COLORS.map(c => {
+        const def = magesDefeated.includes(c);
+        const lnk = manaLinks[c] || 0;
+        return (
+          <div key={c} style={{ display:"flex", alignItems:"center", justifyContent: 'space-between', marginBottom:4, gap:10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                fontSize:11, fontWeight: 'bold',
+                color: def?"#3d4734":lnk>=threshold?"#f02c2c":lnk>=threshold-1?"#e68238":"#a89274",
+              }}>{MANA_SYM[c]}</span>
+              <span style={{ color:def?"#464f3d":lnk>=threshold?"#ff5252":"#c7b499", fontSize:11, textDecoration: def ? 'line-through' : 'none' }}>{MAGE_NAMES[c]}</span>
+            </div>
+            <span style={{ color: def ? "#57634c" : "#8c714c", fontSize:10, fontWeight: 'bold', fontFamily: "'Cinzel', serif" }}>
+              {def ? "FALLEN" : `${lnk}/${threshold}`}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // --- MANA LINK ALERT ---------------------------------------------------------
 
 export function ManaLinkAlert({ events, onRespond, onDismiss, isMobile = false }) {
-if (!events.length) return null;
-const ev = events[0];
-const hx = MANA_HEX[ev.color];
+  if (!events.length) return null;
+  const ev = events[0];
+  const hx = MANA_HEX[ev.color];
 
-return (
-<div style={{
-position:"absolute", top:10, left:"50%", transform:"translateX(-50%)",
-zIndex:100,
-background: `linear-gradient(135deg,#1a0808,${hx}20)`,
-border:`2px solid ${hx}`, borderRadius: isMobile ? 6 : 7,
-padding: isMobile ? '8px 12px' : '10px 16px',
-maxWidth: isMobile ? '90vw' : 430,
-fontSize: isMobile ? 11 : undefined,
-boxShadow:`0 0 20px ${hx}60`,
-animation:"alertDrop .3s ease-out",
-}}>
-<div style={{ fontSize: isMobile ? 13 : 11, fontFamily:"'Cinzel',serif", color:hx, marginBottom:4, letterSpacing:1 }}>
-{MANA_SYM[ev.color]} MANA LINK ALERT
-</div>
-<div style={{ fontSize: isMobile ? 11 : 12, color:"#e0c090", marginBottom:8 }}>
-<strong>{MAGE_NAMES[ev.color]}</strong> sends <strong>{ev.minionName}</strong> to seize <strong>{ev.townName}</strong>!{" "}
-<strong style={{ color:"#ff8040" }}>{ev.movesLeft} moves</strong> remaining.
-</div>
-<div style={{ display:"flex", gap:6 }}>
-<button onClick={() => onRespond(ev)} style={{
-flex:2, background:`${hx}20`, border:`1px solid ${hx}`, color:hx,
-padding: isMobile ? '4px 10px' : '5px 12px',
-borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif",
-fontSize: isMobile ? 11 : 11,
-}}>⚡ Rush to {ev.townName}</button>
-<button onClick={() => onDismiss(ev)} style={{
-flex:1, background:"transparent", border:"1px solid #5a3020", color:"#806040",
-padding: isMobile ? '4px' : '5px',
-borderRadius:4, cursor:"pointer", fontFamily:"'Cinzel',serif",
-fontSize: isMobile ? 11 : 10,
-}}>Ignore</button>
-</div>
-{events.length > 1 && (
-  <div style={{
-    marginTop: 4,
-    fontSize: 10,
-    color: '#e08040',
-    fontFamily: "'Cinzel',serif",
-    textAlign: 'center',
-  }}>
-    +{events.length - 1} more threat{events.length > 2 ? 's' : ''} incoming
-  </div>
-)}
-</div>
-);
+  return (
+    <div style={{
+      position:"absolute", top:16, left:"50%", transform:"translateX(-50%)",
+      zIndex:100,
+      background: `linear-gradient(135deg, #160a0a 0%, ${hexToRgba(hx, 0.15)} 100%)`,
+      backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+      border:`2px solid ${hx}`, borderRadius: isMobile ? 4 : 5,
+      padding: isMobile ? '10px 14px' : '14px 20px',
+      maxWidth: isMobile ? '92vw' : 450,
+      boxShadow:`0 10px 30px rgba(0,0,0,0.7), 0 0 25px ${hexToRgba(hx, 0.35)}`,
+      animation:"alertDrop .3s ease-out",
+      '--alert-glow-color': hexToRgba(hx, 0.4),
+    }}>
+      <div style={{ fontSize: isMobile ? 13 : 11, fontFamily:"'Cinzel',serif", color:hx, marginBottom:6, letterSpacing:2, fontWeight: 'bold', textShadow: `0 0 6px ${hexToRgba(hx, 0.5)}` }}>
+        {MANA_SYM[ev.color]} PLANAR BREAKOUT ENEMY APPROACHING
+      </div>
+      <div style={{ fontSize: isMobile ? 12 : 13, color:"#dfccb3", marginBottom:12, lineHeight: 1.4, fontFamily: "'Crimson Text', serif" }}>
+        The faction of <strong style={{ color: '#fff', textShadow: '0 1px 2px #000' }}>{MAGE_NAMES[ev.color]}</strong> has materialised <strong style={{ color: hx }}>{ev.minionName}</strong> to capture <strong style={{ color: '#fff' }}>{ev.townName}</strong>!
+        <div style={{ marginTop: 4, color:"#ff7336", fontFamily:"'Cinzel',serif", fontSize: 11, fontWeight: 'bold' }}>
+          {'\u{26A0}\u{FE0F}'} SEIZURE IMMINENT: {ev.movesLeft} EXPLORATION CYCLES REMAINING
+        </div>
+      </div>
+      <div style={{ display:"flex", gap:8 }}>
+        <button
+          onClick={() => onRespond(ev)}
+          className="ow-btn-alert-action"
+          style={{
+            flex:2, background:`linear-gradient(180deg, ${hexToRgba(hx, 0.25)} 0%, ${hexToRgba(hx, 0.05)} 100%)`,
+            border:`1px solid ${hx}`, color:'#fff',
+            padding: isMobile ? '6px 12px' : '7px 14px',
+            borderRadius:3, cursor:"pointer", fontFamily:"'Cinzel',serif",
+            fontSize: 11, fontWeight: 'bold', letterSpacing: 0.5,
+          }}
+        >
+          {'\u{26A1}'} Intercept at {ev.townName}
+        </button>
+        <button
+          onClick={() => onDismiss(ev)}
+          className="ow-btn-alert-action"
+          style={{
+            flex:1, background:"rgba(0,0,0,0.3)", border:"1px solid #4a2d20", color:"#a18272",
+            padding: isMobile ? '6px' : '7px',
+            borderRadius:3, cursor:"pointer", fontFamily:"'Cinzel',serif",
+            fontSize: 11,
+          }}
+        >
+          Disregard
+        </button>
+      </div>
+      {events.length > 1 && (
+        <div style={{
+          marginTop: 8,
+          fontSize: 10,
+          color: '#e6732b',
+          fontFamily: "'Cinzel',serif",
+          textAlign: 'center',
+          letterSpacing: 0.5,
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          paddingTop: 6,
+        }}>
+          +{events.length - 1} further threat{events.length > 2 ? 's' : ''} incoming
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default { WorldMap, MapTile, HUDBar, MapLegend, MageStatusPanel, ManaLinkAlert };
