@@ -12,6 +12,7 @@ import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
 import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker } from '../duel/TargetingOverlay.jsx';
+import { EngineErrorOverlay } from '../duel/EngineErrorOverlay';
 import { TutorModal } from '../duel/TutorModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
@@ -59,7 +60,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     passPriority, undoManaTaps,
     advancePhase,
     requestPhaseAdvance,
-    endTurn, endTurnPending,
+    endTurn, endTurnPending, fatalError,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
@@ -249,6 +250,15 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             setPendingDualLand(null);
           }}
           onCancel={() => setPendingDualLand(null)}
+        />
+      )}
+
+      {fatalError && (
+        <EngineErrorOverlay
+          message={fatalError.message}
+          stack={fatalError.stack}
+          context={fatalError.context}
+          onExit={() => handleDuelEndWithClear('forfeit', s_state)}
         />
       )}
 
