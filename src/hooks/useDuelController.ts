@@ -346,6 +346,56 @@ export function useDuelController(
   const [pendingMode, setPendingMode] = useState<'counter' | 'destroy' | null>(null);
   const [endTurnPending, setEndTurnPending] = useState(false);
   const endTurnStartTurn = useRef<number | null>(null);
+  const [fatalError, setFatalError] = useState<{ message: string; stack: string; context: string } | null>(null);
+
+  // Builds a bounded, JSON-serializable snapshot of state relevant to
+  // debugging an AI-decision crash, and surfaces it as blocking UI instead of
+  // letting the effect that threw die silently (which is what left
+  // "Ending Turn..." stuck forever pre-fix -- see docs/MECHANICS_INDEX.md,
+  // Bug Fix: Fatal AI Error Silent Hang). Does not attempt to recover or
+  // continue: per this project's fail-fast rule, a thrown error here means
+  // something is malformed, and the duel should stop rather than guess.
+  function reportFatalAiError(err: unknown, where: string) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error && err.stack ? err.stack : '(no stack available)';
+    const context = JSON.stringify({
+      where,
+      turn: s.turn,
+      phase: s.phase,
+      active: s.active,
+      priorityWindow: s.priorityWindow,
+      priorityPasser: s.priorityPasser,
+      stackLen: s.stack?.length ?? 0,
+      endTurnPending,
+      pHandLen: s.p.hand.length,
+      oHandLen: s.o.hand.length,
+      pBf: s.p.bf.map((c: any) => c.name),
+      oBf: s.o.bf.map((c: any) => c.name),
+      pending: {
+        pendingUpkeepChoice: !!s.pendingUpkeepChoice,
+        pendingConditionalCounter: !!s.pendingConditionalCounter,
+        pendingSphereTrigger: !!s.pendingSphereTrigger,
+        pendingChoice: !!s.pendingChoice,
+        pendingTriggerTarget: !!s.pendingTriggerTarget,
+        pendingTutor: !!s.pendingTutor,
+        pendingTransmuteSacrifice: !!s.pendingTransmuteSacrifice,
+        pendingTransmutePay: !!s.pendingTransmutePay,
+        pendingLotus: !!(s as any).pendingLotus,
+        pendingBop: !!(s as any).pendingBop,
+        pendingAnteExchange: !!s.pendingAnteExchange,
+        pendingDamageShieldChoice: !!s.pendingDamageShieldChoice,
+        pendingAnteChoice: !!(s as any).pendingAnteChoice,
+        pendingDrainAtNextDraw: !!(s as any).pendingDrainAtNextDraw,
+        pendingEndStepTokens: !!(s as any).pendingEndStepTokens,
+        pendingLotusIid: !!(s as any).pendingLotusIid,
+        pendingSirenSweep: !!(s as any).pendingSirenSweep,
+        pendingUpkeepChoiceQueue: !!(s as any).pendingUpkeepChoiceQueue,
+      },
+    }, null, 2);
+    console.error(`[useDuelController] Fatal AI error in ${where}:`, err);
+    console.error(context);
+    setFatalError({ message, stack, context });
+  }
 
   // ── Phase advance ──────────────────────────────────────────────────────────
   const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
@@ -363,6 +413,7 @@ export function useDuelController(
   }, [endTurnPending, s.turn]);
 
   useEffect(() => {
+    if (fatalError) return;
     if (!endTurnPending) return;
 
     if (s.over) {
@@ -407,7 +458,7 @@ export function useDuelController(
 
     requestPhaseAdvance();
   }, [
-    endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
+    fatalError, endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
     s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, passPriority, requestPhaseAdvance,
@@ -475,6 +526,7 @@ export function useDuelController(
   // On the AI's own turn: pass immediately (AI already acted in the main loop).
   // Guard on priorityPasser prevents re-firing after the AI has already passed.
   useEffect(() => {
+    if (fatalError) return;
     if (!s.priorityWindow || s.priorityPasser === 'o' || s.over) return;
     if (s.active !== 'p') {
       const timer = setTimeout(() => {
@@ -483,19 +535,30 @@ export function useDuelController(
       return () => clearTimeout(timer);
     }
     const timer = setTimeout(() => {
-      const acts = aiDecide(s);
-      const illegal = acts?.some((a: any) => a.type === 'MULLIGAN' || a.type === 'MULLIGAN_KEEP');
-      if (illegal) {
-        console.warn('[useDuelController] aiDecide returned a mulligan action during an open priority window; ignoring and passing priority.', acts);
-        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
-      } else if (acts && acts.length) {
-        applyAiActionsWithPriority(acts);
-      } else {
-        dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+      try {
+        // Test-only fault injection (inert in production -- this global is
+        // never set outside Playwright specs): lets tests force this exact
+        // catch path deterministically instead of depending on a real
+        // AI.js edge case. See tests/e2e/engine-fatal-error-overlay.spec.ts.
+        if ((window as any).__forceAiError) {
+          throw new Error('[sandbox] forced AI error for testing');
+        }
+        const acts = aiDecide(s);
+        const illegal = acts?.some((a: any) => a.type === 'MULLIGAN' || a.type === 'MULLIGAN_KEEP');
+        if (illegal) {
+          console.warn('[useDuelController] aiDecide returned a mulligan action during an open priority window; ignoring and passing priority.', acts);
+          dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+        } else if (acts && acts.length) {
+          applyAiActionsWithPriority(acts);
+        } else {
+          dispatch({ type: 'PASS_PRIORITY', who: 'o' });
+        }
+      } catch (err) {
+        reportFatalAiError(err, 'AI priority window effect');
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fatalError, s.priorityWindow, s.active, s.priorityPasser, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stack-length watcher ───────────────────────────────────────────────────
   // Reopens priority window when a stack item resolves with more items remaining,
@@ -533,6 +596,7 @@ export function useDuelController(
 
   // ── AI main loop ───────────────────────────────────────────────────────────
   useEffect(() => {
+    if (fatalError) return;
     if (s.over) return;
     if (s.pendingUpkeepChoice) return;
 
@@ -671,15 +735,25 @@ export function useDuelController(
     // ── Heuristic path (default) ──────────────────────────────────────────
     aiRef.current = true;
     const t = setTimeout(() => {
-      const acts = aiDecide(s);
-      const hasCast = acts.some((a: any) => a.type === 'CAST_SPELL');
-      applyAiActionsWithPriority(acts);
-      if (!hasCast) {
-        setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
+      try {
+        // Test-only fault injection -- see comment in the AI priority window
+        // effect above.
+        if ((window as any).__forceAiError) {
+          throw new Error('[sandbox] forced AI error for testing');
+        }
+        const acts = aiDecide(s);
+        const hasCast = acts.some((a: any) => a.type === 'CAST_SPELL');
+        applyAiActionsWithPriority(acts);
+        if (!hasCast) {
+          setTimeout(() => { requestPhaseAdvance(); aiRef.current = false; }, aiSpeed);
+        }
+      } catch (err) {
+        aiRef.current = false;
+        reportFatalAiError(err, 'AI main loop (heuristic path)');
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -1214,6 +1288,7 @@ export function useDuelController(
     requestPhaseAdvance,
     endTurn,
     endTurnPending,
+    fatalError,
 
     // Mulligan UI state
     showMulligan,

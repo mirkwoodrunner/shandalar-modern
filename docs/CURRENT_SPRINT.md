@@ -9,6 +9,21 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-09)
+- **Fatal AI Error Silent Hang (fail-fast hardening)** -- Neither of
+  `useDuelController.ts`'s two `aiDecide()` call sites (the "AI priority
+  window effect" and the AI main-loop heuristic path) had any error handling,
+  and the app has no ErrorBoundary, so an uncaught throw there died silently
+  -- the confirmed mechanism behind a reported bug where "End Turn" left the
+  button stuck on "Ending Turn..." forever with no visible error. Both call
+  sites now wrap `aiDecide()`/the dispatch that follows it in a try/catch;
+  on error, `reportFatalAiError()` logs full context and sets a new
+  `fatalError` state, rendered as a blocking `EngineErrorOverlay` (new file,
+  `src/ui/duel/EngineErrorOverlay.tsx`) on both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx`, with a debug-info copy button and a guaranteed
+  "Exit to Overworld" (forfeit) way out. Root cause of the original crash is
+  still unconfirmed -- this hardens the symptom (silent hang) regardless of
+  what eventually throws. See `docs/MECHANICS_INDEX.md` -- Bug Fix: Fatal AI
+  Error Silent Hang.
 - **Dual land subtype + first-strike log gating + FieldCard P/T display fix** --
   Three fixes from a single bug report (Goblin King + Goblin Hero attacking into
   Badlands defense): (1) Added `subtype` field to all 9 ABUR dual lands (Tundra,

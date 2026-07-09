@@ -46,6 +46,7 @@ import { UPKEEP_CHOICE_MODALS } from './ui/duel/upkeepChoiceRegistry';
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
 import { Tooltip } from './ui/shared/Tooltip.jsx';
+import { EngineErrorOverlay } from './ui/duel/EngineErrorOverlay';
 
 // -----------------------------------------------------------------------------
 // HELPERS
@@ -248,7 +249,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     advancePhase, selectCard, selectTarget,
     setX, activateAbility, chooseLotusColor, applyAiActions, resolveChoice,
     resolveUpkeepChoice, resolveConditionalCounter, resolveSphereTrigger, openPriorityWindow, passPriority, useChannel,
-    undoManaTaps, requestPhaseAdvance, endTurn, endTurnPending,
+    undoManaTaps, requestPhaseAdvance, endTurn, endTurnPending, fatalError,
     chooseTutor, declineTutor, chooseTutorTransmute,
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
@@ -989,6 +990,15 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             setPendingDualLand(null);
           }}
           onCancel={() => setPendingDualLand(null)}
+        />
+      )}
+
+      {fatalError && (
+        <EngineErrorOverlay
+          message={fatalError.message}
+          stack={fatalError.stack}
+          context={fatalError.context}
+          onExit={() => handleDuelEndWithClear('forfeit', s)}
         />
       )}
 

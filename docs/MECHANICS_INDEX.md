@@ -3922,4 +3922,63 @@ COMPLETE (phase 3 of 3) -- Banding (CR 702.22) fully closed out.
 
 ---
 
-# End of MECHANICS INDEX v1.18
+## Bug Fix: Fatal AI Error Silent Hang (2026-07-09)
+
+**Problem:** `useDuelController.ts` calls `aiDecide(s)` inside `setTimeout`
+callbacks in two places -- the "AI priority window effect" and the AI
+main-loop heuristic path -- with no try/catch anywhere in the file, and the
+app has no ErrorBoundary anywhere. An uncaught throw in either dies silently:
+no console banner most people would notice, no UI change, and whatever state
+was mid-transition (`endTurnPending`, `priorityWindow`) simply never resolves.
+This is the confirmed mechanism behind a reported bug: clicking "End Turn"
+left the button stuck on "Ending Turn..." forever with no visible error, on
+mobile. The exact trigger for the original report was not confirmed (no
+console log was available at the time), so this is a hardening fix for the
+symptom, not a fix for whatever specific `AI.js` edge case (if any) caused it.
+
+**Fix:** Both call sites now wrap `aiDecide()` and the dispatch/apply calls
+that follow it in a try/catch. On catch, `reportFatalAiError()` (new function
+in `useDuelController.ts`) builds a bounded JSON context snapshot (turn,
+phase, active player, priority state, hand/battlefield sizes, all
+`pending*` flags), logs it to console, and sets a new `fatalError` hook state.
+Both `DuelScreen.tsx` and `DuelScreenMobile.tsx` render a new
+`EngineErrorOverlay` component (`src/ui/duel/EngineErrorOverlay.tsx`) when
+`fatalError` is set: shows the message, a copyable debug dump, and an "Exit to
+Overworld" button wired to the existing forfeit path (`handleDuelEndWithClear
+('forfeit', s)`), so a crash no longer leaves the player with a frozen board
+and no way out. All three affected effects (`endTurnPending` skip-loop, AI
+priority window effect, AI main loop) also gained an `if (fatalError) return;`
+guard so nothing keeps retrying once the overlay is up. A test-only
+`window.__forceAiError` global (checked first in both try blocks, inert
+unless explicitly set) allows deterministic Playwright coverage without
+depending on a real `AI.js` edge case.
+
+**Files changed:**
+- `src/hooks/useDuelController.ts` -- `fatalError` state, `reportFatalAiError()`,
+  try/catch around both `aiDecide()` call sites, `fatalError` guards added to
+  the end-turn skip-loop, AI priority window, and AI main-loop effects.
+- `src/ui/duel/EngineErrorOverlay.tsx` (new) -- shared blocking overlay.
+- `src/DuelScreen.tsx` / `src/ui/Mobile/DuelScreenMobile.tsx` -- import and
+  render `EngineErrorOverlay` when `fatalError` is set.
+
+**Tests:**
+- Vitest: `tests/scenarios/ai-fatal-error-handling.test.js` (FATAL-AI-01
+  through FATAL-AI-06 -- mirrors both post-fix branches verbatim, throw and
+  no-throw cases). Regression checkpoint:
+  `tests/scenarios/ai-priority-passthrough.test.js` (AI-PRIORITY-01 through
+  06, unchanged behavior when nothing throws).
+- Playwright: `tests/e2e/engine-fatal-error-overlay.spec.ts` (ENGINE-ERR-01
+  through 04, desktop + real mobile tree via `?duel=sandbox-mobile`) --
+  forces the error via End Turn's skip-ahead loop and confirms the overlay
+  appears instead of a permanent freeze, and that Exit to Overworld forfeits
+  and navigates away. Regression checkpoint:
+  `tests/e2e/end-turn-skip-ahead.spec.ts` (END-TURN-01 through 05, unchanged
+  behavior when nothing throws).
+
+### Status
+ACTIVE (hardening confirmed via fault injection; original real-world trigger
+for the reported freeze remains unconfirmed)
+
+---
+
+# End of MECHANICS INDEX v1.19
