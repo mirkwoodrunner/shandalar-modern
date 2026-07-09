@@ -8,6 +8,27 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-09)
+- **Dual land subtype + first-strike log gating + FieldCard P/T display fix** --
+  Three fixes from a single bug report (Goblin King + Goblin Hero attacking into
+  Badlands defense): (1) Added `subtype` field to all 9 ABUR dual lands (Tundra,
+  Underground Sea, Badlands, Taiga, Savannah, Scrubland, Bayou, Plateau,
+  Tropical Island) that were missing it, leaving only Volcanic Island already
+  correct. Fixes mountainwalk, islandwalk, swampwalk, forestwalk, plainswalk
+  silently never triggering. (2) Gated the "First strike damage." log line in
+  `resolveCombat()` to only fire when at least one combatant actually has first
+  strike, stopping misleading combat-never-happened log entries. (3) Threaded
+  duel `state` prop through both FieldCard components (desktop + mobile) so
+  battlefield tiles now display full-state P/T (layers 7a-7c: CDAs, animated-land
+  P/T, lord/anthem effects like Goblin King) instead of the old no-state
+  approximation that only saw eotBuffs + counters. Stub count unchanged (all
+  cards involved are implemented, not stubs). Tests: 3 Vitest scenario tests
+  (dual lands data + lord-granted mountainwalk blocking), 2 Vitest combat-damage
+  tests (first-strike log gating), 3 Playwright e2e tests (Goblin King anthem
+  P/T display + mountainwalk blocking with/without Badlands), plus 1 existing
+  Playwright test (FS-E2E-02) assertion enhanced to verify no first-strike log
+  when nobody has it. See `docs/MECHANICS_INDEX.md` Layer 7c display fix note.
+
 ## Completed (2026-07-08)
 - **Banding target cards (phase 3 of 3, CR 702.22)** -- unstubs the 4 cards
   phases 1/2 left blocked: Battering Ram, Mishra's War Machine, Nalathni

@@ -439,7 +439,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             >
               <FieldCard card={c} density="perm"
                 selected={selIid === c.iid}
-                onClick={() => onCardTap(c, 'bf')} />
+                onClick={() => onCardTap(c, 'bf')}
+                state={s_state} />
             </EnchantedCardSlot>
           ))}
         </Row>
@@ -463,7 +464,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
                   pendingBlockerIid !== null &&
                   (s_state.attackers ?? []).includes(c.iid)
                 }
-                onClick={() => handleBfCardClick(c)} />
+                onClick={() => handleBfCardClick(c)}
+                state={s_state} />
             </EnchantedCardSlot>
           ))}
         </Row>
@@ -488,7 +490,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
                 attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
                 isBlockerSelected={pendingBlockerIid === c.iid}
                 isAssignedBlocker={(s_state.p.bf as any[]).find((x: any) => x.iid === c.iid)?.blocking != null}
-                onClick={() => handleBfCardClick(c)} />
+                onClick={() => handleBfCardClick(c)}
+                state={s_state} />
             </EnchantedCardSlot>
           ))}
         </Row>
@@ -506,7 +509,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             >
               <FieldCard card={c} density="perm"
                 selected={selIid === c.iid}
-                onClick={() => handleBfCardClick(c)} />
+                onClick={() => handleBfCardClick(c)}
+                state={s_state} />
             </EnchantedCardSlot>
           ))}
         </Row>

@@ -16,6 +16,7 @@ interface HalfProps {
   blockers?: Record<string, string>;
   onCardClick?: (card: CardData) => void;
   onCardHover?: (iid: string | null) => void;
+  state?: any;
 }
 
 const ROW_LABEL: React.CSSProperties = {
@@ -27,7 +28,7 @@ const ROW_LABEL: React.CSSProperties = {
   textTransform: 'uppercase' as const,
 };
 
-export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendingBlockerIid, blockers, onCardClick, onCardHover }: HalfProps) {
+export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendingBlockerIid, blockers, onCardClick, onCardHover, state }: HalfProps) {
   const isOpp = side === 'opp';
   // A land turned into a creature by a type-changing static effect (Living
   // Lands, Kormus Bell) or by Mishra's Factory's own isAnimatedLand toggle
@@ -92,6 +93,7 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendi
                   tapped={c.tapped}
                   casting={flashIids?.has(c.iid)}
                   onClick={() => onCardClick?.(c)}
+                  state={state}
                 />
               </div>
             </EnchantedCardSlot>

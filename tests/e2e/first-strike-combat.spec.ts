@@ -167,6 +167,7 @@ test.describe('@engine @mobile first-strike combat damage -- desktop', () => {
         attInGy:   s.o.gy.some((c: any) => c.iid === att.iid),
         blKilled:  !s.p.bf.some((c: any) => c.iid === bl.iid),
         blInGy:    s.p.gy.some((c: any) => c.iid === bl.iid),
+        hasFirstStrikeLog: s.log.some((e: any) => e.text === 'First strike damage.'),
       };
     }, { state: initialState, att: attacker, bl: blocker });
 
@@ -174,6 +175,7 @@ test.describe('@engine @mobile first-strike combat damage -- desktop', () => {
     expect(result.attInGy,   'attacker should be in graveyard').toBe(true);
     expect(result.blKilled,  'blocker should die in mutual-lethal combat').toBe(true);
     expect(result.blInGy,    'blocker should be in graveyard').toBe(true);
+    expect(result.hasFirstStrikeLog, 'no first-strike creature in this combat -- log should not claim one').toBe(false);
   });
 });
 
@@ -245,6 +247,7 @@ test.describe('@engine @mobile first-strike combat damage -- mobile', () => {
         attInGy:   s.o.gy.some((c: any) => c.iid === att.iid),
         blKilled:  !s.p.bf.some((c: any) => c.iid === bl.iid),
         blInGy:    s.p.gy.some((c: any) => c.iid === bl.iid),
+        hasFirstStrikeLog: s.log.some((e: any) => e.text === 'First strike damage.'),
       };
     }, { state: initialState, att: attacker, bl: blocker });
 
@@ -252,5 +255,6 @@ test.describe('@engine @mobile first-strike combat damage -- mobile', () => {
     expect(result.attInGy).toBe(true);
     expect(result.blKilled).toBe(true);
     expect(result.blInGy).toBe(true);
+    expect(result.hasFirstStrikeLog, 'no first-strike creature in this combat -- log should not claim one').toBe(false);
   });
 });
