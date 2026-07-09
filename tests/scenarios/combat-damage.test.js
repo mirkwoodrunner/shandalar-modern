@@ -225,4 +225,47 @@ describe('@engine Combat damage', () => {
     expect(s6.o.life).toBe(22);
   });
 
+  it('4j: "First strike damage." is not logged when no combatant has first strike', () => {
+    const attacker = makeCreature('att-1', { controller: 'o' });
+    const blocker  = makeCreature('bl-1',  { controller: 'p' });
+    const state = makeState({
+      phase: PHASE.COMBAT_ATTACKERS,
+      active: 'o',
+      oBf: [attacker],
+      pBf: [blocker],
+    });
+
+    const s1 = duelReducer(state, { type: 'DECLARE_ATTACKER', iid: 'att-1' });
+    const s2 = duelReducer(s1,    { type: 'ADVANCE_PHASE' });
+    const s3 = duelReducer(s2,    { type: 'ADVANCE_PHASE' });
+    const s4 = duelReducer(s3,    { type: 'DECLARE_BLOCKER', attId: 'att-1', blId: 'bl-1' });
+    const s5 = duelReducer(s4,    { type: 'ADVANCE_PHASE' });
+    const s6 = duelReducer(s5,    { type: 'ADVANCE_PHASE' });
+
+    expect(s6.log.some(e => e.text === 'First strike damage.')).toBe(false);
+    // Sanity: combat still resolved normally (mutual lethal, both die).
+    expect(s6.o.bf.some(c => c.iid === 'att-1')).toBe(false);
+    expect(s6.p.bf.some(c => c.iid === 'bl-1')).toBe(false);
+  });
+
+  it('4k: "First strike damage." is still logged when a combatant has first strike', () => {
+    const attacker = makeCreature('att-1', { controller: 'o', keywords: ['FIRST_STRIKE'] });
+    const blocker  = makeCreature('bl-1',  { controller: 'p' });
+    const state = makeState({
+      phase: PHASE.COMBAT_ATTACKERS,
+      active: 'o',
+      oBf: [attacker],
+      pBf: [blocker],
+    });
+
+    const s1 = duelReducer(state, { type: 'DECLARE_ATTACKER', iid: 'att-1' });
+    const s2 = duelReducer(s1,    { type: 'ADVANCE_PHASE' });
+    const s3 = duelReducer(s2,    { type: 'ADVANCE_PHASE' });
+    const s4 = duelReducer(s3,    { type: 'DECLARE_BLOCKER', attId: 'att-1', blId: 'bl-1' });
+    const s5 = duelReducer(s4,    { type: 'ADVANCE_PHASE' });
+    const s6 = duelReducer(s5,    { type: 'ADVANCE_PHASE' });
+
+    expect(s6.log.some(e => e.text === 'First strike damage.')).toBe(true);
+  });
+
 });

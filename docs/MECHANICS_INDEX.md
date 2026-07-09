@@ -477,14 +477,24 @@ ACTIVE
 ### Description
 `getDisplayPT(card)` in `src/engine/DuelCore.js` computes UI-safe effective P/T by summing
 `eotBuffs` power/toughness deltas and `counters.P1P1`/`M1M1` without requiring full game state.
-Used by `FieldCard` (desktop and mobile) so pumped stats display correctly.
-For combat/SBE accuracy, always use `getPow(c, state)` / `getTou(c, state)` instead.
+Used by `FieldCard` (desktop and mobile) as a fallback for callers that don't supply state.
+
+Since 2026-07-09, when `state` is supplied, `FieldCard` uses the full-state `getPow(c, state)` /
+`getTou(c, state)` instead, fixing the Layer 7c lord/anthem effect display gap (e.g., Goblin King
+anthem now correctly displays +1/+1 on goblin creatures). This carries Layers 7a-7c CDA effects
+plus animated-land P/T without regressing the no-state approximation for legacy callers. Still
+true: Plague Rats/Sorceress Queen/animated-land Layer 7a/7b effects inherit the old no-state gap.
+
+For combat/SBE accuracy, always use `getPow(c, state)` / `getTou(c, state)` with state.
 
 ### Implementation
 ```
-src/engine/DuelCore.js        -- getDisplayPT() export
-src/ui/Card/FieldCard.tsx     -- desktop creature P/T badge
-src/ui/Mobile/FieldCard.tsx   -- mobile creature P/T badge
+src/engine/DuelCore.js        -- getDisplayPT() export; getPow()/getTou() with state
+src/ui/Card/FieldCard.tsx     -- desktop creature P/T badge; uses state when supplied
+src/ui/Mobile/FieldCard.tsx   -- mobile creature P/T badge; uses state when supplied
+src/ui/Battlefield/*.tsx      -- threads state down through Battlefield → Half → FieldCard
+src/DuelScreen.tsx            -- passes duel state to Battlefield
+src/ui/Mobile/DuelScreenMobile.tsx -- passes state to 4 FieldCard sites
 ```
 
 ### Status
@@ -2119,9 +2129,53 @@ Five cards implemented; one entry added.
 `ali_from_cairo` — implemented (color:R, 2RR, 0/1). Static replacement effect: `lifeFloor:1` field on the card data entry. `getLifeFloor(s, who)` helper exported from `DuelCore.js` scans `bf` for any permanent with `lifeFloor` and returns the highest value (null if none). `hurt()` clamps the post-damage life total up to that floor when `amt > 0`. General reusable hook — any future card can opt in by setting `lifeFloor:<number>` with no further engine changes. Note: the {T} banding-grant clause was removed by Oracle errata and does not exist on the current card; it was not implemented.
 
 ### Tests
-- Playwright: `e2e/batch1a-desert-landwalk.spec.ts` (1A, 1B, 1C; both desktop 1280x800 and mobile 390x844)
+- Playwright: `e2e/batch1a-desert-landwalk.spec.ts` (1A-1C: desert/desertwalk; 1D-1F: dual lands/mountainwalk display + blocking; both desktop 1280x800 and mobile 390x844)
+- Vitest: `tests/scenarios/dual-land-mountainwalk.test.js` (dual land subtype data + Goblin King mountainwalk blocking with/without Badlands)
 - Vitest: `tests/scenarios/life-floor.test.js` (LF-01 through LF-08; getLifeFloor and hurt() floor behaviour)
 - Playwright: `tests/e2e/ali-from-cairo-life-floor.spec.ts` (ALI-01, ALI-02; both desktop 1280x800 and mobile 390x844)
+- Vitest: `tests/scenarios/combat-damage.test.js` (4j-4k: first-strike log gating when no combatant has first strike)
+
+### Status
+IMPLEMENTED
+
+---
+
+## Bugfix: Dual Land Subtypes + First-Strike Log Gating + FieldCard P/T Display (2026-07-09)
+
+### Summary
+Three fixes from a single bug report (Goblin King + Goblin Hero vs. Badlands):
+
+1. **Dual land subtypes** (data fix): Added `subtype` field to all 9 ABUR dual lands missing it
+   (Tundra, Underground Sea, Badlands, Taiga, Savannah, Scrubland, Bayou, Plateau, Tropical Island).
+   Volcanic Island already had the correct `subtype:"Island Mountain"`. Fixes landwalk abilities
+   (mountainwalk, islandwalk, swampwalk, forestwalk, plainswalk) silently never triggering.
+
+2. **First-strike log gating** (engine fix): `resolveCombat()` in `DuelCore.js` now only logs
+   "First strike damage." when at least one combatant (attacker or blocker) actually has
+   FIRST_STRIKE. The pass itself was already correctly gated per-creature; this stops misleading
+   log entries when no first-strike creatures are in the combat.
+
+3. **FieldCard P/T display fix** (UI fix): Desktop and mobile `FieldCard` components now accept
+   an optional `state` prop. When supplied, they use `getPow(card, state)` / `getTou(card, state)`
+   instead of the no-state `getDisplayPT()` approximation, fixing the Layer 7c lord/anthem effect
+   display gap (e.g., Goblin King anthem now correctly shows +1/+1 on battlefield tiles). Falls
+   back to `getDisplayPT()` when state isn't supplied for backward compatibility.
+
+### Modified files
+- `src/data/cards.js` — added `subtype` to 9 dual lands
+- `src/engine/DuelCore.js` — gated first-strike log line
+- `src/ui/Card/FieldCard.tsx` — added `state` prop, uses `getPow`/`getTou` when state supplied
+- `src/ui/Mobile/FieldCard.tsx` — same as desktop
+- `src/ui/Battlefield/Battlefield.tsx` — threads state to Half
+- `src/ui/Battlefield/Half.tsx` — threads state to FieldCard
+- `src/DuelScreen.tsx` — passes `state` to Battlefield
+- `src/ui/Mobile/DuelScreenMobile.tsx` — passes `state` to 4 FieldCard call sites
+
+### Tests
+- Vitest: `tests/scenarios/dual-land-mountainwalk.test.js` (dual land subtype data + Goblin King mountainwalk blocking)
+- Vitest: `tests/scenarios/combat-damage.test.js` (4j-4k: first-strike log gating)
+- Playwright: `e2e/batch1a-desert-landwalk.spec.ts` (1D-1F: Goblin King anthem P/T display + mountainwalk blocking; desktop + mobile)
+- Playwright: `e2e/first-strike-combat.spec.ts` (FS-E2E-02 enhanced: asserts no first-strike log when nobody has it)
 
 ### Status
 IMPLEMENTED

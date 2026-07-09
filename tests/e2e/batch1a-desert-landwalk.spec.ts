@@ -216,6 +216,109 @@ function desertLandwalkTests() {
     const sandals = [...s.p.bf, ...s.o.bf].find((c: any) => c.iid === sandalsIid);
     expect(sandals?.tapped).toBe(true);
   });
+
+  // ── 4. Goblin King anthem: Goblin Hero's battlefield tile shows 3/2, not 2/1 ──
+  test('1D: Goblin King anthem reflects on Goblin Hero battlefield tile P/T', async ({ page }) => {
+    await page.goto(sandboxWith('goblin_king,goblin_hero'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    await page.evaluate(() => {
+      (window as any).__duelDispatch({
+        type: 'SANDBOX_FORCE_HAND',
+        who: 'p',
+        cardIds: ['goblin_king', 'goblin_hero'],
+        mana: { R: 5, C: 5 },
+      });
+    });
+
+    await castAndResolve(page, 'goblin_king');
+    const heroIid = await castAndResolve(page, 'goblin_hero');
+
+    const cardText = await page.locator(`[data-iid="${heroIid}"]`).innerText();
+    expect(cardText).toContain('3/2');
+    expect(cardText).not.toContain('2/1');
+  });
+
+  // ── 5. Goblin King mountainwalk: Goblin Hero unblockable when defender controls Badlands ──
+  test('1E: Goblin Hero (Goblin King mountainwalk) cannot be blocked when defender controls Badlands', async ({ page }) => {
+    await page.goto(sandboxWith('goblin_king,goblin_hero,badlands,grizzly_bears'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    const attIid = 'e2e-hero-1';
+    const kingIid = 'e2e-king-1';
+    const blIid = 'e2e-bl-1';
+    const landIid = 'e2e-badlands-1';
+
+    await page.evaluate(({ attIid, kingIid, blIid, landIid }) => {
+      const s = (window as any).__duelState();
+      const hero = { iid: attIid, id: 'goblin_hero', name: 'Goblin Hero', type: 'Creature', subtype: 'Goblin Warrior', color: 'R', cmc: 2, cost: '1R', power: 2, toughness: 1, keywords: [], tapped: false, summoningSick: false, attacking: true, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o' };
+      const king = { iid: kingIid, id: 'goblin_king', name: 'Goblin King', type: 'Creature', subtype: 'Goblin Legend', color: 'R', cmc: 3, cost: '1RR', power: 2, toughness: 2, keywords: [], tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o', effect: 'lordEffect', targets: 'goblin', mod: { power: 1, toughness: 1 }, lordKeywords: ['MOUNTAINWALK'] };
+      const blocker = { iid: blIid, id: 'grizzly_bears', name: 'Grizzly Bears', type: 'Creature', subtype: 'Bear', color: 'G', cmc: 2, cost: '1G', power: 2, toughness: 2, keywords: [], tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'p' };
+      const badlandsCard = { iid: landIid, id: 'badlands', name: 'Badlands', type: 'Land', subtype: 'Swamp Mountain', color: '', cmc: 0, cost: '', tapped: false, produces: ['B', 'R'], controller: 'p' };
+
+      (window as any).__duelDispatch({
+        type: 'DEBUG_SET_ACTIVE',
+        patch: {
+          phase: 'COMBAT_BLOCKERS',
+          active: 'o',
+          attackers: [attIid],
+          blockers: {},
+          priorityWindow: false,
+          stack: [],
+          o: { ...s.o, bf: [king, hero] },
+          p: { ...s.p, bf: [blocker, badlandsCard] },
+        },
+      });
+    }, { attIid, kingIid, blIid, landIid });
+
+    await page.evaluate(({ attIid, blIid }) => {
+      (window as any).__duelDispatch({ type: 'DECLARE_BLOCKER', attId: attIid, blId: blIid });
+    }, { attIid, blIid });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    expect(s.blockers[blIid], 'block should have been rejected -- defender controls Badlands, attacker has mountainwalk').toBeUndefined();
+  });
+
+  // ── 6. Positive control: same setup without a Mountain-type land -- block succeeds ──
+  test('1F: Goblin Hero (Goblin King mountainwalk) is blockable when defender has no Mountain-type land', async ({ page }) => {
+    await page.goto(sandboxWith('goblin_king,goblin_hero,grizzly_bears'));
+    await waitForDuel(page);
+    await waitForMain1(page);
+
+    const attIid = 'e2e-hero-2';
+    const kingIid = 'e2e-king-2';
+    const blIid = 'e2e-bl-2';
+
+    await page.evaluate(({ attIid, kingIid, blIid }) => {
+      const s = (window as any).__duelState();
+      const hero = { iid: attIid, id: 'goblin_hero', name: 'Goblin Hero', type: 'Creature', subtype: 'Goblin Warrior', color: 'R', cmc: 2, cost: '1R', power: 2, toughness: 1, keywords: [], tapped: false, summoningSick: false, attacking: true, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o' };
+      const king = { iid: kingIid, id: 'goblin_king', name: 'Goblin King', type: 'Creature', subtype: 'Goblin Legend', color: 'R', cmc: 3, cost: '1RR', power: 2, toughness: 2, keywords: [], tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'o', effect: 'lordEffect', targets: 'goblin', mod: { power: 1, toughness: 1 }, lordKeywords: ['MOUNTAINWALK'] };
+      const blocker = { iid: blIid, id: 'grizzly_bears', name: 'Grizzly Bears', type: 'Creature', subtype: 'Bear', color: 'G', cmc: 2, cost: '1G', power: 2, toughness: 2, keywords: [], tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller: 'p' };
+
+      (window as any).__duelDispatch({
+        type: 'DEBUG_SET_ACTIVE',
+        patch: {
+          phase: 'COMBAT_BLOCKERS',
+          active: 'o',
+          attackers: [attIid],
+          blockers: {},
+          priorityWindow: false,
+          stack: [],
+          o: { ...s.o, bf: [king, hero] },
+          p: { ...s.p, bf: [blocker] },
+        },
+      });
+    }, { attIid, kingIid, blIid });
+
+    await page.evaluate(({ attIid, blIid }) => {
+      (window as any).__duelDispatch({ type: 'DECLARE_BLOCKER', attId: attIid, blId: blIid });
+    }, { attIid, blIid });
+
+    const s = await page.evaluate(() => (window as any).__duelState());
+    expect(s.blockers[blIid]).toBe(attIid);
+  });
 }
 
 // ---------------------------------------------------------------------------

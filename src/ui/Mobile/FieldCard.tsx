@@ -4,7 +4,7 @@ import { CardArtImage } from '../Card/CardArtImage';
 import { frameOf } from '../Card/frame';
 import type { CardData } from '../Card/types';
 import s from './styles.module.css';
-import { getDisplayPT } from '../../engine/DuelCore.js';
+import { getDisplayPT, getPow, getTou } from '../../engine/DuelCore.js';
 
 interface FieldCardProps {
   card: CardData;
@@ -16,13 +16,18 @@ interface FieldCardProps {
   isPendingAttackerTarget?: boolean;
   isBlockerSelected?: boolean;
   isAssignedBlocker?: boolean;
+  state?: any;
 }
 
-export function FieldCard({ card, selected, attacking, density = 'creature', onClick, isTarget, isPendingAttackerTarget, isBlockerSelected, isAssignedBlocker }: FieldCardProps) {
+export function FieldCard({ card, selected, attacking, density = 'creature', onClick, isTarget, isPendingAttackerTarget, isBlockerSelected, isAssignedBlocker, state }: FieldCardProps) {
   const frame = frameOf(card);
   const isCre = card.type?.includes('Creature');
   const tapped = card.tapped;
-  const { power: dispPow, toughness: dispTou } = isCre ? getDisplayPT(card) : { power: 0, toughness: 0 };
+  const { power: dispPow, toughness: dispTou } = !isCre
+    ? { power: 0, toughness: 0 }
+    : state
+      ? { power: getPow(card, state), toughness: getTou(card, state) }
+      : getDisplayPT(card);
   const w = density === 'perm' ? 50 : 64;
   const h = density === 'perm' ? 70 : 90;
   const nameFontSize = density === 'perm' ? 5.5 : 6.5;

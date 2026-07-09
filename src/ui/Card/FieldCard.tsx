@@ -5,7 +5,7 @@ import { CardArtImage } from './CardArtImage';
 import { frameOf } from './frame';
 import type { CardData } from './types';
 import styles from './FieldCard.module.css';
-import { getDisplayPT, isCre as isCreEngine } from '../../engine/DuelCore.js';
+import { getDisplayPT, getPow, getTou, isCre as isCreEngine } from '../../engine/DuelCore.js';
 
 interface FieldCardProps {
   card: CardData;
@@ -15,18 +15,23 @@ interface FieldCardProps {
   casting?: boolean;
   sm?: boolean;
   onClick?: () => void;
+  state?: any;
 }
 
-function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false, onClick }: FieldCardProps) {
+function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false, onClick, state }: FieldCardProps) {
   const frame = frameOf(card);
   const w = sm ? 78 : 96;
   const h = sm ? 109 : 134;
   const isCre = isCreEngine(card as any) || (card as any).isAnimatedLand === true;
   const fontSize = sm ? 7.5 : 8.5;
-  // NOTE: getDisplayPT is a no-state approximation (eotBuffs/counters only) -- it does
-  // not reflect Layer 7a/7b baked P/T (Plague Rats, Sorceress Queen, and now animated
-  // lands under Living Lands/Kormus Bell all share this same pre-existing display gap).
-  const { power: dispPow, toughness: dispTou } = isCre ? getDisplayPT(card) : { power: 0, toughness: 0 };
+  // Full-state P/T (Layers 7a-7c: CDAs, animated-land P/T, lord/anthem effects
+  // like Goblin King) when the caller passes a duel state. Falls back to the
+  // old no-state approximation if state isn't supplied.
+  const { power: dispPow, toughness: dispTou } = !isCre
+    ? { power: 0, toughness: 0 }
+    : state
+      ? { power: getPow(card, state), toughness: getTou(card, state) }
+      : getDisplayPT(card);
 
   const borderColor = casting ? 'var(--brass-hi)' : selected ? 'var(--brass)' : attacking ? 'var(--opp)' : frame.bd;
   const boxShadow = casting

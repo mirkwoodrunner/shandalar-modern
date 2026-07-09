@@ -14,6 +14,7 @@ interface BattlefieldProps {
   blockers?: Record<string, string>;
   onCardClick?: (card: CardData) => void;
   onCardHover?: (iid: string | null) => void;
+  state?: any;
 }
 
 export function Battlefield({
@@ -28,6 +29,7 @@ export function Battlefield({
   blockers,
   onCardClick,
   onCardHover,
+  state,
 }: BattlefieldProps) {
   return (
     <>
@@ -42,6 +44,7 @@ export function Battlefield({
         blockers={blockers}
         onCardClick={onCardClick}
         onCardHover={onCardHover}
+        state={state}
       />
       <PhaseRibbon phase={phase} />
       <Half
@@ -55,6 +58,7 @@ export function Battlefield({
         blockers={blockers}
         onCardClick={onCardClick}
         onCardHover={onCardHover}
+        state={state}
       />
     </>
   );

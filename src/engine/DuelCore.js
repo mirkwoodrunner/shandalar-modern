@@ -3849,7 +3849,17 @@ return ns;
 const bandingChoice = getNextBandingChoice(ns);
 if (bandingChoice) return createPendingChoice(ns, bandingChoice);
 
-ns = dlog(ns, "First strike damage.", "combat");
+// Only announce the first-strike step if someone in this combat actually has
+// first strike -- the pass below is already a correctly-gated no-op otherwise,
+// but logging "First strike damage." unconditionally read as a bug report
+// (see: Goblin King mountainwalk block investigation, no first-strike
+// creatures involved at all).
+const anyFirstStrike = ns.attackers.some(attId => {
+  const att = getBF(ns, attId);
+  if (att && hasKw(att, KEYWORDS.FIRST_STRIKE.id)) return true;
+  return getEffectiveBlockers(ns, attId).some(bl => hasKw(bl, KEYWORDS.FIRST_STRIKE.id));
+});
+if (anyFirstStrike) ns = dlog(ns, "First strike damage.", "combat");
 
 const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
 // Spirit Link: returns 1 when host has a Spirit Link aura (caller multiplies by damage dealt).

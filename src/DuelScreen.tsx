@@ -597,6 +597,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               pendingBlockerIid={pendingBlockerIid}
               blockers={(s.blockers as Record<string, string>) ?? {}}
               onCardClick={handleBfCardClick}
+              state={s}
             />
             {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
             {!isMobile && s.stack.length > 0 && (() => {
