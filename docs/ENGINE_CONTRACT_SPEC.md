@@ -380,6 +380,39 @@ rationale.
 
 ---
 
+## 7.5 `ON_TAP` Event (Tap Centralization Phase 1)
+
+One addition to the trigger vocabulary, added to unstub Relic Bind, Blight,
+and Psychic Venom (Phase 1 of tap centralization; see docs/ROADMAP.md
+Milestone A / Tier 3).
+
+- `ON_TAP` -- emitted by the new `tapPermanent(state, who, iid)` choke point
+  (src/engine/DuelCore.js) whenever a permanent transitions from untapped to
+  tapped. Payload: `{ cardId, controller }`. Does NOT fire redundantly if the
+  permanent was already tapped.
+- All ~28 prior ad hoc `tapped: true` mutation sites in DuelCore.js now route
+  through this single function. See docs/MECHANICS_INDEX.md for the list.
+- `tapPermanent` pairs its `emitEvent` call with an immediate
+  `processTriggerQueue`, matching every other emitEvent call site in the
+  file -- `emitEvent` alone only enqueues, it does not resolve. Without this
+  pairing, ON_TAP-triggered effects would sit queued until some unrelated
+  later action happened to drain the queue instead of resolving at the
+  moment of tapping.
+- New `enchantedHostTapped` condition (in `evaluateCondition`) restricts an
+  Aura's "whenever enchanted permanent becomes tapped" ability to firing
+  only when its own specific host (via `enchantedArtifactIid` or
+  `enchantedLandIid`) is the one that tapped, not any other permanent of the
+  same type. Relic Bind, Blight, and Psychic Venom's triggeredAbilities
+  intentionally carry no `scope` key (matching Living Artifact's existing
+  convention) -- the codebase's `scope: 'controller'` filter checks
+  `card.controller` against `event.payload.activePlayer`, a key the ON_TAP
+  payload does not carry, so `enchantedHostTapped` alone does the filtering.
+- Phase 2 (not yet built) will add tracking for "an ability was activated
+  without {T} in its cost," needed by Artifact Possession, Haunting Wind, and
+  Powerleech in addition to this event.
+
+---
+
 # 8. Determinism Contract
 
 All systems MUST obey:

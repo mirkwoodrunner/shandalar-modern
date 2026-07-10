@@ -9,6 +9,34 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-10)
+- **Tap Centralization Phase 1 + Relic Bind, Blight, Psychic Venom** -- all 28
+  ad hoc "becomes tapped" mutation sites in `DuelCore.js` now route through a
+  single new choke point, `tapPermanent(state, who, iid)`, which emits a new
+  `ON_TAP` event (CR 701.21) after the mutation and no-ops safely if the
+  permanent is already tapped or not found. `tapPermanent` pairs its
+  `emitEvent` call with an immediate `processTriggerQueue` (matching every
+  other emitEvent call site in the file) so ON_TAP-triggered effects resolve
+  at the moment of tapping rather than sitting queued. New
+  `enchantedHostTapped` condition in `evaluateCondition` restricts a Kudzu-
+  style Aura's ON_TAP trigger to firing only for its own specific host.
+  Unstubs three previously-STUB cards: Blight (destroys its enchanted land
+  when tapped, one-time), Psychic Venom (2 damage to enchanted land's
+  controller on tap, repeatable), Relic Bind (modal 1-damage-or-1-lifegain
+  choice on enchanted-opponent-artifact tap, via the existing
+  `requiresChoice` triggered-ability infrastructure). Stub count: 15 -> 12.
+  Also fixed a real, confirmed infra gap found during implementation: there
+  is no general SBA sweep for orphaned Kudzu-style Auras (a Kudzu-style Aura
+  whose host permanent has died) -- Kudzu and Living Artifact each already
+  handle this reactively via their own `upkeep` case. Blight/Psychic
+  Venom/Relic Bind now do the same via two small new shared upkeep cases,
+  `kudzuStyleLandOrphanCheck`/`kudzuStyleArtifactOrphanCheck`. Tests: 30
+  Vitest (`tests/scenarios/tap-centralization.test.js`,
+  `tests/scenarios/relic-bind-blight-psychic-venom.test.js`), 6 Playwright
+  (`tests/e2e/tap-triggered-auras.spec.ts`, both viewports). Phase 2 (ability
+  activated without {T} in its cost, needed by Artifact Possession, Haunting
+  Wind, Powerleech) is explicitly out of scope and remains open. See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.5 and `docs/MECHANICS_INDEX.md` --
+  Tap Centralization Phase 1.
 - **Emblem infrastructure + Titania's Song + Cyclopean Tomb** -- new shared
   `state.p/o.emblems` mechanism for "this effect continues after its source
   leaves the battlefield" cards, hooked into `layers.js collectEffects`
