@@ -273,6 +273,9 @@
   `docs/MECHANICS_INDEX.md` -- Feature: Generalized Choice Mechanisms, and
   `docs/SYSTEMS.md` Section 27.
 
+## Completed (2026-07-10)
+- **Guardian Angel, Aladdin's Lamp, Raging River (Three Card Batch)** -- Instant-speed damage prevention (1994 fast-effect convention, no stack), draw replacement with X-based charge queue and library reordering, and combat pile division with block restriction. End-to-end: game state (tempAbilities, lampCharges, pendingLamp/River fields), DuelCore reducers (ACTIVATE_TEMP_ABILITY, LAMP_PICK, RIVER_DIVIDE, RIVER_SIDES, updates to canBlockDuel), AI helpers (planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides), UI components (TempAbilityBar, LampPickModal, RiverDividePanel/RiverSidesPanel for desktop and mobile), both duel screens wired to render components, useDuelController AI dispatch integrated, test suites (48 Vitest cases across three scenarios, 6 Playwright cases across three specs at dual viewports). Stub count: 20 -> 17. See `docs/SYSTEMS.md` Sections 9, 14, and 16; `docs/MECHANICS_INDEX.md` entries for each card.
+
 ## Completed (2026-07-04)
 - **Bug Fix: Ancestral Recall creature-targeting crash (ARCANE-1)** -- fixed Ancestral Recall crash on creature-click during targeting, same root cause as the earlier Lava Axe fix (`draw3` was missing from `PLAYER_ONLY_TARGET_EFFECTS`). See `docs/MECHANICS_INDEX.md` -- Bug Fix: Ancestral Recall creature-targeting crash.
 

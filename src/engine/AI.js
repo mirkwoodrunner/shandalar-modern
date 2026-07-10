@@ -1466,4 +1466,134 @@ export function aiDecide(state) {
   return dcActions;
 }
 
+// --- GUARDIAN ANGEL TEMP ABILITIES -----------------------------------------------
+
+// AI plan for activating Guardian Angel temporary damage prevention abilities.
+// Evaluates which temp abilities to activate based on threat assessment.
+export function planGuardianAngelTempAbilities(state, profile) {
+  if (!state.p.tempAbilities || state.p.tempAbilities.length === 0) {
+    return { actions: [] };
+  }
+
+  const actions = [];
+  const totalMana = Object.values(state.p.mana).reduce((a, v) => a + v, 0);
+
+  // Conservative profile: activate if facing lethal threat in combat
+  if (profile.aggression < 0.5) {
+    const incomingDamage = (state.o.attackers ?? []).reduce((sum, atkId) => {
+      const atk = state.o.bf.find(c => c.iid === atkId);
+      return sum + (getPow(atk, state) || 0);
+    }, 0);
+    if (incomingDamage >= state.p.life && totalMana >= (state.p.tempAbilities[0]?.cost?.length ?? 1)) {
+      for (const temp of state.p.tempAbilities) {
+        const costLen = temp.cost?.length ?? 1;
+        if (totalMana >= costLen) {
+          actions.push({ type: 'ACTIVATE_TEMP_ABILITY', tempId: temp.id });
+          break;
+        }
+      }
+    }
+  } else if (profile.aggression >= 0.8) {
+    // Aggressive profile: proactive shield if any blockers present
+    if ((state.o.bf.length ?? 0) > 0 && totalMana > 0) {
+      const temp = state.p.tempAbilities[0];
+      if (temp && totalMana >= (temp.cost?.length ?? 1)) {
+        actions.push({ type: 'ACTIVATE_TEMP_ABILITY', tempId: temp.id });
+      }
+    }
+  }
+
+  return { phase: PHASE.MAIN_1, actions };
+}
+
+// --- ALADDIN'S LAMP PICKING --------------------------------------------------
+
+// AI choice for Aladdin's Lamp: picks a card from the shown pool.
+export function chooseLampPick(pendingPick, state, profile) {
+  if (!pendingPick || !pendingPick.cardIids) {
+    return null;
+  }
+
+  const cardsShown = pendingPick.cardIids.map(iid => {
+    const cardInLib = state.p.lib.find(c => c.iid === iid);
+    return cardInLib || { iid, name: 'Unknown', cost: '0' };
+  });
+
+  // Greedy profile: pick the lowest-cost spell, or highest-cost if all lands
+  const nonLands = cardsShown.filter(c => !isLand(c));
+  if (nonLands.length > 0) {
+    const byMana = nonLands.sort((a, b) => {
+      const aCMC = a.cmc || parseMana(a.cost || '0').generic || 0;
+      const bCMC = b.cmc || parseMana(b.cost || '0').generic || 0;
+      return aCMC - bCMC;
+    });
+    return profile.greedySpells >= 0.7 ? byMana[0].iid : byMana[byMana.length - 1].iid;
+  }
+
+  // All lands: pick randomly
+  return cardsShown[Math.floor(Math.random() * cardsShown.length)].iid;
+}
+
+// --- RAGING RIVER PILE DIVISION -----------------------------------------------
+
+// AI choice for Raging River: divides non-flying defenders into left/right piles.
+export function chooseRiverDivide(nonFlyerIids, state, profile) {
+  if (!nonFlyerIids || nonFlyerIids.length === 0) {
+    return { leftIids: [], rightIids: [] };
+  }
+
+  const nonFlyers = nonFlyerIids.map(iid => state.o.bf.find(c => c.iid === iid)).filter(Boolean);
+
+  // Conservative profile: try to split strong blockers across both piles
+  if (profile.aggression < 0.5) {
+    const byStat = nonFlyers.sort((a, b) => {
+      const aVal = evaluateCreatureValue(a, state);
+      const bVal = evaluateCreatureValue(b, state);
+      return bVal - aVal;
+    });
+    const mid = Math.ceil(byStat.length / 2);
+    return {
+      leftIids: byStat.slice(0, mid).map(c => c.iid),
+      rightIids: byStat.slice(mid).map(c => c.iid),
+    };
+  }
+
+  // Aggressive profile: stack weakest in one pile
+  const byVal = nonFlyers.sort((a, b) => {
+    const aVal = evaluateCreatureValue(a, state);
+    const bVal = evaluateCreatureValue(b, state);
+    return aVal - bVal;
+  });
+  const weakCount = Math.floor(byVal.length / 2);
+  return {
+    leftIids: byVal.slice(0, weakCount).map(c => c.iid),
+    rightIids: byVal.slice(weakCount).map(c => c.iid),
+  };
+}
+
+// --- RAGING RIVER SIDE SELECTION ---------------------------------------------
+
+// AI choice for Raging River: selects which piles attackers can be blocked by.
+export function chooseRiverSides(attackerIids, state, profile) {
+  if (!attackerIids || attackerIids.length === 0) {
+    return {};
+  }
+
+  const attackers = attackerIids.map(iid => state.p.bf.find(c => c.iid === iid)).filter(Boolean);
+  const sides = {};
+
+  // Simple heuristic: spread attackers across both sides evenly
+  for (let i = 0; i < attackers.length; i++) {
+    const att = attackers[i];
+    // Aggressive profile: push flyers to one side
+    if (hasKw(att, KEYWORDS.FLYING.id, state) && profile.aggression >= 0.7) {
+      sides[att.iid] = 'left';
+    } else {
+      sides[att.iid] = i % 2 === 0 ? 'left' : 'right';
+    }
+  }
+
+  return sides;
+}
+
 export default { getAIPlan, aiDecide, AI_PROFILES };

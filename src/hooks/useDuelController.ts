@@ -6,7 +6,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
-import { aiDecide, chooseBandingDamageOrder } from '../engine/AI.js';
+import AIModule, { chooseBandingDamageOrder, planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
+const { aiDecide, AI_PROFILES } = AIModule;
 import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
@@ -433,7 +434,7 @@ export function useDuelController(
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
       s.pendingChoice || s.pendingTriggerTarget || s.pendingTutor || s.pendingTransmuteSacrifice ||
       s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange ||
-      s.pendingDamageShieldChoice
+      s.pendingDamageShieldChoice || s.pendingLampPicks || s.pendingRiverDivide || s.pendingRiverSides
     ) {
       return;
     }
@@ -461,7 +462,7 @@ export function useDuelController(
     fatalError, endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
-    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, passPriority, requestPhaseAdvance,
+    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────
@@ -708,6 +709,28 @@ export function useDuelController(
       return;
     }
 
+    // AI selects Aladdin's Lamp pick from shown cards
+    if (s.pendingLampPicks?.[0]?.who === 'o') {
+      const pick = s.pendingLampPicks[0];
+      const chosen = chooseLampPick(pick, s, AI_PROFILES.GENERIC);
+      if (chosen) dispatch({ type: 'LAMP_PICK', iid: chosen });
+      return;
+    }
+
+    // AI divides Raging River non-flying defenders into piles
+    if (s.pendingRiverDivide?.defender === 'o') {
+      const division = chooseRiverDivide(s.pendingRiverDivide.nonFlyerIids, s, AI_PROFILES.GENERIC);
+      dispatch({ type: 'RIVER_DIVIDE', who: 'o', leftIids: division.leftIids, rightIids: division.rightIids });
+      return;
+    }
+
+    // AI chooses which piles Raging River attackers can be blocked by
+    if (s.pendingRiverSides?.chooser === 'o') {
+      const sides = chooseRiverSides(s.pendingRiverSides.attackerIids, s, AI_PROFILES.GENERIC);
+      dispatch({ type: 'RIVER_SIDES', who: 'o', sides });
+      return;
+    }
+
     // AI resolves a suspended requiresTarget trigger (Vesuvan Doppelganger's
     // upkeep re-copy): pick the best creature on either battlefield by
     // power+toughness, excluding the copying permanent itself (copying itself
@@ -753,7 +776,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
