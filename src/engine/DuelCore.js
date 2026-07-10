@@ -4286,7 +4286,7 @@ if (next === PHASE.COMBAT_BEGIN) {
 // attacker committed -- the same boundary the B14 skip logic above uses to count
 // declared attackers (s.attackers, pre-transition).
 if (s.phase === PHASE.COMBAT_ATTACKERS && s.attackers && s.attackers.length > 0) {
-  ns = emitEvent(ns, { type: 'ON_ATTACKS_DECLARED', payload: { attackerIids: [...s.attackers], attackingPlayer: s.active } });
+  ns = emitEvent(ns, { type: 'ON_ATTACKS_DECLARED', payload: { attackerIids: [...s.attackers], attackingPlayer: s.active, activePlayer: s.active } });
   ns = processTriggerQueue(ns);
 }
 

@@ -399,12 +399,15 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         />
       )}
 
-      {/* River Divide Panel - Raging River initial pile division */}
-      {s_state.pendingRiverDivide?.defender === 'o' && s_state.active === 'p' && (
+      {/* River Divide Panel - Raging River initial pile division.
+          Shown when the HUMAN is the defender (AI attacked with Raging River).
+          When the AI is the defender, useDuelController's timer-based effect
+          auto-resolves via chooseRiverDivide -- no panel needed for that case. */}
+      {s_state.pendingRiverDivide?.defender === 'p' && s_state.active === 'o' && (
         <RiverDividePanelMobile
-          nonFlyers={(s_state.o.bf as any[]).filter(c => s_state.pendingRiverDivide?.nonFlyerIids?.includes(c.iid))}
+          nonFlyers={(s_state.p.bf as any[]).filter(c => s_state.pendingRiverDivide?.nonFlyerIids?.includes(c.iid))}
           onConfirm={(leftIids: string[], rightIids: string[]) =>
-            dispatch({ type: 'RIVER_DIVIDE', who: 'o', leftIids, rightIids })
+            dispatch({ type: 'RIVER_DIVIDE', who: 'p', leftIids, rightIids })
           }
         />
       )}

@@ -1579,7 +1579,7 @@ export function chooseRiverSides(attackerIids, state, profile) {
     return {};
   }
 
-  const attackers = attackerIids.map(iid => state.p.bf.find(c => c.iid === iid)).filter(Boolean);
+  const attackers = attackerIids.map(iid => state.o.bf.find(c => c.iid === iid)).filter(Boolean);
   const sides = {};
 
   // Simple heuristic: spread attackers across both sides evenly
