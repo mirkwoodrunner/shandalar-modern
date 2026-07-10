@@ -4190,4 +4190,29 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.23
+## Tap Centralization Phase 1 + Relic Bind, Blight, Psychic Venom — 2026-07-10
+
+**Infrastructure:** A single new choke point, `tapPermanent(state, who, iid)` (`DuelCore.js`, adjacent to `applyOvergrowthTap`), for every "a permanent becomes tapped" mutation (CR 701.21). No-ops if the permanent is already tapped or not found. Mutates `tapped:true`, then emits a new `ON_TAP` event (`{ cardId, controller }` payload) and immediately calls `processTriggerQueue` -- matching every other `emitEvent` call site in the file, since `emitEvent` alone only enqueues. All ~28 prior ad hoc `tapped: true` sites across `DuelCore.js` (mana abilities, targeted tap effects, multi-permanent tap effects, Regenerate, Paralyze, upkeep cost-or-punishment cards, the generic `ACTIVATE_ABILITY` tap-cost step, etc.) now route through this one function; the single remaining non-`tapPermanent` `tapped:true` site is the untap-step computation deciding whether a creature *stays* tapped, which is not a "becomes tapped" event. New `enchantedHostTapped` condition in `evaluateCondition`: restricts a Kudzu-style Aura's ON_TAP trigger to firing only when its own specific host (`enchantedArtifactIid`/`enchantedLandIid`) is the permanent that tapped. See `docs/ENGINE_CONTRACT_SPEC.md` S7.5.
+
+**Deviation from spec worth flagging:** the three new cards' `triggeredAbilities` intentionally carry no `scope` key, unlike a literal reading of the originating prompt. This codebase's `scope: 'controller'` filter (`emitEvent`) checks `card.controller !== event.payload?.activePlayer` -- a key the `ON_TAP` payload does not carry (`{cardId, controller}` only), so `scope:'controller'` would have silently killed every one of these triggers. Living Artifact (the explicit template card for this shape) already omits `scope` entirely and relies purely on its own condition for host-specificity -- the same precedent applied here.
+
+**Orphaned-Aura cleanup gap (found, not assumed):** there is no general SBA sweep that moves an orphaned Kudzu-style Aura (host permanent gone) to its owner's graveyard -- Kudzu and Living Artifact each already handle this reactively, once per upkeep, inside their own `upkeep` case (`kudzuUpkeep`/`livingArtifactUpkeep`). Blight/Psychic Venom/Relic Bind have no ongoing upkeep effect of their own, so two small new shared upkeep cases were added mirroring the exact same pattern: `kudzuStyleLandOrphanCheck` (Blight, Psychic Venom) and `kudzuStyleArtifactOrphanCheck` (Relic Bind) -- not a new mechanism, the same one Kudzu/Living Artifact already rely on.
+
+**Blight** (`blight`, B enchantment Aura, `enchantLand`) -- "When enchanted land becomes tapped, destroy it." One-time trigger; `blightDestroyHost` zMoves the enchanted land to its controller's graveyard. Adapted from Card-Forge/forge (b/blight.txt), GPL-3.0.
+
+**Psychic Venom** (`psychic_venom`, U enchantment Aura, `enchantLand`) -- "Whenever enchanted land becomes tapped, this Aura deals 2 damage to that land's controller." Repeatable; `psychicVenomDamage` routes through `hurt()`. Adapted from Card-Forge/forge (p/psychic_venom.txt), GPL-3.0.
+
+**Relic Bind** (`relic_bind`, U enchantment Aura, `enchantArtifact`, `requiresTarget:'opponentArtifact'`) -- "Enchant artifact an opponent controls. Whenever enchanted artifact becomes tapped, choose one -- deal 1 damage to target player, or target player gains 1 life." No planeswalkers exist in this engine (scope-appropriate simplification of "or planeswalker"). Uses the existing `requiresChoice` triggered-ability infrastructure (`ability.effect.options`, resolved via `RESOLVE_CHOICE`'s default `'triggered_ability_choice'` path) for the modal, not the `modalChoice`/`resolveEff` mechanism (that path is for spells cast with a pre-selected target, e.g. Alabaster Potion, and does not apply to a triggered ability). **Simplification, found during implementation, not built around:** this engine's triggered-ability infrastructure has no "pick a mode, then pick a player target" flow (`requiresChoice` resolves a fixed options list immediately from the event payload; `requiresTarget` is a battlefield-*permanent* picker only, no modal first) -- building a parallel targeting mechanism for one card was out of scope, so "target player" follows the same 2-player convention already used by Jihad/The Rack/Black Vise (hardcoded relative-to-controller target instead of a live picker): the damage mode always targets the artifact's controller (necessarily Relic Bind's controller's opponent, since Relic Bind can only enchant an opponent's artifact), the lifegain mode always targets Relic Bind's own controller. Cast-time "an opponent controls" restriction added as a small `c.id === 'relic_bind'` gate in `CAST_SPELL`, following the same per-card-gate convention BEB/REB/Reset already use (no existing declarative "Aura host must be controlled by X" convention existed to reuse). **Known pre-existing UI gap, not introduced here:** `enchantArtifact` is not in `useDuelController.ts`'s `EXPLICIT_TARGET_EFFECTS` (protected file, out of scope) -- Living Artifact has the same gap already. Legality is still enforced at dispatch time regardless of whether a target-picker UI opens. Adapted from Card-Forge/forge (r/relic_bind.txt), GPL-3.0.
+
+**Tests:**
+- Vitest: `tests/scenarios/tap-centralization.test.js` (TAP-01 through TAP-14), `tests/scenarios/relic-bind-blight-psychic-venom.test.js` (BLIGHT-01..04, PV-01..04, RB-01..06, BOTH-01..02).
+- Playwright: `tests/e2e/tap-triggered-auras.spec.ts` (dual viewport, `@engine`).
+
+**Phase 2 (not implemented, remains open):** tracking for "an ability was activated without {T} in its cost," needed by Artifact Possession, Haunting Wind, and Powerleech.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.24

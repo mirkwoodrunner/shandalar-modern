@@ -710,8 +710,9 @@ while (changed) {
       // Regenerate: tap, clear damage, remove flag — creature survives.
       // Hurr Jackal: cantRegenerateThisTurn prevents the shield from saving it.
       if (c.regenerating && !c.cantRegenerateThisTurn) {
+        ns = tapPermanent(ns, w, c.iid);
         ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x =>
-          x.iid === c.iid ? { ...x, damage: 0, tapped: true, regenerating: false } : x
+          x.iid === c.iid ? { ...x, damage: 0, regenerating: false } : x
         )}};
         ns = dlog(ns, `${c.name} regenerates.`, "effect");
         changed = true;
@@ -817,6 +818,32 @@ export function shouldPromptPlayerForResponse(state) {
   return hasInstant || hasActivatedAbility;
 }
 
+// --- TAP CENTRALIZATION (PHASE 1) --------------------------------------------
+// Tap centralization Phase 1. The single choke point for "a permanent becomes
+// tapped" (CR 701.21). No-ops silently if the permanent is already tapped or
+// not found -- "becomes tapped" only fires on an actual untapped->tapped
+// transition, never a redundant one. Does NOT add a dlog message -- callers
+// keep their own existing dlog calls describing the specific effect (mana
+// gained, damage dealt, etc.); this only performs the mutation and emits the
+// event other triggered abilities (Relic Bind, Blight, Psychic Venom, and
+// Phase 2's Haunting Wind/Powerleech/Artifact Possession) listen for.
+export function tapPermanent(state, who, iid) {
+  const card = state[who]?.bf.find(c => c.iid === iid);
+  if (!card || card.tapped) return state;
+  let ns = {
+    ...state,
+    [who]: { ...state[who], bf: state[who].bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) },
+  };
+  ns = emitEvent(ns, { type: 'ON_TAP', payload: { cardId: iid, controller: who } });
+  // Deviation from the prompt's literal snippet: emitEvent alone only enqueues
+  // triggers (state.triggerQueue) -- every other emitEvent call site in this
+  // file pairs it with an immediate processTriggerQueue so the effect actually
+  // resolves rather than sitting queued until some unrelated later action
+  // happens to drain it. Same pairing here so Blight/Psychic Venom/Relic Bind
+  // resolve at the moment of tapping, not on a delay.
+  return processTriggerQueue(ns);
+}
+
 // --- CASTLE MODIFIER: OVERGROWTH ---------------------------------------------
 
 export function applyOvergrowthTap(s, who, iid, mana) {
@@ -834,10 +861,10 @@ const m = c.landTypeOverride ? LAND_TYPE_MANA[c.landTypeOverride] : (mana || c.p
 // isn't enforced -- this engine's mana pool doesn't track per-mana spend
 // restrictions (no existing card enforces one either).
 const amount = c.id === "mishrass_workshop" ? 3 : (s.castleMod?.name === "Overgrowth" ? 2 : 1);
-let ns = { ...s,
-[who]: { ...s[who],
-bf: s[who].bf.map(x => x.iid === iid ? { ...x, tapped: true } : x),
-mana: { ...s[who].mana, [m]: (s[who].mana[m] || 0) + amount },
+let ns = tapPermanent(s, who, iid);
+ns = { ...ns,
+[who]: { ...ns[who],
+mana: { ...ns[who].mana, [m]: (ns[who].mana[m] || 0) + amount },
 },
 };
 ns = dlog(ns, `${who} taps ${c.name} → +${amount}${m}${amount > 1 ? " (Overgrowth)" : ""}.`, "mana");
@@ -1455,9 +1482,7 @@ if (tgtC && card.mod) {
   ns = dlog(ns, `${card.name} enchants ${tgtC.name} (${mods.join(', ') || 'modified'}).`, 'effect');
   // Paralyze: tap the enchanted creature on entry.
   if (card.mod.paralyzed) {
-    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-      c.iid === tgtC.iid ? { ...c, tapped: true } : c
-    )}};
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
   }
   // Regeneration Aura: grant {G}: Regenerate activated ability to the host creature.
   if (card.mod.regenerationAura) {
@@ -1745,7 +1770,7 @@ if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tg
 break;
 }
 case "paralyze": {
-if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, paralyzed: true, tapped: true } : c) } }; ns = dlog(ns, `${tgtC?.name} is paralyzed.`, "effect"); }
+if (tgtC) { ns = tapPermanent(ns, tgtC.controller, tgtC.iid); ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, paralyzed: true } : c) } }; ns = dlog(ns, `${tgtC?.name} is paralyzed.`, "effect"); }
 break;
 }
 case "pestilence": {
@@ -1918,8 +1943,8 @@ break;
 case "energyTap": {
 if (tgtC && !tgtC.tapped) {
   const mv = tgtC.cmc || 0;
+  ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller],
-    bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c),
     mana: { ...ns[tgtC.controller].mana, C: (ns[tgtC.controller].mana.C || 0) + mv }
   } };
   ns = dlog(ns, `${card.name}: tapped ${tgtC.name}; added ${mv} colorless mana.`, 'mana');
@@ -2227,7 +2252,7 @@ case "balance": {
 }
 case "drainPower": {
 const oppLands = ns[opp].bf.filter(c => isLand(c) && !c.tapped);
-ns = { ...ns, [opp]: { ...ns[opp], bf: ns[opp].bf.map(c => isLand(c) ? { ...c, tapped: true } : c) } };
+for (const l of oppLands) ns = tapPermanent(ns, opp, l.iid);
 const mp = { ...ns[caster].mana };
 oppLands.forEach(l => { const m = l.produces?.[0] || "C"; mp[m] = (mp[m] || 0) + 1; });
 ns = { ...ns, [caster]: { ...ns[caster], mana: mp } };
@@ -2236,12 +2261,14 @@ break;
 }
 case "manaShort": {
 const who2 = tgt || opp;
-ns = { ...ns, [who2]: { ...ns[who2], bf: ns[who2].bf.map(c => isLand(c) ? { ...c, tapped: true } : c), mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
+const shortLands = ns[who2].bf.filter(c => isLand(c));
+for (const l of shortLands) ns = tapPermanent(ns, who2, l.iid);
+ns = { ...ns, [who2]: { ...ns[who2], mana: { W:0,U:0,B:0,R:0,G:0,C:0 } } };
 ns = dlog(ns, `${card.name} taps all lands and drains mana pool.`, "effect");
 break;
 }
 case "tapTarget": {
-if (tgtC) ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+if (tgtC) ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
 ns = dlog(ns, `${card.name} taps ${tgtC?.name || "target"}.`, "effect");
 break;
 }
@@ -2649,7 +2676,7 @@ case "stub": console.warn(`STUB: ${card.name} not yet implemented`); ns = dlog(n
 case "tapTargetWall": {
   // Adapted from Card-Forge/forge (a/ali_baba.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (tgtC && tgtC.subtype?.includes('Wall')) {
-    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
     ns = dlog(ns, `${card.name} taps ${tgtC.name}.`, "effect");
   } else {
     ns = dlog(ns, `${card.name}'s ability fizzles -- no legal Wall target.`, "effect");
@@ -2947,7 +2974,8 @@ case "untapAllOwnLands": {
 case "tapAllBlueCreatures": {
   // Adapted from Card-Forge/forge (r/riptide.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   for (const w of ['p', 'o']) {
-    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (isCre(c) && c.color === 'U') ? { ...c, tapped: true } : c) } };
+    const blueCreatures = ns[w].bf.filter(c => isCre(c) && c.color === 'U');
+    for (const c of blueCreatures) ns = tapPermanent(ns, w, c.iid);
   }
   ns = dlog(ns, `${card.name}: all blue creatures tapped.`, "effect");
   break;
@@ -3052,7 +3080,7 @@ case "restoreArtifactsFromGYToLibrary": {
 case "tapNonFlyingTarget": {
   // Adapted from Card-Forge/forge (f/flood.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (tgtC && isCre(tgtC) && !hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
-    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, tapped: true } : c) } };
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
     ns = dlog(ns, `${card.name} taps ${tgtC.name}.`, "effect");
   } else {
     ns = dlog(ns, `${card.name} fizzles -- target has flying or is not a creature.`, "effect");
@@ -3167,7 +3195,7 @@ case "tapXCreatures": {
   const toTap = [...explicitCres, ...autoCres].slice(0, xVal);
   for (const cid of toTap) {
     const owner2 = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
-    ns = { ...ns, [owner2]: { ...ns[owner2], bf: ns[owner2].bf.map(c => c.iid === cid ? { ...c, tapped: true } : c) } };
+    ns = tapPermanent(ns, owner2, cid);
   }
   ns = dlog(ns, `${card.name} taps ${toTap.length} creature(s).`, "effect");
   break;
@@ -3461,7 +3489,7 @@ case "winterBlastTapX": {
   const toTap = [...explicitCres, ...autoCres].slice(0, xVal);
   for (const cid of toTap) {
     const owner = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
-    ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === cid ? { ...c, tapped: true } : c) } };
+    ns = tapPermanent(ns, owner, cid);
   }
   for (const cid of toTap) {
     const owner = ns.p.bf.some(c => c.iid === cid) ? 'p' : 'o';
@@ -3658,8 +3686,9 @@ case "chooseDamageShieldSource": {
 // (set on the card in cards.js) via the UNTAP-phase optionalUntap machinery.
 case "lockArtifactWhileTapped": {
   if (tgtC && isArt(tgtC)) {
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
     ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-      c.iid === tgtC.iid ? { ...c, tapped: true, lockedByIid: card.iid } : c
+      c.iid === tgtC.iid ? { ...c, lockedByIid: card.iid } : c
     ) } };
     ns = dlog(ns, `${card.name} taps and locks ${tgtC.name}.`, "effect");
   } else {
@@ -4812,7 +4841,7 @@ case "demonicHordesUpkeep": {
     ns = { ...ns, [w]: { ...ns[w], mana: demonPool } };
     ns = dlog(ns, `${c.name}: paid BBB upkeep.`, "mana");
   } else {
-    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+    ns = tapPermanent(ns, w, c.iid);
     ns = hurt(ns, w, 3, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
     ns = dlog(ns, `${c.name}: failed to pay BBB ? tapped and took 3 damage.`, "damage");
   }
@@ -4873,6 +4902,31 @@ case "livingArtifactUpkeep": {
     ns = hurt(ns, "o", -1, c.name, { sourceIid: c.iid, sourceType: 'enchantment' });
   } else {
     ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "livingArtifactUpkeep", iid: c.iid });
+  }
+  break;
+}
+// Kudzu-style orphan cleanup for Blight/Psychic Venom/Relic Bind: these Auras
+// have no ongoing upkeep effect of their own (unlike Kudzu/Living Artifact
+// above), but need the SAME reactive "no legal host -> graveyard" self-check --
+// there is no general SBA sweep for orphaned Kudzu-style Auras in this engine
+// (confirmed by reading zMove's aura-cascade, which only handles the OTHER
+// embedded-record Aura shape, e.g. Wild Growth). Mirrors kudzuUpkeep/
+// livingArtifactUpkeep's own orphan-check exactly; not a new mechanism.
+case "kudzuStyleLandOrphanCheck": {
+  if (w !== ns.active) break;
+  const enchLand = [...ns.p.bf, ...ns.o.bf].find(l => isLand(l) && l.iid === c.enchantedLandIid);
+  if (!enchLand) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, `${c.name}: not attached to a land -- goes to graveyard.`, "effect");
+  }
+  break;
+}
+case "kudzuStyleArtifactOrphanCheck": {
+  if (w !== ns.active) break;
+  const enchArt = [...ns.p.bf, ...ns.o.bf].find(a => isArt(a) && a.iid === c.enchantedArtifactIid);
+  if (!enchArt) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, `${c.name}: not attached to an artifact -- goes to graveyard.`, "effect");
   }
   break;
 }
@@ -5011,7 +5065,7 @@ case "yawgmothDemonUpkeep": {
       ns = zMove(ns, arts[0].iid, w, w, "gy");
       ns = dlog(ns, `${c.name}: opponent sacrifices an artifact.`, "effect");
     } else {
-      ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+      ns = tapPermanent(ns, "o", c.iid);
       ns = hurt(ns, "o", 2, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
     }
   } else {
@@ -5035,7 +5089,7 @@ case "mishrasWarMachineUpkeep": {
       ns = { ...ns, o: { ...ns.o, hand: h.slice(0, -1), gy: [...ns.o.gy, disc] } };
       ns = dlog(ns, `${c.name}: opponent discards ${disc.name}.`, "effect");
     } else {
-      ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid ? { ...x, tapped: true } : x) } };
+      ns = tapPermanent(ns, "o", c.iid);
       ns = hurt(ns, "o", 3, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
     }
   } else {
@@ -5328,6 +5382,15 @@ function evaluateCondition(state, card, condition, payload) {
   if (condition.type === 'activationCountAtLeast') {
     return (state.turnState.activationCounts?.[card.iid] || 0) >= (condition.amount ?? 0);
   }
+  // ON_TAP: restricts an Aura's "whenever enchanted permanent becomes tapped"
+  // ability to firing only when ITS OWN specific host (not any other permanent
+  // of the same type) is the one that tapped. Works for both enchantedArtifactIid
+  // and enchantedLandIid Kudzu-style host references. Relic Bind, Blight,
+  // Psychic Venom.
+  if (condition.type === 'enchantedHostTapped') {
+    const hostIid = card.enchantedArtifactIid ?? card.enchantedLandIid;
+    return !!hostIid && payload.cardId === hostIid;
+  }
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
 
@@ -5609,6 +5672,57 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         c.iid === sourceCard.iid ? { ...c, counters: { ...c.counters, VITALITY: (c.counters?.VITALITY || 0) + amount } } : c
       ) } };
       return dlog(s, `${sourceCard.name} gets ${amount} vitality counter${amount === 1 ? '' : 's'}.`, 'effect');
+    }
+    // Blight: "When enchanted land becomes tapped, destroy it." A ONE-TIME trigger
+    // (unlike Relic Bind/Psychic Venom's "whenever") -- destroying the host also
+    // removes Blight itself as a state-based consequence (an Aura with no legal
+    // host), so no explicit cleanup of Blight is needed here; the existing
+    // SBA/enchantment-cleanup sweep handles it.
+    // Adapted from Card-Forge/forge (b/blight.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'blightDestroyHost': {
+      const hostIid = sourceCard.enchantedLandIid;
+      const hostOwner = ['p','o'].find(w => state[w].bf.some(c => c.iid === hostIid));
+      if (!hostOwner) return state;
+      let s = zMove(state, hostIid, hostOwner, hostOwner, "gy");
+      return dlog(s, "Blight destroys the enchanted land.", 'effect');
+    }
+    // Psychic Venom: "Whenever enchanted land becomes tapped, this Aura deals
+    // 2 damage to that land's controller."
+    // Adapted from Card-Forge/forge (p/psychic_venom.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'psychicVenomDamage': {
+      const hostIid = sourceCard.enchantedLandIid;
+      const hostOwner = ['p','o'].find(w => state[w].bf.some(c => c.iid === hostIid));
+      if (!hostOwner) return state;
+      const s = hurt(state, hostOwner, 2, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Psychic Venom deals 2 damage to ${hostOwner === 'p' ? 'you' : 'opponent'}.`, 'damage');
+    }
+    // Relic Bind: "Whenever enchanted artifact becomes tapped, choose one --
+    // deal 1 damage to target player, or target player gains 1 life." No
+    // planeswalkers implemented in this engine (scope-appropriate simplification
+    // of "target player or planeswalker" -- see docs/SYSTEMS.md).
+    // SIMPLIFICATION: "target player" has no further target-selection step here
+    // -- this engine's triggered-ability infrastructure (requiresChoice: a fixed
+    // options list resolved immediately from the event payload; requiresTarget:
+    // a battlefield-permanent picker only) does not compose a "pick a mode, then
+    // pick a player" flow, and building a parallel targeting mechanism for this
+    // one card was explicitly out of scope for this pass. Following the same
+    // 2-player convention already used by Jihad/The Rack/Black Vise (hardcoded
+    // "opponent of controller" rather than a live picker), the damage mode
+    // targets the artifact's controller (always Relic Bind's controller's
+    // opponent, since Relic Bind can only enchant an opponent's artifact) and
+    // the lifegain mode targets Relic Bind's own controller.
+    // Adapted from Card-Forge/forge (r/relic_bind.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'relicBindDamage': {
+      const hostIid = sourceCard.enchantedArtifactIid;
+      const hostOwner = ['p','o'].find(w => state[w].bf.some(c => c.iid === hostIid));
+      if (!hostOwner) return state;
+      const s = hurt(state, hostOwner, 1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Relic Bind deals 1 damage to ${hostOwner === 'p' ? 'you' : 'opponent'}.`, 'damage');
+    }
+    case 'relicBindLifegain': {
+      const who = sourceCard.controller;
+      const s = hurt(state, who, -1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Relic Bind: ${who} gains 1 life.`, 'effect');
     }
     // Osai Vultures: "put a carrion counter on this creature" -- ONE counter
     // per end step regardless of how many creatures died (ruling: "Only gets
@@ -6110,7 +6224,7 @@ const UPKEEP_CHOICE_HANDLERS = {
         if (!arts.length) return s;
         return zMove(s, arts[0].iid, owner, owner, "gy");
       }
-      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
+      const ns = tapPermanent(s, owner, choice.iid);
       const ydSrc = getBF(ns, choice.iid);
       return hurt(ns, owner, 2, choice.cardName, ydSrc ? { sourceIid: ydSrc.iid, sourceType: inferSourceType(ydSrc) } : null);
     },
@@ -6129,7 +6243,7 @@ const UPKEEP_CHOICE_HANDLERS = {
         const disc = h[h.length - 1];
         return { ...s, [owner]: { ...s[owner], hand: h.slice(0, -1), gy: [...s[owner].gy, disc] } };
       }
-      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: true } : c) } };
+      const ns = tapPermanent(s, owner, choice.iid);
       const mwmSrc = getBF(ns, choice.iid);
       return hurt(ns, owner, 3, choice.cardName, mwmSrc ? { sourceIid: mwmSrc.iid, sourceType: inferSourceType(mwmSrc) } : null);
     },
@@ -6481,7 +6595,7 @@ case "TAP_ART_MANA": {
     };
   }
   const ms = c.activated.mana || "";
-  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === action.iid ? { ...x, tapped: true } : x) } };
+  ns = tapPermanent(ns, w, action.iid);
   const mp = { ...ns[w].mana };
   for (const ch of ms) if ("WUBRGC".includes(ch)) mp[ch] = (mp[ch] || 0) + 1;
   return dlog({ ...ns, [w]: { ...ns[w], mana: mp } }, `${w} taps ${c.name} for mana.`, "mana");
@@ -6581,6 +6695,18 @@ case "CAST_SPELL": {
     const hasBluePerm = s.p.bf.some(i => i.color === 'U') || s.o.bf.some(i => i.color === 'U');
     if (!hasBlueSpell && !hasBluePerm) {
       console.warn(`[DuelCore] CAST_SPELL blocked: Red Elemental Blast requires a blue target`);
+      return s;
+    }
+  }
+  // Relic Bind: "Enchant artifact an opponent controls." No existing declarative
+  // convention restricts an Aura's legal host by controller (Living Artifact's
+  // "enchant artifact" and Kudzu's "enchant land" both accept any host), so this
+  // is a small card-specific addition to the same per-card CAST_SPELL gate
+  // pattern used by BEB/REB/Reset above, rather than a new general mechanism.
+  if (c.id === 'relic_bind') {
+    const rbTgt = [...s.p.bf, ...s.o.bf].find(x => x.iid === action.tgt);
+    if (!rbTgt || rbTgt.controller === w) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Relic Bind must enchant an artifact an opponent controls`);
       return s;
     }
   }
@@ -7037,7 +7163,7 @@ case "ACTIVATE_ABILITY": {
       if (card.tapped) return dlog(s, "Mishra's Factory is already tapped.", "info");
       if (!tgt) return dlog(s, "No target selected for pump ability.", "info");
       // Tap the factory.
-      let ns = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+      let ns = tapPermanent(s, 'p', iid);
       // Apply +1/+1 EOT buff to target (search both battlefields).
       const inP = ns.p.bf.find(c => c.iid === tgt);
       const inO = ns.o.bf.find(c => c.iid === tgt);
@@ -7066,7 +7192,7 @@ case "ACTIVATE_ABILITY": {
         // TODO: banding-group Desert prevention not yet handled
         return dlog(s, `${card.name} is prevented from damaging ${targetC.name} (camel protection).`, "effect");
       }
-      let ns = { ...s, [w]: { ...s[w], bf: s[w].bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+      let ns = tapPermanent(s, w, iid);
       ns = { ...ns, [ownerSide]: { ...ns[ownerSide], bf: ns[ownerSide].bf.map(c => c.iid === tgt ? { ...c, damage: c.damage + 1 } : c) } };
       ns = checkDeath(ns);
       return dlog(ns, `${card.name} deals 1 damage to ${targetC.name}.`, "effect");
@@ -7089,7 +7215,8 @@ case "ACTIVATE_ABILITY": {
   // Birds of Paradise: tap the bird, set pendingBop flag, UI shows BopColorPicker.
   if (act.effect === "addManaAny" && !action.chosenColor) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
-    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) }, pendingBop: true };
+    s = tapPermanent(s, 'p', action.iid);
+    s = { ...s, pendingBop: true };
     return dlog(s, `${card.name} tapped ? choose a color.`, "mana");
   }
   // Black Lotus: tap, set pendingLotus + pendingLotusIid, UI shows LotusColorPicker.
@@ -7100,9 +7227,9 @@ case "ACTIVATE_ABILITY": {
       pBfTapped: s.p.bf.map(c => ({ iid: c.iid, tapped: c.tapped })),
       pMana: { ...s.p.mana },
     };
+    s = tapPermanent(s, 'p', action.iid);
     s = {
       ...s,
-      p: { ...s.p, bf: s.p.bf.map(c => c.iid === action.iid ? { ...c, tapped: true } : c) },
       pendingLotus: true,
       pendingLotusIid: action.iid,
       manaTapSnapshot: snapshot,
@@ -7125,7 +7252,7 @@ case "ACTIVATE_ABILITY": {
           },
         };
       }
-      s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+      s = tapPermanent(s, 'p', iid);
     }
     const manaItem = { id: makeId(), card: { ...card, effect: act.effect, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
     s = resolveEff(s, manaItem);
@@ -7136,7 +7263,7 @@ case "ACTIVATE_ABILITY": {
   // Adapted from Card-Forge/forge (f/fellwar_stone.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (act.effect === "addManaReflected") {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
-    s = { ...s, p: { ...s.p, bf: s.p.bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+    s = tapPermanent(s, 'p', iid);
     const reflectedItem = { id: makeId(), card: { ...card, effect: act.effect }, caster: "p", targets: [], xVal: 1 };
     s = resolveEff(s, reflectedItem);
     return s;
@@ -7181,7 +7308,7 @@ case "ACTIVATE_ABILITY": {
   // 1. Tap cost
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
-    s = { ...s, [w]: { ...s[w], bf: s[w].bf.map(c => c.iid === iid ? { ...c, tapped: true } : c) } };
+    s = tapPermanent(s, w, iid);
   }
 
   // 2. Sacrifice cost (e.g. Strip Mine: "T,sac"). Sacrifices the activating
@@ -7959,11 +8086,9 @@ case "CONDITIONAL_COUNTER_CHOICE": {
     }
     // Power Sink additional effect: tap all lands and drain mana if player declined
     if (cardId === 'power_sink') {
-      ns = { ...ns, [targetCaster]: {
-        ...ns[targetCaster],
-        bf: ns[targetCaster].bf.map(c => isLand(c) ? { ...c, tapped: true } : c),
-        mana: { W:0, U:0, B:0, R:0, G:0, C:0 },
-      }};
+      const sinkLands = ns[targetCaster].bf.filter(c => isLand(c));
+      for (const l of sinkLands) ns = tapPermanent(ns, targetCaster, l.iid);
+      ns = { ...ns, [targetCaster]: { ...ns[targetCaster], mana: { W:0, U:0, B:0, R:0, G:0, C:0 } } };
       ns = dlog(ns, `Power Sink taps all ${targetCaster}'s lands and drains their mana pool.`, "effect");
     }
   }
