@@ -5391,6 +5391,19 @@ function evaluateCondition(state, card, condition, payload) {
     const hostIid = card.enchantedArtifactIid ?? card.enchantedLandIid;
     return !!hostIid && payload.cardId === hostIid;
   }
+  // ON_TAP / ON_ABILITY_ACTIVATED_NO_TAP: restricts a "whenever an artifact..."
+  // ability to firing only when the affected permanent is actually an artifact.
+  // Haunting Wind.
+  if (condition.type === 'affectedPermanentIsArtifact') {
+    const target = state[payload.controller]?.bf.find(c => c.iid === payload.cardId);
+    return !!target && isArt(target);
+  }
+  // Same as above, additionally restricted to an artifact controlled by an
+  // opponent of THIS card's controller. Powerleech.
+  if (condition.type === 'affectedPermanentIsOpponentArtifact') {
+    const target = state[payload.controller]?.bf.find(c => c.iid === payload.cardId);
+    return !!target && isArt(target) && payload.controller !== card.controller;
+  }
   return true; // unknown conditions pass by default; add stricter handling as needed
 }
 
@@ -5723,6 +5736,40 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       const who = sourceCard.controller;
       const s = hurt(state, who, -1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
       return dlog(s, `Relic Bind: ${who} gains 1 life.`, 'effect');
+    }
+    // Artifact Possession: "Whenever enchanted artifact becomes tapped or a
+    // player activates an ability of enchanted artifact without {T} in its
+    // activation cost, this Aura deals 2 damage to that artifact's
+    // controller." Shared by both the ON_TAP and ON_ABILITY_ACTIVATED_NO_TAP
+    // triggers (tap centralization Phase 2).
+    // Adapted from Card-Forge/forge (a/artifact_possession.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'artifactPossessionDamage': {
+      const hostIid = sourceCard.enchantedArtifactIid;
+      const hostOwner = ['p','o'].find(w => state[w].bf.some(c => c.iid === hostIid));
+      if (!hostOwner) return state;
+      const s = hurt(state, hostOwner, 2, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Artifact Possession deals 2 damage to ${hostOwner === 'p' ? 'you' : 'opponent'}.`, 'damage');
+    }
+    // Haunting Wind: "Whenever an artifact becomes tapped or a player
+    // activates an artifact's ability without {T} in its activation cost,
+    // this enchantment deals 1 damage to that artifact's controller." Not
+    // host-scoped (plain Enchantment, not an Aura) -- fires for ANY artifact,
+    // including one controlled by Haunting Wind's own controller.
+    // Adapted from Card-Forge/forge (h/haunting_wind.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'hauntingWindDamage': {
+      const targetOwner = payload.controller;
+      const s = hurt(state, targetOwner, 1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Haunting Wind deals 1 damage to ${targetOwner === sourceCard.controller ? 'its controller' : "its controller's opponent"}.`, 'damage');
+    }
+    // Powerleech: "Whenever an artifact an opponent controls becomes tapped
+    // or an opponent activates an artifact's ability without {T} in its
+    // activation cost, you gain 1 life." Opponent-only, enforced by the
+    // affectedPermanentIsOpponentArtifact condition, not here.
+    // Adapted from Card-Forge/forge (p/powerleech.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'powerleechLifeGain': {
+      const who = sourceCard.controller;
+      const s = hurt(state, who, -1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: 'enchantment' });
+      return dlog(s, `Powerleech: ${who === 'p' ? 'you gain' : 'opponent gains'} 1 life.`, 'life');
     }
     // Osai Vultures: "put a carrion counter on this creature" -- ONE counter
     // per end step regardless of how many creatures died (ruling: "Only gets
@@ -7253,6 +7300,11 @@ case "ACTIVATE_ABILITY": {
         };
       }
       s = tapPermanent(s, 'p', iid);
+    } else {
+      // Tap centralization Phase 2: this mana ability has no {T} in its cost.
+      // Artifact Possession / Haunting Wind / Powerleech watch for this.
+      s = emitEvent(s, { type: 'ON_ABILITY_ACTIVATED_NO_TAP', payload: { cardId: iid, controller: 'p' } });
+      s = processTriggerQueue(s);
     }
     const manaItem = { id: makeId(), card: { ...card, effect: act.effect, mana: act.mana }, caster: "p", targets: [], xVal: 1, chosenColor };
     s = resolveEff(s, manaItem);
@@ -7309,6 +7361,10 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("T")) {
     if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
     s = tapPermanent(s, w, iid);
+  } else {
+    // Tap centralization Phase 2: this activated ability has no {T} in its cost.
+    s = emitEvent(s, { type: 'ON_ABILITY_ACTIVATED_NO_TAP', payload: { cardId: iid, controller: w } });
+    s = processTriggerQueue(s);
   }
 
   // 2. Sacrifice cost (e.g. Strip Mine: "T,sac"). Sacrifices the activating

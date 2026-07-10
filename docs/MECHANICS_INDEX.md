@@ -4208,7 +4208,32 @@ COMPLETE
 - Vitest: `tests/scenarios/tap-centralization.test.js` (TAP-01 through TAP-14), `tests/scenarios/relic-bind-blight-psychic-venom.test.js` (BLIGHT-01..04, PV-01..04, RB-01..06, BOTH-01..02).
 - Playwright: `tests/e2e/tap-triggered-auras.spec.ts` (dual viewport, `@engine`).
 
-**Phase 2 (not implemented, remains open):** tracking for "an ability was activated without {T} in its cost," needed by Artifact Possession, Haunting Wind, and Powerleech.
+**Phase 2 (built, see below):** tracking for "an ability was activated without {T} in its cost," needed by Artifact Possession, Haunting Wind, and Powerleech.
+
+### Status
+COMPLETE
+
+---
+
+## Tap Centralization Phase 2 + Artifact Possession, Haunting Wind, Powerleech — 2026-07-10
+
+**Infrastructure:** A new event, `ON_ABILITY_ACTIVATED_NO_TAP` (`{ cardId, controller }` payload, same shape as `ON_TAP`), emitted from two sites in `case "ACTIVATE_ABILITY"` (`DuelCore.js`): the `addMana` branch and the generic "1. Tap cost" step, both in their existing `else` arm of the `act.cost.includes("T")` check. Each emission pairs `emitEvent` with an immediate `processTriggerQueue`, matching `ON_TAP`'s convention. Deliberately NOT emitted from the `activatedAbilities`-array path (Mishra's Factory's `animateLand`, Desert's `desertPing`, Wormwood Treefolk's `grantWalkSelfDamage2`) -- none of those three cards are artifacts, so no card in this batch needs that coverage; a future card would need to add emission there explicitly. Two new `evaluateCondition` types: `affectedPermanentIsArtifact` (Haunting Wind) and `affectedPermanentIsOpponentArtifact` (Powerleech), both looking up the affected permanent live on the battlefield via `payload.controller`/`payload.cardId` rather than tracking a host reference, since these two cards are plain Enchantments (not Auras). Artifact Possession reuses Phase 1's `enchantedHostTapped` condition unchanged for its `ON_ABILITY_ACTIVATED_NO_TAP` trigger -- the payload shape is identical to `ON_TAP`'s. See `docs/ENGINE_CONTRACT_SPEC.md` S7.6.
+
+**Pre-existing quirk noted, not fixed:** the `addMana` branch (emission site 1) hardcodes its effect to player `'p'` regardless of the actual activator (`who`) -- a pre-existing convention unrelated to this task (every real UI-driven activation is `'p'` by construction, since a human can only activate their own permanents). `ON_ABILITY_ACTIVATED_NO_TAP`'s emission there follows the same hardcoded-`'p'` convention rather than "fixing" it. The generic "1. Tap cost" step (site 2) is who-aware and unaffected.
+
+**Artifact Possession** (`artifact_possession`, B enchantment Aura, `enchantArtifact`) -- "Enchant artifact. Whenever enchanted artifact becomes tapped or a player activates an ability of enchanted artifact without {T} in its activation cost, this Aura deals 2 damage to that artifact's controller." Two `triggeredAbilities` entries (`ON_TAP` and `ON_ABILITY_ACTIVATED_NO_TAP`), both gated by `enchantedHostTapped` and both resolving through the shared `artifactPossessionDamage` effect (routes through `hurt()`). Unlike Relic Bind, `enchantArtifact` here has no controller restriction (plain "Enchant artifact," any controller), so no `CAST_SPELL` targeting gate was needed. Carries `upkeep:"kudzuStyleArtifactOrphanCheck"` (reused from Phase 1/Relic Bind, same Kudzu-style host-tracking shape). Adapted from Card-Forge/forge (a/artifact_possession.txt), GPL-3.0.
+
+**Haunting Wind** (`haunting_wind`, B plain Enchantment, no `effect`) -- "Whenever an artifact becomes tapped or a player activates an artifact's ability without {T} in its activation cost, this enchantment deals 1 damage to that artifact's controller." Not host-scoped (no Aura, no host to track) -- both `triggeredAbilities` entries gate on the new `affectedPermanentIsArtifact` condition and resolve through `hauntingWindDamage`. Fires for ANY artifact regardless of controller, including one controlled by Haunting Wind's own controller (unrestricted oracle wording, not opponent-only). Adapted from Card-Forge/forge (h/haunting_wind.txt), GPL-3.0.
+
+**Powerleech** (`powerleech`, G plain Enchantment, no `effect`) -- "Whenever an artifact an opponent controls becomes tapped or an opponent activates an artifact's ability without {T} in its activation cost, you gain 1 life." Both `triggeredAbilities` entries gate on the new `affectedPermanentIsOpponentArtifact` condition (opponent-only, unlike Haunting Wind) and resolve through `powerleechLifeGain` (routes through `hurt()` with a negative amount, the same lifegain-via-`hurt()` convention Relic Bind's lifegain mode already established). Adapted from Card-Forge/forge (p/powerleech.txt), GPL-3.0.
+
+**None of these six new `triggeredAbilities` entries carry a `scope` key**, following the Phase 1 convention (`scope:'controller'` checks `event.payload.activePlayer`, a key neither `ON_TAP` nor `ON_ABILITY_ACTIVATED_NO_TAP` carries) -- filtering happens entirely through `condition`.
+
+**Tests:**
+- Vitest: `tests/scenarios/artifact-possession-haunting-wind-powerleech.test.js` (AP-01..04, HW-01..04, PL-01..04, BOTH-01..08).
+- Playwright: `tests/e2e/no-tap-activation-auras.spec.ts` (dual viewport, `@engine`).
+
+**Tap centralization is now complete** -- Phase 1 (`ON_TAP`) and Phase 2 (`ON_ABILITY_ACTIVATED_NO_TAP`) have both shipped; no further phases remain open.
 
 ### Status
 COMPLETE

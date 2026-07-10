@@ -34,9 +34,31 @@
   `tests/scenarios/relic-bind-blight-psychic-venom.test.js`), 6 Playwright
   (`tests/e2e/tap-triggered-auras.spec.ts`, both viewports). Phase 2 (ability
   activated without {T} in its cost, needed by Artifact Possession, Haunting
-  Wind, Powerleech) is explicitly out of scope and remains open. See
+  Wind, Powerleech) shipped separately the same day -- see below. See
   `docs/ENGINE_CONTRACT_SPEC.md` S7.5 and `docs/MECHANICS_INDEX.md` --
   Tap Centralization Phase 1.
+- **Tap Centralization Phase 2 + Artifact Possession, Haunting Wind,
+  Powerleech** -- completes the tap-centralization project. New
+  `ON_ABILITY_ACTIVATED_NO_TAP` event, emitted from the `ACTIVATE_ABILITY`
+  `addMana` branch and the generic "1. Tap cost" step whenever an ability's
+  cost has no `{T}`, paired with an immediate `processTriggerQueue` (same
+  convention as `ON_TAP`). Deliberately not emitted from the
+  `activatedAbilities`-array path (Mishra's Factory, Desert, Wormwood
+  Treefolk) -- none are artifacts, out of scope for this batch. Two new
+  `evaluateCondition` types, `affectedPermanentIsArtifact` (Haunting Wind) and
+  `affectedPermanentIsOpponentArtifact` (Powerleech), look up the affected
+  permanent live on the battlefield rather than tracking a host (both cards
+  are plain Enchantments, not Auras). Artifact Possession reuses Phase 1's
+  `enchantedHostTapped` condition unchanged for its new trigger. Unstubs
+  Artifact Possession (2 damage to enchanted artifact's controller, Kudzu-
+  style Aura), Haunting Wind (1 damage to any tapped/activated artifact's
+  controller, unrestricted), and Powerleech (1 life gain, opponent-artifacts
+  only). Stub count: 12 -> 9. Tests: 20 Vitest
+  (`tests/scenarios/artifact-possession-haunting-wind-powerleech.test.js`), 6
+  Playwright (`tests/e2e/no-tap-activation-auras.spec.ts`, both viewports).
+  Tap centralization (Phases 1 and 2) is now fully complete -- no further
+  phases remain open. See `docs/ENGINE_CONTRACT_SPEC.md` S7.6 and
+  `docs/MECHANICS_INDEX.md` -- Tap Centralization Phase 2.
 - **Emblem infrastructure + Titania's Song + Cyclopean Tomb** -- new shared
   `state.p/o.emblems` mechanism for "this effect continues after its source
   leaves the battlefield" cards, hooked into `layers.js collectEffects`
