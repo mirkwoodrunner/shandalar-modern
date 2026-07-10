@@ -36,6 +36,10 @@ import type { Selection } from './ActionBar';
 import { LogSheet } from './LogSheet';
 import { StackDisplay } from '../Stack/StackDisplay';
 import { BandFormationPanel } from './BandFormationPanel';
+import { TempAbilityBar } from '../duel/TempAbilityBar';
+import { LampPickModal } from '../duel/LampPickModal';
+import { RiverDividePanel as RiverDividePanelMobile } from './RiverDividePanel';
+import { RiverSidesPanel as RiverSidesPanelMobile } from './RiverSidesPanel';
 
 import s from './styles.module.css';
 
@@ -377,6 +381,43 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           />
         );
       })()}
+
+      {/* Temp Ability Bar - Guardian Angel instant-speed damage prevention */}
+      {s_state.p.tempAbilities?.length > 0 && s_state.active === 'p' && (
+        <TempAbilityBar
+          tempAbilities={s_state.p.tempAbilities}
+          currentMana={s_state.p.mana}
+          onActivate={(tempId: string) => dispatch({ type: 'ACTIVATE_TEMP_ABILITY', who: 'p', tempId })}
+        />
+      )}
+
+      {/* Lamp Pick Modal - Aladdin's Lamp X selection */}
+      {s_state.pendingLampPicks?.[0]?.who === 'p' && (
+        <LampPickModal
+          pendingLampPick={s_state.pendingLampPicks[0]}
+          onPick={(iid: string) => dispatch({ type: 'LAMP_PICK', iid })}
+        />
+      )}
+
+      {/* River Divide Panel - Raging River initial pile division */}
+      {s_state.pendingRiverDivide?.defender === 'o' && s_state.active === 'p' && (
+        <RiverDividePanelMobile
+          nonFlyers={(s_state.o.bf as any[]).filter(c => s_state.pendingRiverDivide?.nonFlyerIids?.includes(c.iid))}
+          onConfirm={(leftIids: string[], rightIids: string[]) =>
+            dispatch({ type: 'RIVER_DIVIDE', who: 'o', leftIids, rightIids })
+          }
+        />
+      )}
+
+      {/* River Sides Panel - Raging River attacker side selection */}
+      {s_state.pendingRiverSides?.chooser === 'p' && s_state.active === 'p' && (
+        <RiverSidesPanelMobile
+          attackers={(s_state.p.bf as any[]).filter(c => s_state.pendingRiverSides?.attackerIids?.includes(c.iid))}
+          onConfirm={(sides: Record<string, 'left' | 'right'>) =>
+            dispatch({ type: 'RIVER_SIDES', who: 'p', sides })
+          }
+        />
+      )}
 
       <Topbar
         turn={s_state.turn}

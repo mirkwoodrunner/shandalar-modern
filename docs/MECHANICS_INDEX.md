@@ -3981,4 +3981,153 @@ for the reported freeze remains unconfirmed)
 
 ---
 
-# End of MECHANICS INDEX v1.19
+---
+
+## Instant-Speed Damage Prevention (Guardian Angel) — 2026-07-10
+
+**Cards:** Guardian Angel (W enchantment) — creates temporary instant-speed abilities.
+
+**Mechanical summary (per SYSTEMS.md -- Section 16: Temporary Player Abilities):**
+When Guardian Angel enters the battlefield, it creates a tempAbility (1994 fast-effect convention, not a stack-resolving ability) that grants the controller the ability to pay 1 generic and prevent 1 damage from any source to any target they control. This ability:
+- Is only usable during moments when the player has priority (instant speed)
+- Has no timer: persists until the game ends
+- Can be activated multiple times (one at a time, each consuming 1 mana)
+- Is cleared during cleanup (phase transition via ADVANCE_PHASE when phase is END)
+
+Implementation notes (per CLAUDE.md S2 hierarchy):
+1. **SYSTEMS.md truth:** Section 16 defines the mechanic as a tempAbility entry on `state.p.tempAbilities[]`, with no permanent object on the battlefield and no layer system involvement
+2. **Design choice (from analysis phase):** Unlike Regeneration or Animate Dead (which are continuous abilities), Guardian Angel uses the 1994 "fast effect" model -- a player ability, not an object ability, so it bypasses the stack
+3. **AI behavior:** `planGuardianAngelTempAbilities()` in AI.js evaluates board threat (incoming combat damage vs. player life) and activates conservatively for defensive profiles, proactively for aggressive profiles
+
+**State shape:**
+- `state.p.tempAbilities: Array<{ id: string, source: string, label: string, cost: string, kind: 'preventOne', targetPlayer?: string, targetIid?: null }>`
+- Fields are read from activation to display and validate mana sufficiency
+
+**Effect handlers:**
+- `CAST_SPELL` (card effect: `guardianAngel`) → `resolveEff` case creates `tempAbilities` entry
+- `ACTIVATE_TEMP_ABILITY` (new reducer) → verifies mana, deducts cost, applies `state.p.damageShield++` or `state.o.damageShield++`
+- `CLEANUP` (phase END → nextPhase) → clears `state.p.tempAbilities[]` and `state.o.tempAbilities[]`
+
+**UI components:**
+- `src/ui/duel/TempAbilityBar.tsx` (new, desktop + mobile shared) — renders each temp ability as a button, checks mana sufficiency before dispatch
+- Wired into `src/DuelScreen.tsx` (L1143) and `src/ui/Mobile/DuelScreenMobile.tsx` (L391) with guards `!isMobile` (desktop) or no guard (mobile)
+
+**Tests:**
+- Vitest: `tests/scenarios/guardian-angel.test.js` (GA-01 through GA-12, 12 cases total)
+  - GA-01: spell resolution creates tempAbilities entry
+  - GA-03: tempAbilities entry has correct fields (id, source, cost, label, kind)
+  - GA-04: ACTIVATE_TEMP_ABILITY applies shield and spends mana
+  - GA-05: refuses activation without sufficient mana
+  - GA-09: CLEANUP clears tempAbilities
+- Playwright: `tests/e2e/guardian-angel.spec.ts` (dual viewport, tagged `@engine @mobile`)
+  - GA-UI-01: TempAbilityBar renders when tempAbilities exist (desktop)
+  - GA-UI-02: TempAbilityBar renders when tempAbilities exist (mobile)
+
+### Status
+COMPLETE (cards → state → reducers → UI → AI → tests all wired)
+
+---
+
+## Draw Replacement with Charge Queue (Aladdin's Lamp) — 2026-07-10
+
+**Cards:** Aladdin's Lamp (3 artifact) — draws with X-based charge queue; shows library cards and allows reordering.
+
+**Mechanical summary (per SYSTEMS.md -- Section 14: Draw Replacement Core):**
+Aladdin's Lamp activation (cost: X generic, tap) creates a charge entry `state.p.lampCharges: number[]` containing the X value. When the player would draw a card and `lampCharges` is non-empty, a draw is suspended: instead, a `pendingLampPicks` modal appears showing X cards from the top of the library. The player picks one card to draw; the chosen card is moved to the top of the library, and the remaining X-1 cards are returned to the library in their original order (no shuffle). After the pick, the charge is consumed and one more draw (if any are pending) is resolved.
+
+Implementation notes:
+1. **SYSTEMS.md truth:** Section 14 defines the mechanic — separate from normal draw, using a charge queue
+2. **Design choice:** The charge is stored as a number (X value), not as a card object, since it represents a future decision point
+3. **AI behavior:** `chooseLampPick()` in AI.js greedily picks the lowest-cost spell if any non-lands are shown, or the highest-cost land if all are lands
+
+**State shape:**
+- `state.p.lampCharges: number[]` — array of X values, LIFO queue (most recent charge first)
+- `state.pendingLampPicks: Array<{ who: 'p'|'o', x: number, cardIids: string[], remainingDraws: number, followUps: any[] }>` — suspension state while player chooses
+
+**Effect handlers:**
+- `ACTIVATE_ABILITY` (card effect: `aladdinsLampCharge`) → pushes X to `lampCharges`
+- `DRAW` (custom logic in DuelCore) → checks `lampCharges`, if non-empty, creates `pendingLampPicks` and suspends
+- `LAMP_PICK` (new reducer) → finds chosen card, moves to top of library, consumes charge, resumes draw
+- `ADVANCE_PHASE` (CLEANUP) → clears all remaining `lampCharges` (unused charges expire at end of turn)
+
+**UI components:**
+- `src/ui/duel/LampPickModal.tsx` (new, desktop + mobile shared) — grid layout of shown cards, mandatory selection
+- Wired into both screens with guard `s.pendingLampPicks?.[0]?.who === 'p'`
+
+**Tests:**
+- Vitest: `tests/scenarios/aladdins-lamp.test.js` (AL-01 through AL-16, 16 cases total)
+  - AL-01: activation with X pushes charge to queue
+  - AL-02: X<1 charge fizzles (caught at pick time)
+  - AL-03: draw suspends when charge present
+  - AL-04: LAMP_PICK draws chosen card and reorders library
+  - AL-14: CLEANUP clears unused charges
+- Playwright: `tests/e2e/aladdins-lamp.spec.ts` (dual viewport, tagged `@engine @mobile`)
+  - AL-UI-01: LampPickModal renders when pendingLampPicks present (desktop)
+  - AL-UI-02: LampPickModal renders when pendingLampPicks present (mobile)
+  - AL-UI-03: duel completes without lamp-related errors (smoke test)
+
+### Status
+COMPLETE (cards → state → reducers → UI → AI → tests all wired)
+
+---
+
+## Combat Pile Division (Raging River) — 2026-07-10
+
+**Cards:** Raging River (U enchantment) — triggers when opponent attacks, divides non-flying defenders into piles, restricts block assignment by pile membership.
+
+**Mechanical summary (per SYSTEMS.md -- Section 9: Combat Phases & Block Restriction):**
+When an opponent declares Raging River attacking, the defender (player 'p', who controls Raging River) must divide their non-flying creatures into left and right piles. Simultaneously, the attacker's creatures must choose which pile (if any) can block them. A creature can only block an attacker if:
+- The defender is in the same pile as the attacker's chosen pile, OR
+- The creature is flying (ignores piles)
+
+After piles are assigned, they are "remembered" in the `riverPile` and `riverSide` fields on creatures; at COMBAT_END, these fields are stripped and the state is reset.
+
+Implementation notes:
+1. **SYSTEMS.md truth:** Section 9 defines pile membership as a card field and block restriction logic
+2. **Trigger mechanism:** `ON_ATTACKS_DECLARED` event fires when attackers are declared; the effect pops a `pendingRiverDivide` suspension
+3. **Two-step UI:** First, defender divides non-flying creatures (RIVER_DIVIDE action). Second, attacker chooses which piles their creatures attack (RIVER_SIDES action, if attacker is player; AI chooses if attacker is opponent)
+4. **AI behavior:** `chooseRiverDivide()` splits creatures by evaluation value for conservative profiles; `chooseRiverSides()` spreads attackers evenly, pushing flyers to one side for aggressive profiles
+
+**State shape:**
+- `state.pendingRiverDivide: { defender: 'p'|'o', nonFlyerIids: string[], attackingPlayer: 'p'|'o' }` — suspension during first phase
+- `state.pendingRiverSides: { chooser: 'p'|'o', attackerIids: string[], sides: {} }` — suspension during second phase
+- `state.turnState.riverAppliedThisCombat: boolean` — latch to prevent re-entry after first pile decision
+
+**Effect handlers:**
+- `ON_ATTACKS_DECLARED` trigger → fires `ragingRiverDivide` effect, creates `pendingRiverDivide` with non-flyer list
+- `RIVER_DIVIDE` (new reducer) → stamps `riverPile` field on non-flyer creatures, creates `pendingRiverSides`, opens second modal
+- `RIVER_SIDES` (new reducer) → stamps `riverSide` field on attacker creatures, sets latch, clears both pendings
+- `canBlockDuel()` (existing function) → checks `riverPile` and `riverSide` fields; if both are set and don't match, blocks return false
+- `COMBAT_END` (existing case) → strips `riverPile` and `riverSide` fields from all creatures, resets latch
+
+**UI components:**
+- `src/ui/Card/RiverDividePanel.tsx` (new, desktop) — left/right toggle buttons, running list display
+- `src/ui/Card/RiverSidesPanel.tsx` (new, desktop) — per-attacker left/right toggle, centered layout
+- `src/ui/Mobile/RiverDividePanel.tsx` (new, mobile) — same functionality, bottom sheet layout
+- `src/ui/Mobile/RiverSidesPanel.tsx` (new, mobile) — same functionality, bottom sheet layout
+- Wired into both screens with guards:
+  - `!isMobile && s.pendingRiverDivide?.defender === 'o' && s.active === 'p'` (desktop divide)
+  - `!isMobile && s.pendingRiverSides?.chooser === 'p' && s.active === 'p'` (desktop sides)
+  - No `!isMobile` guard on mobile versions (mobile screens always use mobile variants)
+
+**Tests:**
+- Vitest: `tests/scenarios/raging-river.test.js` (RR-01 through RR-20, 20 cases total)
+  - RR-01: trigger populates pendingRiverDivide
+  - RR-03: RIVER_DIVIDE stamps piles and opens pendingRiverSides
+  - RR-06: RIVER_SIDES stamps sides and sets latch
+  - RR-07: non-flyer in wrong pile cannot block
+  - RR-08: matching pile can block
+  - RR-14: zero non-flying defenders sides all attackers
+  - RR-17: COMBAT_END strips riverSide/riverPile
+- Playwright: `tests/e2e/raging-river.spec.ts` (dual viewport, tagged `@engine @mobile`)
+  - RR-UI-01: RiverDividePanel renders when pendingRiverDivide set (desktop)
+  - RR-UI-02: RiverSidesPanel renders when pendingRiverSides set (desktop)
+  - RR-UI-03: panels render on mobile
+  - RR-UI-04: duel completes without river-related errors (smoke test)
+
+### Status
+COMPLETE (cards → state → reducers → UI → AI → tests all wired)
+
+---
+
+# End of MECHANICS INDEX v1.22

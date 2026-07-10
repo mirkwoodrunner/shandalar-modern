@@ -42,6 +42,10 @@ import { XSelectModal } from './ui/duel/XSelectModal';
 import { SphereTriggerModal } from './ui/duel/SphereTriggerModal';
 import { ChoiceModal } from './ui/duel/ChoiceModal';
 import { UPKEEP_CHOICE_MODALS } from './ui/duel/upkeepChoiceRegistry';
+import { TempAbilityBar } from './ui/duel/TempAbilityBar';
+import { LampPickModal } from './ui/duel/LampPickModal';
+import { RiverDividePanel } from './ui/Card/RiverDividePanel';
+import { RiverSidesPanel } from './ui/Card/RiverSidesPanel';
 
 // -- Legacy popovers (mana / graveyard color choice) ---------------------------
 import { LotusColorPicker, BopColorPicker, DualLandColorPicker, BebRebModePicker } from './ui/duel/TargetingOverlay.jsx';
@@ -1136,6 +1140,43 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
           onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
           titleOverride={`${s.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
+
+      {/* Temp Ability Bar - Guardian Angel instant-speed damage prevention */}
+      {!isMobile && s.p.tempAbilities?.length > 0 && s.active === 'p' && (
+        <TempAbilityBar
+          tempAbilities={s.p.tempAbilities}
+          currentMana={s.p.mana}
+          onActivate={(tempId: string) => dispatch({ type: 'ACTIVATE_TEMP_ABILITY', who: 'p', tempId })}
+        />
+      )}
+
+      {/* Lamp Pick Modal - Aladdin's Lamp X selection */}
+      {s.pendingLampPicks?.[0]?.who === 'p' && (
+        <LampPickModal
+          pendingLampPick={s.pendingLampPicks[0]}
+          onPick={(iid: string) => dispatch({ type: 'LAMP_PICK', iid })}
+        />
+      )}
+
+      {/* River Divide Panel - Raging River initial pile division */}
+      {!isMobile && s.pendingRiverDivide?.defender === 'o' && s.active === 'p' && (
+        <RiverDividePanel
+          nonFlyers={(s.o.bf as any[]).filter(c => s.pendingRiverDivide?.nonFlyerIids?.includes(c.iid))}
+          onConfirm={(leftIids: string[], rightIids: string[]) =>
+            dispatch({ type: 'RIVER_DIVIDE', who: 'o', leftIids, rightIids })
+          }
+        />
+      )}
+
+      {/* River Sides Panel - Raging River attacker side selection */}
+      {!isMobile && s.pendingRiverSides?.chooser === 'p' && s.active === 'p' && (
+        <RiverSidesPanel
+          attackers={(s.p.bf as any[]).filter(c => s.pendingRiverSides?.attackerIids?.includes(c.iid))}
+          onConfirm={(sides: Record<string, 'left' | 'right'>) =>
+            dispatch({ type: 'RIVER_SIDES', who: 'p', sides })
+          }
         />
       )}
     </div>

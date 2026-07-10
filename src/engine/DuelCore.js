@@ -291,6 +291,11 @@ if (defBf) {
 if (at.mod?.cantBlockedByPower !== undefined && getPow(bl, state) >= at.mod.cantBlockedByPower) return false;
 if (at.mod?.cantBlockedByWalls && bl.subtype?.includes('Wall')) return false;
 if (at.mod?.cantBlockedByColor && blColor === at.mod.cantBlockedByColor) return false;
+// Raging River: non-flying blockers can only block attackers on their pile's side.
+// Flying blockers are unaffected. Unpiled post-divide entrants cannot block sided attackers.
+if (at.riverSide && !hasKw(bl, KEYWORDS.FLYING.id, state)) {
+  if (bl.riverPile !== at.riverSide) return false;
+}
 return true;
 }
 
@@ -472,16 +477,98 @@ if (amt > 0 && ns[who].lichActive && !meta?.isLifeLoss) {
 return ns;
 }
 
+// --- DRAW REPLACEMENT CORE (Aladdin's Lamp replacement effect dispatcher) ----
+// Core infrastructure for Aladdin's Lamp's "replace next draw" mechanic.
+// Adapted from Card-Forge/forge (a/aladdins_lamp.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+
+const DRAW_FOLLOWUPS = {
+  bazaarDiscard3(ns, who) {
+    // Bazaar of Baghdad: "draw 2, discard 3" logic.
+    for (let i = 0; i < 3; i++) {
+      if (!ns[who].hand.length) break;
+      const disc = ns[who].hand[ns[who].hand.length - 1];
+      ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, disc] } };
+    }
+    ns = dlog(ns, "Bazaar: drew 2, discarded 3.", "draw");
+    return ns;
+  },
+
+  discardLastDrawn(ns, who, fu) {
+    // Jalum Tome: draw 1, discard the drawn card.
+    if (ns[who].hand.length) {
+      const disc = ns[who].hand[ns[who].hand.length - 1];
+      ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, disc] } };
+      ns = dlog(ns, `${fu.sourceName}: ${who} discards ${disc.name}.`, "effect");
+    }
+    return ns;
+  },
+
+  revealDiscardIfNonland(ns, who, fu) {
+    // Sindbad: draw 1, reveal, discard if not land.
+    if (ns[who].hand.length) {
+      const drawn = ns[who].hand[ns[who].hand.length - 1];
+      ns = dlog(ns, `${fu.sourceName}: ${who} reveals ${drawn.name}.`, "effect");
+      if (!isLand(drawn)) {
+        ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, drawn] } };
+        ns = dlog(ns, `${fu.sourceName}: ${drawn.name} isn't a land -- discarded.`, "effect");
+      }
+    }
+    return ns;
+  },
+
+  sylvanPutBackTwo(ns, who) {
+    // Sylvan Library o-branch: draw 2 for AI opponent, optionally put back.
+    if (ns[who].hand.length >= 2) {
+      const put = ns[who].hand.slice(-2);
+      ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -2), lib: [...put, ...ns[who].lib] } };
+    }
+    return ns;
+  },
+
+  dlogText(ns, who, fu) {
+    // Generic dlog-only followup (e.g., Sylvan Library player branch).
+    return dlog(ns, fu.text, fu.type || "effect");
+  },
+};
+
+function runDrawFollowUps(ns, who, followUps) {
+  for (const fu of followUps || []) {
+    const fn = DRAW_FOLLOWUPS[fu.id];
+    if (!fn) throw new Error(`[DuelCore] Unknown draw followUp: ${fu.id}`);
+    ns = fn(ns, who, fu);
+  }
+  return ns;
+}
+
+function performDraws(s, who, n, followUps = []) {
+  let ns = s;
+  for (let i = 0; i < n; i++) {
+    const charges = ns[who].lampCharges || [];
+    if (charges.length && ns[who].lib.length) {
+      // Aladdin's Lamp: LIFO charge consumption. Suspend the draw loop.
+      const x = charges[charges.length - 1];
+      ns = { ...ns, [who]: { ...ns[who], lampCharges: charges.slice(0, -1) } };
+      const shownIids = ns[who].lib.slice(0, Math.min(x, ns[who].lib.length)).map(c => c.iid);
+      const pick = { who, x: shownIids.length, cardIids: shownIids, remainingDraws: n - i - 1, followUps };
+      ns = { ...ns, pendingLampPicks: [...(ns.pendingLampPicks || []), pick] };
+      return dlog(ns, `Aladdin's Lamp: ${who} looks at the top ${shownIids.length} card(s).`, "effect");
+    }
+    if (charges.length && !ns[who].lib.length) {
+      // Charge queued but library empty: consume charge, fall through to deck-out.
+      ns = { ...ns, [who]: { ...ns[who], lampCharges: charges.slice(0, -1) } };
+    }
+    // === Single-draw body: identical to legacy drawD logic ===
+    if (!ns[who].lib.length) {
+      return { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} drew from empty library` } };
+    }
+    const [top, ...rest] = ns[who].lib;
+    ns = { ...ns, [who]: { ...ns[who], lib: rest, hand: [...ns[who].hand, top] } };
+  }
+  return runDrawFollowUps(ns, who, followUps);
+}
+
 export function drawD(s, who, n = 1) {
-let ns = s;
-for (let i = 0; i < n; i++) {
-if (!ns[who].lib.length) {
-return { ...ns, over: { winner: who === "p" ? "o" : "p", reason: `${who} drew from empty library` } };
-}
-const [top, ...rest] = ns[who].lib;
-ns = { ...ns, [who]: { ...ns[who], lib: rest, hand: [...ns[who].hand, top] } };
-}
-return ns;
+  return performDraws(s, who, n, []);
 }
 
 export function zMove(s, iid, fw, tw, tz) {
@@ -519,8 +606,10 @@ a = { ...a, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attac
 if (tz === "gy" || tz === "hand" || tz === "exile" || tz === "lib") {
 // Strip typeEff/subtypeEff/colorEff/landTypeOverride here too -- a land that dies
 // while animated by Living Lands must arrive in the gy as a plain land, not a creature.
+// Also strip Raging River-related fields.
 a = { ...a, tapped: false, damage: 0, counters: {}, attacking: false, blocking: null, eotBuffs: [], enchantments: [],
-  typeEff: undefined, subtypeEff: undefined, colorEff: undefined, landTypeOverride: undefined };
+  typeEff: undefined, subtypeEff: undefined, colorEff: undefined, landTypeOverride: undefined,
+  riverSide: undefined, riverPile: undefined };
 }
 // CR 111.7: a token that leaves the battlefield ceases to exist -- do not
 // place it into the destination zone. zMove is the single choke point for
@@ -1139,6 +1228,44 @@ mp[item.chosenColor] = (mp[item.chosenColor] || 0) + 1;
 ns = { ...ns, [caster]: { ...ns[caster], mana: mp } };
 ns = dlog(ns, `${card.name} adds 1${item.chosenColor}.`, "mana");
 }
+break;
+}
+case "aladdinsLampCharge": {
+// Aladdin's Lamp activation: charge the lamp with X value for a future draw replacement.
+const x = xVal ?? 1;
+if (x < 1) {
+  ns = dlog(ns, `${card.name} fizzles -- X can't be 0.`, "effect");
+  break;
+}
+ns = { ...ns, [caster]: { ...ns[caster], lampCharges: [...(ns[caster].lampCharges || []), x] } };
+ns = dlog(ns, `${card.name}: ${caster} charges the Lamp with ${x}.`, "effect");
+break;
+}
+case "guardianAngel": {
+// Guardian Angel clause 1: prevent X damage to target.
+if (tgt === 'p' || tgt === 'o') {
+  ns = { ...ns, [tgt]: { ...ns[tgt], damageShield: (ns[tgt].damageShield || 0) + xVal } };
+} else if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + xVal } : c
+  ) } };
+} else {
+  ns = dlog(ns, `${card.name} fizzles -- no valid target.`, "effect");
+  break;
+}
+// Clause 2: grant temporary {1} prevention ability for rest of turn.
+// 1994 fast-effect convention: this applies DIRECTLY (no stack, no priority window)
+// when activated. It's documented in SYSTEMS.md S12 (Temporary Player Abilities).
+ns = { ...ns, [caster]: { ...ns[caster], tempAbilities: [...(ns[caster].tempAbilities || []), {
+  id: makeId(),
+  source: 'guardian_angel',
+  label: 'Guardian Angel — pay {1}: prevent 1',
+  cost: '1',
+  kind: 'preventOne',
+  targetIid: tgtC?.iid || null,
+  targetPlayer: (tgt === 'p' || tgt === 'o') ? tgt : null,
+}] } };
+ns = dlog(ns, `Prevent the next ${xVal} damage to that target this turn. ${caster} gains a temporary {1} prevention ability.`, "effect");
 break;
 }
 case "tutor": {
@@ -2289,9 +2416,7 @@ ns = dlog(ns, `${card.name} shuffles graveyard into library.`, "effect");
 break;
 }
 case "bazaarActivate": {
-ns = drawD(ns, caster, 2);
-for (let i = 0; i < 3; i++) { if (!ns[caster].hand.length) break; const disc = ns[caster].hand[ns[caster].hand.length-1]; ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0,-1), gy: [...ns[caster].gy, disc] } }; }
-ns = dlog(ns, "Bazaar: drew 2, discarded 3.", "draw");
+ns = performDraws(ns, caster, 2, [{ id: "bazaarDiscard3" }]);
 break;
 }
 case "counterBlack": {
@@ -2940,12 +3065,7 @@ case "drawThenDiscardOwn": {
   // Adapted from Card-Forge/forge (j/jalum_tome.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   // SIMPLIFICATION: no UI to choose which card to discard; discards the most
   // recently drawn card (same convention as forced cleanup discards).
-  ns = drawD(ns, caster, 1);
-  if (ns[caster].hand.length) {
-    const disc2 = ns[caster].hand[ns[caster].hand.length - 1];
-    ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0, -1), gy: [...ns[caster].gy, disc2] } };
-    ns = dlog(ns, `${card.name}: ${caster} discards ${disc2.name}.`, "effect");
-  }
+  ns = performDraws(ns, caster, 1, [{ id: "discardLastDrawn", sourceName: card.name }]);
   break;
 }
 case "gainLifeSacrificedToughness": {
@@ -2989,16 +3109,7 @@ case "gainAndDealDamageThisTurn": {
 }
 case "drawRevealDiscardIfNonland": {
   // Adapted from Card-Forge/forge (s/sindbad.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-  const beforeLen = ns[caster].hand.length;
-  ns = drawD(ns, caster, 1);
-  if (ns[caster].hand.length > beforeLen) {
-    const drawn = ns[caster].hand[ns[caster].hand.length - 1];
-    ns = dlog(ns, `${card.name}: ${caster} reveals ${drawn.name}.`, "effect");
-    if (!isLand(drawn)) {
-      ns = { ...ns, [caster]: { ...ns[caster], hand: ns[caster].hand.slice(0, -1), gy: [...ns[caster].gy, drawn] } };
-      ns = dlog(ns, `${card.name}: ${drawn.name} isn't a land -- discarded.`, "effect");
-    }
-  }
+  ns = performDraws(ns, caster, 1, [{ id: "revealDiscardIfNonland", sourceName: card.name }]);
   break;
 }
 case "unblockableTargetPowerLE2": {
@@ -4257,6 +4368,14 @@ if (next === PHASE.COMBAT_END) {
     }
   }
   ns = { ...ns, turnState: { ...ns.turnState, endOfCombatSacrifice: [] } };
+  // Raging River: strip the pile assignments and side selections at end of combat.
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+      (c.riverSide || c.riverPile) ? { ...c, riverSide: undefined, riverPile: undefined } : c
+    ) } };
+  }
+  // Reset the latch for the next combat (if it exists).
+  ns = { ...ns, turnState: { ...ns.turnState, riverAppliedThisCombat: false } };
   ns = processTriggerQueue(ns);
   ns = checkDeath(ns);
 }
@@ -4624,12 +4743,7 @@ break;
 case "howlingMine": for (const dw of ["p","o"]) ns = drawD(ns, dw, 1); ns = dlog(ns, "Howling Mine: each player draws a card.", "draw"); break;
 case "ivoryTower": { const gain = Math.max(0, ns[w].hand.length - 4); if (gain > 0) ns = hurt(ns, w, -gain, "Ivory Tower", { sourceIid: c.iid, sourceType: inferSourceType(c) }); break; }
 case "sylvanLibrary": {
-ns = drawD(ns, w, 2);
-if (w === "o" && ns[w].hand.length >= 2) {
-const put = ns[w].hand.slice(-2);
-ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-2), lib: [...put, ...ns[w].lib] } };
-}
-if (w === "p") ns = dlog(ns, "Sylvan Library: drew 2 extra cards.", "draw");
+ns = performDraws(ns, w, 2, w === "o" ? [{ id: "sylvanPutBackTwo" }] : [{ id: "dlogText", text: "Sylvan Library: drew 2 extra cards.", type: "draw" }]);
 break;
 }
 case "karmaUpkeep": {
@@ -4969,6 +5083,15 @@ if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
 }
 
 if (next === PHASE.CLEANUP) {
+// Ghost-state tripwire: lamp pick or river division should never reach CLEANUP.
+if (ns.pendingLampPicks?.length) {
+  console.error('[DuelCore] CLEANUP: lamp pick still pending -- force clearing');
+  ns = { ...ns, pendingLampPicks: [] };
+}
+if (ns.pendingRiverDivide || ns.pendingRiverSides) {
+  console.error('[DuelCore] CLEANUP: river division/siding still pending -- force clearing');
+  ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: null };
+}
 ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
@@ -5011,6 +5134,10 @@ for (const w of ["p","o"]) {
   // Conservator, etc.) and Forcefield's identity-scoped combat shield both expire
   // unconditionally at end of turn, whether or not they were consumed.
   if (ns[w].damageShield || ns[w].combatDamageShield) ns = { ...ns, [w]: { ...ns[w], damageShield: 0, combatDamageShield: null } };
+  // Guardian Angel: clear temporary abilities granted this turn
+  ns = { ...ns, [w]: { ...ns[w], tempAbilities: [] } };
+  // Aladdin's Lamp: clear unused charges
+  ns = { ...ns, [w]: { ...ns[w], lampCharges: [] } };
 }
 // Siren's Call: destroy non-Wall creatures the active player didn't attack with
 // this turn (creatures the effect targeted at cast time -- excludes anything
@@ -5500,6 +5627,38 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     // Adapted from Card-Forge/forge (r/rukh_egg.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
     case 'queueEndStepToken': {
       return { ...state, pendingEndStepTokens: [...(state.pendingEndStepTokens || []), { tokenId: effect.tokenId, count: effect.count, controller: sourceCard.controller }] };
+    }
+    // Raging River: "Whenever one or more creatures you control attack, each
+    // defending player divides all creatures without flying they control into
+    // 'left' and 'right' piles. Then, for each attacking creature you control,
+    // choose 'left' or 'right.'"
+    // Adapted from Card-Forge/forge (r/raging_river.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    // DEVIATION: only the first River trigger per combat applies (turnState.riverAppliedThisCombat latch).
+    case 'ragingRiverDivide': {
+      // Guard: must be the River controller's attack.
+      if (payload.attackingPlayer !== sourceCard.controller) return state;
+      // Guard: already applied once this combat.
+      if (state.turnState.riverAppliedThisCombat) return state;
+      // Guard: no pending divisions or siding yet.
+      if (state.pendingRiverDivide || state.pendingRiverSides) return state;
+
+      const defender = payload.attackingPlayer === 'p' ? 'o' : 'p';
+      const nonFlyers = state[defender].bf.filter(c => !hasKw(c, KEYWORDS.FLYING.id, state));
+
+      if (!nonFlyers.length) {
+        // No non-flying defenders: all attackers get 'left' side, latch is set.
+        let s = state;
+        for (const aiid of s.attackers) {
+          s = { ...s, [s.active]: { ...s[s.active], bf: s[s.active].bf.map(c =>
+            c.iid === aiid ? { ...c, riverSide: 'left' } : c
+          ) } };
+        }
+        s = { ...s, turnState: { ...s.turnState, riverAppliedThisCombat: true } };
+        return dlog(s, `Raging River: no non-flying defenders -- all attackers sided left.`, 'effect');
+      }
+
+      // Suspend with pending division for defender to choose piles.
+      return { ...state, pendingRiverDivide: { defender, nonFlyerIids: nonFlyers.map(c => c.iid), attackingPlayer: payload.attackingPlayer } };
     }
     // Marsh Viper / Pit Scorpion / Serpent Generator's Snake token: "Whenever
     // this creature deals damage to a player, that player gets N poison
@@ -6627,6 +6786,14 @@ case "ADVANCE_PHASE": {
   if (s.pendingUpkeepChoice) return s;
   if (s.pendingConditionalCounter) return s;
   if (s.pendingSphereTrigger) return s;
+  if (s.pendingLampPicks?.length) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: lamp pick pending');
+    return s;
+  }
+  if (s.pendingRiverDivide || s.pendingRiverSides) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: river division or siding pending');
+    return s;
+  }
   s = { ...s, manaTapSnapshot: null };
   return advPhase(s);
 }
@@ -6972,6 +7139,45 @@ case "ACTIVATE_ABILITY": {
   return dlog(s, `${card.name}: activated ${act.effect}.`, "effect");
 }
 
+case "ACTIVATE_TEMP_ABILITY": {
+  if (DECLARE_ONLY_PHASES.has(s.phase)) return dlog(s, "Cannot activate abilities during declare phase.", "rule");
+  const { who, tempId } = action;
+  const entry = s[who].tempAbilities?.find(a => a.id === tempId);
+  if (!entry) return s;
+
+  // Guard: if stored creature target has left the battlefield, refuse activation.
+  if (entry.targetIid) {
+    const targetStillThere = [...s.p.bf, ...s.o.bf].some(c => c.iid === entry.targetIid);
+    if (!targetStillThere) {
+      return dlog(s, `Target creature has left the battlefield -- ${entry.label} not activated.`, "rule");
+    }
+  }
+
+  // Check mana: entry.cost is always "1" for Guardian Angel temp abilities.
+  if (!canPay(s[who].mana, entry.cost)) {
+    return dlog(s, `Not enough mana to activate ${entry.label}.`, "info");
+  }
+
+  let ns = { ...s, [who]: { ...s[who], mana: payMana(s[who].mana, entry.cost) } };
+  ns = { ...ns, manaTapSnapshot: null }; // stale snapshot after mana spend
+
+  // Apply +1 damageShield to stored target.
+  if (entry.targetPlayer) {
+    ns = { ...ns, [entry.targetPlayer]: { ...ns[entry.targetPlayer], damageShield: (ns[entry.targetPlayer].damageShield || 0) + 1 } };
+  } else if (entry.targetIid) {
+    const tgtCreature = [...ns.p.bf, ...ns.o.bf].find(c => c.iid === entry.targetIid);
+    if (tgtCreature) {
+      const tgtController = ns.p.bf.some(c => c.iid === entry.targetIid) ? 'p' : 'o';
+      ns = { ...ns, [tgtController]: { ...ns[tgtController], bf: ns[tgtController].bf.map(c =>
+        c.iid === entry.targetIid ? { ...c, damageShield: (c.damageShield || 0) + 1 } : c
+      ) } };
+    }
+  }
+
+  ns = dlog(ns, `${entry.label}: prevented 1 damage.`, "effect");
+  return ns;
+}
+
 case "CHOOSE_LOTUS_COLOR": {
   if (!s.pendingLotusIid) return s;
   const mp = { ...s.p.mana };
@@ -7058,6 +7264,108 @@ case "DECLINE_TUTOR": {
   const caster = s.pendingTutor.caster;
   let ns = { ...s, pendingTutor: null };
   ns = dlog(ns, `${caster} declines to find a card.`, 'effect');
+  return ns;
+}
+
+case "LAMP_PICK": {
+  const head = s.pendingLampPicks?.[0];
+  if (!head) return s;
+  // Integrity check: library top must match the shown cards.
+  const expectedIids = head.cardIids;
+  const actualIids = s[head.who].lib.slice(0, head.x).map(c => c.iid);
+  if (JSON.stringify(expectedIids) !== JSON.stringify(actualIids)) {
+    throw new Error('[DuelCore] LAMP_PICK: library changed while pick pending');
+  }
+  if (!expectedIids.includes(action.iid)) return s;
+
+  // Reorder: chosen card on top, others to bottom in shuffled order.
+  const lib = s[head.who].lib;
+  const chosenIdx = lib.findIndex(c => c.iid === action.iid);
+  const chosen = lib[chosenIdx];
+  const others = [...lib.slice(head.x).reverse(), ...lib.slice(0, head.x).filter((_, i) => i !== chosenIdx)].reverse();
+  const newLib = [chosen, ...shuffle(others)];
+
+  let ns = {
+    ...s,
+    [head.who]: { ...s[head.who], lib: newLib },
+    pendingLampPicks: s.pendingLampPicks.slice(1),
+  };
+  ns = dlog(ns, `Aladdin's Lamp: ${head.who} drew ${chosen.name}.`, 'effect');
+
+  // Continue drawing: 1 more card from the remaining draw count, then re-enter for nested charges.
+  return performDraws(ns, head.who, 1 + head.remainingDraws, head.followUps);
+}
+
+case "RIVER_DIVIDE": {
+  const div = s.pendingRiverDivide;
+  if (!div || div.defender !== action.who) return s;
+
+  const { leftIids, rightIids } = action;
+  const allNonFlyers = new Set(div.nonFlyerIids);
+  const leftSet = new Set(leftIids);
+  const rightSet = new Set(rightIids);
+
+  // Validate: left + right must equal allNonFlyers, disjoint.
+  if (leftSet.size + rightSet.size !== allNonFlyers.size ||
+      [...leftSet].some(iid => rightSet.has(iid))) {
+    console.error('[DuelCore] RIVER_DIVIDE: invalid partition');
+    return s;
+  }
+
+  // Stamp riverPile onto each creature.
+  let ns = s;
+  for (const iid of leftIids) {
+    ns = { ...ns, [action.who]: { ...ns[action.who], bf: ns[action.who].bf.map(c =>
+      c.iid === iid ? { ...c, riverPile: 'left' } : c
+    ) } };
+  }
+  for (const iid of rightIids) {
+    ns = { ...ns, [action.who]: { ...ns[action.who], bf: ns[action.who].bf.map(c =>
+      c.iid === iid ? { ...c, riverPile: 'right' } : c
+    ) } };
+  }
+
+  ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: { chooser: div.attackingPlayer, attackerIids: [...s.attackers], sides: {} } };
+
+  // Log the piles.
+  const leftCreatures = ns[action.who].bf.filter(c => c.riverPile === 'left').map(c => c.name).join(', ') || '(none)';
+  const rightCreatures = ns[action.who].bf.filter(c => c.riverPile === 'right').map(c => c.name).join(', ') || '(none)';
+  ns = dlog(ns, `Raging River: left pile (${leftCreatures}), right pile (${rightCreatures}).`, 'effect');
+
+  return ns;
+}
+
+case "RIVER_SIDES": {
+  const sides = s.pendingRiverSides;
+  if (!sides || sides.chooser !== action.who) return s;
+
+  const { sides: sideMap } = action;
+  // Validate: all attackers must have a side assignment.
+  for (const aiid of sides.attackerIids) {
+    if (!sideMap[aiid] || !['left', 'right'].includes(sideMap[aiid])) {
+      console.error('[DuelCore] RIVER_SIDES: invalid side assignment');
+      return s;
+    }
+  }
+
+  // Stamp riverSide onto each attacker.
+  let ns = s;
+  for (const aiid of sides.attackerIids) {
+    ns = { ...ns, [action.who]: { ...ns[action.who], bf: ns[action.who].bf.map(c =>
+      c.iid === aiid ? { ...c, riverSide: sideMap[aiid] } : c
+    ) } };
+  }
+
+  ns = { ...ns, pendingRiverSides: null, turnState: { ...ns.turnState, riverAppliedThisCombat: true } };
+
+  // Log each attacker's side choice.
+  for (const aiid of sides.attackerIids) {
+    const attacker = ns[action.who].bf.find(c => c.iid === aiid);
+    if (attacker) {
+      ns = dlog(ns, `${attacker.name} charges to the ${sideMap[aiid]} of the river.`, 'effect');
+    }
+  }
+
   return ns;
 }
 
