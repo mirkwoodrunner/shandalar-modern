@@ -4132,4 +4132,62 @@ COMPLETE (cards → state → reducers → UI → AI → tests all wired)
 
 ---
 
-# End of MECHANICS INDEX v1.22
+## Emblem Infrastructure (state.p/o.emblems) — 2026-07-10
+
+**Purpose:** shared mechanism for "this effect continues after its source leaves the battlefield" cards -- the source permanent is gone, but its static and/or triggered ability needs to keep functioning (Titania's Song's "until end of turn" tail; Cyclopean Tomb's "for the rest of the game" post-graveyard trigger). Reusable for any future card with the same shape.
+
+**State shape:** `state.p.emblems` / `state.o.emblems`, each an array of:
+```js
+{
+  id, source, name, controller, duration: 'endOfTurn' | 'permanent',
+  globalTypeEffect: {...},        // optional, consumed by layers.js collectEffects
+  triggeredAbilities: [...],      // optional, consumed by emitEvent
+  // card-specific extra fields (mireLandIids, mireRemovedIids, etc.)
+}
+```
+Read defensively (`state[who].emblems ?? []`) everywhere -- older in-flight state predates this field.
+
+**Hooks into the existing pipeline (no new pipeline created):**
+- `layers.js collectEffects` step 14b -- scans both players' emblems for a `globalTypeEffect` field, pushing the same Layer 4/6/7a effect shapes the battlefield-permanent case (step 14) pushes. Step 14 itself is untouched; step 14a is a new sibling block that adds the Layer 6 `wipeAbilities` / Layer 7a CDA pieces step 14 doesn't cover, for the on-battlefield case (needed by Titania's Song while it's still in play, not just after it leaves).
+- `layers.js computeCharacteristics` Layer 6 fold -- a `wipeAbilities` effect flag clears `keywords`/`protection` at its own timestamp position in the existing sorted loop (correct CR 613 behavior for free, no special ordering logic).
+- `DuelCore.js emitEvent` -- a sibling loop to the existing per-card `triggeredAbilities` scan, iterating `state[who].emblems`. Supports `scope:'controller'` and unscoped triggers (no `scope:'self'` case -- an emblem is never itself the direct object of the event the way a dying permanent is).
+- `DuelCore.js resolveTrigger` -- `findEmblem(state, id)` extends the existing `sourceCard` lookup chain (`allBf.find` → `findLeftBattlefieldCard` → `findEmblem`) so an emblem's own trigger resolves with the emblem object as `sourceCard`.
+- `DuelCore.js` CLEANUP (`PHASE.CLEANUP` block) -- `endOfTurn`-duration emblems are filtered out; `permanent`-duration emblems are untouched. Because removing an emblem is not a zone move (unlike a battlefield permanent leaving play via `zMove`, which always self-triggers `recomputeTypeEffects`), the CLEANUP sweep calls `recomputeTypeEffects` explicitly when any emblem actually expired, so a permanent whose creature-ness depended on that emblem reverts its baked `typeEff`/`isCre()` result immediately rather than staying stale until some unrelated zone move happens to refresh it.
+
+**Effect-case conventions:** new trigger-effect cases created for an emblem's own `sourceCard` must read/write `state[controller].emblems`, never `state[controller].bf` -- an emblem is not a battlefield card and has no `iid`/`bf` membership.
+
+**Tests:** `tests/scenarios/emblem-infrastructure.test.js` (EMB-01 through EMB-10) -- generic infra only, using synthetic emblem objects, not real card data. Card-specific coverage lives in the Titania's Song and Cyclopean Tomb test files below.
+
+### Status
+COMPLETE
+
+---
+
+## Titania's Song / Cyclopean Tomb — 2026-07-10
+
+**Cards:** Titania's Song (G enchantment) -- "Each noncreature artifact loses all abilities and becomes an artifact creature with power and toughness each equal to its mana value. If this enchantment leaves the battlefield, this effect continues until end of turn." Cyclopean Tomb (colorless artifact) -- "{2}, {T}: Put a mire counter on target non-Swamp land. That land is a Swamp for as long as it has a mire counter on it. Activate only during your upkeep. When this artifact is put into a graveyard from the battlefield, at the beginning of each of your upkeeps for the rest of the game, remove all mire counters from a land that a mire counter was put onto with this artifact but that a mire counter has not been removed from with this artifact." Both use the emblem infrastructure above for their "outlives its source" clause. Adapted from Card-Forge/forge (t/titanias_song.txt, c/cyclopean_tomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+
+**Titania's Song implementation:**
+- `globalTypeEffect: { filter: 'nonCreatureArtifact', addTypes: ['Creature'], wipeAbilities: true, powerFn: 'manaValueCDA', toughnessFn: 'manaValueCDA' }`, same field/mechanism as Living Lands/Kormus Bell/Blood Moon (`effect:"globalTypeEffect"`, consumed by `layers.js` step 14 while on the battlefield, step 14a for the wipe/CDA pieces).
+- `matchesGlobalTypeFilter` (layers.js) gained a `'nonCreatureArtifact'` branch, checked against `card.type` (base, never-mutated field) before the existing land-only early return -- stable even after Layer 4 has already added Creature to the same card in the same fold pass.
+- `manaValueCDA` CDA evaluator added to `CDA_EVALUATORS`: `(card) => card.cmc ?? 0`.
+- Its own `ON_PERMANENT_LEAVES_BF` self-scoped trigger (`titaniasSongPersist`) creates an `endOfTurn` emblem carrying the same `globalTypeEffect` object, so the effect keeps applying to every qualifying artifact via emblem infrastructure step 14b -- including artifacts that enter *after* Titania's Song already left, since the filter is evaluated fresh on every recompute rather than snapshotting which artifacts were present at the moment it left.
+
+**Cyclopean Tomb implementation:**
+- Activation reuses the existing `myUpkeepOnly` gate (`ACTIVATE_ABILITY`, the same mechanism Gate to Phyrexia / Life Chisel already use for "Activate only during your upkeep") rather than adding a new phase-restriction field -- no new engine mechanism needed.
+- `cyclopeanTombMireCounter` (resolveEff): puts a `MIRE` counter on the target land (fizzles if the target isn't a land or already reads as Swamp-subtyped) and records the land's iid onto the Tomb's own `mireLandIids` list while it's still alive.
+- `layers.js collectEffects` step 14c: a land with a `MIRE` counter gets `{layer:4, setSubtypes:['Swamp']}`, the same shape Evil Presence's Aura `mod.layerDef` already uses.
+- **Not a "no mana ability" simplification:** unlike Evil Presence's own doc comment (which frames "enchanted land is a Swamp" as an engine simplification), Cyclopean Tomb's mired land folds into the exact same Layer 4 `setSubtypes` pipeline, so it also picks up `landTypeOverride` (`DuelCore.js` `computeCharacteristics` ~L404-409) and, with it, the intrinsic "T: Add B" mana ability via `LAND_TYPE_MANA` (`DuelCore.js` ~L829-830) -- consistent with real CR 305.6 (a land's type grants its intrinsic mana ability) and with how Evil Presence already behaves in this engine. See `docs/SYSTEMS.md` S18.9 and the code comment at the layers.js step 14c insertion.
+- On leaving the battlefield to a graveyard (`ON_PERMANENT_LEAVES_BF` self-scoped, `condition:{type:'destinationIsGY'}` -- the existing condition Lich already uses for the identical "put into a graveyard from the battlefield" clause, not a new condition type), `createCyclopeanTombEmblem` snapshots `mireLandIids` onto a `permanent`-duration emblem with its own `ON_UPKEEP_START, scope:'controller'` triggered ability.
+- `cyclopeanTombRemoveMire` (the emblem's own trigger effect): clears all `MIRE` counters from the next unprocessed land in `mireLandIids` per upkeep (searches both players' battlefields for the land, since Cyclopean Tomb can mire either player's land, not just its controller's own); becomes a harmless no-op once every land has been processed. The emblem itself is never removed by CLEANUP (`duration:'permanent'`).
+
+**Tests:**
+- Vitest: `tests/scenarios/titanias-song.test.js` (TS-01 through TS-10), `tests/scenarios/cyclopean-tomb.test.js` (CT-01 through CT-14).
+- Playwright: `tests/e2e/titanias-song.spec.ts`, `tests/e2e/cyclopean-tomb.spec.ts` (dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.23

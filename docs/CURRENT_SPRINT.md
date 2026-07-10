@@ -8,6 +8,35 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-10)
+- **Emblem infrastructure + Titania's Song + Cyclopean Tomb** -- new shared
+  `state.p/o.emblems` mechanism for "this effect continues after its source
+  leaves the battlefield" cards, hooked into `layers.js collectEffects`
+  (Layer 4/6/7a), `computeCharacteristics` (Layer 6 ability wipe),
+  `DuelCore.js emitEvent`/`resolveTrigger` (emblem-sourced triggered
+  abilities), and the `PHASE.CLEANUP` sweep (`endOfTurn`-duration emblems
+  expire and force a `recomputeTypeEffects` rebake; `permanent`-duration
+  emblems persist). Unstubs Titania's Song (noncreature artifacts become
+  artifact creatures with power/toughness equal to mana value, losing all
+  abilities; effect persists until end of turn if the enchantment leaves)
+  and Cyclopean Tomb (mires a target land into a Swamp; on death, its
+  emblem removes mire counters one land per upkeep for the rest of the
+  game). Reused three existing mechanisms instead of adding new ones:
+  the `myUpkeepOnly` activation gate (Gate to Phyrexia/Life Chisel) for
+  Cyclopean Tomb's "activate only during your upkeep," the
+  `destinationIsGY` condition (Lich) for its "put into a graveyard from
+  the battlefield" trigger, and the existing `globalTypeEffect`/step 14
+  Living Lands-style pipeline for Titania's Song's on-battlefield static
+  ability. One correctness note: a mired land's Swamp subtype folds into
+  the same `landTypeOverride` mechanism Evil Presence already uses, so it
+  also gains the intrinsic Swamp mana ability -- not a "subtype only, no
+  mana ability" simplification. Stub count 17 -> 15. Tests: 34 Vitest
+  (`tests/scenarios/emblem-infrastructure.test.js`,
+  `titanias-song.test.js`, `cyclopean-tomb.test.js`), 8 Playwright cases
+  across 2 spec files x 2 viewports (`tests/e2e/titanias-song.spec.ts`,
+  `cyclopean-tomb.spec.ts`). See `docs/MECHANICS_INDEX.md` -- Emblem
+  Infrastructure / Titania's Song / Cyclopean Tomb.
+
 ## Completed (2026-07-09)
 - **Fatal AI Error Silent Hang (fail-fast hardening)** -- Neither of
   `useDuelController.ts`'s two `aiDecide()` call sites (the "AI priority

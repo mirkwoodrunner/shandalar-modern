@@ -1135,6 +1135,30 @@ if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.contr
 else { ns = dlog(ns, `${card.name} fizzles -- no valid land target.`, "effect"); }
 break;
 }
+// Cyclopean Tomb: "{2}, {T}: Put a mire counter on target non-Swamp land."
+// Also records the land on the source artifact's own mireLandIids list, while
+// it's still on the battlefield, for the leaves-battlefield emblem to
+// snapshot later. Same land-target fizzle shape as destroyTargetLand above --
+// no declarative targetFilter system exists for activated abilities (only
+// spell-side effects like destroyTargetLand have this shape), so legality is
+// checked here at resolution rather than a pre-activation gate.
+// Adapted from Card-Forge/forge (c/cyclopean_tomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "cyclopeanTombMireCounter": {
+  const alreadySwamp = tgtC && (tgtC.subtypeEff ?? tgtC.subtype ?? '').includes('Swamp');
+  if (!tgtC || !isLand(tgtC) || alreadySwamp) {
+    ns = dlog(ns, `${card.name} fizzles -- no valid non-Swamp land target.`, "effect");
+    break;
+  }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, counters: { ...c.counters, MIRE: (c.counters?.MIRE || 0) + 1 } } : c
+  ) } };
+  // Record provenance on the Tomb itself (not the emblem yet -- it's still alive).
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === card.iid ? { ...c, mireLandIids: [...(c.mireLandIids || []), tgtC.iid] } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: put a mire counter on ${tgtC.name}.`, "effect");
+  break;
+}
 case "destroyBlack": {
 if (tgtC && tgtC.color === "B") { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
@@ -5102,6 +5126,23 @@ ns = { ...ns, [ac]: { ...ns[ac], hand: ns[ac].hand.slice(0,-1), gy: [...ns[ac].g
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.eotBuffs?.length ? { ...c, eotBuffs: [] } : c) } };
 }
+// Emblems: endOfTurn-duration emblems expire at cleanup (Titania's Song's
+// "until end of turn" tail). permanent-duration emblems (Cyclopean Tomb) are
+// untouched here -- they persist for the rest of the game by design.
+let emblemsExpired = false;
+for (const w of ["p","o"]) {
+const before = ns[w].emblems ?? [];
+const after = before.filter(e => e.duration !== 'endOfTurn');
+if (after.length !== before.length) emblemsExpired = true;
+ns = { ...ns, [w]: { ...ns[w], emblems: after } };
+}
+// An expired emblem may have been the only thing keeping a permanent's baked
+// typeEff/subtypeEff current (Titania's Song's emblem-sourced Creature type,
+// via layers.js collectEffects 14b) -- unlike a battlefield permanent leaving
+// play (which always routes through zMove's own recomputeTypeEffects call),
+// removing an emblem from state.emblems is not a zone move, so it needs its
+// own explicit rebake here.
+if (emblemsExpired) ns = recomputeTypeEffects(ns);
 // Hurr Jackal: "can't be regenerated" restriction only lasts the turn it's activated.
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.cantRegenerateThisTurn ? { ...c, cantRegenerateThisTurn: false } : c) } };
@@ -5352,6 +5393,29 @@ function emitEvent(state, event) {
         eventPayload: event.payload,
         timestamp: ts++,
       });
+    }
+  }
+
+  // Emblem-sourced triggered abilities (Titania's Song / Cyclopean Tomb after
+  // their source leaves the battlefield -- see docs/MECHANICS_INDEX.md). No
+  // scope:'self' handling needed here -- emblems are never the direct object
+  // of an event the way a dying permanent is, so only 'controller'-scoped and
+  // unscoped triggers are relevant.
+  for (const who of allPlayers) {
+    for (const emblem of state[who]?.emblems ?? []) {
+      if (!emblem.triggeredAbilities) continue;
+      for (const ability of emblem.triggeredAbilities) {
+        if (ability.trigger.event !== event.type) continue;
+        if (ability.trigger.scope === 'controller' && emblem.controller !== event.payload?.activePlayer) continue;
+        if (ability.condition && !evaluateCondition(state, emblem, ability.condition, event.payload)) continue;
+        newTriggers.push({
+          triggerId: ability.id,
+          sourceCardId: emblem.id,
+          controller: who,
+          eventPayload: event.payload,
+          timestamp: ts++,
+        });
+      }
     }
   }
 
@@ -5726,6 +5790,90 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       const s = zMove(state, current.iid, who, who, 'gy');
       return dlog(s, `${sourceCard.name} is sacrificed (activated four or more times this turn).`, 'effect');
     }
+    // Titania's Song: "If this enchantment leaves the battlefield, this effect
+    // continues until end of turn." Creates an endOfTurn emblem carrying the
+    // same globalTypeEffect the card itself had while on the battlefield --
+    // consumed by layers.js collectEffects step 14b.
+    // Adapted from Card-Forge/forge (t/titanias_song.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'titaniasSongPersist': {
+      const who = sourceCard.controller;
+      const emblem = {
+        id: makeId(),
+        source: 'titanias_song',
+        name: "Titania's Song (emblem)",
+        controller: who,
+        duration: 'endOfTurn',
+        enterTs: Date.now(),
+        globalTypeEffect: sourceCard.globalTypeEffect,
+      };
+      return dlog(
+        { ...state, [who]: { ...state[who], emblems: [...(state[who].emblems ?? []), emblem] } },
+        "Titania's Song leaves the battlefield -- its effect continues until end of turn.",
+        'effect'
+      );
+    }
+    // Cyclopean Tomb: "When this artifact is put into a graveyard from the
+    // battlefield, at the beginning of each of your upkeeps for the rest of
+    // the game, remove all mire counters..." sourceCard here is the
+    // just-departed Tomb, found via findLeftBattlefieldCard, still carrying
+    // its accumulated mireLandIids.
+    // Adapted from Card-Forge/forge (c/cyclopean_tomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'createCyclopeanTombEmblem': {
+      const who = sourceCard.controller;
+      const emblem = {
+        id: makeId(),
+        source: 'cyclopean_tomb',
+        name: 'Cyclopean Tomb (emblem)',
+        controller: who,
+        duration: 'permanent',
+        mireLandIids: sourceCard.mireLandIids || [],
+        mireRemovedIids: [],
+        triggeredAbilities: [{ id: 'cyclopean_tomb_emblem_upkeep', trigger: { event: 'ON_UPKEEP_START', scope: 'controller' }, effect: { type: 'cyclopeanTombRemoveMire' } }],
+      };
+      return dlog(
+        { ...state, [who]: { ...state[who], emblems: [...(state[who].emblems ?? []), emblem] } },
+        'Cyclopean Tomb is put into a graveyard -- its mire effect persists for the rest of the game.',
+        'effect'
+      );
+    }
+    // Cyclopean Tomb's persistent upkeep effect, firing from its own emblem
+    // (sourceCard here is an emblem object, not a card -- found via findEmblem
+    // in resolveTrigger). Picks the next mire-landed land not yet cleared by
+    // this specific instance, removes all its mire counters. Once
+    // mireLandIids is exhausted, this is permanently a harmless no-op --
+    // matching the real card's behavior of persisting forever. recomputeTypeEffects
+    // is called explicitly since this pipeline (emitEvent -> processTriggerQueue,
+    // invoked from ADVANCE_PHASE's UPKEEP block) has no automatic recompute
+    // afterward the way RESOLVE_STACK does.
+    // Adapted from Card-Forge/forge (c/cyclopean_tomb.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'cyclopeanTombRemoveMire': {
+      const emblem = sourceCard;
+      const next = (emblem.mireLandIids || []).find(iid => !(emblem.mireRemovedIids || []).includes(iid));
+      if (!next) return state;
+      const who = emblem.controller;
+      // The mired land can belong to either player (Cyclopean Tomb targets
+      // "target non-Swamp land", not "target land you control") -- find
+      // whichever side actually has it rather than assuming the emblem
+      // controller's own battlefield.
+      const landSide = state.p.bf.some(c => c.iid === next) ? 'p'
+                      : state.o.bf.some(c => c.iid === next) ? 'o'
+                      : null;
+      let ns = state;
+      if (landSide) {
+        ns = { ...ns, [landSide]: { ...ns[landSide], bf: ns[landSide].bf.map(c =>
+          c.iid === next ? { ...c, counters: { ...c.counters, MIRE: 0 } } : c
+        ) } };
+      }
+      ns = {
+        ...ns,
+        [who]: {
+          ...ns[who],
+          emblems: ns[who].emblems.map(e => e.id === emblem.id ? { ...e, mireRemovedIids: [...(e.mireRemovedIids || []), next] } : e),
+        },
+      };
+      ns = recomputeTypeEffects(ns);
+      return dlog(ns, "Cyclopean Tomb's mire effect removes all mire counters from a land.", 'effect');
+    }
     default:
       console.warn(`[DuelCore] Unknown triggered effect type: ${effect.type}`);
       return state;
@@ -5751,10 +5899,21 @@ function createPendingChoice(state, { sourceCardId, controller, options, kind = 
   };
 }
 
+// Finds an emblem by id on either player (Titania's Song / Cyclopean Tomb
+// persistent effects -- see docs/MECHANICS_INDEX.md).
+function findEmblem(state, id) {
+  for (const who of ['p', 'o']) {
+    const found = (state[who]?.emblems ?? []).find(e => e.id === id);
+    if (found) return found;
+  }
+  return null;
+}
+
 function resolveTrigger(state, inst) {
   const allBf = [...state.p.bf, ...state.o.bf];
   const sourceCard = allBf.find(c => c.iid === inst.sourceCardId)
-    ?? findLeftBattlefieldCard(state, inst.sourceCardId);
+    ?? findLeftBattlefieldCard(state, inst.sourceCardId)
+    ?? findEmblem(state, inst.sourceCardId);
   if (!sourceCard?.triggeredAbilities) return state;
   const ability = sourceCard.triggeredAbilities.find(a => a.id === inst.triggerId);
   if (!ability) return state;
@@ -6200,8 +6359,8 @@ landsPlayed: 0,
 spellsThisTurn: 0,
 totalCardsCast: 0,
 peakDamage: 0,
-p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false },
-o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false },
+p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [] },
+o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [] },
 stack: [],
 attackers: [],
 blockers: {},
