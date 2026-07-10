@@ -63,6 +63,32 @@ Construction is done; this is feel and balance. Reward/difficulty curves vs. dis
 
 5,408 unimplemented entries at the current oracle-verified cadence is a multi-year track. **Recommendation: do not block 1.0 on this.** Ship a complete Alpha/Beta game first; treat premodern as a post-1.0 expansion, sequenced by set in original release order, reusing all Milestone A machinery and the same per-batch Scryfall verification rule.
 
+**Forge coverage audit (2026-07-10).** Before this milestone is ever greenlit, the open question was how much of the 5,408-card pool is genuinely blocked on missing engine infrastructure versus just unwritten card handlers. Cross-referenced every Premodern card id against `Card-Forge/forge`'s `forge-gui/res/cardsfolder/` scripts (GPL-3.0, same source already used for Milestone A adaptations) using the exact slug rule from `tools/generate-premodern-pool.mjs`.
+
+- **Script coverage: 5,408 / 5,408 (100%).** Every card has a matching Forge reference to adapt from. Zero misses.
+- **Complexity distribution** (by ability-line count in the Forge script — a rough proxy, not a real effort measure): vanilla/keyword-only 466 (8.6%), simple/1-ability 3,960 (73.2%), moderate/2–4 abilities 973 (18.0%), complex/5+ abilities 9 (0.2%). The 9 complex outliers: Diabolic Servitude, Coffin Queen, Cromat, Duplicity, Gustha's Scepter, Krovikan Vampire, Morphling, Tek, Tribal Golem — plan these last regardless of which batch order is chosen below.
+- **476 cards (8.8%) depend on one of 14 named mechanics absent from `src/data/keywords.js`** (current registry is Alpha/Beta-era: Flying, Trample, Banding, etc. — Banding's presence here cross-validated the audit method against Milestone A's completed banding work). Only one card, Feral Throwback, touches two of these mechanics at once (Amplify + Provoke), so the union below is close to a clean partition.
+
+  | Mechanic | Cards | Build leverage |
+  |---|---|---|
+  | Shadow | 24 | Pure evasion keyword — same shape as Flying/Landwalk, one `canBlockDuel` check. Not really new infrastructure. |
+  | Kicker | 64 | Optional additional cost at cast, stored as a flag on the stack item — same shape as the existing `xVal` field. |
+  | Buyback | 28 | Same stack-item-flag shape as Kicker; build both together. |
+  | Echo | 34 | Pay-or-sacrifice at upkeep — `pendingUpkeepChoice`/`handlerKey` registry (`upkeepChoiceRegistry.tsx`) already exists and is explicitly designed for new entries. |
+  | Fading | 17 | Same upkeep-choice registry as Echo; build both together. |
+  | Flanking | 17 | Needs a `ON_BLOCKS_DECLARED`-style trigger, same shape as the existing `ON_ATTACKS_DECLARED` (just extended for Raging River). |
+  | Rampage | 9 | Same new trigger point as Flanking; build both together. |
+  | Provoke | 8 | Forced-block flag + attack trigger with opponent-creature targeting. `MUST_ATTACK`'s auto-enforcement-at-phase-transition is a structural analog (reverse polarity), not directly reusable code. |
+  | Amplify | 9 | Contained ETB reveal-and-count effect. No blocker identified. |
+  | Cycling | 97 | Confirmed gap: `ACTIVATE_ABILITY` (`DuelCore.js` ~L6834-6840) does `s[w].bf.find()` — battlefield sources only, no hand-zone activation exists. Highest count in this tier. |
+  | Flashback | 52 | Confirmed gap: no cast-from-graveyard path exists anywhere in `DuelCore.js`. |
+  | Storm | 12 | Confirmed gap: no spell-copy mechanism exists; also needs a trivial spells-cast-this-turn counter. The copy mechanism is the real cost. |
+  | Morph | 94 | Largest lift on the list — hidden face-down permanent state, a true identity tracked separately from public battlefield state. No existing precedent. Highest count among the "genuinely novel" tier. |
+  | Phasing | 12 | Already flagged elsewhere as a from-scratch subsystem (see Oubliette in the primary-pool stub backlog). Lowest count of the hard tier — correctly last. |
+
+- **Suggested build order by leverage, not by card count:** Shadow → Kicker/Buyback → Echo/Fading → Flanking/Rampage → Provoke → Amplify → Cycling → Flashback → Storm → Morph → Phasing. This clears the 476-card mechanic backlog spending the expensive, precedent-free subsystem work (Morph, Storm, Phasing) last, and in card-count order among themselves.
+- **Bottom line for the go/no-go decision:** 91.2% of the pool (4,932 cards) needs no new infrastructure at all — same per-card handler effort as Milestone A, just at 10x the volume. The 8.8% mechanic tail is what actually gates full completion, and it decomposes into a short, ordered list rather than one undifferentiated wall of unknown scope.
+
 ## Cross-cutting (run throughout, not separate milestones)
 
 - **Parity tax.** Every duel-facing change mirrors to `DuelScreen.tsx` and `DuelScreenMobile.tsx`. Budget this into every A/C batch, not as separate work.
