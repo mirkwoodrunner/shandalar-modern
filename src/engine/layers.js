@@ -84,6 +84,12 @@ export const CDA_EVALUATORS = {
   // Adapted from Card-Forge/forge (s/shapeshifter.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   shapeshifterPower: (card) => card.chosenNumber ?? 0,
   shapeshifterToughness: (card) => 7 - (card.chosenNumber ?? 0),
+  // Titania's Song: affected artifacts have power and toughness each equal to
+  // their own mana value. mana value never changes with type/subtype, so this
+  // reads the printed cmc directly regardless of whether the effect is
+  // currently sourced from the card on the battlefield or its emblem.
+  // Adapted from Card-Forge/forge (t/titanias_song.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  manaValueCDA: (card) => card.cmc ?? 0,
 };
 
 function getTs(eff) {
@@ -98,6 +104,15 @@ function getTs(eff) {
 // (e.g. Evil Presence + Living Lands stacked on one permanent). SIMPLIFICATION:
 // see docs/SYSTEMS.md S18.9.
 function matchesGlobalTypeFilter(card, filter) {
+  // Titania's Song: "Each noncreature artifact..." -- the only non-land filter
+  // this function recognizes. Checked against card.type (the printed/base type
+  // string, never mutated by Layer 4 -- see collectEffects step 14a/14b below),
+  // so this stays stable even after Layer 4 has already turned the artifact
+  // into a creature earlier in the same computeCharacteristics pass.
+  if (filter === 'nonCreatureArtifact') {
+    const t = card.type ?? '';
+    return t.includes('Artifact') && !t.includes('Creature');
+  }
   const baseType = card.type ?? '';
   const isBaseLand = baseType === 'Land' || baseType.includes('Land');
   if (!isBaseLand) return false;
@@ -308,6 +323,64 @@ function collectEffects(card, state) {
     }
   }
 
+  // 14a. Global ability-wipe / CDA P-T effects sourced from an on-battlefield
+  // globalTypeEffect (Titania's Song). Step 14 above only wires setTypes/
+  // addTypes/removeTypes/subtypes (Layer 4), setColor (Layer 5), and fixed
+  // setPower/setToughness (Layer 7b) -- Titania's Song additionally needs a
+  // Layer 6 ability wipe and a Layer 7a CDA, which step 14 doesn't cover and
+  // which is off-limits to edit here (see CLAUDE.md). Added as a sibling block
+  // instead of touching step 14's own loop. Mirrors 14b below (the
+  // emblem-sourced version of these same two pieces) but reads from allBf.
+  for (const src of allBf) {
+    if (src.iid === card.iid) continue;
+    const gte = src.globalTypeEffect;
+    if (!gte || !matchesGlobalTypeFilter(card, gte.filter)) continue;
+    const srcTs = src.enterTs ?? 0;
+    if (gte.wipeAbilities) {
+      effects.push({ layer: 6, wipeAbilities: true, enterTs: srcTs });
+    }
+    if (gte.powerFn || gte.toughnessFn) {
+      effects.push({ layer: '7a', powerFn: gte.powerFn, toughnessFn: gte.toughnessFn, enterTs: srcTs });
+    }
+  }
+
+  // 14b. Emblem-sourced global type/color/P-T effects (Titania's Song after it
+  // leaves the battlefield). Same shape and same matchesGlobalTypeFilter check
+  // as the battlefield-permanent case above, but the source is a sourceless
+  // emblem, not a permanent, so it's read from state[who].emblems instead of bf.
+  for (const who of ['p', 'o']) {
+    for (const emblem of state[who]?.emblems ?? []) {
+      const gte = emblem.globalTypeEffect;
+      if (!gte || !matchesGlobalTypeFilter(card, gte.filter)) continue;
+      const srcTs = emblem.enterTs ?? 0;
+      if (gte.setTypes || gte.addTypes || gte.removeTypes || gte.setSubtypes || gte.addSubtypes || gte.removeSubtypes) {
+        effects.push({ layer: 4, setTypes: gte.setTypes, addTypes: gte.addTypes, removeTypes: gte.removeTypes, setSubtypes: gte.setSubtypes, addSubtypes: gte.addSubtypes, removeSubtypes: gte.removeSubtypes, enterTs: srcTs });
+      }
+      if (gte.wipeAbilities) {
+        effects.push({ layer: 6, wipeAbilities: true, enterTs: srcTs });
+      }
+      if (gte.powerFn || gte.toughnessFn) {
+        effects.push({ layer: '7a', powerFn: gte.powerFn, toughnessFn: gte.toughnessFn, enterTs: srcTs });
+      }
+    }
+  }
+
+  // 14c. Cyclopean Tomb: "That land is a Swamp for as long as it has a mire
+  // counter on it." Same Layer 4 setSubtypes shape as Evil Presence's aura mod
+  // (see the "3. Attached auras" block above), but keyed off a counter rather
+  // than an attached Aura permanent. NOTE: unlike the prompt's original
+  // assumption, this is NOT a mana-ability-free simplification -- it folds
+  // into the same Layer 4 subtypes array as Evil Presence, so a land whose
+  // subtype is fully replaced down to a single basic type also picks up
+  // landTypeOverride (DuelCore.js computeCharacteristics ~L404-409) and, with
+  // it, "T: Add B" via LAND_TYPE_MANA (DuelCore.js ~L829-830) -- identical to
+  // how Evil Presence's "enchanted land is a Swamp" already behaves in this
+  // engine, and consistent with real CR 305.6 (a land's type grants its
+  // intrinsic mana ability). See docs/SYSTEMS.md S18.9 and MECHANICS_INDEX.md.
+  if (isLand(card) && (card.counters?.MIRE ?? 0) > 0) {
+    effects.push({ layer: 4, setSubtypes: ['Swamp'], enterTs: card.enterTs ?? 0 });
+  }
+
   // 15. Rabid Wombat: "gets +2/+2 for each Aura attached to it."
   //     Adapted from Card-Forge/forge (r/rabid_wombat.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (card.name === 'Rabid Wombat') {
@@ -417,6 +490,14 @@ export function computeCharacteristics(card, state) {
   // Layer 6: Ability-adding / ability-removing
   const l6 = effects.filter(e => e.layer === 6).sort((a, b) => getTs(a) - getTs(b));
   for (const eff of l6) {
+    // Titania's Song: "loses all abilities." Wipes keywords/protection
+    // accumulated so far in this sorted timestamp pass; any Layer 6 effect
+    // with a LATER timestamp still applies afterward (correct CR 613
+    // timestamp behavior -- no special-casing needed beyond this check).
+    if (eff.wipeAbilities) {
+      keywords = [];
+      protection = [];
+    }
     if (eff.addKeywords) {
       for (const kw of eff.addKeywords) {
         if (!keywords.includes(kw)) keywords.push(kw);
