@@ -3985,10 +3985,10 @@ for the reported freeze remains unconfirmed)
 
 ## Instant-Speed Damage Prevention (Guardian Angel) — 2026-07-10
 
-**Cards:** Guardian Angel (W enchantment) — creates temporary instant-speed abilities.
+**Cards:** Guardian Angel (W instant) — creates temporary instant-speed abilities.
 
 **Mechanical summary (per SYSTEMS.md -- Section 16: Temporary Player Abilities):**
-When Guardian Angel enters the battlefield, it creates a tempAbility (1994 fast-effect convention, not a stack-resolving ability) that grants the controller the ability to pay 1 generic and prevent 1 damage from any source to any target they control. This ability:
+When Guardian Angel resolves, it creates a tempAbility (1994 fast-effect convention, not a stack-resolving ability) that grants the controller the ability to pay 1 generic and prevent 1 damage from any source to any target they control. This ability:
 - Is only usable during moments when the player has priority (instant speed)
 - Has no timer: persists until the game ends
 - Can be activated multiple times (one at a time, each consuming 1 mana)
@@ -4030,10 +4030,10 @@ COMPLETE (cards → state → reducers → UI → AI → tests all wired)
 
 ## Draw Replacement with Charge Queue (Aladdin's Lamp) — 2026-07-10
 
-**Cards:** Aladdin's Lamp (3 artifact) — draws with X-based charge queue; shows library cards and allows reordering.
+**Cards:** Aladdin's Lamp (10 artifact) — draws with X-based charge queue; shows library cards and allows reordering.
 
 **Mechanical summary (per SYSTEMS.md -- Section 14: Draw Replacement Core):**
-Aladdin's Lamp activation (cost: X generic, tap) creates a charge entry `state.p.lampCharges: number[]` containing the X value. When the player would draw a card and `lampCharges` is non-empty, a draw is suspended: instead, a `pendingLampPicks` modal appears showing X cards from the top of the library. The player picks one card to draw; the chosen card is moved to the top of the library, and the remaining X-1 cards are returned to the library in their original order (no shuffle). After the pick, the charge is consumed and one more draw (if any are pending) is resolved.
+Aladdin's Lamp activation (cost: X generic, tap) creates a charge entry `state.p.lampCharges: number[]` containing the X value. When the player would draw a card and `lampCharges` is non-empty, a draw is suspended: instead, a `pendingLampPicks` modal appears showing X cards from the top of the library. The player picks one card to draw; the chosen card is moved to the top of the library, and the remaining X-1 cards are shuffled to the bottom of the library (per oracle text and the `shuffle()` call in `LAMP_PICK`). After the pick, the charge is consumed and one more draw (if any are pending) is resolved.
 
 Implementation notes:
 1. **SYSTEMS.md truth:** Section 14 defines the mechanic — separate from normal draw, using a charge queue
@@ -4073,10 +4073,10 @@ COMPLETE (cards → state → reducers → UI → AI → tests all wired)
 
 ## Combat Pile Division (Raging River) — 2026-07-10
 
-**Cards:** Raging River (U enchantment) — triggers when opponent attacks, divides non-flying defenders into piles, restricts block assignment by pile membership.
+**Cards:** Raging River (R enchantment) — triggers when its controller attacks, divides non-flying defenders into piles, restricts block assignment by pile membership.
 
 **Mechanical summary (per SYSTEMS.md -- Section 9: Combat Phases & Block Restriction):**
-When an opponent declares Raging River attacking, the defender (player 'p', who controls Raging River) must divide their non-flying creatures into left and right piles. Simultaneously, the attacker's creatures must choose which pile (if any) can block them. A creature can only block an attacker if:
+When the Raging River controller declares an attack, the OTHER player (the defender, whichever side that is) must divide their non-flying creatures into left and right piles. Simultaneously, the attacker's creatures must choose which pile (if any) can block them. A creature can only block an attacker if:
 - The defender is in the same pile as the attacker's chosen pile, OR
 - The creature is flying (ignores piles)
 
@@ -4106,9 +4106,11 @@ Implementation notes:
 - `src/ui/Mobile/RiverDividePanel.tsx` (new, mobile) — same functionality, bottom sheet layout
 - `src/ui/Mobile/RiverSidesPanel.tsx` (new, mobile) — same functionality, bottom sheet layout
 - Wired into both screens with guards:
-  - `!isMobile && s.pendingRiverDivide?.defender === 'o' && s.active === 'p'` (desktop divide)
-  - `!isMobile && s.pendingRiverSides?.chooser === 'p' && s.active === 'p'` (desktop sides)
-  - No `!isMobile` guard on mobile versions (mobile screens always use mobile variants)
+  - `!isMobile && s.pendingRiverDivide?.defender === 'p' && s.active === 'o'` (desktop divide — shown to the human only when the human is the defender; when the AI defends, useDuelController's timer-based effect auto-resolves via chooseRiverDivide with no panel)
+  - `!isMobile && s.pendingRiverSides?.chooser === 'p' && s.active === 'p'` (desktop sides — unchanged, always correct)
+  - No `!isMobile` guard on mobile versions (mobile screens always use mobile variants); mobile divide panel uses the same `defender === 'p'` condition as desktop
+
+**Bug fix note (2026-07-XX):** the divide-panel guard originally checked `defender === 'o'`, which showed the panel during the AI's own auto-resolve window and never showed it when the human was actually the defender, deadlocking `ADVANCE_PHASE` whenever the AI attacked with Raging River. Corrected to `defender === 'p'`. Two additional engine bugs were found and fixed in the same pass: (1) the `ON_ATTACKS_DECLARED` trigger emission in `DuelCore.js` was missing the `activePlayer` payload key that Raging River's `scope:'controller'` trigger filter checks, so the trigger never fired in real gameplay at all, for either player; (2) `chooseRiverSides()` in `AI.js` read `state.p.bf` instead of `state.o.bf`, so whenever the AI was the Raging River attacker, its own `RIVER_SIDES` dispatch was always rejected as invalid, deadlocking `pendingRiverSides` indefinitely.
 
 **Tests:**
 - Vitest: `tests/scenarios/raging-river.test.js` (RR-01 through RR-20, 20 cases total)
