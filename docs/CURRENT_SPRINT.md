@@ -34,6 +34,25 @@
   (additional-cost cast-flow rollback) are not built here. See
   `docs/ENGINE_CONTRACT_SPEC.md` S7.7 and `docs/MECHANICS_INDEX.md` --
   Discard Centralization Phase 1.
+- **Library of Leng Phase 2** -- unstubbed Library of Leng as the first
+  production `DISCARD_REPLACEMENTS` consumer. No maximum hand size: the
+  CLEANUP hand-size while-loop now compares against `Infinity` instead of
+  `ruleset.maxHandSize` whenever the active player controls Library of Leng.
+  Effect discards: `DISCARD_REPLACEMENTS['library_of_leng']` performs the
+  normal hand-to-gy discard and `ON_DISCARD` emission (graveyard-first,
+  retroactive-lift simplification -- the discard is never suspended), then
+  offers a `discardToLibraryChoice` to lift the card from the graveyard to
+  the top of the library. A single `pendingChoice` chains multi-card
+  discards (Wheel of Fortune, Mind Bomb) one card at a time via
+  `queuedIids`; a collision with an unrelated pending choice degrades to
+  `console.error` + graveyard rather than overwriting it (unreachable
+  today). New AI policy `chooseDiscardToLibrary` in `AI.js` (same shape as
+  `chooseBandingDamageOrder`), dispatched from `useDuelController.ts` ahead
+  of the `pay_gggg` fallback. Stub count: 9 -> 8. Tests: 16 Vitest
+  (`tests/scenarios/library-of-leng.test.js`), 4 Playwright
+  (`tests/e2e/library-of-leng.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.7.1 and `docs/MECHANICS_INDEX.md` --
+  Library of Leng Phase 2.
 
 ## Completed (2026-07-10)
 - **Tap Centralization Phase 1 + Relic Bind, Blight, Psychic Venom** -- all 28

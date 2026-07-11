@@ -4261,4 +4261,29 @@ COMPLETE
 
 ---
 
+## Library of Leng Phase 2 — 2026-07-11
+
+**Card:** "You have no maximum hand size. If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard." (`library_of_leng`, unstubbed -- `effect:"STUB"` removed with no replacement `effect` key, following the pure-static-permanent convention already used by `winter_orb`: the card has no `resolveEff` case at all, both halves are consumed by id lookup instead.)
+
+**No maximum hand size:** the CLEANUP hand-size while-loop in `DuelCore.js` now compares against `effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize` (checked against only the active player's own battlefield, since a player only discards to hand size at their own cleanup) instead of `ns.ruleset.maxHandSize` directly. The single remaining `maxHandSize` gameplay consumer.
+
+**First `DISCARD_REPLACEMENTS` consumer:** `DISCARD_REPLACEMENTS['library_of_leng']` matches any `cause:'effect'` discard from its controller's hand (the registry scan is already scoped to the discarding player's own battlefield by `discardCard`). Its `apply` performs the exact same hand-to-gy mutation and `ON_DISCARD` emission as `discardCard`'s own non-replaced path -- factored into a shared internal `performDiscardMutation(state, who, card, payload)` helper so the two paths can't drift -- then offers a `pendingChoice` (`kind:'discardToLibraryChoice'`) to lift the card from the graveyard to the top of the library. This is a documented graveyard-first/retroactive-lift simplification (Assumption A), not a suspended discard: suspending mid-effect would strand cards in a ghost state for effects like Wheel of Fortune that discard a whole hand in one loop before drawing 7. See `docs/ENGINE_CONTRACT_SPEC.md` S7.7.1 for the full contract (choice shape, `queuedIids` multi-card chaining, and the `console.error`-and-degrade collision path for the unreachable-today case of a second choice needing the slot).
+
+**RESOLVE_CHOICE branch:** `choice.kind === 'discardToLibraryChoice'` sits among the direct (non-triggered-ability) kinds. `'library'` removes the card from gy and prepends it to `lib` (index 0 = top, confirmed against `drawD`'s `const [top, ...rest] = ns[who].lib` convention). `'graveyard'` is a no-op zone-wise. A missing card (moved out of gy by something else mid-chain) fizzles with a dlog line rather than throwing, and the chain still advances.
+
+**AI policy:** `chooseDiscardToLibrary(choice, state)` in `AI.js`, same pure-function shape and file placement as `chooseBandingDamageOrder` -- looks up `choice.cardIid` in the AI's own graveyard, returns `'library'` for a nonland with cmc at most the AI's own land count, `'graveyard'` otherwise. Dispatched from `useDuelController.ts`'s existing `pendingChoice.controller === 'o'` branch, placed immediately after the banding-order dispatch and before the `pay_gggg`-specific logic and its blind `options[0]` fallback -- placing it after that fallback would have silently made the AI always choose graveyard.
+
+**Stub count: 9 -> 8.**
+
+**Tests:**
+- Vitest: `tests/scenarios/library-of-leng.test.js` (LENG-01 through LENG-16).
+- Playwright: `tests/e2e/library-of-leng.spec.ts` (dual viewport, `@engine`).
+
+**Regression note:** the cleanup while-loop's condition changed for every duel (an `effectiveMax` computation replaces the direct `ns.ruleset.maxHandSize` comparison); LENG-03/LENG-04 guard that non-Leng cleanup discard is unaffected.
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.25

@@ -495,6 +495,72 @@ no card behavior changes.
   now includes an (inert) `emitEvent`/`processTriggerQueue` pair each time a
   card is discarded to hand size.
 
+### 7.7.1 `DISCARD_REPLACEMENTS['library_of_leng']` (Phase 2 -- first consumer)
+
+Library of Leng: "You have no maximum hand size. If an effect causes you to
+discard a card, discard it, but you may put it on top of your library
+instead of into your graveyard."
+
+- **No maximum hand size.** The CLEANUP handler's hand-size while-loop
+  compares against `effectiveMax = ns[ac].bf.some(c => c.id ===
+  'library_of_leng') ? Infinity : ns.ruleset.maxHandSize` (`ac` = the active
+  player, checked against only their own battlefield -- a player only
+  discards to hand size at their own cleanup). No other `maxHandSize`
+  consumer exists in DuelCore.js.
+- **ASSUMPTION A -- graveyard-first, retroactive lift (binding on this
+  consumer and any future one with the same shape).** The replacement does
+  NOT suspend the discard. `apply(state, who, payload)` performs the exact
+  same mutation tail as `discardCard`'s own non-replaced path (factored into
+  an internal `performDiscardMutation(state, who, card, payload)` helper so
+  the two paths stay byte-identical) -- the card moves to `gy` and
+  `ON_DISCARD` fires normally. Only after that does `apply` offer the
+  player a choice to lift the card from the graveyard to the top of the
+  library. Rationale: suspending mid-effect (e.g. mid-Wheel-of-Fortune,
+  which discards a whole hand in a single `for` loop before drawing 7) would
+  strand cards in a ghost state while the effect continues. The transient
+  graveyard membership between discard and choice resolution is a
+  documented simplification; no shipped `ON_DISCARD` consumer can observe
+  the difference.
+- **Choice shape.** `pendingChoice.kind === 'discardToLibraryChoice'`,
+  `controller` = the discarding player, `sourceCardId` = the Library of
+  Leng permanent's iid, `cardIid` = the currently-offered card's iid,
+  `options: [{id:'graveyard',...}, {id:'library',...}]`, `queuedIids: []`.
+  Created directly by `DISCARD_REPLACEMENTS['library_of_leng'].apply`
+  (not a triggered ability), resolved by its own direct `RESOLVE_CHOICE`
+  branch (`choice.kind === 'discardToLibraryChoice'`) alongside the other
+  non-triggered-ability kinds (`bandAttackerDamageOrder`, `colorChoice`,
+  `primalClayChoice`, `modalChoice`, `basicLandTypeChoice`, `numberChoice`).
+- **`queuedIids` chaining contract.** A single `pendingChoice` slot handles
+  a multi-card discard (Wheel of Fortune, Mind Bomb, ...): the first
+  intercepted card in a given `discardCard`/`apply` sequence creates the
+  choice; each subsequent intercepted card (while a `discardToLibraryChoice`
+  for the same controller is still pending) appends its iid to
+  `queuedIids` instead of creating a new choice. Each `RESOLVE_CHOICE`
+  answers the current `cardIid`; if `queuedIids` is non-empty, the next iid
+  is shifted into `cardIid` (with freshly rebuilt option labels for that
+  card's name) and the choice stays pending; otherwise `pendingChoice`
+  clears. If the resolved card is no longer in the graveyard (moved by
+  something else mid-chain), the choice fizzles with a dlog line and the
+  chain advances -- it does not throw.
+- **ASSUMPTION B -- collision degradation.** `pendingChoice` is a single
+  slot. If it is already occupied by anything other than a
+  `discardToLibraryChoice` for the same controller when Leng's replacement
+  would create/append one, `apply` logs `console.error` and returns state
+  with the card already moved to the graveyard (equivalent to the player
+  having chosen "graveyard") -- it never overwrites an existing
+  `pendingChoice`. Unreachable under current shipped cards (nothing else
+  creates a competing pendingChoice inside the same `discardCard` call);
+  documented explicitly for future registry consumers with the same shape.
+- **AI policy.** `chooseDiscardToLibrary(choice, state)` (src/engine/AI.js,
+  same shape/placement as `chooseBandingDamageOrder`) is a pure function:
+  looks up `choice.cardIid` in the AI's own graveyard and returns
+  `'library'` for a nonland whose cmc is at most the AI's own land count,
+  `'graveyard'` otherwise (including when the card can't be found).
+  Dispatched from `useDuelController.ts`'s `pendingChoice.controller ===
+  'o'` branch, ahead of the `pay_gggg` logic and its blind `options[0]`
+  fallback -- the same precedent as the banding-order dispatch immediately
+  above it.
+
 ---
 
 # 8. Determinism Contract
