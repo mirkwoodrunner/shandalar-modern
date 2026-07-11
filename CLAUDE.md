@@ -328,7 +328,7 @@ Doc-only changes (nothing under `src/` touched) need no test run at all.
 
 ### Unit tests (Vitest)
 ```
-npm run test:targeted -- @engine @persistence   # DEFAULT: run only tagged tests
+npm run test:targeted -- @engine @overworld     # DEFAULT: run only tagged tests
 npm run test:audit -- @engine                   # DEFAULT: audit a random untouched tag area
 npm test                     # full suite -- audit-failure escalation or explicit user request only
 npm run test:e2e             # full Playwright suite -- same restriction
@@ -341,17 +341,18 @@ All Playwright e2e specs now live in `tests/e2e/` (consolidated 2026-06-24 from 
 
 ### Tag taxonomy
 
-Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Five tags are defined:
+Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Four tags are defined:
 
 | Tag | Coverage |
 |---|---|
 | `@engine` | Duel engine: DuelCore, AI, MCTS, phases, combat, cardHandlers, cast-flow |
 | `@overworld` | Overworld/map/dungeon/sprite/structure specs and scenario tests |
 | `@mobile` | Any describe with a mobile viewport; desktop/mobile parity pairs |
-| `@persistence` | Duel state save/load/clear tests (Playwright + Vitest) |
 | `@premodern` | Premodern card pool structural integrity tests |
 
-Tags are additive prefixes: `@engine @mobile Duel persistence [mobile]` means the test belongs to both the engine and mobile areas.
+Tags are additive prefixes: `@engine @mobile Combat parity [mobile]` means the test belongs to both the engine and mobile areas.
+
+Persistence tests (`@persistence`) were removed pending a save-state retool; see `src/hooks/usePersistence.ts` for the untested hook they used to cover.
 
 ### File path -> tag lookup
 
@@ -367,7 +368,6 @@ covered here, fall back to the tag taxonomy table above.
 | `src/engine/MapGenerator.js`, `DungeonGenerator.js`, `EnemyAI.js` | `@overworld` |
 | `src/hooks/useOverworldController.js` | `@overworld` |
 | `src/OverworldGame.jsx`, `src/ui/overworld/*`, `src/ui/dungeon/*` | `@overworld` |
-| `src/hooks/usePersistence.ts` | `@persistence` |
 | `src/hooks/useIsMobile.ts`, `src/ui/Mobile/*`, `DuelScreenMobile.tsx`, `OverworldGameMobile.jsx`, any `isMobile`/`@media`-guarded code | `@mobile` |
 | `src/data/cardsPremodern.js`, premodern pool structural files | `@premodern` |
 | `src/data/cards.js`, `src/data/keywords.js` | `@engine` (add `@premodern` too if the change is premodern-pool-specific) |
