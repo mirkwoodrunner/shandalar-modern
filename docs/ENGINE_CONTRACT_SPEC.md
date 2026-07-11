@@ -445,6 +445,58 @@ Haunting Wind, and Powerleech (Phase 2 of tap centralization; Phase 1 --
 
 ---
 
+## 7.7 `ON_DISCARD` Event and `discardCard` Choke Point (Discard Centralization Phase 1)
+
+Mirrors `ON_TAP` (7.5) directly: a single choke point for "a card moves from
+a player's hand to their graveyard as a discard," added to unstub Library of
+Leng (Phase 2). This phase is pure refactor plus inert new infrastructure --
+no card behavior changes.
+
+- `discardCard(state, who, iid, opts)` (src/engine/DuelCore.js, placed
+  adjacent to `tapPermanent`) is the sole choke point for hand-to-gy discard
+  mutations.
+- `opts.cause` is REQUIRED -- one of `'effect' | 'cost' | 'gameRule'`.
+  Missing or invalid: throws immediately (fail-fast programmer error, not a
+  runtime no-op).
+- `opts.sourceName` is optional, used for dlog attribution by callers that
+  want it -- `discardCard` itself adds no dlog line of its own. Callers keep
+  their own existing site-specific dlog calls (e.g. "Bazaar: drew 2,
+  discarded 3.", "${opp} discards ${dc.name}.").
+- Card with `iid` not found in `state[who].hand`: `console.error` and return
+  state unchanged (runtime no-op, same philosophy as `tapPermanent`'s
+  not-found handling).
+- Behavior order in one call:
+  1. **Replacement pass.** Scans `state[who].bf` for permanents whose `id`
+     has an entry in `DISCARD_REPLACEMENTS`. For each entry, if
+     `matches(state, who, payload)` returns true and the entry's id is not
+     already in this call's `hasRun` set, the entry is applied and its
+     result returned INSTEAD of performing the mutation/event steps below.
+     `hasRun` is local to a single `discardCard` invocation (CR 614.5 loop
+     protection scoped per call, not across recursive calls). When multiple
+     entries match, the first in battlefield order wins -- documented
+     simplification for Phase 1; a decider-choice UI arrives with Phase 2's
+     first real consumer.
+  2. **Mutation.** Removes the card from `state[who].hand` (filter by iid),
+     appends it to `state[who].gy`.
+  3. **Event.** Emits `ON_DISCARD` with payload `{ who, iid, cardId,
+     cardName, cause, sourceName }`, immediately followed by
+     `processTriggerQueue`, matching every other emit site in the file.
+- `DISCARD_REPLACEMENTS` (exported const object, keyed by card id) ships
+  EMPTY in this phase -- no production consumers. Entry shape:
+  `{ matches(state, who, payload) => boolean, apply(state, who, payload) => state }`.
+  `payload` is the same object passed to ON_DISCARD (including `cause`), so
+  a future consumer like Library of Leng can match `cause === 'effect'`
+  only.
+- All 14 prior ad hoc hand-to-gy mutation sites in DuelCore.js now route
+  through this single function. See docs/MECHANICS_INDEX.md for the list.
+- No shipped card listens to `ON_DISCARD` in this phase; production emission
+  is inert. `discardCard` now runs inside the CLEANUP handler's hand-size
+  while-loop (previously a bare mutation), so every duel's end-of-turn path
+  now includes an (inert) `emitEvent`/`processTriggerQueue` pair each time a
+  card is discarded to hand size.
+
+---
+
 # 8. Determinism Contract
 
 All systems MUST obey:
