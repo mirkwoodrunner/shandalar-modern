@@ -407,9 +407,41 @@ Milestone A / Tier 3).
   convention) -- the codebase's `scope: 'controller'` filter checks
   `card.controller` against `event.payload.activePlayer`, a key the ON_TAP
   payload does not carry, so `enchantedHostTapped` alone does the filtering.
-- Phase 2 (not yet built) will add tracking for "an ability was activated
+- Phase 2 (built, see 7.6) added tracking for "an ability was activated
   without {T} in its cost," needed by Artifact Possession, Haunting Wind, and
   Powerleech in addition to this event.
+
+---
+
+## 7.6 `ON_ABILITY_ACTIVATED_NO_TAP` Event (Tap Centralization Phase 2)
+
+Completes the trigger vocabulary needed to unstub Artifact Possession,
+Haunting Wind, and Powerleech (Phase 2 of tap centralization; Phase 1 --
+`ON_TAP` -- shipped separately, see 7.5).
+
+- `ON_ABILITY_ACTIVATED_NO_TAP` -- emitted from two sites in
+  `case "ACTIVATE_ABILITY"` (the `addMana` branch and the generic "1. Tap
+  cost" step) whenever an activated ability's cost does NOT include `{T}`.
+  Payload: `{ cardId, controller }`, same shape as `ON_TAP`.
+- Deliberately NOT emitted from the `activatedAbilities`-array path (Mishra's
+  Factory, Desert, Wormwood Treefolk) -- none of those are artifacts, and no
+  card in this batch cares about non-artifact sources. A future card needing
+  that coverage would need to add emission there explicitly.
+- Fires universally (any permanent, any controller); consuming cards filter
+  via `evaluateCondition`, not at emission -- same philosophy as `ON_TAP`.
+- Like `ON_TAP`, pairs `emitEvent` with an immediate `processTriggerQueue` at
+  both emission sites.
+- Two new `evaluateCondition` types support this event (and, for the first
+  one, `ON_TAP` too): `affectedPermanentIsArtifact` (Haunting Wind) and
+  `affectedPermanentIsOpponentArtifact` (Powerleech), both looking up the
+  affected permanent live on the battlefield via `payload.controller`/
+  `payload.cardId` rather than tracking a host reference (these two cards are
+  plain Enchantments, not Auras). Artifact Possession reuses the existing
+  `enchantedHostTapped` condition (7.5) unchanged for its
+  `ON_ABILITY_ACTIVATED_NO_TAP` trigger -- the payload shape is identical to
+  `ON_TAP`'s, so no new condition was needed for it specifically.
+- Tap centralization is now complete (Phases 1 and 2 both shipped); no
+  further phases are planned.
 
 ---
 
