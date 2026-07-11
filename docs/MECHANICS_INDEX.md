@@ -4240,4 +4240,25 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.24
+## Discard Centralization Phase 1 — 2026-07-11
+
+**Infrastructure:** A single new choke point, `discardCard(state, who, iid, opts)` (`DuelCore.js`, adjacent to `tapPermanent`), for every "a card moves from a player's hand to their graveyard as a discard" mutation. Mirrors the shipped `tapPermanent`/`ON_TAP` pattern directly: a `DISCARD_REPLACEMENTS` registry pass (keyed by permanent card id, `{matches, apply}` entry shape, Forge's CR 614.5 intercept-before-mutate model) runs first; if no entry intercepts, the mutation happens (filter hand by iid, append to gy), then a new `ON_DISCARD` event (`{ who, iid, cardId, cardName, cause, sourceName }` payload) is emitted and immediately followed by `processTriggerQueue`, matching every other `emitEvent` call site in the file. `opts.cause` is required (`'effect' | 'cost' | 'gameRule'`) and throws if missing/invalid -- a fail-fast programmer error, not a runtime no-op (the not-found-in-hand case IS a runtime no-op, matching `tapPermanent`'s not-found philosophy: `console.error` + return state unchanged). `discardCard` adds no dlog of its own; all 14 prior ad hoc hand-to-gy sites keep their existing site-specific dlog calls unchanged. `DISCARD_REPLACEMENTS` ships EMPTY this phase -- no production consumers; Library of Leng (Phase 2) will be the first. See `docs/ENGINE_CONTRACT_SPEC.md` S7.7.
+
+**All 14 prior ad hoc hand-to-gy mutation sites in `DuelCore.js` now route through `discardCard`:** Bazaar of Baghdad's draw-followup (`bazaarDiscard3`, loops 3x), Jalum Tome's draw-then-discard followup (`discardLastDrawn`), Sindbad's reveal-and-discard-if-nonland followup (`revealDiscardIfNonland`), `discardX` (Mind Twist, loops X times), `discardOne` (Rag Man, Disrupting Scepter), `wheelOfFortune` (both players' full hands, looped per-card before the redraw), `balance`'s hand-equalization while-loop, `discardAllNonland` (Amnesia, decomposed from a single bulk-array mutation into a per-card loop preserving order and the existing summary dlog line), `contractFromBelow`'s full-hand discard, Mishra's War Machine upkeep (both the AI auto-discard branch and the human `pendingUpkeepChoice` DISCARD branch), Mind Bomb's `mindBombDiscard` number-choice handler (decomposed from a bulk-array mutation into a per-card loop, same summary-dlog-preserved shape as Amnesia), the CLEANUP hand-size while-loop (`cause:'gameRule'`, the only non-`'effect'` site besides the cost site below), and `discardLastDrawn` as an activation-cost payment step (Jandor's Ring, `cause:'cost'`). Two `case "timetwister"` sites and `cardHandlers.js`'s Timetwister rebuild were confirmed out of scope (shuffle, not discard) and left untouched, as was the London mulligan handler (cards go to library, not gy).
+
+**No card behavior changes this phase.** Every migrated site was verified byte-identical: same zone results, same dlog text, same resolution order. `AI.js`/`MCTS.js` confirmed to contain zero hand-to-gy mutations (read-only per architecture, nothing to migrate there).
+
+**Regression note:** `discardCard` now runs `processTriggerQueue` inside the CLEANUP handler's hand-size while-loop (previously a bare mutation with no event pipeline involved) -- every duel's end-of-turn path now includes an `emitEvent`/`processTriggerQueue` pair per discarded card. No shipped card listens to `ON_DISCARD` in this phase, so production emission is inert; cleanup's turnState resets, EOT buff expiry, and emblem expiry are unaffected and unreordered relative to the discard step.
+
+**Tests:**
+- Vitest: `tests/scenarios/discard-centralization.test.js` (DISC-01 through DISC-24).
+- Playwright: `tests/e2e/discard-centralization.spec.ts` (dual viewport, `@engine`).
+
+**Phase 2 (not built here):** Library of Leng as the first `DISCARD_REPLACEMENTS` consumer. **Phase 3 (not built here):** additional-cost cast-flow rollback.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.25

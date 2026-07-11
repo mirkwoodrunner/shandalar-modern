@@ -487,7 +487,7 @@ const DRAW_FOLLOWUPS = {
     for (let i = 0; i < 3; i++) {
       if (!ns[who].hand.length) break;
       const disc = ns[who].hand[ns[who].hand.length - 1];
-      ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, disc] } };
+      ns = discardCard(ns, who, disc.iid, { cause: 'effect', sourceName: 'Bazaar of Baghdad' });
     }
     ns = dlog(ns, "Bazaar: drew 2, discarded 3.", "draw");
     return ns;
@@ -497,7 +497,7 @@ const DRAW_FOLLOWUPS = {
     // Jalum Tome: draw 1, discard the drawn card.
     if (ns[who].hand.length) {
       const disc = ns[who].hand[ns[who].hand.length - 1];
-      ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, disc] } };
+      ns = discardCard(ns, who, disc.iid, { cause: 'effect', sourceName: fu.sourceName });
       ns = dlog(ns, `${fu.sourceName}: ${who} discards ${disc.name}.`, "effect");
     }
     return ns;
@@ -509,7 +509,7 @@ const DRAW_FOLLOWUPS = {
       const drawn = ns[who].hand[ns[who].hand.length - 1];
       ns = dlog(ns, `${fu.sourceName}: ${who} reveals ${drawn.name}.`, "effect");
       if (!isLand(drawn)) {
-        ns = { ...ns, [who]: { ...ns[who], hand: ns[who].hand.slice(0, -1), gy: [...ns[who].gy, drawn] } };
+        ns = discardCard(ns, who, drawn.iid, { cause: 'effect', sourceName: fu.sourceName });
         ns = dlog(ns, `${fu.sourceName}: ${drawn.name} isn't a land -- discarded.`, "effect");
       }
     }
@@ -841,6 +841,49 @@ export function tapPermanent(state, who, iid) {
   // resolves rather than sitting queued until some unrelated later action
   // happens to drain it. Same pairing here so Blight/Psychic Venom/Relic Bind
   // resolve at the moment of tapping, not on a delay.
+  return processTriggerQueue(ns);
+}
+
+// --- DISCARD CENTRALIZATION (PHASE 1) ----------------------------------------
+// Discard centralization Phase 1. The single choke point for "a card moves
+// from a player's hand to their graveyard as a discard." Mirrors
+// tapPermanent/ON_TAP directly above: consults a replacement registry before
+// mutating (Forge's intercept-before-mutate model, CR 614.5), performs the
+// move, then emits ON_DISCARD paired with an immediate processTriggerQueue.
+// See docs/ENGINE_CONTRACT_SPEC.md S7.7.
+//
+// DISCARD_REPLACEMENTS: keyed by permanent card id. Ships EMPTY in this phase
+// -- no production consumers yet (Library of Leng arrives in Phase 2). Entry
+// shape: { matches(state, who, payload) => boolean, apply(state, who, payload) => state }.
+export const DISCARD_REPLACEMENTS = {};
+
+export function discardCard(state, who, iid, opts) {
+  if (opts?.cause !== 'effect' && opts?.cause !== 'cost' && opts?.cause !== 'gameRule') {
+    throw new Error(`discardCard: invalid or missing opts.cause "${opts?.cause}"`);
+  }
+  const card = state[who]?.hand.find(c => c.iid === iid);
+  if (!card) {
+    console.error(`[DuelCore] discardCard: card ${iid} not found in ${who} hand`);
+    return state;
+  }
+  const payload = { who, iid, cardId: card.id, cardName: card.name, cause: opts.cause, sourceName: opts.sourceName };
+
+  // Replacement pass (CR 614.5 loop protection: one-shot per invocation).
+  const hasRun = new Set();
+  for (const permanent of state[who].bf) {
+    const entry = DISCARD_REPLACEMENTS[permanent.id];
+    if (!entry || hasRun.has(permanent.id)) continue;
+    if (entry.matches(state, who, payload)) {
+      hasRun.add(permanent.id);
+      return entry.apply(state, who, payload);
+    }
+  }
+
+  let ns = {
+    ...state,
+    [who]: { ...state[who], hand: state[who].hand.filter(c => c.iid !== iid), gy: [...state[who].gy, card] },
+  };
+  ns = emitEvent(ns, { type: 'ON_DISCARD', payload });
   return processTriggerQueue(ns);
 }
 
@@ -1344,7 +1387,7 @@ for (let i = 0; i < xVal; i++) {
 if (!ns[opp].hand.length) break;
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, j) => j !== idx), gy: [...ns[opp].gy, dc] } };
+ns = discardCard(ns, opp, dc.iid, { cause: 'effect', sourceName: card.name });
 ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
@@ -1353,13 +1396,16 @@ case "discardOne": {
 if (ns[opp].hand.length) {
 const idx = Math.floor(Math.random() * ns[opp].hand.length);
 const dc = ns[opp].hand[idx];
-ns = { ...ns, [opp]: { ...ns[opp], hand: ns[opp].hand.filter((_, i) => i !== idx), gy: [...ns[opp].gy, dc] } };
+ns = discardCard(ns, opp, dc.iid, { cause: 'effect', sourceName: card.name });
 ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
 }
 case "wheelOfFortune": {
-for (const w of ["p","o"]) { ns = { ...ns, [w]: { ...ns[w], gy: [...ns[w].gy, ...ns[w].hand], hand: [] } }; ns = drawD(ns, w, 7); }
+for (const w of ["p","o"]) {
+for (const c of ns[w].hand) { ns = discardCard(ns, w, c.iid, { cause: 'effect', sourceName: card.name }); }
+ns = drawD(ns, w, 7);
+}
 ns = dlog(ns, "Wheel of Fortune!", "effect");
 break;
 }
@@ -2244,7 +2290,7 @@ case "balance": {
     for (const l of excessLands) ns = zMove(ns, l.iid, w, w, "gy");
     const excessCres = ns[w].bf.filter(isCre).slice(minCres);
     for (const cr of excessCres) ns = zMove(ns, cr.iid, w, w, "gy");
-    while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = { ...ns, [w]: { ...ns[w], hand: ns[w].hand.slice(0,-1), gy: [...ns[w].gy, disc] } }; }
+    while (ns[w].hand.length > minHand) { const disc = ns[w].hand[ns[w].hand.length-1]; ns = discardCard(ns, w, disc.iid, { cause: 'effect', sourceName: card.name }); }
   }
   ns = checkDeath(ns);
   ns = dlog(ns, "Balance: permanents and hands equalized.", "effect");
@@ -2687,8 +2733,7 @@ case "discardAllNonland": {
   // Adapted from Card-Forge/forge (a/amnesia.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   const dWho = tgt === 'p' || tgt === 'o' ? tgt : opp;
   const nonland = ns[dWho].hand.filter(c => !isLand(c));
-  const landCards = ns[dWho].hand.filter(isLand);
-  ns = { ...ns, [dWho]: { ...ns[dWho], hand: landCards, gy: [...ns[dWho].gy, ...nonland] } };
+  for (const nc of nonland) { ns = discardCard(ns, dWho, nc.iid, { cause: 'effect', sourceName: card.name }); }
   ns = dlog(ns, `${card.name}: ${dWho} reveals hand and discards ${nonland.length} nonland card(s).`, "effect");
   break;
 }
@@ -3243,7 +3288,7 @@ case "pumpSelf21EOT": {
 // Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
 case "contractFromBelow": {
   // Adapted from Card-Forge/forge (c/contract_from_below.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-  ns = { ...ns, [caster]: { ...ns[caster], hand: [], gy: [...ns[caster].gy, ...ns[caster].hand] } };
+  for (const hc of ns[caster].hand) { ns = discardCard(ns, caster, hc.iid, { cause: 'effect', sourceName: card.name }); }
   if (ns[caster].lib.length) {
     const [anted, ...restLib] = ns[caster].lib;
     const extraKey = caster === 'p' ? 'anteExtraP' : 'anteExtraO';
@@ -5086,7 +5131,7 @@ case "mishrasWarMachineUpkeep": {
     const h = ns.o.hand;
     if (h.length) {
       const disc = h[h.length - 1];
-      ns = { ...ns, o: { ...ns.o, hand: h.slice(0, -1), gy: [...ns.o.gy, disc] } };
+      ns = discardCard(ns, "o", disc.iid, { cause: 'effect', sourceName: c.name });
       ns = dlog(ns, `${c.name}: opponent discards ${disc.name}.`, "effect");
     } else {
       ns = tapPermanent(ns, "o", c.iid);
@@ -5174,7 +5219,7 @@ ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: []
 const ac = ns.active;
 while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
-ns = { ...ns, [ac]: { ...ns[ac], hand: ns[ac].hand.slice(0,-1), gy: [...ns[ac].gy, disc] } };
+ns = discardCard(ns, ac, disc.iid, { cause: 'gameRule' });
 }
 // Expire all EOT buffs on all permanents. SYSTEMS.md S3.1
 for (const w of ["p","o"]) {
@@ -6288,7 +6333,7 @@ const UPKEEP_CHOICE_HANDLERS = {
         const h = s[owner].hand;
         if (!h.length) return s;
         const disc = h[h.length - 1];
-        return { ...s, [owner]: { ...s[owner], hand: h.slice(0, -1), gy: [...s[owner].gy, disc] } };
+        return discardCard(s, owner, disc.iid, { cause: 'effect', sourceName: choice.cardName });
       }
       const ns = tapPermanent(s, owner, choice.iid);
       const mwmSrc = getBF(ns, choice.iid);
@@ -6405,8 +6450,8 @@ const NUMBER_CHOICE_HANDLERS = {
     const who = choice.forPlayer;
     const hand = s[who].hand;
     const discarded = hand.slice(Math.max(0, hand.length - n));
-    const remaining = hand.slice(0, Math.max(0, hand.length - n));
-    let ns = { ...s, [who]: { ...s[who], hand: remaining, gy: [...s[who].gy, ...discarded] } };
+    let ns = s;
+    for (const dc of discarded) { ns = discardCard(ns, who, dc.iid, { cause: 'effect', sourceName: choice.sourceCardName || 'Mind Bomb' }); }
     ns = dlog(ns, `${who} discards ${discarded.length} card(s) to Mind Bomb.`, "effect");
     const dmg = Math.max(0, 3 - discarded.length);
     if (dmg > 0) ns = hurt(ns, who, dmg, choice.sourceCardName || "Mind Bomb", choice.sourceCardId ? { sourceIid: choice.sourceCardId, sourceType: 'spell' } : null);
@@ -7425,7 +7470,7 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("discardLastDrawn")) {
     const h = s[w].hand;
     const last = h[h.length - 1];
-    s = { ...s, [w]: { ...s[w], hand: h.slice(0, -1), gy: [...s[w].gy, last] } };
+    s = discardCard(s, w, last.iid, { cause: 'cost', sourceName: card.name });
     s = dlog(s, `${card.name}: ${w} discards ${last.name}.`, "info");
   }
 

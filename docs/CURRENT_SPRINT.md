@@ -8,6 +8,33 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-11)
+- **Discard Centralization Phase 1** -- all 14 ad hoc hand-to-gy discard
+  mutation sites in `DuelCore.js` now route through a single new choke
+  point, `discardCard(state, who, iid, opts)`, mirroring the shipped
+  `tapPermanent`/`ON_TAP` pattern: a `DISCARD_REPLACEMENTS` registry pass
+  (keyed by permanent card id, Forge's CR 614.5 intercept-before-mutate
+  model) runs before the mutation, then a new `ON_DISCARD` event is emitted
+  and immediately followed by `processTriggerQueue`. `opts.cause` is
+  required (`'effect' | 'cost' | 'gameRule'`) and throws if missing/invalid;
+  not-found-in-hand is a runtime no-op (`console.error` + unchanged state),
+  matching `tapPermanent`'s philosophy. `discardCard` adds no dlog of its
+  own -- every migrated site kept its existing site-specific dlog call
+  verbatim. Pure refactor, no card behavior changes: Bazaar of Baghdad,
+  Jalum Tome, Sindbad, Mind Twist (`discardX`), Rag Man/Disrupting Scepter
+  (`discardOne`), Wheel of Fortune, Balance, Amnesia (`discardAllNonland`),
+  Contract from Below, Mishra's War Machine upkeep (both branches), Mind
+  Bomb, the CLEANUP hand-size while-loop, and Jandor's Ring
+  (`discardLastDrawn` as cost) all now share the one choke point.
+  `DISCARD_REPLACEMENTS` ships EMPTY this phase -- inert infrastructure,
+  no production consumers yet. Stub count: unchanged at 9. Tests: 24 Vitest
+  (`tests/scenarios/discard-centralization.test.js`), 4 Playwright
+  (`tests/e2e/discard-centralization.spec.ts`, both viewports). Phase 2
+  (Library of Leng as the first `DISCARD_REPLACEMENTS` consumer) and Phase 3
+  (additional-cost cast-flow rollback) are not built here. See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.7 and `docs/MECHANICS_INDEX.md` --
+  Discard Centralization Phase 1.
+
 ## Completed (2026-07-10)
 - **Tap Centralization Phase 1 + Relic Bind, Blight, Psychic Venom** -- all 28
   ad hoc "becomes tapped" mutation sites in `DuelCore.js` now route through a
