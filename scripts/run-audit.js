@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/run-audit.js
 // Run a random audit of an untouched tag area (or untouched file) after targeted work.
-// Usage: npm run test:audit -- @engine @persistence
+// Usage: npm run test:audit -- @engine @overworld
 //    or: npm run test:audit -- --files <targeted vitest files...> --pw-files <targeted pw files...>
 //
 // Tag mode:
@@ -21,7 +21,7 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@persistence', '@premodern'];
+const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@premodern'];
 
 const VITEST_DIRS = ['tests/scenarios', 'src/engine/__tests__'];
 const PW_DIRS = ['tests/e2e'];
@@ -119,7 +119,7 @@ function runTagMode(argv) {
   const targeted = argv.filter(a => a.startsWith('@'));
 
   if (targeted.length === 0) {
-    console.error('[audit] Error: no targeted tags provided. Usage: npm run test:audit -- @engine @persistence');
+    console.error('[audit] Error: no targeted tags provided. Usage: npm run test:audit -- @engine @overworld');
     process.exit(1);
   }
 

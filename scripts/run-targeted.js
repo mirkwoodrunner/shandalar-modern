@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/run-targeted.js
-// Run tests for specific tags via: npm run test:targeted -- @engine @persistence
+// Run tests for specific tags via: npm run test:targeted -- @engine @overworld
 // Tags are passed as CLI args. Both Vitest and Playwright are run for each set.
 // Multiple tags are OR-combined so any test matching any tag is included.
 //
@@ -10,7 +10,7 @@
 
 import { spawnSync } from 'child_process';
 
-const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@persistence', '@premodern'];
+const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@premodern'];
 
 const VITEST_CASE_CEILING = 75;
 const PW_FILE_CEILING = 20;
@@ -136,7 +136,7 @@ function runTagMode(argv) {
   const tags = argv.filter(a => a.startsWith('@'));
 
   if (tags.length === 0) {
-    console.error('[targeted] Error: no tags provided. Usage: npm run test:targeted -- @engine @persistence');
+    console.error('[targeted] Error: no tags provided. Usage: npm run test:targeted -- @engine @overworld');
     process.exit(1);
   }
 
