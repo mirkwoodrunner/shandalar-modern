@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
-import AIModule, { chooseBandingDamageOrder, planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
+import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
 const { aiDecide, AI_PROFILES } = AIModule;
 import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
@@ -620,6 +620,15 @@ export function useDuelController(
       // through to that unrelated branch or its blind options[0] fallback.
       if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder') {
         resolveChoice(chooseBandingDamageOrder(choice, s));
+        return;
+      }
+
+      // Library of Leng's discardToLibraryChoice. Decision logic lives in
+      // AI.js (chooseDiscardToLibrary); this just dispatches it. Sits ahead
+      // of the pay_gggg-specific logic below so it doesn't fall through to
+      // that unrelated branch or its blind options[0] fallback.
+      if (choice.kind === 'discardToLibraryChoice') {
+        resolveChoice(chooseDiscardToLibrary(choice, s));
         return;
       }
 

@@ -852,10 +852,23 @@ export function tapPermanent(state, who, iid) {
 // move, then emits ON_DISCARD paired with an immediate processTriggerQueue.
 // See docs/ENGINE_CONTRACT_SPEC.md S7.7.
 //
-// DISCARD_REPLACEMENTS: keyed by permanent card id. Ships EMPTY in this phase
-// -- no production consumers yet (Library of Leng arrives in Phase 2). Entry
-// shape: { matches(state, who, payload) => boolean, apply(state, who, payload) => state }.
+// DISCARD_REPLACEMENTS: keyed by permanent card id. Entry shape:
+// { matches(state, who, payload) => boolean, apply(state, who, payload) => state }.
 export const DISCARD_REPLACEMENTS = {};
+
+// performDiscardMutation: the actual hand->gy move + ON_DISCARD emission +
+// trigger drain, factored out so discardCard's non-replaced path and any
+// DISCARD_REPLACEMENTS entry's apply() (which still owes the game a real
+// discard, just with a different eventual resting zone) share one mutation
+// tail instead of duplicating it.
+function performDiscardMutation(state, who, card, payload) {
+  let ns = {
+    ...state,
+    [who]: { ...state[who], hand: state[who].hand.filter(c => c.iid !== card.iid), gy: [...state[who].gy, card] },
+  };
+  ns = emitEvent(ns, { type: 'ON_DISCARD', payload });
+  return processTriggerQueue(ns);
+}
 
 export function discardCard(state, who, iid, opts) {
   if (opts?.cause !== 'effect' && opts?.cause !== 'cost' && opts?.cause !== 'gameRule') {
@@ -879,13 +892,50 @@ export function discardCard(state, who, iid, opts) {
     }
   }
 
-  let ns = {
-    ...state,
-    [who]: { ...state[who], hand: state[who].hand.filter(c => c.iid !== iid), gy: [...state[who].gy, card] },
-  };
-  ns = emitEvent(ns, { type: 'ON_DISCARD', payload });
-  return processTriggerQueue(ns);
+  return performDiscardMutation(state, who, card, payload);
 }
+
+// Library of Leng: "If an effect causes you to discard a card, discard it,
+// but you may put it on top of your library instead of into your graveyard."
+// ASSUMPTION A (graveyard-first, retroactive lift, see docs/ENGINE_CONTRACT_SPEC.md
+// S7.7): the discard is NOT suspended -- the card moves to the graveyard and
+// ON_DISCARD fires normally via performDiscardMutation, then the player is
+// offered a choice to lift it from the graveyard to the top of the library.
+// ASSUMPTION B (collision degradation): pendingChoice is a single slot. If
+// it's already occupied by something other than this player's own
+// discardToLibraryChoice, log and leave the card in the graveyard --
+// unreachable today, but never silently overwrite an existing choice.
+DISCARD_REPLACEMENTS['library_of_leng'] = {
+  matches(state, who, payload) {
+    return payload.cause === 'effect';
+  },
+  apply(state, who, payload) {
+    const card = state[who].hand.find(c => c.iid === payload.iid);
+    if (!card) return state;
+    let ns = performDiscardMutation(state, who, card, payload);
+
+    const leng = state[who].bf.find(c => c.id === 'library_of_leng');
+    const existing = ns.pendingChoice;
+    if (!existing) {
+      ns = createPendingChoice(ns, {
+        sourceCardId: leng?.iid,
+        controller: who,
+        kind: 'discardToLibraryChoice',
+        options: [
+          { id: 'graveyard', label: `Put ${card.name} into your graveyard` },
+          { id: 'library', label: `Put ${card.name} on top of your library` },
+        ],
+        cardIid: payload.iid,
+        queuedIids: [],
+      });
+    } else if (existing.kind === 'discardToLibraryChoice' && existing.controller === who) {
+      ns = { ...ns, pendingChoice: { ...existing, queuedIids: [...existing.queuedIids, payload.iid] } };
+    } else {
+      console.error(`[DuelCore] Library of Leng: pendingChoice collision -- ${card.name} stays in graveyard.`);
+    }
+    return ns;
+  },
+};
 
 // --- CASTLE MODIFIER: OVERGROWTH ---------------------------------------------
 
@@ -5217,7 +5267,9 @@ if (ns.pendingRiverDivide || ns.pendingRiverSides) {
 }
 ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
-while (ns[ac].hand.length > ns.ruleset.maxHandSize) {
+// Library of Leng: "You have no maximum hand size." See docs/MECHANICS_INDEX.md.
+const effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize;
+while (ns[ac].hand.length > effectiveMax) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
 ns = discardCard(ns, ac, disc.iid, { cause: 'gameRule' });
 }
@@ -8100,6 +8152,52 @@ case "RESOLVE_CHOICE": {
     if (handler) ns = handler(ns, choice, n);
     if (choice.nextPlayer) {
       ns = createPendingChoice(ns, { ...choice, controller: choice.nextPlayer, forPlayer: choice.nextPlayer, nextPlayer: null });
+    }
+    return ns;
+  }
+
+  // Library of Leng: created directly from DISCARD_REPLACEMENTS['library_of_leng']
+  // (see discardCard above), not a triggered ability. `queuedIids` chains a
+  // multi-card discard (Wheel of Fortune, Mind Bomb, ...) through one
+  // pendingChoice, one card at a time -- see docs/ENGINE_CONTRACT_SPEC.md S7.7.
+  if (choice.kind === 'discardToLibraryChoice') {
+    const controller = choice.controller;
+    const cardInGy = s[controller].gy.find(c => c.iid === choice.cardIid);
+    let ns = s;
+    if (!cardInGy) {
+      ns = dlog(ns, `Library of Leng: the discarded card is no longer in the graveyard -- choice fizzles.`, 'effect');
+    } else if (action.optionId === 'library') {
+      ns = {
+        ...ns,
+        [controller]: {
+          ...ns[controller],
+          gy: ns[controller].gy.filter(c => c.iid !== choice.cardIid),
+          lib: [cardInGy, ...ns[controller].lib],
+        },
+      };
+      ns = dlog(ns, `${controller} puts ${cardInGy.name} on top of their library.`, 'effect');
+    } else {
+      ns = dlog(ns, `${controller} keeps ${cardInGy.name} in their graveyard.`, 'effect');
+    }
+
+    if (choice.queuedIids.length) {
+      const [nextIid, ...restQueue] = choice.queuedIids;
+      const nextCard = ns[controller].gy.find(c => c.iid === nextIid);
+      const nextName = nextCard?.name ?? 'the card';
+      ns = {
+        ...ns,
+        pendingChoice: {
+          ...choice,
+          cardIid: nextIid,
+          queuedIids: restQueue,
+          options: [
+            { id: 'graveyard', label: `Put ${nextName} into your graveyard` },
+            { id: 'library', label: `Put ${nextName} on top of your library` },
+          ],
+        },
+      };
+    } else {
+      ns = { ...ns, pendingChoice: null };
     }
     return ns;
   }

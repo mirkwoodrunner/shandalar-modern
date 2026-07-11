@@ -966,6 +966,20 @@ export function chooseBandingDamageOrder(choice, state) {
   return (match || options[0]).id;
 }
 
+// chooseDiscardToLibrary: answers Library of Leng's discardToLibraryChoice.
+// Same cost-conscious convention as the rest of this file -- keep the card
+// over a random draw only when it's a cheap nonland the AI can recast soon
+// (cmc at most the AI's own land count); otherwise let it go to the
+// graveyard. The card is looked up by choice.cardIid in the AI's own
+// graveyard (this choice is only ever offered to the discarding player).
+export function chooseDiscardToLibrary(choice, state) {
+  const card = state.o.gy.find(c => c.iid === choice.cardIid);
+  if (!card) return 'graveyard';
+  if (isLand(card)) return 'graveyard';
+  const landCount = state.o.bf.filter(isLand).length;
+  return card.cmc <= landCount ? 'library' : 'graveyard';
+}
+
 function planAttack(state, profile) {
   const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
   if (!candidates.length) return passPlan(PHASE.COMBAT_ATTACKERS);
