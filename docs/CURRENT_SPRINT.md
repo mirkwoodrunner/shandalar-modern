@@ -8,6 +8,38 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-12)
+- **Stub Batch: Reverse Damage, Conversion, Stasis** -- three small,
+  data-driven cards batched together (no shared code between them). Reverse
+  Damage reuses `chooseDamageShieldSource` (Eye for an Eye's shape) with a new
+  `gainLifeOnPrevent` card flag threaded through the shield entry and read by
+  `hurt()`'s `prevent` branch. Conversion reuses the `globalTypeEffect`
+  continuous-effect pipeline (Blood Moon's shape) plus one new `Mountain`
+  filter branch in `layers.js` and a new `sacrificeUnless_WW` upkeep case.
+  Stasis reuses `sacrificeUnless_U` unchanged (Phantasmal Forces) and adds a
+  `stasisOut` gate wrapping the entire untap-step block, sibling to the
+  existing `winterOrbOut`/`dampingFieldOut`/`magneticMountainOut` gates.
+  Two pre-flight discrepancies surfaced and were resolved rather than
+  silently worked around: (1) Blood Moon actually carries
+  `effect:"globalTypeEffect"` (a log-only resolve case), so Conversion's
+  entry includes it too, to genuinely mirror Blood Moon; (2) `ADVANCE_PHASE`
+  always runs `burnMana` (zeroing the mana pool) before the `PHASE.UPKEEP`
+  switch reads `c.upkeep`, so a pre-loaded, cost-matching mana pool can never
+  actually save a `sacrificeUnless_*` permanent through a plain
+  `ADVANCE_PHASE` dispatch -- this is pre-existing behavior shared with
+  Phantasmal Forces and Force of Nature's AI branch (see `phase6.test.js`
+  FN-02), not something introduced here, and the CONV-04/STAS-04 tests
+  document it rather than asserting a scenario that cannot occur. Stub
+  counts: the originally-tracked count stays at **7** (unaffected by this
+  batch). Separately, the not-yet-triaged bucket of 7 lowercase-stub cards
+  (Reverse Damage, Conversion, Stasis, Animate Artifact, Gloom, Jade
+  Monolith, Tawnos's Coffin) goes to **4**: Animate Artifact, Gloom, Jade
+  Monolith, Tawnos's Coffin remain. Tests: 18 Vitest
+  (`tests/scenarios/stub-batch-rd-conv-stasis.test.js`), 6 Playwright
+  (`tests/e2e/stub-batch-rd-conv-stasis.spec.ts`, both viewports). See
+  `docs/MECHANICS_INDEX.md` -- Stub Batch: Reverse Damage, Conversion,
+  Stasis.
+
 ## Completed (2026-07-11)
 - **Discard Centralization Phase 1** -- all 14 ad hoc hand-to-gy discard
   mutation sites in `DuelCore.js` now route through a single new choke
