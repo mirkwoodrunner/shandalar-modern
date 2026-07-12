@@ -15,7 +15,7 @@ interface BannerPlayer {
 }
 
 export interface CastPromptProps {
-  mode: 'targeting' | 'mana';
+  mode: 'targeting' | 'additionalCost' | 'mana';
   targetLabel?: string;
   canSkip?: boolean;
   onSkip?: () => void;
@@ -121,7 +121,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
           border: '1px solid rgba(100,80,180,.4)',
           borderRadius: 3,
         }}>
-          {castPrompt.mode === 'targeting' && (
+          {(castPrompt.mode === 'targeting' || castPrompt.mode === 'additionalCost') && (
             <>
               <span data-testid="cast-prompt-label" style={{ fontSize: 10, color: 'rgba(180,160,255,.9)', fontFamily: 'var(--font-display)' }}>
                 {castPrompt.targetLabel ?? 'Select target'}

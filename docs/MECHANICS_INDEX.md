@@ -4286,4 +4286,29 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.25
+## Additional Costs Infrastructure + Sacrifice — 2026-07-11
+
+**Card:** "As an additional cost to cast this spell, sacrifice a creature. Add an amount of {B} equal to the sacrificed creature's mana value." (`sacrifice`, unstubbed -- `effect:"STUB"` replaced with `effect:"addManaFromSacrificedValue"` and a new `additionalCost:{type:"sacrificeCreature"}` field.)
+
+**Infrastructure:** A new `additionalCost` cast-flow mode (`CastFlowMode` in `useDuelController.ts`), inserted into the sequence `xSelect -> targeting -> additionalCost -> mana -> dispatch`. A card carrying `additionalCost` can never take the existing "no target, already affordable -> instant cast" shortcut. `castFlow.additionalCostSelection` tracks the chosen creature's iid (client-side state, single selection, auto-advancing like `confirmCastTargets`). Zero-creature legality is gated at cast initiation (`beginCastFlow`: cast never opens) and re-checked at the `CAST_SPELL` reducer (defense in depth). Payment is atomic: `CAST_SPELL` moves the sacrificed creature `bf -> gy` via `zMove` in the same transaction as mana payment and the hand-to-stack move, before the stack item is pushed, and attaches `additionalCostPaid: { type, card }` (the full pre-sacrifice card) to that stack item. `additionalCostSnapshot` / `UNDO_ADDITIONAL_COST` mirror `manaTapSnapshot` / `UNDO_MANA_TAPS` structurally for `cancelCastFlow` rollback symmetry, though in practice the snapshot is created and cleared atomically within `CAST_SPELL` itself (sacrifice-target selection never touches engine state until the cast commits), so the real-flow rollback path is a defensive no-op today -- see `docs/ENGINE_CONTRACT_SPEC.md` S7.8 for the full contract, including the explicit callout that only `additionalCost.type === 'sacrificeCreature'` is implemented; any future `additionalCost` type needs its own deliberate gate.
+
+**Resolution:** new `resolveEff` case `addManaFromSacrificedValue` adds `{B}` x `item.additionalCostPaid.card.cmc` to the caster's mana pool (mirrors Priest of Yawgmoth's existing `addBBySacrificedCmc` activated-ability case, a different, untouched mechanism). Floating mana added this way is subject to the engine's existing "mana burns at every phase boundary" rule if left unspent.
+
+**UI:** both `DuelScreen.tsx` and `DuelScreenMobile.tsx` route battlefield clicks to a new `selectAdditionalCost(iid)` callback during `castFlow.mode === 'additionalCost'`, restricted to the caster's own creatures (tap state and summoning sickness don't matter for a sacrifice cost). Both `Banner.tsx` components (desktop and mobile) reuse the existing `'targeting'`-mode cast-prompt block for `'additionalCost'` (just a different label, no Confirm/Skip buttons render since selection auto-advances) rather than a new modal.
+
+**Stub count: 8 -> 7.**
+
+**Tests:**
+- Vitest: `tests/scenarios/additional-cost-sacrifice.test.js` (SAC-01 through SAC-22).
+- Playwright: `tests/e2e/additional-cost-sacrifice.spec.ts` (dual viewport, `@engine`).
+
+**Regression note:** this changes the `CAST_SPELL` reducer case and the cast-initiation callback (`beginCastFlow`), both extremely high-traffic (every spell cast runs through them). SAC-19/SAC-20 guard that a targetless-and-affordable card with no `additionalCost` still instant-casts, and a targeted card with no `additionalCost` still flows `targeting -> mana` unchanged -- the new gate checks `additionalCost?.type === 'sacrificeCreature'` exactly, so it cannot fire for any other card.
+
+**Explicitly out of scope this phase:** discard-as-cost (the `additionalCost` shape anticipates a future `{type:'discard', count:n}` variant, but no shipped card needs it, so it is not built or stubbed); the pre-existing `sacCre`/`sacArt` activated-ability cost simplification (a different mechanism, untouched).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.26

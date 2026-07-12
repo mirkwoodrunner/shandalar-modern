@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { isLand, isArt, isInst, hasKw } from './engine/DuelCore.js';
+import { isLand, isArt, isInst, hasKw, isCre } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 import KEYWORDS from './data/keywords.js';
 
@@ -265,7 +265,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     adaptedLog, attackersList, ruleFlags, canUndoMana, oppBfIids,
     handleBfClick, pendingBlockerIid,
     castFlow, setCastFlow, beginCastFlow, beginActivateFlow,
-    selectCastTarget, confirmCastTargets, cancelCastFlow,
+    selectCastTarget, selectAdditionalCost, confirmCastTargets, cancelCastFlow,
     adjustCastX, confirmCastX,
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
@@ -343,6 +343,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       return;
     }
 
+    // Sacrifice-as-additional-cost step: bf clicks pick the creature to
+    // sacrifice. Restricted to the caster's own creatures; anything else
+    // (opponent's board, noncreature permanents) is a no-op.
+    if (castFlow?.mode === 'additionalCost' && (zone === 'pBf' || zone === 'oBf')) {
+      if (zone === 'pBf' && isCre(card)) selectAdditionalCost(card.iid);
+      return;
+    }
+
     if (zone === 'hand') {
       selectCard(s.selCard === card.iid ? null : card.iid);
       return;
@@ -390,7 +398,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     }
   }, [
     s.over, s.selCard, s.selTgt, s.phase, s.p.hand, pendingActivate, castFlow,
-    selectCard, selectTarget, selectCastTarget, tapLand, tapArtifactMana,
+    selectCard, selectTarget, selectCastTarget, selectAdditionalCost, tapLand, tapArtifactMana,
     activateAbility, handleActivate,
   ]);
 
@@ -653,6 +661,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 mode: castFlow.mode ?? 'targeting',
                 targetLabel: castFlow.mode === 'targeting'
                   ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
+                  : castFlow.mode === 'additionalCost'
+                  ? 'Choose a creature to sacrifice'
                   : undefined,
                 canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
                 onSkip: confirmCastTargets,
