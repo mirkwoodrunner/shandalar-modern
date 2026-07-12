@@ -9,6 +9,35 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-12)
+- **Protection-from-Artifact Extension + Artifact Ward** -- extends the
+  pre-existing color-only protection system with an "artifact" type-based
+  quality via a new shared `isProtectedFromSource(target, sourceCard, state)`
+  helper (`DuelCore.js`), and closes two previously-unenforced DEBT legs: T
+  (targeting) and the non-combat half of D (damage). The 4 pre-existing
+  color-only combat sites (`canBlockDuel`, the two `resolveCombat`
+  damage-prevention checks, `DECLARE_BLOCKER`'s explicit check) each gained
+  one additional inline `artifact`-matching branch rather than being
+  consolidated; two of those sites previously read protection from a raw
+  `card.protection` field (never populated by an Aura's `mod.protection`)
+  and now read through `computeCharacteristics` so Aura-granted protection
+  attached mid-combat is caught correctly. `consumeCreatureDamageShields`
+  gained an always-on protection check ahead of its existing one-shot
+  shield passes -- because this lives in the shared choke point, all 9
+  `dmgWithShield()` sites and every `hurtCreature` caller inherit it for
+  free. `CAST_SPELL` and the plain `ACTIVATE_ABILITY` path each gained a
+  preflight targeting-legality rejection (no stack item, no mana spent);
+  the Pyramids array-ability branch is deliberately untouched. A matching
+  click-time guard was added to both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx` (3 call sites), importing `isProtectedFromSource`
+  directly rather than duplicating its match logic. Unstubs Artifact Ward
+  (`effect:"enchantCreature", mod:{protection:["artifact"]}` -- full reuse
+  of the Ward-cycle template, no card-specific logic needed). The "E"
+  clause (protection from being enchanted/equipped) is explicitly out of
+  scope. Stub count: **5 -> 4**. Tests: 32 Vitest
+  (`tests/scenarios/protection-artifact-ward.test.js`), 4 Playwright
+  (`tests/e2e/protection-artifact-ward.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.11 and `docs/MECHANICS_INDEX.md` --
+  Protection-from-Artifact Extension + Artifact Ward.
 - **Land Destruction Centralization + Pyramids** -- new
   `destroyLand(state, targetIid, src, meta)` choke point
   (`turnState.landDestructionShields`, keyed by land iid) migrated all 9 raw

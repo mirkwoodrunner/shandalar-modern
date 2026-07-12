@@ -4443,4 +4443,25 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.29
+## Protection-from-Artifact Extension + Artifact Ward — 2026-07-12
+
+**Infrastructure:** A single new shared helper, `isProtectedFromSource(target, sourceCard, state)` (`DuelCore.js`, adjacent to `consumeCreatureDamageShields`), extends the pre-existing color-only "protection from quality" system with an "artifact" type-based quality and reads through `computeCharacteristics` so Aura-granted protection (the Ward cycle, Artifact Ward) is respected everywhere, not just at sites already using `computeCharacteristics`. The 4 pre-existing color-only combat sites (`canBlockDuel`, the two `resolveCombat` damage-prevention checks, `DECLARE_BLOCKER`'s explicit check) each kept their own independent `PROT_MAP`/`PROT_CMAP`/`PROT_COLOR_MAP` constant and gained one additional inline `artifact`-matching branch instead of being consolidated -- a deliberate scope boundary. The two `resolveCombat` sites and `DECLARE_BLOCKER`'s explicit check previously read protection from a raw `card.protection` field, which never carries an Aura's `mod.protection`; their artifact leg (and, for `DECLARE_BLOCKER`, the whole check) now reads through `computeCharacteristics` so an Aura attached mid-combat (after blocks are declared, before damage) is caught by this backstop, not just by `canBlockDuel`'s declare-time gate. See `docs/ENGINE_CONTRACT_SPEC.md` S7.11 for the full DEBT (Damage/Enchant-equip/Block/Target) enforcement matrix.
+
+**Non-combat damage (new D leg):** `consumeCreatureDamageShields` gained a protection check at the very top, before the existing exact-source/point-redirect shield passes -- resolves the source card via `srcMeta.sourceIid` across both battlefields and the stack, and if protected, prevents the entire amount without consuming any one-shot `creatureDamageShields` entries (protection is static, not a consumable resource). Because this lives in the shared choke point, all 9 `dmgWithShield()` call sites and every `hurtCreature` caller inherit it automatically.
+
+**Targeting legality (new T leg):** `CAST_SPELL` and the plain single-ability `ACTIVATE_ABILITY` path each gained a preflight rejection if the chosen target has protection from the casting/activating source -- no stack item, no mana spent. The Pyramids-specific array-ability branch is deliberately untouched. A matching click-time guard was added to both `DuelScreen.tsx` and `DuelScreenMobile.tsx` (3 call sites total, alongside the existing `isPlayerOnlyTarget`/`isCreatureOnlyTarget`/`isLandOnlyTarget` guards), importing `isProtectedFromSource` directly from `DuelCore.js` rather than duplicating its match logic client-side.
+
+**Artifact Ward** (`artifact_ward`, W Enchantment — Aura, `Enchant creature. Enchanted creature can't be blocked by artifact creatures. Prevent all damage that would be dealt to enchanted creature by artifact sources. Enchanted creature can't be the target of abilities from artifact sources.`) -- `effect:"enchantCreature", mod:{protection:["artifact"]}`, total reuse of the existing Ward-cycle (Black/Blue/Green Ward) card-data template with `"artifact"` in place of a color code. All three clauses (block, damage, target) are covered generically by the infrastructure above; the card-data entry itself needed no card-specific logic. The "E" clause (protection from being enchanted/equipped) is explicitly NOT implemented -- out of scope, not needed by this card's text.
+
+**Stub count: 5 -> 4.**
+
+**Tests:**
+- Vitest: `tests/scenarios/protection-artifact-ward.test.js` (32: PROT-01 through PROT-08 combat extension, PROT-09 through PROT-14 non-combat damage, PROT-15 through PROT-24 targeting legality, PROT-25 through PROT-28 card-level/click-guard, PROT-29 through PROT-32 additional mixed-format/direct-helper coverage).
+- Playwright: `tests/e2e/protection-artifact-ward.spec.ts` (4: blocking + non-combat damage, targeting click guard, dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.30

@@ -16,7 +16,7 @@ export const KEYWORDS = {
   MENACE:        { id:"MENACE",        name:"Menace",        classic:false, modern:true,  desc:"Can only be blocked by two or more creatures." },
   PROTECTION:    {
     id:"PROTECTION",    name:"Protection",    classic:true,  modern:true,
-    qualities: ["WHITE","BLUE","BLACK","RED","GREEN"],
+    qualities: ["WHITE","BLUE","BLACK","RED","GREEN","ARTIFACT"],
     desc:"Protected from damage, enchantments, blocking, and targeting by specified quality. (DEBT)",
   },
   BANDING:       {

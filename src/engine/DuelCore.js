@@ -252,8 +252,8 @@ const blProt = state ? computeCharacteristics(bl, state).protection
 // enforced by protection/Fear, not just the printed .color. See docs/SYSTEMS.md S18.9.
 const atColor = state ? computeCharacteristics(at, state).color : at.color;
 const blColor = state ? computeCharacteristics(bl, state).color : bl.color;
-if (atProt.some(q => (PROT_MAP[q] || q) === blColor)) return false;
-if (blProt.some(q => (PROT_MAP[q] || q) === atColor)) return false;
+if (atProt.some(q => (PROT_MAP[q] || q) === blColor || (q === 'artifact' && isArt(bl)))) return false;
+if (blProt.some(q => (PROT_MAP[q] || q) === atColor || (q === 'artifact' && isArt(at)))) return false;
 // Invisibility: can only be blocked by Walls.
 const atInvisible = at.enchantments?.some(e => e.mod?.invisibility);
 if (atInvisible && !bl.subtype?.includes('Wall')) return false;
@@ -412,14 +412,40 @@ function dmgWithShield(c, amount) {
   return { damage: c.damage + (amount - prevented), damageShield: shield - prevented };
 }
 
+// Protection-from-quality check (S17.6 DEBT extension -- see
+// docs/ENGINE_CONTRACT_SPEC.md). Reads target protection through
+// computeCharacteristics so Aura-granted protection (the Ward cycle,
+// Artifact Ward) is respected, not just intrinsic card.protection. Covers
+// the "artifact" type-quality alongside the pre-existing color qualities.
+export function isProtectedFromSource(target, sourceCard, state) {
+  const prot = computeCharacteristics(target, state).protection;
+  if (prot.some(q => q === 'artifact' && isArt(sourceCard))) return true;
+  const PROT_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
+  const srcColor = state ? computeCharacteristics(sourceCard, state).color : sourceCard.color;
+  return prot.some(q => (PROT_MAP[q] || q) === srcColor);
+}
+
 // Creature-side damage shields (Jade Monolith / Personal Incarnation): mirrors
 // hurt()'s player-level turnState.damageShields, but keyed by creature iid and
 // checked by hurtCreature() BEFORE dmgWithShield()'s separate flat-shield system.
 // Two entry shapes -- see docs/ENGINE_CONTRACT_SPEC.md -- Creature Damage Shields:
 //   { mode: 'redirect', chosenSourceIid, redirectToPlayer, shieldSourceIid, shieldSourceName }
 //   { mode: 'redirectPoint', redirectToPlayer, shieldSourceIid, shieldSourceName }
+//
+// Protection is a static property, not a consumable resource -- unlike the
+// shield passes below, a protection match prevents the ENTIRE amount and
+// never consumes a creatureDamageShields entry (S17.6.3/T extension).
 export function consumeCreatureDamageShields(state, targetIid, amt, srcMeta) {
   let ns = state;
+  const targetCreature = ns.p.bf.find(c => c.iid === targetIid) || ns.o.bf.find(c => c.iid === targetIid);
+  const sourceCard = srcMeta?.sourceIid
+    ? (getBF(ns, srcMeta.sourceIid) || ns.stack.find(item => item.card?.iid === srcMeta.sourceIid)?.card)
+    : null;
+  if (targetCreature && sourceCard && isProtectedFromSource(targetCreature, sourceCard, ns)) {
+    const quality = isArt(sourceCard) ? 'artifact' : ({ W:'white', U:'blue', B:'black', R:'red', G:'green' }[computeCharacteristics(sourceCard, ns).color] || 'colorless');
+    ns = dlog(ns, `${targetCreature.name} is protected from ${sourceCard.name} (protection from ${quality}).`, 'effect');
+    return { state: ns, remainingAmt: 0 };
+  }
   const shields = ns.turnState.creatureDamageShields?.[targetIid] || [];
   if (!shields.length) return { state: ns, remainingAmt: amt };
 
@@ -4319,8 +4345,13 @@ if (!blockers.length) {
     // S17.6.3: protection enforced inline, no trigger queue
     const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
     const attProt = Array.isArray(att.protection) ? att.protection : (att.protection ? [att.protection] : []);
-    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
-    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
+    // Artifact leg reads through computeCharacteristics (not the raw arrays above)
+    // so Aura-granted protection (Artifact Ward) is caught here too -- raw
+    // card.protection never carries an Aura's mod.protection.
+    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''))
+      || (isArt(att) && computeCharacteristics(bl, ns).protection.includes('artifact'));
+    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''))
+      || (isArt(bl) && computeCharacteristics(att, ns).protection.includes('artifact'));
 
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
@@ -4408,8 +4439,13 @@ if (!blockers.length) {
     // S17.6.3: protection enforced inline, no trigger queue
     const blProt = Array.isArray(bl.protection) ? bl.protection : (bl.protection ? [bl.protection] : []);
     const attProt = Array.isArray(att.protection) ? att.protection : (att.protection ? [att.protection] : []);
-    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''));
-    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''));
+    // Artifact leg reads through computeCharacteristics (not the raw arrays above)
+    // so Aura-granted protection (Artifact Ward) is caught here too -- raw
+    // card.protection never carries an Aura's mod.protection.
+    const blockerProtectsFromAtt = blProt.some(q => (PROT_CMAP[q] || q) === (att.color || ''))
+      || (isArt(att) && computeCharacteristics(bl, ns).protection.includes('artifact'));
+    const attackerProtectsFromBl = attProt.some(q => (PROT_CMAP[q] || q) === (bl.color || ''))
+      || (isArt(bl) && computeCharacteristics(att, ns).protection.includes('artifact'));
 
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
@@ -7053,6 +7089,16 @@ case "CAST_SPELL": {
       return s;
     }
   }
+  // Protection-from-targeting legality (S17.6.3/T extension): if the chosen
+  // target resolves to a permanent with protection from this spell's source,
+  // reject the cast outright -- no stack item, no mana spent.
+  if (action.tgt) {
+    const tgtPerm = getBF(s, action.tgt);
+    if (tgtPerm && isProtectedFromSource(tgtPerm, c, s)) {
+      const quality = isArt(c) ? 'artifact' : ({ W:'white', U:'blue', B:'black', R:'red', G:'green' }[computeCharacteristics(c, s).color] || 'colorless');
+      return dlog(s, `${c.name} can't target ${tgtPerm.name} (protection from ${quality}).`, 'rule');
+    }
+  }
   const xSpend = (c.cost?.toUpperCase().includes('X') && c.id !== 'power_sink')
     ? (action.xVal || s.xVal || 1)
     : 0;
@@ -7311,12 +7357,15 @@ case "DECLARE_BLOCKER": {
   const blSide = blOnP ? 'p' : 'o';
   const att = getBF(s, action.attId);
   if (!bl || !att || !s.attackers.includes(action.attId)) return s;
-  // S17.6.2B: explicit protection enforcement with log message
-  if (att.protection) {
-    const prot = Array.isArray(att.protection) ? att.protection : [att.protection];
+  // S17.6.2B: explicit protection enforcement with log message. Reads through
+  // computeCharacteristics (not the raw att.protection field) so Aura-granted
+  // protection (Artifact Ward, the Ward cycle) is caught here too.
+  {
+    const prot = computeCharacteristics(att, s).protection;
     const PROT_COLOR_MAP = { black:'B', white:'W', blue:'U', red:'R', green:'G', colorless:'C' };
     for (const quality of prot) {
-      if (bl.color === (PROT_COLOR_MAP[quality] || quality)) {
+      const matches = quality === 'artifact' ? isArt(bl) : bl.color === (PROT_COLOR_MAP[quality] || quality);
+      if (matches) {
         return dlog(s, `${bl.name} cannot block ${att.name} (protection from ${quality}).`, 'rule');
       }
     }
@@ -7663,6 +7712,15 @@ case "ACTIVATE_ABILITY": {
   // Gate to Phyrexia: "and only once each turn".
   if (act.onceEachTurn && (s.turnState.activatedOnceIids || []).includes(iid)) {
     return dlog(s, `${card.name} has already been activated this turn.`, "info");
+  }
+  // Protection-from-targeting legality (S17.6.3/T extension): reject before
+  // paying any cost if the chosen target has protection from this permanent.
+  if (tgt) {
+    const tgtPerm = getBF(s, tgt);
+    if (tgtPerm && isProtectedFromSource(tgtPerm, card, s)) {
+      const quality = isArt(card) ? 'artifact' : ({ W:'white', U:'blue', B:'black', R:'red', G:'green' }[computeCharacteristics(card, s).color] || 'colorless');
+      return dlog(s, `${card.name} can't target ${tgtPerm.name} (protection from ${quality}).`, 'rule');
+    }
   }
 
   // Sacrificed-card capture (Priest of Yawgmoth, Life Chisel): the resolving
