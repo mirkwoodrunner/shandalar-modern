@@ -30,7 +30,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall, normalizeAbilityCost } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -43,6 +43,7 @@ import { SphereTriggerModal } from './ui/duel/SphereTriggerModal';
 import { ChoiceModal } from './ui/duel/ChoiceModal';
 import { UPKEEP_CHOICE_MODALS } from './ui/duel/upkeepChoiceRegistry';
 import { TempAbilityBar } from './ui/duel/TempAbilityBar';
+import { AbilityMenuPopover } from './ui/duel/AbilityMenuPopover';
 import { LampPickModal } from './ui/duel/LampPickModal';
 import { RiverDividePanel } from './ui/Card/RiverDividePanel';
 import { RiverSidesPanel } from './ui/Card/RiverSidesPanel';
@@ -78,36 +79,6 @@ function ManaChoicePopover({ colors, cardName, onSelect, onClose }: {
           {colors.map(color => (
             <button key={color} className="mana-choice-btn" onClick={() => onSelect(color)}>
               {getManaSymbol(color)} {color}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Small popover that lists a card's activatedAbilities for the player to choose.
-function AbilityMenuPopover({ card, onSelect, onClose }: {
-  card: any;
-  onSelect: (abilityId: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="popover-overlay" onClick={onClose}>
-      <div className="popover-content" onClick={e => e.stopPropagation()}>
-        <h3>{card.name}</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {/* Always offer the basic tap-for-mana option */}
-          <button className="mana-choice-btn" onClick={() => onSelect('tap_mana')}>
-            {'{T}'}: Add {'{C}'}
-          </button>
-          {(card.activatedAbilities ?? []).map((ab: any) => (
-            <button
-              key={ab.id}
-              className="mana-choice-btn"
-              onClick={() => onSelect(ab.id)}
-            >
-              {ab.description}
             </button>
           ))}
         </div>
@@ -326,8 +297,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       selectCard(card.iid);
       return;
     }
-    activateAbility(card.iid, null, null, abilityId);
-  }, [abilityMenu, activateAbility, tapLand, selectCard]);
+    // Any other array-sourced ability (e.g. Pyramids) routes through
+    // beginActivateFlow, which opens the castFlow targeting step for
+    // ACTIVATE_TARGET_EFFECTS members and dispatches immediately otherwise --
+    // the same branching handleActivate already uses for card.activated-shaped
+    // abilities.
+    beginActivateFlow(card, abilityId);
+  }, [abilityMenu, activateAbility, tapLand, selectCard, beginActivateFlow]);
 
   // handleActivate is now provided by useDuelController.
 
@@ -340,8 +316,9 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       const castingCard = castFlow.kind === 'spell'
         ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
         : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
-      if (isPlayerOnlyTarget(castingCard)) return; // creature click is illegal for player-only effects
-      if (isCreatureOnlyTarget(castingCard) && !isCre(card)) return; // noncreature click is illegal for creature-only effects
+      if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return; // creature click is illegal for player-only effects
+      if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(card)) return; // noncreature click is illegal for creature-only effects
+      if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(card)) return; // non-land click is illegal for land-only effects
       selectCastTarget(card.iid);
       return;
     }
@@ -657,7 +634,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
                 : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
               const cost = castFlow.kind === 'spell'
                 ? sourceCard?.cost
-                : (castFlow.abilityId
+                : normalizeAbilityCost(castFlow.abilityId
                     ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
                     : sourceCard?.activated?.cost);
               return {

@@ -99,6 +99,30 @@ export function needsExplicitTarget(card: any): boolean {
   return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
 }
 
+// Resolves the effective targeting-effect name across all three card/ability
+// shapes this codebase uses: spell-side top-level `card.effect`, a permanent's
+// single `card.activated.effect`, and (Pyramids' addition) a permanent's
+// `card.activatedAbilities[]` array keyed by `abilityId`. Priority: array
+// entry (when abilityId matches) > single activated.effect > top-level effect.
+export function getEffectiveAbilityEffect(card: any, abilityId?: string | null): string | undefined {
+  if (abilityId && card?.activatedAbilities) {
+    return card.activatedAbilities.find((a: any) => a.id === abilityId)?.effect;
+  }
+  return card?.activated?.effect ?? card?.effect;
+}
+
+// activatedAbilities[] entries store `cost` as an object (e.g. {generic:2},
+// {tap:true}) rather than the mana-cost string card.activated.cost uses.
+// canPay()/parseMana() expect a string, so array-sourced costs must be
+// normalized before use in the mana-wait checks below (advanceCastFlow /
+// the mode:'mana' effect) -- Pyramids mode 2 is the first array-sourced
+// ability that both requires a target and costs mana, so this path was
+// previously never exercised for the object-cost shape.
+export function normalizeAbilityCost(cost: any): string {
+  if (cost && typeof cost === 'object') return String(cost.generic ?? 0);
+  return cost ?? '';
+}
+
 // Effects whose oracle text restricts the target to a creature only. Used by
 // isCreatureOnlyTarget to reject illegal (non-creature) battlefield clicks at
 // the click-routing level for activated abilities whose targeting requirement
@@ -113,10 +137,11 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
 // top-level `effect` field IS the targeting effect. Jade Monolith is the first
 // member that is an *activated ability* on a permanent that has no top-level
 // `effect` of its own -- the targeting effect lives at card.activated.effect
-// instead (see beginActivateFlow's `const { effect } = ab` in this file). Check
-// both so the click-routing guard actually fires for ability-sourced entries.
-export function isCreatureOnlyTarget(card: any): boolean {
-  return CREATURE_ONLY_TARGET_EFFECTS.has(card?.effect) || CREATURE_ONLY_TARGET_EFFECTS.has(card?.activated?.effect);
+// instead (see beginActivateFlow's `const { effect } = ab` in this file). Pyramids
+// is the first member sourced from the `activatedAbilities[]` array shape
+// instead -- getEffectiveAbilityEffect resolves all three shapes uniformly.
+export function isCreatureOnlyTarget(card: any, abilityId?: string | null): boolean {
+  return CREATURE_ONLY_TARGET_EFFECTS.has(getEffectiveAbilityEffect(card, abilityId));
 }
 
 // Effects whose oracle text restricts the target to player/planeswalker only.
@@ -134,8 +159,19 @@ export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
   'scryTop5Reveal',                  // Visions -- "target player"
 ]);
 
-export function isPlayerOnlyTarget(card: any): boolean {
-  return PLAYER_ONLY_TARGET_EFFECTS.has(card?.effect);
+export function isPlayerOnlyTarget(card: any, abilityId?: string | null): boolean {
+  return PLAYER_ONLY_TARGET_EFFECTS.has(getEffectiveAbilityEffect(card, abilityId));
+}
+
+// Effects whose oracle text restricts the target to a land only (Pyramids mode
+// 2: "target land"). Mirrors CREATURE_ONLY_TARGET_EFFECTS/isCreatureOnlyTarget
+// exactly -- first member sourced from the activatedAbilities[] array shape.
+export const LAND_ONLY_TARGET_EFFECTS = new Set([
+  'preventLandDestructionOnce', // Pyramids mode 2 -- "target land"
+]);
+
+export function isLandOnlyTarget(card: any, abilityId?: string | null): boolean {
+  return LAND_ONLY_TARGET_EFFECTS.has(getEffectiveAbilityEffect(card, abilityId));
 }
 
 export function isCounterEffect(card: any): boolean {
@@ -269,6 +305,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'cyclopeanTombMireCounter', // Cyclopean Tomb -- "target non-Swamp land"
   // Creature damage centralization batch:
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
+  // Land destruction centralization batch:
+  'preventLandDestructionOnce', // Pyramids mode 2 -- "target land"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -1014,7 +1052,7 @@ export function useDuelController(
         ? (card?.activatedAbilities ?? []).find((a: any) => a.id === flow.abilityId)
         : card?.activated;
       if (!card || !ab) { setCastFlow(null); return; }
-      const cost = ab.cost ?? '';
+      const cost = normalizeAbilityCost(ab.cost);
       const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
       const tgt = flow.selectedTargets[0] ?? null;
       if (!cost || canPay(s.p.mana, cost, xSpend)) {
@@ -1081,7 +1119,7 @@ export function useDuelController(
         ? (card?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)
         : card?.activated;
       if (!card || !ab) return;
-      const cost = ab.cost ?? '';
+      const cost = normalizeAbilityCost(ab.cost);
       const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
       if (!cost || canPay(s.p.mana, cost, xSpend)) {
         const tgt = castFlow.selectedTargets[0] ?? null;

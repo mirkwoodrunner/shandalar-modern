@@ -744,6 +744,157 @@ other call sites), which remains checked afterward, unchanged.
   (`ON_CREATURE_DIES`, `scope: 'self'`) -- no engine change was needed for
   that half.
 
+## 7.10 Land Destruction (`destroyLand` Choke Point) + Pyramids
+
+A single choke point for "a land is about to be destroyed," replacing 9 ad
+hoc `zMove(..., "gy")` call sites scattered across 8 mechanics. Mirrors
+`hurtCreature`'s shape (lookup, not-found philosophy, shield check before the
+raw mutation) but for lands, with no `checkDeath` equivalent needed.
+
+- `destroyLand(state, targetIid, src = "", meta = null)`
+  (src/engine/DuelCore.js, placed adjacent to `hurtCreature`) is the sole
+  choke point for land destruction:
+  1. Looks up the target land on either `state.p.bf` or `state.o.bf`; not
+     found: `console.error` and return state unchanged.
+  2. Checks `state.turnState.landDestructionShields[targetIid]` (plain
+     array, absent treated as empty). If non-empty, consumes the FIRST entry
+     (FIFO), `dlog`s `"<shieldSourceName>: <land name> is not destroyed."`,
+     and returns WITHOUT performing the `zMove` -- the land survives. No
+     explicit "remove damage" side effect is modeled, since this engine does
+     not track a meaningful `damage` stat on lands; the prevention itself is
+     the observable effect.
+  3. Otherwise performs `zMove(state, targetIid, side, side, "gy")` and, if a
+     message is available, `dlog`s it: `meta.message` if given, else the
+     default `"<src> destroys <land name>."` when `src` is non-empty, else
+     silent. The silent case is for the mass-destroy loops
+     (`destroyAllLands`/`destroyIslands`/`destroyPlains`/`destroyForests`),
+     which already log a single batch message outside the per-land loop and
+     must not gain new per-land log lines as a migration side effect.
+- `turnState.landDestructionShields` is a plain object keyed by land `iid`,
+  value an array of `{ shieldSourceIid, shieldSourceName }` entries (array
+  for shape-consistency with `creatureDamageShields`/`damageShields`, though
+  in practice length is almost always 0 or 1). Initialized to `{}` at both
+  turnState construction sites (new-game and end-of-turn `CLEANUP`)
+  alongside `creatureDamageShields`, and cleared the same way every turn.
+
+### Migrated sites (9)
+
+| Site | Notes |
+|---|---|
+| `destroyTargetLand` | Gained an `INDESTRUCTIBLE` check it did not previously have (`hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)`, mirroring `destroyArtifact`/`destroyArtOrEnch`'s existing pattern) -- MTG rules-accuracy fix, confirmed with the project owner during this phase. Check happens before `destroyLand()` is called; `destroyLand()` does not itself know about indestructible. |
+| `destroyAllLands` (Armageddon), `destroyIslands`, `destroyPlains`, `destroyForests` | Loop bodies call `destroyLand(ns, c.iid)` (no `src`) once per land, same iteration order as before; the existing single batch `dlog` (before or after the loop, per site) is untouched. |
+| `kudzuUpkeep` | Only the `enchLand` zMove migrated (`destroyLand(ns, enchLand.iid, "Kudzu")`). Kudzu's own two "falls off the battlefield" zMove calls (unattached; no lands remain) are a different card leaving play, not a land being destroyed, and remain raw/unmigrated. |
+| Erosion, AI branch (inline upkeep) and human `erosionUpkeep` (`UPKEEP_CHOICE_HANDLERS`) | Both call `destroyLand(..., "", { message: "Erosion destroys the enchanted land." })` to preserve the exact pre-existing fixed wording (which does not include the land's name). |
+| `blightDestroyHost` | Calls `destroyLand(state, hostIid, "", { message: "Blight destroys the enchanted land." })`, same fixed-wording reasoning as Erosion. |
+
+### Sacrifice-vs-destroy boundary (NOT migrated)
+
+Sacrifice and destruction are different actions in Magic's rules; Pyramids'
+text specifically says "destroyed," so sacrifice sites must not consult
+`landDestructionShields`. Four sites remain raw, unmigrated `zMove` calls by
+design: Balance's excess-land trim (`case "balance"`), Elder Spawn's
+Island-sacrifice upkeep (`elderSpawnUpkeep`), and Leviathan's two-Island
+sacrifice upkeep (`sacIslandsToUntapSelf`, both the AI-inline branch and the
+human `UPKEEP_CHOICE_HANDLERS` entry). Mold Demon's "sacrifice two Swamps"
+ETB clause is the same category (discovered during this phase's pre-flight
+audit; not one of the four cards enumerated above but confirmed sacrifice,
+not destroy, and left untouched).
+
+### `getEffectiveAbilityEffect` and `isLandOnlyTarget` (click-routing)
+
+`useDuelController.ts` gained a third targeting-effect resolution shape.
+Previously, `isPlayerOnlyTarget`/`isCreatureOnlyTarget` read `card?.effect`
+and/or `card?.activated?.effect` directly. Pyramids is the first card whose
+targeting effect is sourced from the `activatedAbilities[]` array shape
+(shared with Mishra's Factory), keyed by `abilityId` rather than a single
+field, so a shared helper now resolves all three shapes uniformly:
+
+```ts
+function getEffectiveAbilityEffect(card, abilityId?): string | undefined {
+  if (abilityId && card?.activatedAbilities) {
+    return card.activatedAbilities.find(a => a.id === abilityId)?.effect;
+  }
+  return card?.activated?.effect ?? card?.effect;
+}
+```
+
+`isPlayerOnlyTarget`/`isCreatureOnlyTarget` were refactored to use this
+helper via an added optional `abilityId` parameter, with no behavior change
+for any existing member (Jade Monolith; regression-tested). A new
+`LAND_ONLY_TARGET_EFFECTS`/`isLandOnlyTarget(card, abilityId)` pair mirrors
+`CREATURE_ONLY_TARGET_EFFECTS`/`isCreatureOnlyTarget` exactly, with
+`preventLandDestructionOnce` as its sole member. Both `DuelScreen.tsx` and
+`DuelScreenMobile.tsx` thread `castFlow.abilityId` through all three guards
+at their `'targeting'`-mode battlefield click handler, and gained a third
+guard line (`isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(card)`)
+alongside the existing player-only and creature-only guards.
+
+### Array-shaped ability infrastructure gaps closed by this phase
+
+Three pre-existing gaps in the `activatedAbilities[]` array-ability
+machinery were load-bearing for Pyramids and were fixed as part of this
+phase (none were caused by this phase; all were previously dormant because
+no prior array-shaped ability both required a target AND cost mana):
+
+- **`ACTIVATE_ABILITY` reducer, array branch** (DuelCore.js): previously
+  hardcoded exactly four `ab.effect` values (`animateLand`,
+  `pumpAssemblyWorker`, `desertPing`, `grantWalkSelfDamage2`) and silently
+  no-op'd (`return s`) for anything else. Gained a generic branch for
+  `destroyLandAura`/`preventLandDestructionOnce`: pays `ab.cost.generic`
+  (as a plain digit string via `canPay`/`payMana`), then dispatches through
+  `resolveEff` directly (no stack push -- matches this branch's existing
+  immediate-resolution convention for its other members) via a synthesized
+  stack-item shape (`{ id, card: {...card, effect: ab.effect}, caster: w,
+  targets: [tgt], xVal: 1 }`), the same pattern `addMana`/`addManaReflected`
+  already use.
+- **Ability-cost shape normalization** (useDuelController.ts): array-shaped
+  abilities store `cost` as an object (`{generic:N}`, `{tap:true}`), but
+  `advanceCastFlow` and the `mode:'mana'` auto-advance effect read `ab.cost`
+  directly as a mana-cost string for `canPay()`/`.toUpperCase()`. A new
+  `normalizeAbilityCost(cost)` helper (exported) converts `{generic:N}` to
+  `"N"` before use, at both read sites in `useDuelController.ts` and in the
+  `castPrompt.costNeeded` computation in both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx` (the latter, unguarded, would call `.replace` on a
+  plain object and crash the whole React tree the moment a target-requiring,
+  mana-costed array ability entered `castFlow` -- discovered via the
+  Playwright suite for this phase).
+- **Mobile multi-ability activation UI**: `AbilityMenuPopover` (the "choose
+  one ability" popover) previously existed only in `DuelScreen.tsx` as a
+  local, non-exported function, with no mobile equivalent -- mobile's
+  `handleActivateBf` unconditionally called `beginActivateFlow(sel.card,
+  null)`, which resolves only the single `card.activated` shape and silently
+  no-ops for any `activatedAbilities`-array card (Mishra's Factory
+  included). Extracted to a shared `src/ui/duel/AbilityMenuPopover.tsx`
+  (added `data-testid="ability-menu"` / `data-testid="ability-option-<id>"`
+  for e2e selection) and wired into `DuelScreenMobile.tsx` with its own
+  local `abilityMenu` state and `handleAbilityMenuSelect`, mirroring
+  desktop's. Also fixed `handleLandTap` (the dedicated tap-for-mana click
+  handler `LandPip` uses on mobile, which bypasses `handleBfCardClick`
+  entirely) to check `castFlow?.mode === 'targeting'` first and route
+  through the same three click-routing guards + `selectCastTarget`, since
+  Pyramids mode 2 is the first ability requiring a player to click a LAND as
+  a target while an untapped-land-taps-for-mana quick-click handler exists.
+
+### Pyramids (`activatedAbilities`)
+
+```js
+activatedAbilities: [
+  { id: "pyramids_destroy_aura", cost: { generic: 2 }, effect: "destroyLandAura", ... },
+  { id: "pyramids_prevent_destruction", cost: { generic: 2 }, effect: "preventLandDestructionOnce", ... },
+]
+```
+
+Mode 1 reuses `destroyLandAura` (Savaen Elves' effect) completely
+unchanged -- no new engine code for that half, and no change to Savaen
+Elves' own behavior or its pre-existing targeting gap (it is not a member of
+`ACTIVATE_TARGET_EFFECTS`, so its own UI targeting flow has the same
+long-standing limitation this phase did not touch). Mode 2's `resolveEff`
+case (`preventLandDestructionOnce`) fizzles on a missing/non-land target
+(defense-in-depth; unreachable through normal play once `isLandOnlyTarget`
+gates the click), otherwise pushes a `{ shieldSourceIid: card.iid,
+shieldSourceName: card.name }` entry onto
+`turnState.landDestructionShields[tgtC.iid]`.
+
 ---
 
 # 8. Determinism Contract
