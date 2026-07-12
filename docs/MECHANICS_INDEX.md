@@ -4311,4 +4311,96 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.26
+## Stub Batch: Reverse Damage, Conversion, Stasis — 2026-07-12
+
+Three small, data-driven reuses of existing infrastructure, batched together only
+because none of the three share any code with each other.
+
+**Reverse Damage** ("The next time a source of your choice would deal damage to
+you this turn, prevent that damage. You gain life equal to the damage prevented
+this way.") -- mirrors Eye for an Eye's shape exactly
+(`effect:"chooseDamageShieldSource"`, no `damageShieldColors`/`damageShieldTypes`)
+except `damageShieldMode:"prevent"` plus a new `gainLifeOnPrevent:true` card flag.
+The flag is threaded through both `chooseDamageShieldSource` branches (AI
+auto-choose and the human `pendingDamageShieldChoice`) and into the
+`turnState.damageShields` entry via `RESOLVE_DAMAGE_SHIELD_CHOICE`, using a
+conditional spread (`...(card.gainLifeOnPrevent ? {gainLifeOnPrevent:true} : {})`)
+rather than an unconditional `!!` so pre-existing shield entries (Circle of
+Protection, Eye for an Eye, Greater Realm of Preservation) keep their exact
+current shape -- an unconditional field would have broken `toEqual` assertions
+in `damage-shields.test.js`/`eye-for-an-eye.test.js`/`circle-of-protection.test.js`.
+`hurt()`'s `prevent` branch now gains life (`hurt(ns, who, -prevented, ...,
+null)`, same recursion guard as the existing `redirect` branch) only when
+`shield.gainLifeOnPrevent` is set.
+
+**Conversion** ("At the beginning of your upkeep, sacrifice this enchantment
+unless you pay {W}{W}. All Mountains are Plains.") -- reuses the
+`globalTypeEffect`/`recomputeTypeEffects`/`layers.js` continuous-effect pipeline
+that Blood Moon/Living Lands/Kormus Bell/Evil Presence already use, needing only
+one new line in `layers.js`'s `matchesGlobalTypeFilter`: a `filter==='Mountain'`
+branch (`sub.includes('Mountain')`), sibling to the existing `Forest`/`Swamp`
+branches. Card entry: `globalTypeEffect:{filter:"Mountain",setSubtypes:["Plains"]}`,
+mirroring Blood Moon's actual shape (which does carry `effect:"globalTypeEffect"`
+-- a resolve-time case that only logs and performs no state mutation of its own;
+the pre-flight plan for this batch had described Blood Moon as having no
+`effect` field, which turned out to be inaccurate, so Conversion's entry
+includes the field to genuinely mirror Blood Moon rather than the plan's
+description of it). Mana production for the resulting Plains reuses
+`LAND_TYPE_MANA`/`landTypeOverride` unchanged (already generic, no new engine
+code). New upkeep case `sacrificeUnless_WW`, sibling to `sacrificeUnless_U`
+(Phantasmal Forces/Stasis), checking `(mp.W||0)>=2` / decrementing `mp.W-=2`.
+
+**Stasis** ("Players skip their untap steps. At the beginning of your upkeep,
+sacrifice this enchantment unless you pay {U}.") -- reuses `sacrificeUnless_U`
+unchanged for its upkeep half (identical shape to Phantasmal Forces, confirmed
+before implementation). The untap-skip half is a new `stasisOut` gate
+(`allBF_s.some(x => x.id === "stasis")`), sibling to the existing
+`winterOrbOut`/`dampingFieldOut`/`magneticMountainOut` gates, that wraps the
+*entire* per-active-player untap-step block (the `bf.map` that untaps, clears
+`summoningSick`, and clears `damage` in one pass, plus the `optionalUntapTargets`/
+`queueUpkeepChoice` follow-up) in a no-op branch that just logs `"Stasis: <active>
+skips their untap step."`. This conflates all three untap-step effects into a
+single skip, which is the existing untap-step model's already-documented
+simplification (one combined `bf.map`, not three separate CR-accurate steps),
+not a new one introduced here.
+
+**Existing-behavior note (not a bug introduced by this batch):** `ADVANCE_PHASE`
+calls `burnMana` (unconditional per-phase-boundary mana reset) *before* the
+`PHASE.UPKEEP` switch that reads `c.upkeep`, for every phase transition. This
+means any `sacrificeUnless_*`-style case -- including the pre-existing
+`sacrificeUnless_U` (Phantasmal Forces) and Force of Nature's direct-check AI
+branch (see `phase6.test.js` FN-02) -- always sees a freshly zeroed mana pool at
+check time, so a pre-loaded, cost-matching pool never actually prevents the
+sacrifice through a plain `ADVANCE_PHASE` dispatch. Conversion/Stasis inherit
+this exactly (CONV-04/STAS-04 test and document it), matching Phantasmal
+Forces' existing behavior rather than diverging from it.
+
+**Stub counts:** the originally-tracked stub count (8 at the start of the
+sprint, reduced to 7 by the prior Additional Costs + Sacrifice batch) is
+**unaffected by this batch** -- still 7. Separately, a not-yet-triaged bucket of
+7 lowercase-`effect:"stub"` cards existed going into this batch (Reverse Damage,
+Conversion, Stasis, Animate Artifact, Gloom, Jade Monolith, Tawnos's Coffin);
+this batch closes out the first three, leaving **4**: Animate Artifact, Gloom,
+Jade Monolith, Tawnos's Coffin.
+
+**Regression guards:** RD-05/RD-06 (Eye for an Eye's redirect shield and an
+unflagged Circle of Protection prevent shield both still behave exactly as
+before -- no stray life gain). CONV-05 (Blood Moon's `nonBasicLand` filter and
+Conversion's new `Mountain` filter coexist without interference -- each only
+matches a permanent's *base* subtype, per `matchesGlobalTypeFilter`'s existing
+no-dependency-chasing design, so neither effect leaks into the other's target).
+STAS-05 (Winter Orb/Damping Field/Magnetic Mountain gates are unaffected when
+Stasis is absent).
+
+**Tests:** Vitest `tests/scenarios/stub-batch-rd-conv-stasis.test.js` (18: RD-01
+through RD-06, CONV-01 through CONV-06, STAS-01 through STAS-06 including the
+CONV-04/STAS-04 mana-threshold cases described above). Playwright
+`tests/e2e/stub-batch-rd-conv-stasis.spec.ts` (6: one scenario per card, dual
+viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.27

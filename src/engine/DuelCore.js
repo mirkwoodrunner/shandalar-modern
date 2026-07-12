@@ -381,7 +381,14 @@ if (amt > 0 && meta?.sourceIid) {
     const remaining = [...shields.slice(0, matchIdx), ...shields.slice(matchIdx + 1)];
     const ns0 = { ...s, turnState: { ...s.turnState, damageShields: { ...s.turnState.damageShields, [who]: remaining } } };
     if (shield.mode === 'prevent') {
-      return dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} prevents ${amt} damage to ${who}${src ? ` from ${src}` : ''}.`, 'effect');
+      const prevented = amt;
+      const ns1 = dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} prevents ${prevented} damage to ${who}${src ? ` from ${src}` : ''}.`, 'effect');
+      // Reverse Damage: "You gain life equal to the damage prevented this way."
+      // meta:null is the same recursion guard used by the redirect branch below.
+      if (shield.gainLifeOnPrevent) {
+        return hurt(ns1, who, -prevented, shield.shieldSourceName, null);
+      }
+      return ns1;
     }
     // redirect (Eye for an Eye): re-enter hurt() with the shield already
     // consumed so the primary damage applies normally (and any other
@@ -3765,6 +3772,7 @@ case "chooseDamageShieldSource": {
         mode: card.damageShieldMode || 'prevent',
         shieldSourceIid: card.iid,
         shieldSourceName: card.name,
+        ...(card.gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
       }] } },
     };
     ns = dlog(ns, `${card.name}: shields against ${chosen.name}.`, "effect");
@@ -3777,6 +3785,7 @@ case "chooseDamageShieldSource": {
       mode: card.damageShieldMode || 'prevent',
       shieldSourceIid: card.iid,
       shieldSourceName: card.name,
+      ...(card.gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
       pool,
     },
   };
@@ -4629,6 +4638,11 @@ const dampingFieldOut = allBF_s.some(x => x.id === "damping_field");
 // untap steps." Adapted from Card-Forge/forge (m/magnetic_mountain.txt),
 // GPL-3.0. See THIRD_PARTY_NOTICES.md.
 const magneticMountainOut = allBF_s.some(x => x.id === "magnetic_mountain");
+// Stasis: "Players skip their untap steps." Gates the entire per-active-player
+// untap bf.map below -- untapping, summoning-sickness-clear, and damage-clear
+// are conflated into a single step in this engine (existing untap-step
+// simplification, not new here), so skipping the map skips all three at once.
+const stasisOut = allBF_s.some(x => x.id === "stasis");
 let artifactsUntapped = 0;
 let landsUntapped = 0, cresUntapped = 0;
 // Old Man of the Sea: revert stolen creatures before Old Man untaps.
@@ -4654,6 +4668,9 @@ for (const om of ns[ns.active].bf.filter(c => c.id === 'old_man_of_the_sea' && c
 // idiom as whileTappedPump (Ashnod's Battle Gear/Tawnos's Weaponry) but with no
 // P/T-pump precondition -- the creature just always may decline.
 // Adapted from Card-Forge/forge (p/phyrexian_gremlins.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (stasisOut) {
+  ns = dlog(ns, `Stasis: ${ns.active} skips their untap step.`, "effect");
+} else {
 const optionalUntapTargets = ns[ns.active].bf.filter(c => c.optionalUntap && c.tapped && (c.whileTappedPump || c.optionalUntapAlways));
 ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
 const base = { ...c, summoningSick:false, damage:0 };
@@ -4703,6 +4720,7 @@ if (ns.active === 'p') {
 // non-player controller (same convention as Brainwash/Hasran Ogress elsewhere
 // in this file). Since the ability was activated in the first place because
 // the bonus is worth having, staying tapped is assumed the better line.
+}
 }
 }
 
@@ -4874,6 +4892,12 @@ case "sacrificeSelf": if (next === PHASE.CLEANUP) { ns = { ...ns, turnState: { .
 case "sacrificeUnless_U": {
 const mp = { ...ns[w].mana };
 if ((mp.U || 0) >= 1) { mp.U--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+case "sacrificeUnless_WW": {
+const mp = { ...ns[w].mana };
+if ((mp.W || 0) >= 2) { mp.W -= 2; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
 else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
 break;
 }
@@ -7896,7 +7920,7 @@ case "RESOLVE_DAMAGE_SHIELD_CHOICE": {
   // Eye's redirect) in turnState.damageShields, checked by hurt().
   const pdsc = s.pendingDamageShieldChoice;
   if (!pdsc) return s;
-  const { caster, mode, shieldSourceIid, shieldSourceName, pool } = pdsc;
+  const { caster, mode, shieldSourceIid, shieldSourceName, gainLifeOnPrevent, pool } = pdsc;
   const chosen = pool.find(c => c.iid === action.iid);
   if (!chosen) return s;
   const entry = {
@@ -7905,6 +7929,7 @@ case "RESOLVE_DAMAGE_SHIELD_CHOICE": {
     mode,
     shieldSourceIid,
     shieldSourceName,
+    ...(gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
   };
   const ns = {
     ...s,

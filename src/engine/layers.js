@@ -119,6 +119,7 @@ function matchesGlobalTypeFilter(card, filter) {
   const sub = card.subtype ?? '';
   if (filter === 'Forest') return sub.includes('Forest');
   if (filter === 'Swamp') return sub.includes('Swamp');
+  if (filter === 'Mountain') return sub.includes('Mountain');
   if (filter === 'nonBasicLand') return !sub.includes('Basic');
   return false;
 }
