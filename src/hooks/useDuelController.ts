@@ -142,7 +142,7 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
 
 // ── Cast/Activate flow ─────────────────────────────────────────────────────
 
-export type CastFlowMode = 'xSelect' | 'targeting' | 'mana' | null;
+export type CastFlowMode = 'xSelect' | 'targeting' | 'additionalCost' | 'mana' | null;
 
 export interface CastFlowState {
   // 'trigger': a suspended triggered ability that needs a fresh battlefield
@@ -162,6 +162,9 @@ export interface CastFlowState {
   xVal?: number;          // locked X for this cast, set before mana/targeting
   xMax?: number;           // max affordable X at the moment selection began
   xLegalValues?: number[]; // for spell_blast -- explicit legal X values, omitted otherwise
+  // Set when mode is (or has passed through) 'additionalCost'. null until the
+  // caster picks a creature to sacrifice; iid of that creature afterward.
+  additionalCostSelection?: string | null;
 }
 
 export function needsAnyTarget(card: any): boolean {
@@ -911,11 +914,14 @@ export function useDuelController(
     if (s.manaTapSnapshot !== null) {
       dispatch({ type: 'UNDO_MANA_TAPS' });
     }
+    if (s.additionalCostSnapshot !== null) {
+      dispatch({ type: 'UNDO_ADDITIONAL_COST' });
+    }
     setCastFlow(null);
     selectCard(null);
     selectTarget(null);
     setPendingActivate(null);
-  }, [castFlow, s.manaTapSnapshot, dispatch, selectCard, selectTarget, resolveTriggerTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [castFlow, s.manaTapSnapshot, s.additionalCostSnapshot, dispatch, selectCard, selectTarget, resolveTriggerTarget]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectCastTarget = useCallback((iid: string) => {
     setCastFlow(prev => {
@@ -924,6 +930,18 @@ export function useDuelController(
       return { ...prev, selectedTargets: already ? prev.selectedTargets.filter(t => t !== iid) : [iid] };
     });
   }, []);
+
+  // Sacrifice-as-additional-cost picker: single selection, auto-advances
+  // (mirrors confirmCastTargets's update-and-advance shape via `_advance`).
+  // Ineligible clicks (not a creature the caster controls) are a no-op.
+  const selectAdditionalCost = useCallback((iid: string) => {
+    setCastFlow(prev => {
+      if (!prev || prev.mode !== 'additionalCost') return prev;
+      const card = (s.p.bf as any[]).find((c: any) => c.iid === iid);
+      if (!card || !isCre(card)) return prev;
+      return { ...prev, additionalCostSelection: iid, _advance: true } as any;
+    });
+  }, [s.p.bf]);
 
   const deselectCastTarget = useCallback((iid: string) => {
     setCastFlow(prev => {
@@ -948,12 +966,18 @@ export function useDuelController(
     if (flow.kind === 'spell') {
       const card = (s.p.hand as any[]).find((c: any) => c.iid === flow.sourceIid);
       if (!card) { setCastFlow(null); return; }
+      // A card with additionalCost must always stop at the additionalCost step
+      // before mana/dispatch, even if it also had a target step before this.
+      if (card.additionalCost?.type === 'sacrificeCreature' && flow.additionalCostSelection == null) {
+        setCastFlow({ ...flow, mode: 'additionalCost', additionalCostSelection: null });
+        return;
+      }
       const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
         ? (s.xVal || 1)
         : 0;
       const tgt = flow.selectedTargets[0] ?? null;
       if (canPay(s.p.mana, card.cost, xSpend)) {
-        castSpell(flow.sourceIid, tgt, s.xVal);
+        castSpell(flow.sourceIid, tgt, s.xVal, flow.additionalCostSelection ?? undefined);
         setCastFlow(null);
         selectCard(null);
         selectTarget(null);
@@ -1022,7 +1046,7 @@ export function useDuelController(
         : 0;
       if (canPay(s.p.mana, card.cost, xSpend)) {
         const tgt = castFlow.selectedTargets[0] ?? null;
-        castSpell(castFlow.sourceIid, tgt, s.xVal);
+        castSpell(castFlow.sourceIid, tgt, s.xVal, castFlow.additionalCostSelection ?? undefined);
         setCastFlow(null);
         selectCard(null);
         selectTarget(null);
@@ -1071,6 +1095,13 @@ export function useDuelController(
 
   const beginCastFlow = useCallback((card: any) => {
     if (isLand(card)) { playLand(card.iid); selectCard(null); return; }
+
+    // Sacrifice-as-additional-cost legality gate: cast cannot begin at all if
+    // the caster controls zero creatures (same treatment as xMax < 0 below).
+    if (card.additionalCost?.type === 'sacrificeCreature') {
+      const creatureCount = (s.p.bf as any[]).filter(isCre).length;
+      if (creatureCount === 0) { selectCard(null); return; }
+    }
 
     const hasX = /X/i.test(card.cost || '') && card.id !== 'power_sink';
 
@@ -1122,6 +1153,25 @@ export function useDuelController(
         requiresTarget: req,
         maxTargets: 1,
         canTargetPlayers: needsExplicitTarget(card) && !isCounterEffect(card),
+        additionalCostSelection: card.additionalCost ? null : undefined,
+      });
+      return;
+    }
+
+    // A card with additionalCost can never take the instant-cast shortcut
+    // below, even when targetless and mana is already affordable -- it must
+    // always stop at the additionalCost step first.
+    if (card.additionalCost?.type === 'sacrificeCreature') {
+      setCastFlow({
+        kind: 'spell',
+        sourceIid: card.iid,
+        abilityId: null,
+        mode: 'additionalCost',
+        selectedTargets: [],
+        requiresTarget: false,
+        maxTargets: 0,
+        canTargetPlayers: false,
+        additionalCostSelection: null,
       });
       return;
     }
@@ -1356,6 +1406,7 @@ export function useDuelController(
     beginActivateFlow,
     selectCastTarget,
     deselectCastTarget,
+    selectAdditionalCost,
     confirmCastTargets,
     cancelCastFlow,
     adjustCastX,

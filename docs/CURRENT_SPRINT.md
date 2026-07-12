@@ -53,6 +53,32 @@
   (`tests/e2e/library-of-leng.spec.ts`, both viewports). See
   `docs/ENGINE_CONTRACT_SPEC.md` S7.7.1 and `docs/MECHANICS_INDEX.md` --
   Library of Leng Phase 2.
+- **Additional Costs Infrastructure + Sacrifice** -- a general "additional
+  cost to cast" mechanism for spells, alongside the cast-flow state
+  machine's existing X-select/targeting/mana steps (`xSelect -> targeting ->
+  additionalCost -> mana -> dispatch`), and its first consumer, Sacrifice
+  ("As an additional cost to cast this spell, sacrifice a creature. Add an
+  amount of {B} equal to the sacrificed creature's mana value."). A card
+  carrying `additionalCost:{type:'sacrificeCreature'}` can never take the
+  existing "no target, already affordable" instant-cast shortcut. Zero
+  eligible creatures blocks the cast at initiation and again at the
+  `CAST_SPELL` reducer (defense in depth). Payment is atomic: the reducer
+  moves the sacrificed creature `bf -> gy` in the same transaction as mana
+  payment, before the stack item is pushed, attaching
+  `additionalCostPaid:{type,card}` (the full pre-sacrifice card) to it.
+  `additionalCostSnapshot`/`UNDO_ADDITIONAL_COST` mirror
+  `manaTapSnapshot`/`UNDO_MANA_TAPS` for `cancelCastFlow` rollback symmetry.
+  New `resolveEff` case `addManaFromSacrificedValue` adds `{B}` x the
+  sacrificed creature's cmc to the caster's mana pool. Both `DuelScreen.tsx`
+  and `DuelScreenMobile.tsx` route battlefield clicks to a new
+  `selectAdditionalCost` during the new mode, reusing the existing
+  `'targeting'`-mode cast-prompt UI. Discard-as-cost (the shape anticipates
+  a future `{type:'discard',count:n}` variant) is explicitly not built --
+  no shipped card needs it. Stub count: 8 -> 7. Tests: 22 Vitest
+  (`tests/scenarios/additional-cost-sacrifice.test.js`), 4 Playwright
+  (`tests/e2e/additional-cost-sacrifice.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.8 and `docs/MECHANICS_INDEX.md` --
+  Additional Costs Infrastructure + Sacrifice.
 
 ## Completed (2026-07-10)
 - **Tap Centralization Phase 1 + Relic Bind, Blight, Psychic Venom** -- all 28

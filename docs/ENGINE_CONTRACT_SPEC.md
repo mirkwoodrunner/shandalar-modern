@@ -561,6 +561,88 @@ instead of into your graveyard."
   fallback -- the same precedent as the banding-order dispatch immediately
   above it.
 
+## 7.8 `additionalCost` Cast-Flow Mode and Sacrifice (Phase 3)
+
+General "additional cost to cast" infrastructure for spells, added alongside
+the cast-flow state machine's existing X-select/targeting/mana steps. One
+shipped consumer this phase: Sacrifice ("As an additional cost to cast this
+spell, sacrifice a creature. Add an amount of {B} equal to the sacrificed
+creature's mana value.").
+
+- **Card field.** `card.additionalCost: { type: 'sacrificeCreature' }`. The
+  shape is deliberately extensible (a future `{ type: 'discard', count: n }`
+  variant is anticipated) but **only `sacrificeCreature` is implemented**.
+  The gate everywhere in this mechanism checks `additionalCost?.type ===
+  'sacrificeCreature'` exactly, not mere field presence -- a card shipped in
+  the future with a different, unimplemented `additionalCost.type` would
+  fall through every gate below with no legality enforcement at all. Any new
+  `type` must extend these gates deliberately; do not assume the existing
+  ones generalize.
+- **Cast-flow sequence.** `xSelect -> targeting -> additionalCost -> mana ->
+  dispatch` (`CastFlowMode` in `useDuelController.ts`). A card carrying
+  `additionalCost` never takes the pre-existing "no target, already
+  affordable -> instant cast" shortcut, even when otherwise eligible for it
+  -- `beginCastFlow` and `advanceCastFlow`'s spell branch both gate on
+  `card.additionalCost?.type === 'sacrificeCreature'` ahead of any
+  `canPay`/instant-dispatch check.
+- **Initiation-time legality gate.** If the caster controls zero creatures
+  when a `sacrificeCreature`-cost card is clicked in hand, the cast cannot
+  begin at all (`beginCastFlow`: `selectCard(null); return;`, same treatment
+  as `xMax < 0` for X spells). `CAST_SPELL` re-checks this at the reducer
+  level too (defense in depth): an invalid or missing
+  `action.additionalCostIid`, or one that doesn't resolve to a creature on
+  `s[w].bf`, blocks the cast with a `console.warn` and an unchanged state.
+- **Picker mechanics.** `castFlow.additionalCostSelection: string | null`
+  (null while the mode is open and unresolved). `selectAdditionalCost(iid)`
+  (`useDuelController.ts`, alongside `selectCastTarget`) validates the
+  clicked permanent is in `s.p.bf` and passes `isCre`, then sets the
+  selection and auto-advances (`_advance: true`, same shape as
+  `confirmCastTargets`'s advance). Any creature the caster controls is
+  eligible regardless of tap state or summoning sickness. Both
+  `DuelScreen.tsx` and `DuelScreenMobile.tsx` route battlefield clicks to
+  `selectAdditionalCost` during `castFlow.mode === 'additionalCost'`;
+  ineligible clicks (opponent's board, noncreature permanents) are a no-op,
+  matching `'targeting'` mode's existing click-routing shape. The
+  `'targeting'`-mode cast-prompt UI (`Banner.tsx`, both desktop and mobile)
+  is reused unchanged for `'additionalCost'` -- only the label text and
+  mode-gated Confirm/Skip buttons differ (neither renders here, since
+  selection auto-advances).
+- **Atomic payment.** `CAST_SPELL` (`DuelCore.js`) pays the additional cost
+  as one more step of its existing single-transaction mutation, alongside
+  mana payment and the hand-to-stack move, before the item is pushed onto
+  the stack. `action.additionalCostIid` is threaded through the same way
+  `action.tgt`/`action.xVal` already are (`useDuel.js`'s `castSpell`
+  wrapper). The sacrificed creature is moved `bf -> gy` via `zMove` (no
+  `checkDeath`/`ON_PERMANENT_LEAVES_BF` -- same convention as every other
+  direct-sacrifice-as-cost site in the file, e.g. Leviathan's attack-cost
+  land sacrifice). The stack item gains `additionalCostPaid: { type:
+  'sacrificeCreature', card: <full pre-sacrifice card object> }` so
+  `resolveEff` can read the sacrificed creature's `cmc` without re-querying
+  a now-gone zone.
+- **Rollback symmetry.** `additionalCostSnapshot` / `UNDO_ADDITIONAL_COST`
+  mirror `manaTapSnapshot` / `UNDO_MANA_TAPS` structurally: `cancelCastFlow`
+  dispatches `UNDO_ADDITIONAL_COST` whenever `s.additionalCostSnapshot !==
+  null`, in the same cancel action as the mana-snapshot check (order between
+  the two doesn't matter -- they touch disjoint zones). `UNDO_ADDITIONAL_COST`
+  reinserts the snapshotted card at its original `bfIndex` (clamped
+  defensively if the board shape changed) and removes it from `gy`.
+  **Narrowness of this rollback path in practice:** because sacrifice-target
+  selection is client-side `castFlow` state only (no per-selection engine
+  dispatch, unlike incremental `TAP_LAND` calls before a cast), and
+  `CAST_SPELL` pays the cost and clears `additionalCostSnapshot` back to
+  `null` atomically within the same transaction that pushes the stack item,
+  there is no real-flow window where `cancelCastFlow` observes a non-null
+  `additionalCostSnapshot` for `sacrificeCreature` -- the guard exists for
+  structural parity with `manaTapSnapshot` and to cover any future
+  `additionalCost` type whose payment is NOT atomic in this same way.
+  Reset to `null` at fresh-state construction and at end-of-turn `CLEANUP`,
+  alongside `manaTapSnapshot`.
+- **Resolution.** `resolveEff` effect key `addManaFromSacrificedValue` adds
+  `{B}` x `item.additionalCostPaid.card.cmc` to the caster's mana pool.
+  Instant speed, no target. Like all mana added outside a cast's own
+  payment, it is subject to `burnMana`'s existing "mana burns at every phase
+  boundary" rule (GDD Bug B6) if left unspent.
+
 ---
 
 # 8. Determinism Contract

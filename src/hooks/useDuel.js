@@ -45,8 +45,8 @@ dispatch({ type: "TAP_ART_MANA", who: "p", iid }), []);
 const playLand = useCallback((iid) =>
 dispatch({ type: "PLAY_LAND", who: "p", iid }), []);
 
-const castSpell = useCallback((iid, tgt = null, xVal = 1) =>
-dispatch({ type: "CAST_SPELL", who: "p", iid, tgt, xVal }), []);
+const castSpell = useCallback((iid, tgt = null, xVal = 1, additionalCostIid = null) =>
+dispatch({ type: "CAST_SPELL", who: "p", iid, tgt, xVal, additionalCostIid }), []);
 
 const resolveStack = useCallback(() =>
 dispatch({ type: "RESOLVE_STACK" }), []);

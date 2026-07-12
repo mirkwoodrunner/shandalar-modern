@@ -3232,6 +3232,16 @@ case "addBBySacrificedCmc": {
   ns = dlog(ns, `${card.name} adds ${cmcAmt}B.`, "mana");
   break;
 }
+case "addManaFromSacrificedValue": {
+  // Sacrifice: "...Add an amount of {B} equal to the sacrificed creature's mana value."
+  const mv = item.additionalCostPaid?.card?.cmc || 0;
+  if (mv > 0) {
+    const mp5 = { ...ns[caster].mana }; mp5.B = (mp5.B || 0) + mv;
+    ns = { ...ns, [caster]: { ...ns[caster], mana: mp5 } };
+  }
+  ns = dlog(ns, `${card.name} adds ${mv}B.`, "mana");
+  break;
+}
 case "preventDamage1AnyReturnEnd": {
   // Adapted from Card-Forge/forge (r/rakalite.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (tgt === 'p' || tgt === 'o') {
@@ -5265,7 +5275,7 @@ if (ns.pendingRiverDivide || ns.pendingRiverSides) {
   console.error('[DuelCore] CLEANUP: river division/siding still pending -- force clearing');
   ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: null };
 }
-ns = { ...ns, manaTapSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
+ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
 // Library of Leng: "You have no maximum hand size." See docs/MECHANICS_INDEX.md.
 const effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize;
@@ -6682,6 +6692,7 @@ pendingConditionalCounter: null,
 priorityWindow: false,
 priorityPasser: null,
 manaTapSnapshot: null,
+additionalCostSnapshot: null,
 pendingTutor: null,
 pendingTransmuteSacrifice: null,
 pendingTransmutePay: null,
@@ -6760,6 +6771,25 @@ case "UNDO_MANA_TAPS": {
     manaTapSnapshot: null,
   };
   return dlog(ns, "Mana taps undone.", "mana");
+}
+
+case "UNDO_ADDITIONAL_COST": {
+  const snap = s.additionalCostSnapshot;
+  if (!snap) return s;
+  if (snap.type === 'sacrificeCreature') {
+    const w = snap.card.controller ?? 'p';
+    const bf = [...s[w].bf];
+    let idx = snap.bfIndex;
+    if (idx < 0 || idx > bf.length) {
+      console.warn(`[DuelCore] UNDO_ADDITIONAL_COST: bfIndex ${snap.bfIndex} out of range, clamping`);
+      idx = Math.max(0, Math.min(idx, bf.length));
+    }
+    bf.splice(idx, 0, snap.card);
+    const gy = s[w].gy.filter(x => x.iid !== snap.card.iid);
+    const ns = { ...s, [w]: { ...s[w], bf, gy }, additionalCostSnapshot: null };
+    return dlog(ns, "Sacrifice undone.", "effect");
+  }
+  return s;
 }
 
 case "PLAY_LAND": {
@@ -6871,6 +6901,21 @@ case "CAST_SPELL": {
     : 0;
   if (!canPay(s[w].mana, c.cost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
+  // Additional cost to cast (Sacrifice): paid atomically as part of this same
+  // CAST_SPELL transaction, before mana payment. See ENGINE_CONTRACT_SPEC.md.
+  let additionalCostPaid = null;
+  if (c.additionalCost?.type === 'sacrificeCreature') {
+    const sacIdx = s[w].bf.findIndex(x => x.iid === action.additionalCostIid);
+    const sacCard = sacIdx >= 0 ? s[w].bf[sacIdx] : null;
+    if (!sacCard || !isCre(sacCard)) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} additional cost requires a creature the caster controls`);
+      return s;
+    }
+    s = { ...s, additionalCostSnapshot: { type: 'sacrificeCreature', card: { ...sacCard }, bfIndex: sacIdx } };
+    s = zMove(s, sacCard.iid, w, w, "gy");
+    s = dlog(s, `${w} sacrifices ${sacCard.name} as an additional cost.`, "effect");
+    additionalCostPaid = { type: 'sacrificeCreature', card: { ...sacCard } };
+  }
   s = { ...s, manaTapSnapshot: null };
   let manaAfterPay = payMana(s[w].mana, c.cost);
   if (xSpend > 0) {
@@ -6886,7 +6931,7 @@ case "CAST_SPELL": {
   }
   s = { ...s, [w]: { ...s[w], mana: manaAfterPay, hand: s[w].hand.filter(x => x.iid !== action.iid) } };
   const item = { id: makeId(), card: c, caster: w, targets: action.tgt ? [action.tgt] : [], xVal: action.xVal || s.xVal || 1,
-    fromColor: action.fromColor, toColor: action.toColor, fromKw: action.fromKw, toKw: action.toKw };
+    fromColor: action.fromColor, toColor: action.toColor, fromKw: action.fromKw, toKw: action.toKw, additionalCostPaid };
   if (w === "p") s = { ...s, spellsThisTurn: (s.spellsThisTurn || 0) + 1 };
   if (w === "p") s = { ...s, totalCardsCast: (s.totalCardsCast || 0) + 1 };
   const xSuffix = xSpend > 0 ? ` (X=${xSpend})` : '';
@@ -6903,7 +6948,7 @@ case "CAST_SPELL": {
     return '';
   })();
   let castState = dlog(
-    { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null },
+    { ...s, stack: [...s.stack, item], priorityWindow: true, priorityPasser: null, additionalCostSnapshot: null },
     `${w} casts ${c.name}${xSuffix}${tgtLabel}.`,
     "play"
   );

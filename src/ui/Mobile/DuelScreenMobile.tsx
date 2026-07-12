@@ -3,7 +3,7 @@
 // Reads from useDuel — same engine as desktop DuelScreen, no fork in data layer.
 
 import { useState, useCallback } from 'react';
-import { isLand, hasKw } from '../../engine/DuelCore.js';
+import { isLand, hasKw, isCre } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
@@ -82,7 +82,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     handleBfClick, pendingBlockerIid, setPendingBlockerIid,
     pendingMode, setPendingMode,
     castFlow, beginCastFlow, beginActivateFlow,
-    selectCastTarget, confirmCastTargets, cancelCastFlow,
+    selectCastTarget, selectAdditionalCost, confirmCastTargets, cancelCastFlow,
     adjustCastX, confirmCastX,
   } = useDuelController(config, handleDuelEndWithClear);
 
@@ -140,6 +140,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       return;
     }
 
+    // Sacrifice-as-additional-cost step: bf clicks pick the creature to
+    // sacrifice. Restricted to the caster's own creatures; anything else is a no-op.
+    if (castFlow?.mode === 'additionalCost') {
+      if (c.controller === 'p' && isCre(c)) selectAdditionalCost(card.iid);
+      return;
+    }
+
     // Mana-producing permanents: act immediately, no Activate button.
     if (!c.tapped) {
       // Black Lotus and any addMana3Any: sacrifice + choose color
@@ -170,7 +177,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       setSel(prev => prev?.iid === card.iid ? null : { iid: card.iid, zone: 'bf', card });
     }
     // Plain creatures / permanents with no activated ability: no action.
-  }, [handleBfClick, castFlow, selectCastTarget, activateAbility, tapArtifactMana]);
+  }, [handleBfClick, castFlow, selectCastTarget, selectAdditionalCost, activateAbility, tapArtifactMana]);
 
   const handleCancel = useCallback(() => {
     if (castFlow) {
@@ -598,6 +605,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             mode: castFlow.mode ?? 'targeting',
             targetLabel: castFlow.mode === 'targeting'
               ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
+              : castFlow.mode === 'additionalCost'
+              ? 'Choose a creature to sacrifice'
               : undefined,
             canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
             onSkip: confirmCastTargets,
