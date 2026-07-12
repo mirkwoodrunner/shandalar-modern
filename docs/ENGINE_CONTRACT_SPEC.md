@@ -643,6 +643,107 @@ creature's mana value.").
   payment, it is subject to `burnMana`'s existing "mana burns at every phase
   boundary" rule (GDD Bug B6) if left unspent.
 
+## 7.9 Creature Damage Shields (`hurtCreature` Choke Point)
+
+A single choke point for "an amount of damage is about to be dealt to a
+specific creature," added to unstub Jade Monolith and Personal Incarnation.
+Mirrors `hurt()`'s player-level `turnState.damageShields` system directly,
+but keyed by creature `iid` instead of player, and is a wholly separate,
+additive mechanism -- it does not touch, replace, or reorder `dmgWithShield()`
+(the pre-existing flat `damageShield` prevention system used at combat and 9
+other call sites), which remains checked afterward, unchanged.
+
+- `hurtCreature(state, targetIid, amt, src = "", meta = null)`
+  (src/engine/DuelCore.js, placed adjacent to `dmgWithShield`) is the sole
+  choke point for the raw `damage: c.damage + N` mutation pattern that used
+  to appear at 24 sites throughout `resolveEff` and one `ACTIVATE_ABILITY`
+  case (desertPing). It:
+  1. Looks up the target creature on either `state.p.bf` or `state.o.bf`;
+     not found: `console.error` and return state unchanged (same
+     not-found philosophy as `tapPermanent`/`discardCard`).
+  2. Calls `consumeCreatureDamageShields(state, targetIid, amt, meta)` to
+     get a `remainingAmt`.
+  3. If `remainingAmt > 0`, applies it as a raw `damage` mutation to the
+     target creature.
+  4. Calls `checkDeath(state)` once (unconditionally) and returns the
+     result -- migrated call sites no longer need their own trailing
+     `checkDeath` call.
+  - One exception was deliberately NOT migrated: the player-to-creature
+    damage redirect inside `hurt()`'s `getDamageRedirectTarget` branch (an
+    existing, unrelated mechanic where damage dealt to a PLAYER is
+    redirected to a creature they control) -- it stays a raw mutation.
+- `consumeCreatureDamageShields(state, targetIid, amt, srcMeta)` (exported,
+  placed immediately above `hurtCreature`) returns `{ state, remainingAmt }`.
+  Reads `state.turnState.creatureDamageShields[targetIid]` (a plain array,
+  absent/undefined treated as empty). Two entry shapes:
+  - **Exact-source, whole-amount redirect** (Jade Monolith):
+    `{ mode: 'redirect', chosenSourceIid, redirectToPlayer, shieldSourceIid, shieldSourceName }`.
+  - **Point redirect** (Personal Incarnation):
+    `{ mode: 'redirectPoint', redirectToPlayer, shieldSourceIid, shieldSourceName }`
+    -- no `chosenSourceIid`, matches any source.
+  - **Priority order, checked in sequence:**
+    1. Exact-source pass: if any entry has `mode === 'redirect'` and
+       `chosenSourceIid === srcMeta?.sourceIid`, that ONE entry is consumed
+       (removed from the array) and the ENTIRE `amt` is redirected via
+       `hurt(state, redirectToPlayer, amt, shieldSourceName, null)` (the
+       `meta: null` recursion guard mirrors `hurt()`'s own convention).
+       Returns `remainingAmt: 0` -- nothing left to apply to the creature.
+    2. Point-redirect pass, only reached if no exact-source match: while
+       `remainingAmt > 0`, repeatedly finds the first remaining
+       `mode === 'redirectPoint'` entry (array order = FIFO, i.e. add
+       order), consumes it, and redirects exactly 1 point via `hurt()`.
+       Stops when `remainingAmt` reaches 0 or no `redirectPoint` entries
+       remain. Non-matching `redirect`-mode entries encountered along the
+       way are left untouched (they may still match a later event this
+       turn from their actual chosen source).
+- `turnState.creatureDamageShields` is a plain object keyed by creature
+  `iid`, initialized to `{}` at both turnState construction sites (new-game
+  and end-of-turn `CLEANUP`) alongside the pre-existing `damageShields`, and
+  cleared the same way every turn -- shields do not persist across turns.
+- **The 9 `dmgWithShield()` call sites** (unchanged themselves) each gained
+  one inserted statement immediately before the existing call:
+  `consumeCreatureDamageShields` runs first against the target creature and
+  the raw `amount`, and the resulting `remainingAmt` (not the original
+  amount) is what gets passed into `dmgWithShield(c, remainingAmt)`. This
+  composes the two systems in a fixed order -- creature shield first, flat
+  `damageShield` second -- for: Tracker's two-way exchange (both sides),
+  Winter Blast's per-flier loop, Banshee's half-X split, Volcanic Eruption's
+  per-creature loop, and all 4 combat-damage sites (regular/first-strike x
+  attacker/blocker). Blocking order, first-strike sequencing, and every
+  other combat mechanic are untouched -- this is strictly an additional
+  damage-amount adjustment before the existing prevention math runs.
+- **Jade Monolith** (`chooseDamageShieldSourceForTarget`): shares
+  `buildDamageShieldPool` and the AI-vs-human branching with
+  `chooseDamageShieldSource` (Circle of Protection / Eye for an Eye /
+  Greater Realm of Preservation) via an extracted shared helper,
+  `resolveDamageShieldChoice(ns, card, caster, tgtC)`. When `tgtC` is
+  present, the resulting entry lands in
+  `turnState.creatureDamageShields[tgtC.iid]` with the `mode: 'redirect'`
+  shape (`redirectToPlayer` always the caster), instead of
+  `turnState.damageShields[caster]`. The human-choice path threads the
+  target through via an optional `tgtIid` field on `pendingDamageShieldChoice`,
+  read by `RESOLVE_DAMAGE_SHIELD_CHOICE` to pick which store/entry-shape to
+  write. Click-routing restricts the ability's target to a creature via
+  `isCreatureOnlyTarget`/`CREATURE_ONLY_TARGET_EFFECTS` (useDuelController.ts,
+  mirrors `isPlayerOnlyTarget`/`PLAYER_ONLY_TARGET_EFFECTS`'s shape) --
+  checked in both `DuelScreen.tsx` and `DuelScreenMobile.tsx`'s
+  `'targeting'`-mode battlefield click handler. The `!isCre(tgtC)` fizzle
+  inside the `chooseDamageShieldSourceForTarget` case itself is
+  defense-in-depth (the reducer is the trust boundary), not the primary
+  enforcement.
+- **Personal Incarnation** (`addCreatureDamageShieldSelf`): a `{0}`
+  activated ability, self-only, no target. Each activation pushes one more
+  `mode: 'redirectPoint'` entry onto `turnState.creatureDamageShields[card.iid]`
+  (`card` = the activating permanent itself). No per-activation limiter
+  exists in this engine (verified absent before this phase), so the ability
+  is freely repeatable in the same window like any other activated ability
+  -- stacking N activations arms N one-point shields for that turn. The
+  death-trigger clause ("When this creature dies, its owner loses half their
+  life, rounded up") reuses the pre-existing `loseHalfLifeRoundedUp` trigger
+  effect handler via a `triggeredAbilities` entry on the card
+  (`ON_CREATURE_DIES`, `scope: 'self'`) -- no engine change was needed for
+  that half.
+
 ---
 
 # 8. Determinism Contract

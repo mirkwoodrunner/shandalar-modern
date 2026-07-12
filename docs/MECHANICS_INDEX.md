@@ -4403,4 +4403,23 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.27
+## Creature Damage Centralization + Jade Monolith, Personal Incarnation — 2026-07-12
+
+**Infrastructure:** A single new choke point, `hurtCreature(state, targetIid, amt, src, meta)` (`DuelCore.js`, adjacent to `dmgWithShield`), for the raw `damage: c.damage + N` mutation pattern that used to appear at 24 sites across `resolveEff` and one `ACTIVATE_ABILITY` case (desertPing). Internally calls the new `consumeCreatureDamageShields(state, targetIid, amt, srcMeta)` first (checked against a new `turnState.creatureDamageShields` map, keyed by creature iid, mirroring `hurt()`'s player-level `turnState.damageShields` directly), applies any remaining amount as a raw mutation, then runs `checkDeath` once. All 9 pre-existing `dmgWithShield()` call sites (5 non-combat + 4 combat: regular/first-strike x attacker/blocker) gained one inserted `consumeCreatureDamageShields` call immediately before the existing call, feeding the reduced `remainingAmt` into `dmgWithShield` instead of the raw amount -- `dmgWithShield()` itself, and all combat blocking/first-strike/damage-assignment logic, is completely untouched. One site was deliberately NOT migrated: the player-to-creature damage redirect inside `hurt()`'s `getDamageRedirectTarget` branch (an existing, unrelated mechanic). See `docs/ENGINE_CONTRACT_SPEC.md` S7.9.
+
+**Jade Monolith** (`jade_monolith`, colorless Artifact, `{1}: The next time a source of your choice would deal damage to target creature this turn, that source deals that damage to you instead.`) -- new `chooseDamageShieldSourceForTarget` case, sharing pool-building and AI-vs-human branching with the existing `chooseDamageShieldSource` (Circle of Protection / Eye for an Eye / Greater Realm of Preservation) via an extracted `resolveDamageShieldChoice(ns, card, caster, tgtC)` helper. Produces an exact-source `mode:'redirect'` entry in `turnState.creatureDamageShields[tgtC.iid]` (always redirects to Jade Monolith's controller, regardless of which source is chosen). New click-routing guard, `isCreatureOnlyTarget`/`CREATURE_ONLY_TARGET_EFFECTS` (`useDuelController.ts`, mirrors `isPlayerOnlyTarget`), rejects non-creature battlefield clicks during this ability's targeting step in both `DuelScreen.tsx` and `DuelScreenMobile.tsx` -- the `!isCre(tgtC)` check inside the resolver case is defense-in-depth only. **Deviation worth flagging:** since Jade Monolith is an *activated ability* on a permanent (not a cast spell), the effect also had to be registered in `ACTIVATE_TARGET_EFFECTS` (the set that actually gates whether the ability's targeting UI opens) in addition to `EXPLICIT_TARGET_EFFECTS`; `isCreatureOnlyTarget` checks both `card.effect` and `card.activated.effect` for the same reason (every prior `PLAYER_ONLY_TARGET_EFFECTS`/`CREATURE_ONLY_TARGET_EFFECTS` member was a cast-time spell, where those are the same field). Both screens' `castingCard` lookup during targeting was also fixed to be `castFlow.kind`-aware (hand for spells, battlefield for abilities) -- the existing lookup was hand-only, a latent gap never exercised because no prior `PLAYER_ONLY_TARGET_EFFECTS` member was ever an activated-ability effect.
+
+**Personal Incarnation** (`personal_incarnation`, 6/6 W Creature — Avatar Incarnation, `{0}: The next 1 damage that would be dealt to this creature this turn is dealt to its owner instead. ... When this creature dies, its owner loses half their life, rounded up.`) -- new `addCreatureDamageShieldSelf` case (self-only, no target); each activation pushes one `mode:'redirectPoint'` entry onto `turnState.creatureDamageShields[card.iid]`. Freely repeatable in the same window (no per-activation limiter exists in this engine). The death-trigger clause reuses the pre-existing `loseHalfLifeRoundedUp` effect handler (already present in `DuelCore.js`, previously unwired) via a `triggeredAbilities` entry -- no engine change needed for that half.
+
+**Stub count: 7 -> 5.**
+
+**Tests:**
+- Vitest: `tests/scenarios/creature-damage-centralization.test.js` (35: CDMG-01 through CDMG-12 infrastructure, CDMG-P01 through CDMG-P08 migration parity, CDMG-S01 through CDMG-S09 dmgWithShield insertion sites, CARD-01 through CARD-06 Jade Monolith/Personal Incarnation).
+- Playwright: `tests/e2e/creature-damage-centralization.spec.ts` (6: Jade Monolith, Personal Incarnation, plain-combat regression, dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.28

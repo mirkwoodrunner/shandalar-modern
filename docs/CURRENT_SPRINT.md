@@ -39,6 +39,31 @@
   (`tests/e2e/stub-batch-rd-conv-stasis.spec.ts`, both viewports). See
   `docs/MECHANICS_INDEX.md` -- Stub Batch: Reverse Damage, Conversion,
   Stasis.
+- **Creature Damage Centralization + Jade Monolith, Personal Incarnation** --
+  new `hurtCreature`/`consumeCreatureDamageShields` choke point
+  (`turnState.creatureDamageShields`, keyed by creature iid) migrated 24 of
+  the 25 raw `damage: c.damage + N` sites in `DuelCore.js` off ad hoc inline
+  mutation (the 25th, inside `hurt()`'s pre-existing player-to-creature
+  redirect, was explicitly out of scope); the pre-existing flat
+  `dmgWithShield()` system gained a shield-check insertion at all 9 of its
+  own call sites (5 non-combat, 4 combat -- regular/first-strike x
+  attacker/blocker) but is otherwise untouched. Unblocks Jade Monolith
+  (exact-source whole-amount redirect to its controller, reusing
+  `chooseDamageShieldSource`'s picker machinery via a new
+  `chooseDamageShieldSourceForTarget` case and a shared
+  `resolveDamageShieldChoice` helper) and Personal Incarnation (freely
+  repeatable `{0}` point-redirect to its owner, plus a death-trigger clause
+  that turned out to need no engine change -- `loseHalfLifeRoundedUp` already
+  existed, just unwired). New click-routing guard,
+  `isCreatureOnlyTarget`/`CREATURE_ONLY_TARGET_EFFECTS`, added to both
+  `DuelScreen.tsx` and `DuelScreenMobile.tsx` for Jade Monolith's "target
+  creature" restriction. Stub count: **7 -> 5**; within the separate
+  not-yet-triaged lowercase-stub bucket, Jade Monolith drops out, leaving 3
+  (Animate Artifact, Gloom, Tawnos's Coffin). Tests: 35 Vitest
+  (`tests/scenarios/creature-damage-centralization.test.js`), 6 Playwright
+  (`tests/e2e/creature-damage-centralization.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.9 and `docs/MECHANICS_INDEX.md` --
+  Creature Damage Centralization + Jade Monolith, Personal Incarnation.
 
 ## Completed (2026-07-11)
 - **Discard Centralization Phase 1** -- all 14 ad hoc hand-to-gy discard

@@ -30,7 +30,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -337,8 +337,11 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
     // During an active cast/activate targeting step, all bf clicks route to selectCastTarget.
     if (castFlow?.mode === 'targeting' && (zone === 'pBf' || zone === 'oBf')) {
-      const castingCard = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      const castingCard = castFlow.kind === 'spell'
+        ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+        : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
       if (isPlayerOnlyTarget(castingCard)) return; // creature click is illegal for player-only effects
+      if (isCreatureOnlyTarget(castingCard) && !isCre(card)) return; // noncreature click is illegal for creature-only effects
       selectCastTarget(card.iid);
       return;
     }
