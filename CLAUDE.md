@@ -126,6 +126,24 @@ Never use `Math.random()` in gameplay logic. All randomness routes through the s
 Do not introduce smart quotes (`""`), em-dashes (`—`), or any non-ASCII characters
 into `.js` or `.jsx` files.
 
+### Background Process Hygiene
+Before committing or ending a session, check for stray background processes left
+over from test runs or polling loops: `ps -ef | grep -E "node|vite|playwright|chrome"`
+(excluding the harness's own process). Kill anything left over that isn't doing
+active work.
+
+Do not write `while pgrep -f "<pattern>"; do sleep N; done`-style polling loops to
+wait on another background command. The harness runs each backgrounded command
+inside a wrapper shell whose own command line contains the full command text, so
+a `pgrep -f` pattern matching the target process (e.g. `run-targeted.js`,
+`workerProcessEntry`) also matches the polling loop's own wrapper -- the loop
+never sees its target exit and spins forever, even after the real process is
+long gone. Instead:
+- Prefer waiting on the background task's own completion notification (the
+  harness delivers one automatically) over polling for it yourself.
+- If a wait is unavoidable, capture the target's PID at spawn time (`cmd & pid=$!`)
+  and poll `kill -0 "$pid"`, never a `pgrep -f` command-line substring.
+
 ## CLAUDE.md Scope Policy
 
 CLAUDE.md contains only agent operating rules and session-start constraints.
