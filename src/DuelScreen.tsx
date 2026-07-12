@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { isLand, isArt, isInst, hasKw, isCre } from './engine/DuelCore.js';
+import { isLand, isArt, isInst, hasKw, isCre, isProtectedFromSource } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 import KEYWORDS from './data/keywords.js';
 
@@ -319,6 +319,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return; // creature click is illegal for player-only effects
       if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(card)) return; // noncreature click is illegal for creature-only effects
       if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(card)) return; // non-land click is illegal for land-only effects
+      if (isCre(card) && castingCard && isProtectedFromSource(card, castingCard, s)) return; // protected from this source, illegal click target
       selectCastTarget(card.iid);
       return;
     }

@@ -895,6 +895,116 @@ gates the click), otherwise pushes a `{ shieldSourceIid: card.iid,
 shieldSourceName: card.name }` entry onto
 `turnState.landDestructionShields[tgtC.iid]`.
 
+## 7.11 Protection (DEBT) -- `isProtectedFromSource` + Artifact Ward
+
+Extends the pre-existing, color-only "protection from quality" system with an
+"artifact" type-based quality, and adds the T (targeting) and non-combat D
+(damage) legs of the DEBT model (Damage, Enchant/equip, Block, Target) that
+this codebase previously left unenforced. Artifact Ward is the first card to
+exercise the full set.
+
+- **`isProtectedFromSource(target, sourceCard, state)`** (exported,
+  `src/engine/DuelCore.js`, adjacent to `consumeCreatureDamageShields`) is
+  the sole new shared helper. Reads `target`'s protection through
+  `computeCharacteristics(target, state).protection` (not a raw
+  `target.protection` field read) so Aura-granted protection -- the Ward
+  cycle, Artifact Ward -- is respected. Returns `true` if `prot` contains
+  `'artifact'` and `isArt(sourceCard)`, or if `prot` contains a quality
+  matching `sourceCard`'s color (via the same `PROT_MAP` letter/word
+  fallback the 4 pre-existing combat sites already used). This is the ONLY
+  new shared function -- the 4 pre-existing color-only combat sites
+  (`canBlockDuel`, the two `resolveCombat` damage-prevention checks,
+  `DECLARE_BLOCKER`'s explicit check) each kept their own independent
+  `PROT_MAP`/`PROT_CMAP`/`PROT_COLOR_MAP` constant and gained one additional,
+  inline `artifact`-matching branch instead of being consolidated.
+  - `canBlockDuel` already read protection via `computeCharacteristics` when
+    `state` was passed; its color-match `.some()` calls gained an
+    `|| (q === 'artifact' && isArt(otherCreature))` branch.
+  - The two `resolveCombat` damage-prevention checks (`blockerProtectsFromAtt`
+    / `attackerProtectsFromBl`, one per first-strike/regular damage pass)
+    previously read protection from the RAW `bl.protection`/`att.protection`
+    field, which never carries an Aura's `mod.protection` -- only intrinsic
+    printed protection. The artifact leg of each flag is therefore computed
+    separately via `computeCharacteristics`, so a Ward-cycle-style Aura
+    attached mid-combat (after blocks are already declared, before damage)
+    is correctly caught by this backstop, not just by `canBlockDuel`'s
+    declare-time gate. The pre-existing color leg's data source is
+    unchanged.
+  - `DECLARE_BLOCKER`'s explicit check previously only ran `if
+    (att.protection)` (a raw-field truthy gate, which Aura-granted
+    protection never satisfies) and read `att.protection` directly. Both are
+    now sourced from `computeCharacteristics(att, s).protection`, with the
+    per-quality match extended to `quality === 'artifact' ? isArt(bl) :
+    bl.color === (PROT_COLOR_MAP[quality] || quality)`. The dlog message
+    format (`"<blocker> cannot block <attacker> (protection from
+    <quality>)."`) is unchanged.
+- **Non-combat damage** (T-adjacent D leg): `consumeCreatureDamageShields`
+  gained a protection check at the very top, before the existing
+  exact-source and point-redirect shield passes. Resolves the source card
+  via `srcMeta.sourceIid` across both battlefields (`getBF`) and the stack
+  (mirrors `buildDamageShieldPool`'s lookup). If
+  `isProtectedFromSource(targetCreature, sourceCard, state)`: prevents the
+  ENTIRE amount (`remainingAmt: 0`), logs `"<target> is protected from
+  <source> (protection from <quality>)."`, and does NOT touch
+  `turnState.creatureDamageShields` -- protection is a static property, not
+  a consumable resource, so a creature's other one-shot shields remain
+  armed for later, non-matching damage the same turn. Because this check
+  lives in the shared choke point, all 9 `dmgWithShield()` call sites (5
+  non-combat + the 4 combat sites) and every `hurtCreature` caller inherit
+  it for free -- no per-site change was needed beyond the 4 combat sites'
+  own `blockerProtectsFromAtt`/`attackerProtectsFromBl` flags (which also
+  gate deathtouch marking, lifelink, and trample overflow, so those still
+  needed their own artifact-aware computation; see above).
+- **Targeting legality** (T leg, wholly new): `CAST_SPELL` and the plain
+  single-ability `ACTIVATE_ABILITY` path (the `card.activated`-shaped
+  branch) each gained a preflight check: if `action.tgt`/`tgt` resolves to a
+  battlefield permanent (`getBF`) and `isProtectedFromSource(tgtPerm, card,
+  state)` is true, the cast/activation is rejected outright via `dlog` --
+  no stack item is constructed, no mana is spent, no cost is paid. Message
+  format: `"<card> can't target <permanent> (protection from
+  <quality>)."`. Placed before any cost payment (CAST_SPELL: before the
+  `xSpend`/`canPay` block; ACTIVATE_ABILITY: before the tap/mana cost
+  steps, alongside the existing sacArt/sacCre/counter2 preflight gates).
+  **Deliberately NOT touched**: the Pyramids-specific array-ability branch
+  (`activatedAbilities`, `destroyLandAura`/`preventLandDestructionOnce`) --
+  out of scope per this phase's boundary, confirmed via source inspection
+  in the test suite. `RESOLVE_STACK` / modal-choice resolution is never
+  re-checked -- the cast-time gate already covers legality before any modal
+  choice is presented.
+- **Click-time guard** (UI mirror of the T leg): both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx` import `isProtectedFromSource` directly from
+  `DuelCore.js` (rather than duplicating the color/artifact match logic
+  client-side) and add one new, unconditional guard --
+  `if (isCre(card) && castingCard && isProtectedFromSource(card,
+  castingCard, s)) return;` -- at the same targeting-mode click-routing
+  location as the existing `isPlayerOnlyTarget`/`isCreatureOnlyTarget`/
+  `isLandOnlyTarget` guards (3 call sites total: `DuelScreen.tsx`'s
+  `handleCardClick`, `DuelScreenMobile.tsx`'s `handleBfCardClick` and
+  `handleLandTap`). Unlike those three, there is no membership Set -- this
+  guard runs for every targeting click regardless of the casting card's
+  effect name, and correctly reads Aura-granted protection because
+  `isProtectedFromSource` is the same `computeCharacteristics`-backed
+  function used everywhere else.
+- **DEBT enforcement matrix** (this codebase, post-phase):
+
+  | Letter | Meaning | Enforced? | Where |
+  |---|---|---|---|
+  | D | Damage | Yes (combat + non-combat) | `resolveCombat` (2 sites), `consumeCreatureDamageShields` |
+  | E | Enchant/equip | **No** -- explicit non-goal | -- |
+  | B | Block | Yes | `canBlockDuel`, `DECLARE_BLOCKER` |
+  | T | Target | Yes | `CAST_SPELL`, `ACTIVATE_ABILITY` (plain path), click-time guard |
+
+  The "E" clause (protection from being enchanted/equipped) is intentionally
+  NOT implemented -- Artifact Ward's oracle text doesn't need it, and no
+  other card in the pool currently depends on it. A future card requiring E
+  should add its enforcement at the `enchantCreature`/equip attach sites
+  rather than assuming `isProtectedFromSource` already covers it -- it does
+  not.
+- **Qualities**: `KEYWORDS.PROTECTION.qualities` (`src/data/keywords.js`)
+  gained `"ARTIFACT"` alongside the 5 colors. This array is descriptive
+  metadata only -- nothing in the codebase consumes it programmatically
+  (verified before adding).
+
 ---
 
 # 8. Determinism Contract
