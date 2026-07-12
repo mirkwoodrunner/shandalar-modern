@@ -7,7 +7,7 @@ import { isLand, hasKw, isCre } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
+import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -134,8 +134,11 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
     // ── Cast/activate targeting mode — highest priority ──────────────────────
     if (castFlow?.mode === 'targeting') {
-      const castingCard = (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      const castingCard = castFlow.kind === 'spell'
+        ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+        : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
       if (isPlayerOnlyTarget(castingCard)) return; // creature click is illegal for player-only effects
+      if (isCreatureOnlyTarget(castingCard) && !isCre(c)) return; // noncreature click is illegal for creature-only effects
       selectCastTarget(card.iid);
       return;
     }

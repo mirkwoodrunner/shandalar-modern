@@ -91,10 +91,32 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   // Complex-tier Forge batch C3 (see THIRD_PARTY_NOTICES.md):
   'enchantLand',              // Farmstead (and Wild Growth/Kudzu/Evil Presence) -- "enchant land"
   'phantasmalTerrainEnchant', // Phantasmal Terrain -- "enchant land"
+  // Creature damage centralization batch:
+  'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature" (activated ability; see ACTIVATE_TARGET_EFFECTS below for the actual targeting-flow gate)
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
   return EXPLICIT_TARGET_EFFECTS.has(card?.effect);
+}
+
+// Effects whose oracle text restricts the target to a creature only. Used by
+// isCreatureOnlyTarget to reject illegal (non-creature) battlefield clicks at
+// the click-routing level for activated abilities whose targeting requirement
+// is otherwise driven by ACTIVATE_TARGET_EFFECTS below -- mirrors
+// PLAYER_ONLY_TARGET_EFFECTS/isPlayerOnlyTarget's shape exactly.
+export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
+  'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
+]);
+
+// Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
+// so far has been a cast-time spell effect, where the permanent record's own
+// top-level `effect` field IS the targeting effect. Jade Monolith is the first
+// member that is an *activated ability* on a permanent that has no top-level
+// `effect` of its own -- the targeting effect lives at card.activated.effect
+// instead (see beginActivateFlow's `const { effect } = ab` in this file). Check
+// both so the click-routing guard actually fires for ability-sourced entries.
+export function isCreatureOnlyTarget(card: any): boolean {
+  return CREATURE_ONLY_TARGET_EFFECTS.has(card?.effect) || CREATURE_ONLY_TARGET_EFFECTS.has(card?.activated?.effect);
 }
 
 // Effects whose oracle text restricts the target to player/planeswalker only.
@@ -245,6 +267,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   // Erosion reuses 'enchantCreature' (already registered above) for its "enchant land" attach.
   // Emblem infrastructure batch (see THIRD_PARTY_NOTICES.md):
   'cyclopeanTombMireCounter', // Cyclopean Tomb -- "target non-Swamp land"
+  // Creature damage centralization batch:
+  'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
