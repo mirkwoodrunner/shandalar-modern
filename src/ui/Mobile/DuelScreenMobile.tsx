@@ -7,7 +7,7 @@ import { isLand, hasKw, isCre } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, getManaShortfall } from '../../hooks/useDuelController';
+import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, getManaShortfall, normalizeAbilityCost } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -21,6 +21,7 @@ import { ConditionalCounterModal } from '../duel/ConditionalCounterModal';
 import { SphereTriggerModal } from '../duel/SphereTriggerModal';
 import { ChoiceModal } from '../duel/ChoiceModal';
 import { UPKEEP_CHOICE_MODALS } from '../duel/upkeepChoiceRegistry';
+import { AbilityMenuPopover } from '../duel/AbilityMenuPopover';
 import { usePersistence, clearDuel } from '../../hooks/usePersistence';
 
 import { Topbar } from './Topbar';
@@ -93,6 +94,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [abilityMenu, setAbilityMenu] = useState<{ card: any } | null>(null);
 
   // ── Card tap handler ───────────────────────────────────────────────────────
   const onCardTap = useCallback((card: CardData, zone: 'hand' | 'bf') => {
@@ -120,9 +122,40 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
   const handleActivateBf = useCallback(() => {
     if (!sel || sel.zone !== 'bf') return;
+    // Multi-ability cards (Mishra's Factory, Pyramids) need the player to pick
+    // which ability first -- beginActivateFlow(card, null) only resolves
+    // card.activated (the single-ability shape) and no-ops for these.
+    if ((sel.card as any).activatedAbilities) {
+      setAbilityMenu({ card: sel.card });
+      setSel(null);
+      return;
+    }
     beginActivateFlow(sel.card, null);
     setSel(null);
   }, [sel, beginActivateFlow]);
+
+  // ── Ability menu selection handler (Mishra's Factory, Pyramids, etc.) ──────
+  // Mirrors DuelScreen.tsx's handleAbilityMenuSelect.
+  const handleAbilityMenuSelect = useCallback((abilityId: string) => {
+    const card = abilityMenu?.card;
+    setAbilityMenu(null);
+    if (!card) return;
+    if (abilityId === 'tap_mana') {
+      tapLand(card.iid, card.produces?.[0] ?? 'C');
+      return;
+    }
+    const ab = (card.activatedAbilities ?? []).find((a: any) => a.id === abilityId);
+    if (!ab) return;
+    if (ab.effect === 'animateLand') {
+      activateAbility(card.iid, null, null, abilityId);
+      return;
+    }
+    // Any other array-sourced ability (Pyramids, Desert, pumpAssemblyWorker)
+    // routes through beginActivateFlow, which opens the castFlow targeting
+    // step for ACTIVATE_TARGET_EFFECTS members and dispatches immediately
+    // otherwise -- same branching as DuelScreen.tsx's handleAbilityMenuSelect.
+    beginActivateFlow(card, abilityId);
+  }, [abilityMenu, activateAbility, tapLand, beginActivateFlow]);
 
   // ── Battlefield card click dispatcher ─────────────────────────────────────
   const handleBfCardClick = useCallback((card: CardData) => {
@@ -137,8 +170,9 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       const castingCard = castFlow.kind === 'spell'
         ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
         : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
-      if (isPlayerOnlyTarget(castingCard)) return; // creature click is illegal for player-only effects
-      if (isCreatureOnlyTarget(castingCard) && !isCre(c)) return; // noncreature click is illegal for creature-only effects
+      if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return; // creature click is illegal for player-only effects
+      if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(c)) return; // noncreature click is illegal for creature-only effects
+      if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(c)) return; // non-land click is illegal for land-only effects
       selectCastTarget(card.iid);
       return;
     }
@@ -203,6 +237,20 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
   // ── Land tap helper ────────────────────────────────────────────────────────
   const handleLandTap = useCallback((card: CardData) => {
     const c = card as any;
+    // During an active cast/activate targeting step (e.g. Pyramids mode 2,
+    // "target land"), a land click must register as the target, not tap for
+    // mana -- mirrors handleBfCardClick's castFlow-targeting branch, which
+    // LandPip's dedicated tap-for-mana click handler otherwise bypasses.
+    if (castFlow?.mode === 'targeting') {
+      const castingCard = castFlow.kind === 'spell'
+        ? (s_state.p.hand as any[]).find((cc: any) => cc.iid === castFlow.sourceIid)
+        : (s_state.p.bf as any[]).find((cc: any) => cc.iid === castFlow.sourceIid);
+      if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return;
+      if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(c)) return;
+      if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(c)) return;
+      selectCastTarget(card.iid);
+      return;
+    }
     if (c.tapped) { onCardTap(card, 'bf'); return; }
     if (c.produces && c.produces.length === 1) {
       tapLand(card.iid, c.produces[0]);
@@ -211,7 +259,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     } else {
       onCardTap(card, 'bf');
     }
-  }, [tapLand, onCardTap]);
+  }, [tapLand, onCardTap, castFlow, s_state.p.hand, s_state.p.bf, selectCastTarget]);
 
   const selIid = sel?.iid ?? null;
 
@@ -317,6 +365,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           pendingChoice={s_state.pendingChoice}
           allBf={[...s_state.p.bf, ...s_state.o.bf]}
           onResolve={resolveChoice}
+        />
+      )}
+
+      {abilityMenu && (
+        <AbilityMenuPopover
+          card={abilityMenu.card}
+          onSelect={handleAbilityMenuSelect}
+          onClose={() => setAbilityMenu(null)}
         />
       )}
 
@@ -601,7 +657,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
             : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
           const cost = castFlow.kind === 'spell'
             ? sourceCard?.cost
-            : (castFlow.abilityId
+            : normalizeAbilityCost(castFlow.abilityId
                 ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
                 : sourceCard?.activated?.cost);
           return {

@@ -4422,4 +4422,25 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.28
+## Land Destruction Centralization + Pyramids — 2026-07-12
+
+**Infrastructure:** A single new choke point, `destroyLand(state, targetIid, src, meta)` (`DuelCore.js`, adjacent to `hurtCreature`), for the `zMove(..., "gy")` land-destroy pattern that used to appear at 9 sites across 8 mechanics. Checks a new `turnState.landDestructionShields` map (keyed by land iid, mirroring `creatureDamageShields`'s shape) first; if a shield entry exists, consumes the first one (FIFO) and the land survives with no `zMove`. Otherwise performs the `zMove` and logs either the caller-supplied `meta.message`, a default `"<src> destroys <land>."`, or nothing (for the four mass-destroy loops, which already log a single batch message). All 9 raw sites migrated: `destroyTargetLand` (also gained an `INDESTRUCTIBLE` check it did not previously have -- a rules-accuracy fix confirmed with the project owner), `destroyAllLands`/`destroyIslands`/`destroyPlains`/`destroyForests` (loop bodies), `kudzuUpkeep` (only the enchanted-land zMove; Kudzu's own two "falls off" zMoves are unmigrated), Erosion (AI branch + human `erosionUpkeep` choice-resolve), and `blightDestroyHost`. Four sacrifice sites (Balance, Elder Spawn, Leviathan x2) remain deliberately unmigrated raw `zMove` calls -- sacrifice and destruction are different actions in Magic's rules, and Pyramids' text says "destroyed." See `docs/ENGINE_CONTRACT_SPEC.md` S7.10.
+
+**Click-routing infrastructure:** A new `getEffectiveAbilityEffect(card, abilityId)` helper (`useDuelController.ts`) resolves a card's effective targeting effect across all three shapes this codebase uses (spell `card.effect`, single `card.activated.effect`, and Pyramids' new `card.activatedAbilities[]` array shape keyed by `abilityId`). `isPlayerOnlyTarget`/`isCreatureOnlyTarget` were refactored to use it (regression-tested against Jade Monolith, no behavior change). A new `LAND_ONLY_TARGET_EFFECTS`/`isLandOnlyTarget` pair mirrors `CREATURE_ONLY_TARGET_EFFECTS` exactly. Both screens gained a third click-routing guard line alongside the existing two.
+
+**Infrastructure gaps closed (load-bearing for Pyramids, not caused by it):** the `ACTIVATE_ABILITY` reducer's array-shaped-ability branch previously hardcoded exactly four effects and silently no-op'd for anything else -- gained a generic branch dispatching through `resolveEff`. Array-shaped ability costs (`{generic:N}` objects) were being read as raw mana-cost strings at three sites (two in `useDuelController.ts`'s cast-flow mana checks, one in each screen's `castPrompt.costNeeded` display, the last of which crashed the whole React tree via `<Cost>`'s `cost.replace`) -- fixed with an exported `normalizeAbilityCost` helper. Mobile had no multi-ability "choose one" picker at all (`AbilityMenuPopover` existed only in `DuelScreen.tsx`, so `activatedAbilities`-array cards, including the pre-existing Mishra's Factory, silently no-op'd on mobile's Activate button) -- extracted to a shared `src/ui/duel/AbilityMenuPopover.tsx` and wired into `DuelScreenMobile.tsx`. Mobile's dedicated land tap-for-mana click handler (`handleLandTap`, used by `LandPip`) bypassed `castFlow` targeting entirely -- fixed to check targeting mode first, since Pyramids mode 2 is the first ability requiring a land click as a target on mobile.
+
+**Pyramids** (`pyramids`, colorless Artifact, `{2}: Choose one -- Destroy target Aura attached to a land. / The next time target land would be destroyed this turn, remove all damage marked on it instead.`) -- `activatedAbilities: [{id:"pyramids_destroy_aura", cost:{generic:2}, effect:"destroyLandAura"}, {id:"pyramids_prevent_destruction", cost:{generic:2}, effect:"preventLandDestructionOnce"}]`. Mode 1 reuses Savaen Elves' `destroyLandAura` effect completely unchanged (no new engine code, no change to its own pre-existing targeting gap). Mode 2's new `preventLandDestructionOnce` case fizzles on a non-land target (defense-in-depth) and otherwise pushes a shield entry onto `turnState.landDestructionShields[tgtC.iid]`.
+
+**Stub count: 6 -> 5.**
+
+**Tests:**
+- Vitest: `tests/scenarios/land-destruction-pyramids.test.js` (25: LAND-01 through LAND-09 infrastructure, LAND-P01 through LAND-P09 migration parity, LAND-R01 through LAND-R04 sacrifice-boundary regression, PYR-01 through PYR-03 Pyramids).
+- Playwright: `tests/e2e/land-destruction-pyramids.spec.ts` (4: mode 2 shield, mode 2 targeting restriction, dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.29

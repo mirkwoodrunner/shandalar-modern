@@ -479,6 +479,36 @@ export function hurtCreature(state, targetIid, amt, src = "", meta = null) {
   return checkDeath(ns);
 }
 
+// Land-destruction choke point (Pyramids): checks turnState.landDestructionShields
+// first, consuming the FIRST entry (FIFO) if present -- the land survives and no
+// zMove happens. Otherwise moves the land to its owner's graveyard as before.
+// The sole migration target for what used to be ad hoc zMove(...,"gy") calls
+// scattered across 8 land-destroy mechanics. `src`, when given, produces the
+// default "<src> destroys <land>." dlog; pass meta.message to override with a
+// site's exact pre-existing wording, or omit both to stay silent (mass-destroy
+// loops that already log their own single batch message). See
+// docs/ENGINE_CONTRACT_SPEC.md -- Land Destruction.
+export function destroyLand(state, targetIid, src = "", meta = null) {
+  const inP = state.p.bf.some(c => c.iid === targetIid);
+  const inO = state.o.bf.some(c => c.iid === targetIid);
+  if (!inP && !inO) {
+    console.error(`[DuelCore] destroyLand: target ${targetIid} not found`);
+    return state;
+  }
+  const side = inP ? 'p' : 'o';
+  const tgtC = state[side].bf.find(c => c.iid === targetIid);
+  const shields = state.turnState.landDestructionShields?.[targetIid] || [];
+  if (shields.length) {
+    const [shield, ...rest] = shields;
+    const ns = { ...state, turnState: { ...state.turnState, landDestructionShields: { ...state.turnState.landDestructionShields, [targetIid]: rest } } };
+    return dlog(ns, `${shield.shieldSourceName}: ${tgtC.name} is not destroyed.`, 'effect');
+  }
+  let ns = zMove(state, targetIid, side, side, "gy");
+  const message = meta?.message ?? (src ? `${src} destroys ${tgtC.name}.` : null);
+  if (message) ns = dlog(ns, message, "effect");
+  return ns;
+}
+
 export function hurt(s, who, amt, src = "", meta = null) {
 // Lich: "If you would gain life, draw that many cards instead."
 // Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -1374,7 +1404,10 @@ if (tgtC && (isArt(tgtC) || isEnch(tgtC))) {
 break;
 }
 case "destroyTargetLand": {
-if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+if (tgtC && isLand(tgtC)) {
+  if (hasKw(tgtC, KEYWORDS.INDESTRUCTIBLE.id, ns)) { ns = dlog(ns, `${tgtC.name} is indestructible.`, 'effect'); break; }
+  ns = destroyLand(ns, tgtC.iid, card.name);
+}
 else { ns = dlog(ns, `${card.name} fizzles -- no valid land target.`, "effect"); }
 break;
 }
@@ -1443,7 +1476,7 @@ break;
 }
 case "destroyAllLands": {
 ns = dlog(ns, "Armageddon — all lands destroyed!", "effect");
-for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isLand)) ns = zMove(ns, c.iid, w, w, "gy");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isLand)) ns = destroyLand(ns, c.iid);
 break;
 }
 case "destroyAllEnchantments": {
@@ -1452,12 +1485,12 @@ ns = dlog(ns, `${card.name} destroys all enchantments.`, "effect");
 break;
 }
 case "destroyIslands": {
-for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Island"))) ns = zMove(ns, c.iid, w, w, "gy");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Island"))) ns = destroyLand(ns, c.iid);
 ns = dlog(ns, `${card.name} destroys all Islands.`, "effect");
 break;
 }
 case "destroyPlains": {
-for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Plains"))) ns = zMove(ns, c.iid, w, w, "gy");
+for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(c => isLand(c) && c.subtype?.includes("Plains"))) ns = destroyLand(ns, c.iid);
 ns = dlog(ns, `${card.name} destroys all Plains.`, "effect");
 break;
 }
@@ -2106,7 +2139,7 @@ break;
 case "destroyForests": {
 for (const w of ['p', 'o']) {
   const forests = [...ns[w].bf.filter(c => isLand(c) && c.subtype?.toLowerCase().includes('forest'))];
-  for (const f of forests) ns = zMove(ns, f.iid, w, w, 'gy');
+  for (const f of forests) ns = destroyLand(ns, f.iid);
 }
 ns = dlog(ns, `${card.name}: all Forests destroyed.`, 'effect');
 break;
@@ -2338,6 +2371,17 @@ if (tgtC && tgtC.enchantedLandIid) {
   }
   if (!found) ns = dlog(ns, `${card.name} fizzles -- no valid land Aura target.`, "effect");
 }
+break;
+}
+// Pyramids mode 2: "The next time target land would be destroyed this turn,
+// remove all damage marked on it instead." Pushes a shield entry consumed by
+// destroyLand(). Land-only targeting is enforced pre-resolution by
+// isLandOnlyTarget's click-routing guard -- this check is defense-in-depth,
+// matching the established convention (unreachable through normal play).
+case "preventLandDestructionOnce": {
+if (!tgtC || !isLand(tgtC)) { ns = dlog(ns, `${card.name} fizzles -- no valid land target.`, "effect"); break; }
+ns = { ...ns, turnState: { ...ns.turnState, landDestructionShields: { ...ns.turnState.landDestructionShields, [tgtC.iid]: [...(ns.turnState.landDestructionShields?.[tgtC.iid] || []), { shieldSourceIid: card.iid, shieldSourceName: card.name }] } } };
+ns = dlog(ns, `${card.name} shields ${tgtC.name} against destruction.`, "effect");
 break;
 }
 case "jadeStatue": {
@@ -4897,8 +4941,7 @@ if (w === ns.active && isLand(c) && erosionAura) {
     } else if (ns.o.life > 1) {
       ns = hurt(ns, "o", 1, "Erosion", { sourceIid: erosionAura.iid, sourceType: 'enchantment' });
     } else {
-      ns = zMove(ns, c.iid, w, w, "gy");
-      ns = dlog(ns, "Erosion destroys the enchanted land.", "effect");
+      ns = destroyLand(ns, c.iid, "", { message: "Erosion destroys the enchanted land." });
     }
   } else {
     ns = queueUpkeepChoice(ns, { cardName: "Erosion", handlerKey: "erosionUpkeep", iid: c.iid });
@@ -5088,8 +5131,7 @@ case "kudzuUpkeep": {
     break;
   }
   const landCtrl = enchLand.controller;
-  ns = zMove(ns, enchLand.iid, landCtrl, landCtrl, "gy");
-  ns = dlog(ns, `Kudzu destroys ${enchLand.name}.`, "effect");
+  ns = destroyLand(ns, enchLand.iid, "Kudzu");
   const remLands = ns[landCtrl].bf.filter(isLand);
   if (remLands.length) {
     const seed = (ns.turn * 37 + remLands.length * 13) % remLands.length;
@@ -5392,7 +5434,7 @@ if (ns.pendingRiverDivide || ns.pendingRiverSides) {
   console.error('[DuelCore] CLEANUP: river division/siding still pending -- force clearing');
   ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: null };
 }
-ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
+ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
 // Library of Leng: "You have no maximum hand size." See docs/MECHANICS_INDEX.md.
 const effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize;
@@ -5920,8 +5962,7 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       const hostIid = sourceCard.enchantedLandIid;
       const hostOwner = ['p','o'].find(w => state[w].bf.some(c => c.iid === hostIid));
       if (!hostOwner) return state;
-      let s = zMove(state, hostIid, hostOwner, hostOwner, "gy");
-      return dlog(s, "Blight destroys the enchanted land.", 'effect');
+      return destroyLand(state, hostIid, "", { message: "Blight destroys the enchanted land." });
     }
     // Psychic Venom: "Whenever enchanted land becomes tapped, this Aura deals
     // 2 damage to that land's controller."
@@ -6432,8 +6473,7 @@ const UPKEEP_CHOICE_HANDLERS = {
         const erosionAura = getBF(s, choice.iid)?.enchantments?.find(e => e.name === "Erosion");
         return hurt(s, owner, 1, "Erosion", erosionAura ? { sourceIid: erosionAura.iid, sourceType: 'enchantment' } : null);
       }
-      const ns = zMove(s, choice.iid, owner, owner, "gy");
-      return dlog(ns, "Erosion destroys the enchanted land.", "effect");
+      return destroyLand(s, choice.iid, "", { message: "Erosion destroys the enchanted land." });
     },
   },
   // Cosmic Horror: "destroy unless pay {3}{B}{B}{B}." choice.iid is the creature.
@@ -6778,7 +6818,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {}, endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {}, endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
 triggerQueue: [],
 pendingChoice: null,
 // Suspends processTriggerQueue for a triggered ability that needs a fresh
@@ -7510,6 +7550,21 @@ case "ACTIVATE_ABILITY": {
       ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [ab.walkKeyword] }] } : c) } };
       ns = hurt(ns, w, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
       return dlog(ns, `${card.name} gains ${ab.walkName} until end of turn.`, "effect");
+    }
+
+    // Pyramids: "{2}: Choose one -- Destroy target Aura attached to a land. /
+    // The next time target land would be destroyed this turn, remove all damage
+    // marked on it instead." Both modes resolve immediately (no stack), matching
+    // this array branch's convention for its other members, and dispatch through
+    // resolveEff's shared destroyLandAura/preventLandDestructionOnce cases so the
+    // targeting/fizzle logic isn't duplicated here.
+    if (ab.effect === "destroyLandAura" || ab.effect === "preventLandDestructionOnce") {
+      const cost = String(ab.cost?.generic ?? 0);
+      if (!canPay(s[w].mana, cost)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+      if (!tgt) return dlog(s, `No target selected for ${card.name}.`, "info");
+      const ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, cost) } };
+      const abItem = { id: makeId(), card: { ...card, effect: ab.effect }, caster: w, targets: [tgt], xVal: 1 };
+      return resolveEff(ns, abItem);
     }
 
     return s;

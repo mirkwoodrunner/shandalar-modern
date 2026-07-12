@@ -9,6 +9,41 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-12)
+- **Land Destruction Centralization + Pyramids** -- new
+  `destroyLand(state, targetIid, src, meta)` choke point
+  (`turnState.landDestructionShields`, keyed by land iid) migrated all 9 raw
+  `zMove(..., "gy")` land-destroy sites off ad hoc inline mutation:
+  `destroyTargetLand` (Stone Rain-style single target -- also gained an
+  `INDESTRUCTIBLE` check it did not previously have, a rules-accuracy fix),
+  `destroyAllLands`/`destroyIslands`/`destroyPlains`/`destroyForests`
+  (Armageddon/Flashfires-cycle mass-destroy loops), `kudzuUpkeep` (enchanted
+  land only -- Kudzu's own "falls off" zMoves are unrelated and untouched),
+  Erosion (AI branch + human `erosionUpkeep` choice-resolve), and
+  `blightDestroyHost`. Four sacrifice sites (Balance's excess-land trim,
+  Elder Spawn's Island-sacrifice upkeep, Leviathan's two-Island sacrifice
+  upkeep x2) were deliberately left as raw, unmigrated `zMove` calls --
+  sacrifice and destruction are different actions in Magic's rules, and
+  Pyramids' text says "destroyed." A new `getEffectiveAbilityEffect` helper
+  (`useDuelController.ts`) generalizes the click-routing target-type guards
+  (`isPlayerOnlyTarget`/`isCreatureOnlyTarget`, now also `isLandOnlyTarget`)
+  across all three targeting-effect shapes this codebase uses, including
+  Pyramids' new `activatedAbilities[]` array shape. Closed three
+  load-bearing, previously-dormant gaps in the array-shaped-ability
+  machinery along the way (none caused by this phase; all first hit by
+  Pyramids being the first array-ability that both targets and costs mana):
+  the `ACTIVATE_ABILITY` reducer's array branch silently no-op'd for any
+  effect outside four hardcoded names; array-shaped `{generic:N}` costs were
+  read as raw mana-cost strings at three sites, one of which crashed the
+  React tree; and mobile had no multi-ability "choose one" picker at all
+  (silently broken for the pre-existing Mishra's Factory too), plus its
+  dedicated land-tap-for-mana handler bypassed cast-flow targeting entirely.
+  Unstubs Pyramids: mode 1 reuses Savaen Elves' `destroyLandAura` completely
+  unchanged; mode 2 (`preventLandDestructionOnce`) is new. Stub count:
+  **6 -> 5**. Tests: 25 Vitest
+  (`tests/scenarios/land-destruction-pyramids.test.js`), 4 Playwright
+  (`tests/e2e/land-destruction-pyramids.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` S7.10 and `docs/MECHANICS_INDEX.md` --
+  Land Destruction Centralization + Pyramids.
 - **Stub Batch: Reverse Damage, Conversion, Stasis** -- three small,
   data-driven cards batched together (no shared code between them). Reverse
   Damage reuses `chooseDamageShieldSource` (Eye for an Eye's shape) with a new
