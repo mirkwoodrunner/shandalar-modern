@@ -520,15 +520,22 @@ export function useDuelController(
       return;
     }
 
-    // Non-empty stack: the existing stack-resolution effects own this, not us.
-    if (s.stack && s.stack.length > 0) return;
-
+    // Open priority window: pass ours first. This must run before the
+    // stack-non-empty guard below -- with items on the stack and the window
+    // open awaiting the player's pass, the old ordering returned here every
+    // render and the loop could never make progress. See
+    // docs/MECHANICS_INDEX.md, Bug Fix: End Turn Stack-Priority Deadlock.
     if (s.priorityWindow) {
       if (s.priorityPasser !== 'p') passPriority('p');
       // Else: player already passed, waiting on the AI side -- do nothing, the
       // existing priority-window-close effect will advance once both pass.
       return;
     }
+
+    // Non-empty stack with the window already closed: the existing
+    // stack-resolution effects (priority-window-close effect / stack-length
+    // watcher) own this, not us.
+    if (s.stack && s.stack.length > 0) return;
 
     // The render where priorityWindow just flipped true -> false is owned by the
     // existing priority-window-close effect (it calls resolveStack()/advancePhase()
