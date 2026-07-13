@@ -104,13 +104,11 @@ function useAnimFrame(frameCount, intervalMs = 600, hold = false) {
 function tileBackground(cell) {
   if (!cell.revealed) return '#050302';
   if (cell.type === 'WALL') return '#0d0b09';
-  return '#2a2218';
+  return '#1e1811';
 }
 
-function tileBorder(cell) {
-  if (!cell.revealed) return 'none';
-  if (cell.type === 'WALL') return 'none';
-  return '1px solid #1a1408';
+function tileBorder() {
+  return 'none';
 }
 
 // Returns true if any cardinal neighbor has lit:true (for torch tint)
@@ -131,14 +129,29 @@ function EnemyToken({ entity }) {
   const frame = useAnimFrame(4, 600);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-      <img
-        src={spriteUrl(`${base}_f${frame}`)}
-        alt={entity.name || 'enemy'}
-        style={{
-          ...spriteStyle,
-          filter: 'drop-shadow(0 0 4px #cc2020)',
-        }}
-      />
+      <div style={{ position: 'relative', width: TILE_SIZE, height: TILE_SIZE }}>
+        <div style={{
+          position: 'absolute',
+          bottom: 1,
+          left: '15%',
+          right: '15%',
+          height: 4,
+          borderRadius: '50%',
+          background: 'rgba(0,0,0,0.6)',
+          filter: 'blur(1px)',
+          zIndex: 1,
+        }} />
+        <img
+          src={spriteUrl(`${base}_f${frame}`)}
+          alt={entity.name || 'enemy'}
+          style={{
+            ...spriteStyle,
+            position: 'relative',
+            zIndex: 2,
+            filter: 'drop-shadow(0 0 4px #cc2020)',
+          }}
+        />
+      </div>
       <span style={{
         fontSize: 6, color: '#e06060',
         fontFamily: "'Cinzel', serif",
@@ -146,6 +159,7 @@ function EnemyToken({ entity }) {
         maxWidth: TILE_SIZE - 2,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         textAlign: 'center',
+        marginTop: 2,
       }}>{entity.name}</span>
     </div>
   );
@@ -156,34 +170,64 @@ function TreasureToken({ entity }) {
   const baseAnim = hasCard ? 'chest_full_open_anim' : 'chest_empty_open_anim';
   const frame = useAnimFrame(3, 400, true); // 3-frame, hold on last
   return (
-    <img
-      src={spriteUrl(`${baseAnim}_f${frame}`)}
-      alt="treasure"
-      style={{
-        ...spriteStyle,
-        filter: 'drop-shadow(0 0 4px #c0a020)',
-        zIndex: 2,
-      }}
-    />
+    <div style={{ position: 'relative', width: TILE_SIZE, height: TILE_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        position: 'absolute',
+        bottom: 1,
+        left: '10%',
+        right: '10%',
+        height: 4,
+        borderRadius: '50%',
+        background: 'rgba(0,0,0,0.65)',
+        filter: 'blur(1px)',
+        zIndex: 1,
+      }} />
+      <img
+        src={spriteUrl(`${baseAnim}_f${frame}`)}
+        alt="treasure"
+        style={{
+          ...spriteStyle,
+          position: 'relative',
+          zIndex: 2,
+          filter: 'drop-shadow(0 0 4px #c0a020)',
+        }}
+      />
+    </div>
   );
 }
 
 function ExitToken() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-      <img
-        src={spriteUrl('floor_ladder')}
-        alt="exit"
-        style={{
-          ...spriteStyle,
-          filter: 'drop-shadow(0 0 6px rgba(255,255,200,.95))',
-          animation: 'exitPulse 1.8s ease-in-out infinite',
-        }}
-      />
+      <div style={{ position: 'relative', width: TILE_SIZE, height: TILE_SIZE }}>
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: '15%',
+          right: '15%',
+          height: 4,
+          borderRadius: '50%',
+          background: 'rgba(0,0,0,0.6)',
+          filter: 'blur(1px)',
+          zIndex: 1,
+        }} />
+        <img
+          src={spriteUrl('floor_ladder')}
+          alt="exit"
+          style={{
+            ...spriteStyle,
+            position: 'relative',
+            zIndex: 2,
+            filter: 'drop-shadow(0 0 6px rgba(255,255,200,.95))',
+            animation: 'exitPulse 1.8s ease-in-out infinite',
+          }}
+        />
+      </div>
       <span style={{
         fontSize: 6, color: '#d0d0c0',
         fontFamily: "'Cinzel', serif",
         lineHeight: 1.1,
+        marginTop: 2,
       }}>EXIT</span>
     </div>
   );
@@ -198,20 +242,29 @@ function EntityToken({ entity }) {
 
 // --- PLAYER TOKEN -------------------------------------------------------------
 
-function PlayerToken() {
+function PlayerToken({ style }) {
   const frame = useAnimFrame(4, 600);
   return (
     <div style={{
-      position: 'absolute', inset: 0,
+      ...style,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      animation: 'wizPulse 2s ease-in-out infinite',
       zIndex: 10,
-      filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))',
     }}>
+      <div style={{
+        position: 'absolute',
+        bottom: 2,
+        left: '15%',
+        right: '15%',
+        height: 5,
+        borderRadius: '50%',
+        background: 'rgba(0,0,0,0.65)',
+        filter: 'blur(1.5px)',
+        zIndex: 1,
+      }} />
       <img
         src={spriteUrl(`wizzard_f_idle_anim_f${frame}`)}
         alt="player"
-        style={spriteStyle}
+        style={{ ...spriteStyle, position: 'relative', zIndex: 2, filter: 'drop-shadow(0 0 6px rgba(255,220,80,.9))' }}
       />
     </div>
   );
@@ -226,10 +279,10 @@ function DPadButton({ label, onClick }) {
       style={{
         width: 36,
         height: 36,
-        background: 'rgba(80,50,10,0.6)',
-        border: '1px solid rgba(200,160,40,0.4)',
+        background: 'linear-gradient(135deg, rgba(80,50,10,0.7), rgba(40,25,5,0.85))',
+        border: '1px solid var(--brass, #c4a040)',
         borderRadius: 4,
-        color: '#c0a040',
+        color: 'var(--brass, #c4a040)',
         fontSize: 16,
         cursor: 'pointer',
         display: 'flex',
@@ -237,6 +290,18 @@ function DPadButton({ label, onClick }) {
         justifyContent: 'center',
         fontFamily: "'Cinzel', serif",
         lineHeight: 1,
+        boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.color = 'var(--brass-hi, #ffe080)';
+        e.currentTarget.style.borderColor = 'var(--brass-hi, #ffe080)';
+        e.currentTarget.style.boxShadow = '0 0 6px var(--brass-glow, rgba(196,160,64,.4))';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.color = 'var(--brass, #c4a040)';
+        e.currentTarget.style.borderColor = 'var(--brass, #c4a040)';
+        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
       }}
       onMouseDown={e => e.preventDefault()}
     >
@@ -245,7 +310,20 @@ function DPadButton({ label, onClick }) {
   );
 }
 
+// --- WALL FACADE SHADOW --------------------------------------------------------
+
+// Pure function: true when a revealed floor cell sits directly south of a
+// revealed wall cell, meaning it should carry a top-down "wall facade" shadow.
+function shouldRenderFacadeShadow(grid, x, y) {
+  const cell = grid[y]?.[x];
+  if (!cell || cell.type === 'WALL' || !cell.revealed) return false;
+  const northCell = grid[y - 1]?.[x];
+  return !!(northCell && northCell.type === 'WALL' && northCell.revealed);
+}
+
 // --- DUNGEON MAP --------------------------------------------------------------
+
+const TORCH_RADIUS = TILE_SIZE * 2.2;
 
 export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInteract }) {
   // Keyboard handler - Arrow keys + WASD
@@ -285,8 +363,15 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.45; }
         }
+        @keyframes torchGlowFlicker {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          25%       { opacity: 0.96; transform: scale(1.015); }
+          50%       { opacity: 0.99; transform: scale(0.985); }
+          75%       { opacity: 0.94; transform: scale(1.02); }
+        }
       `}</style>
       <div style={{
+        position: 'relative',
         display: 'grid',
         gridTemplateColumns: `repeat(${dungeon.width}, ${TILE_SIZE}px)`,
         gridTemplateRows:    `repeat(${dungeon.height}, ${TILE_SIZE}px)`,
@@ -295,7 +380,6 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
         flexShrink: 0,
       }}>
         {cells.map(({ cell, x, y }) => {
-          const isPlayer = x === playerPos.x && y === playerPos.y;
           const entity   = entityMap[`${x},${y}`];
           const showEntity = cell.revealed && entity && !entity.defeated && !entity.collected;
 
@@ -303,6 +387,9 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
           const litTint = cell.revealed && cell.type !== 'WALL' && isAdjacentToLit(dungeon.grid, x, y)
             ? 'rgba(255,160,40,0.08)'
             : null;
+
+          // Wall facade shadow for floor cells directly south of a wall
+          const hasFacadeShadow = shouldRenderFacadeShadow(dungeon.grid, x, y);
 
           // Sprite selection
           let tileSprite = null;
@@ -358,14 +445,50 @@ export default function DungeonMap({ dungeon, playerPos, onMove, onEntityInterac
                 }} />
               )}
 
+              {/* Wall facade shadow */}
+              {hasFacadeShadow && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0,
+                  height: '55%',
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.35), transparent)',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }} />
+              )}
+
               {/* Entity token */}
               {showEntity && <EntityToken entity={entity} />}
-
-              {/* Player wizard token */}
-              {isPlayer && <PlayerToken />}
             </div>
           );
         })}
+
+        {/* Torchlight fog-of-war mask, follows player with smooth transition */}
+        <div style={{
+          position: 'absolute',
+          left: playerPos.x * TILE_SIZE + TILE_SIZE / 2 - TORCH_RADIUS,
+          top: playerPos.y * TILE_SIZE + TILE_SIZE / 2 - TORCH_RADIUS,
+          width: TORCH_RADIUS * 2,
+          height: TORCH_RADIUS * 2,
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          zIndex: 20,
+          transition: 'left 0.15s ease-out, top 0.15s ease-out',
+          background: 'radial-gradient(circle, rgba(255,200,120,0.16) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 60%)',
+          boxShadow: '0 0 0 9999px rgba(0,0,0,0.88)',
+          animation: 'torchGlowFlicker 2.4s ease-in-out infinite',
+        }} />
+
+        {/* Player wizard token, absolutely positioned and slides between cells */}
+        <PlayerToken style={{
+          position: 'absolute',
+          left: playerPos.x * TILE_SIZE,
+          top: playerPos.y * TILE_SIZE,
+          width: TILE_SIZE,
+          height: TILE_SIZE,
+          transition: 'left 0.15s ease-out, top 0.15s ease-out',
+          zIndex: 10,
+        }} />
       </div>
 
       {/* D-pad for mouse/touch users */}
