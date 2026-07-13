@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
 import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
 const { aiDecide, AI_PROFILES } = AIModule;
-import { isLand, isCre, isArt, canPay, parseMana } from '../engine/DuelCore.js';
+import { isLand, isCre, isArt, canPay, parseMana, applyCostTax } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
 import type { DuelConfig } from '../types/duel';
 import type { CardData } from '../ui/Card/types';
@@ -1038,7 +1038,7 @@ export function useDuelController(
         ? (s.xVal || 1)
         : 0;
       const tgt = flow.selectedTargets[0] ?? null;
-      if (canPay(s.p.mana, card.cost, xSpend)) {
+      if (canPay(s.p.mana, applyCostTax(card.cost, card, s), xSpend)) {
         castSpell(flow.sourceIid, tgt, s.xVal, flow.additionalCostSelection ?? undefined);
         setCastFlow(null);
         selectCard(null);
@@ -1053,9 +1053,10 @@ export function useDuelController(
         : card?.activated;
       if (!card || !ab) { setCastFlow(null); return; }
       const cost = normalizeAbilityCost(ab.cost);
+      const taxedCost = applyCostTax(cost, card, s, true);
       const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
       const tgt = flow.selectedTargets[0] ?? null;
-      if (!cost || canPay(s.p.mana, cost, xSpend)) {
+      if (!cost || canPay(s.p.mana, taxedCost, xSpend)) {
         activateAbility(flow.sourceIid, tgt, null, flow.abilityId ?? undefined);
         setCastFlow(null);
         selectCard(null);
@@ -1106,7 +1107,7 @@ export function useDuelController(
       const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
         ? (s.xVal || 1)
         : 0;
-      if (canPay(s.p.mana, card.cost, xSpend)) {
+      if (canPay(s.p.mana, applyCostTax(card.cost, card, s), xSpend)) {
         const tgt = castFlow.selectedTargets[0] ?? null;
         castSpell(castFlow.sourceIid, tgt, s.xVal, castFlow.additionalCostSelection ?? undefined);
         setCastFlow(null);
@@ -1120,8 +1121,9 @@ export function useDuelController(
         : card?.activated;
       if (!card || !ab) return;
       const cost = normalizeAbilityCost(ab.cost);
+      const taxedCost = applyCostTax(cost, card, s, true);
       const xSpend = cost?.toUpperCase().includes('X') ? (s.xVal || 1) : 0;
-      if (!cost || canPay(s.p.mana, cost, xSpend)) {
+      if (!cost || canPay(s.p.mana, taxedCost, xSpend)) {
         const tgt = castFlow.selectedTargets[0] ?? null;
         activateAbility(castFlow.sourceIid, tgt, null, castFlow.abilityId ?? undefined);
         setCastFlow(null);
@@ -1185,7 +1187,7 @@ export function useDuelController(
         });
         return;
       }
-      const xMax = getMaxAffordableX(s.p.mana, card.cost);
+      const xMax = getMaxAffordableX(s.p.mana, applyCostTax(card.cost, card, s));
       if (xMax < 0) { selectCard(null); return; }
       setCastFlow({
         kind: 'spell',
@@ -1242,7 +1244,7 @@ export function useDuelController(
     const xSpend = (card.cost?.toUpperCase().includes('X') && card.id !== 'power_sink')
       ? (s.xVal || 1)
       : 0;
-    if (canPay(s.p.mana, card.cost, xSpend)) {
+    if (canPay(s.p.mana, applyCostTax(card.cost, card, s), xSpend)) {
       const tgt = resolveDefaultTarget(card, s);
       castSpell(card.iid, tgt, s.xVal);
       selectCard(null);

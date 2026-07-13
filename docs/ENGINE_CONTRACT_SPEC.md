@@ -1142,4 +1142,37 @@ Sacrifice is a cost (paid before the effect resolves on the stack), not part of 
 
 **Contract:** Adding new cost tokens requires updating both the parse logic in `ACTIVATE_ABILITY` (DuelCore.js lines ~2795-2815) and the mana-strip regex (`replace(/sac/g, "")` pattern). New tokens must be documented in this section.
 
+---
+
+# 15. Cost Tax (Gloom)
+
+`applyCostTax(costStr, targetCard, state, requireEnchantment = false)` (`DuelCore.js`, next to `parseMana`/`canPay`/`payMana`) is the shared helper for static, board-wide cost-increase effects. Gloom is the first and only consumer: "White spells cost {3} more to cast. Activated abilities of white enchantments cost {3} more to activate."
+
+## Mechanism
+
+`applyCostTax` appends a plain digit string (`'3'`) to the end of the raw cost string when the tax applies, otherwise returns the input unchanged. This is safe against every existing cost-string consumer without any change to `parseMana`, `canPay`, or `payMana` themselves, because:
+
+- `parseMana` accumulates every digit-run found anywhere in the string into `generic` (`p.generic += parseInt(n)`), so a second digit-run appended at the end just adds to the existing generic total (`"W"` -> `"W3"` parses to `{W:1, generic:3}`).
+- The `ACTIVATE_ABILITY` single-ability cost-stripping chain (Section 14) is character-level regex replacement (`.replace(/T/g, "")`, `.replace(/,/g, "")`, etc.), not segment-based splitting -- it never touches digit characters, so an appended digit run survives every step in the chain untouched (`"GG,T"` -> tax -> `"GG,T3"` -> strip -> `"GG3"` -> parses to `{G:2, generic:3}`).
+
+The board-wide `gloomOut` scan (`[...state.p.bf, ...state.o.bf].some(x => x.id === 'gloom')`) runs fresh on every call, matching the existing convention for one-off static-permanent checks elsewhere in this file (e.g. `winterOrbOut`) -- the tax always reflects the current battlefield, never a cached snapshot.
+
+## Call-site contract
+
+`targetCard` is the card being cast (spell call sites) or the permanent whose ability is being activated (activated-ability call sites) -- never Gloom itself. `requireEnchantment` is `false` for spell-casting call sites (Gloom's first clause has no type restriction) and `true` for activated-ability call sites (Gloom's second clause restricts to white *enchantments* specifically, via the existing `isEnch` helper).
+
+Every call site that reads a raw cost string for a spell cast or a white enchantment's activated ability must substitute `applyCostTax(...)`'s return value in place of that raw string for the `canPay`/`payMana`/`getManaShortfall` call. As of this section, that is:
+
+| Site | File | Notes |
+|---|---|---|
+| `CAST_SPELL` | `DuelCore.js` | Tax computed once (`taxedCastCost`), reused for both the `canPay` check and the `payMana` call so they can never diverge. |
+| Single-ability `ACTIVATE_ABILITY` path | `DuelCore.js` | Tax applied to `act.cost` *before* the existing token-stripping chain (Section 14) runs -- the taxed string flows into stripping unchanged, not the other way around. |
+| 3 spell-cast `canPay` checks + `getMaxAffordableX` | `useDuelController.ts` | `beginCastFlow`'s instant-cast shortcut, the `mana`-mode auto-advance effect, and the X-affordability precheck. |
+| 2 activated-ability `canPay` checks | `useDuelController.ts` | Same shortcut/auto-advance pair, ability-flow side (`normalizeAbilityCost(ab.cost)` result is taxed before the `canPay` call). |
+| 2 `getManaShortfall` calls | `DuelScreen.tsx`, `DuelScreenMobile.tsx` | The local `cost` variable feeding the cast-prompt's `costNeeded`/`shortfall` fields is taxed before either read -- this is the "NEED" indicator shown during the mana-wait step, not the card's own printed cost display. |
+
+**Explicit boundary:** the Pyramids array-ability cost-check site (`ACTIVATE_ABILITY`'s `activatedAbilities[]` branch, `canPay(s[w].mana, cost)` where `cost = String(ab.cost?.generic ?? 0)`) is deliberately untouched -- Pyramids is not a white enchantment, and no card currently routes Gloom's tax through the array-ability shape. A future white-enchantment array-ability would need its own explicit `applyCostTax` call at that site; it does not inherit the tax automatically.
+
+**UI boundary:** `HandCard.tsx`/`FieldCard.tsx` render `card.cost` directly and are never touched by this mechanism -- the printed mana cost on a card never changes, matching paper Magic (only what a player actually pays changes, not what's printed). Only the derived `canPay`/`payMana`/`getManaShortfall` inputs are taxed.
+
 # End of ENGINE CONTRACT SPEC v1.0
