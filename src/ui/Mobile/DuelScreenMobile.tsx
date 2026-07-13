@@ -3,11 +3,11 @@
 // Reads from useDuel — same engine as desktop DuelScreen, no fork in data layer.
 
 import { useState, useCallback } from 'react';
-import { isLand, hasKw, isCre, isProtectedFromSource, applyCostTax } from '../../engine/DuelCore.js';
+import { isLand, isArt, hasKw, isCre, isProtectedFromSource, applyCostTax } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
-import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, getManaShortfall, normalizeAbilityCost } from '../../hooks/useDuelController';
+import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isArtifactOnlyTarget, getManaShortfall, normalizeAbilityCost } from '../../hooks/useDuelController';
 import type { DuelConfig } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
@@ -173,6 +173,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return; // creature click is illegal for player-only effects
       if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(c)) return; // noncreature click is illegal for creature-only effects
       if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(c)) return; // non-land click is illegal for land-only effects
+      if (isArtifactOnlyTarget(castingCard, castFlow.abilityId) && !isArt(c)) return; // non-artifact click is illegal for artifact-only effects
       if (isCre(c) && castingCard && isProtectedFromSource(c, castingCard, s_state)) return; // protected from this source, illegal click target
       selectCastTarget(card.iid);
       return;
@@ -249,6 +250,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return;
       if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(c)) return;
       if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(c)) return;
+      if (isArtifactOnlyTarget(castingCard, castFlow.abilityId) && !isArt(c)) return;
       if (isCre(c) && castingCard && isProtectedFromSource(c, castingCard, s_state)) return;
       selectCastTarget(card.iid);
       return;

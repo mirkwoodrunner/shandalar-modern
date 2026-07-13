@@ -91,6 +91,7 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   // Complex-tier Forge batch C3 (see THIRD_PARTY_NOTICES.md):
   'enchantLand',              // Farmstead (and Wild Growth/Kudzu/Evil Presence) -- "enchant land"
   'phantasmalTerrainEnchant', // Phantasmal Terrain -- "enchant land"
+  'enchantArtifact', // Animate Artifact (and Living Artifact/Artifact Possession/Relic Bind) -- "enchant artifact"
   // Creature damage centralization batch:
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature" (activated ability; see ACTIVATE_TARGET_EFFECTS below for the actual targeting-flow gate)
 ]);
@@ -172,6 +173,17 @@ export const LAND_ONLY_TARGET_EFFECTS = new Set([
 
 export function isLandOnlyTarget(card: any, abilityId?: string | null): boolean {
   return LAND_ONLY_TARGET_EFFECTS.has(getEffectiveAbilityEffect(card, abilityId));
+}
+
+// Effects whose oracle text restricts the target to an artifact only. Mirrors
+// LAND_ONLY_TARGET_EFFECTS/isLandOnlyTarget exactly. Shared by Animate Artifact,
+// Living Artifact, Artifact Possession, and Relic Bind (all "enchant artifact").
+export const ARTIFACT_ONLY_TARGET_EFFECTS = new Set([
+  'enchantArtifact',
+]);
+
+export function isArtifactOnlyTarget(card: any, abilityId?: string | null): boolean {
+  return ARTIFACT_ONLY_TARGET_EFFECTS.has(getEffectiveAbilityEffect(card, abilityId));
 }
 
 export function isCounterEffect(card: any): boolean {

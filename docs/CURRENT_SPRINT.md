@@ -9,6 +9,36 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-13)
+- **Animate Artifact** -- "Enchant artifact. As long as enchanted artifact
+  isn't a creature, it's an artifact creature with power and toughness each
+  equal to its mana value." `enchantArtifact` gains a `card.mod` embedded-attach
+  branch mirroring `enchantLand`'s existing `if (card.mod) {embedded} else
+  {Kudzu-style}` split -- the three pre-existing `enchantArtifact` users
+  (Living Artifact, Artifact Possession, Relic Bind) have no `mod` field, so
+  their Kudzu-style behavior is unchanged. Reuses Titania's Song's
+  `manaValueCDA` CDA evaluator unchanged. `collectEffects` (`layers.js`)
+  gained `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn` field checks, gated by
+  a new opt-in `mod.onlyIfNotCreature` flag that reads the raw printed
+  `card.type` (never `typeEff`) to avoid a self-reference/oscillation bug,
+  mirroring `matchesGlobalTypeFilter`'s `nonCreatureArtifact` branch. A
+  Guardian Beast check (ported from `enchantCreature`) guards only the new
+  embedded path. Side-benefit fix: added `enchantArtifact` to
+  `EXPLICIT_TARGET_EFFECTS` (`useDuelController.ts`), closing a known
+  pre-existing gap where Living Artifact/Artifact Possession/Relic Bind
+  silently auto-resolved their target instead of prompting a picker; new
+  `ARTIFACT_ONLY_TARGET_EFFECTS`/`isArtifactOnlyTarget` click-guard mirrors
+  `LAND_ONLY_TARGET_EFFECTS`/`isLandOnlyTarget` in both `DuelScreen.tsx` and
+  `DuelScreenMobile.tsx`. Also fixed a pre-existing mobile-only bug found
+  while writing this card's e2e coverage: `src/ui/Mobile/FieldCard.tsx`
+  checked raw `card.type` instead of the engine's real `isCre` (which reads
+  `typeEff`), so no `typeEff`-driven creature-type change ever displayed
+  correctly on the true `?duel=sandbox-mobile` route; fixed to mirror
+  desktop's already-correct pattern. Stub count: **2 -> 1** (untriaged
+  bucket: Tawnos's Coffin only). Tests: 26 Vitest
+  (`tests/scenarios/animate-artifact.test.js`), 4 Playwright
+  (`tests/e2e/animate-artifact.spec.ts`, both viewports). See
+  `docs/ENGINE_CONTRACT_SPEC.md` and `docs/MECHANICS_INDEX.md` -- Animate
+  Artifact.
 - **Gloom** -- "White spells cost {3} more to cast. Activated abilities of
   white enchantments cost {3} more to activate." New shared
   `applyCostTax(costStr, targetCard, state, requireEnchantment)` helper

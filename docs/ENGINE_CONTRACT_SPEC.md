@@ -1175,4 +1175,41 @@ Every call site that reads a raw cost string for a spell cast or a white enchant
 
 **UI boundary:** `HandCard.tsx`/`FieldCard.tsx` render `card.cost` directly and are never touched by this mechanism -- the printed mana cost on a card never changes, matching paper Magic (only what a player actually pays changes, not what's printed). Only the derived `canPay`/`payMana`/`getManaShortfall` inputs are taxed.
 
-# End of ENGINE CONTRACT SPEC v1.0
+# 16. Embedded-Mod Aura Type/CDA Extension (Animate Artifact)
+
+`enchantArtifact`'s `card.mod` branch (`DuelCore.js`) and the corresponding `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn` extension to `collectEffects`'s "Attached auras" loop (`layers.js`) generalize the embedded-attach Aura pattern (previously only `mod.power`/`mod.toughness`/`mod.keywords`/`mod.protection`/`mod.removeKeywords`/`mod.layerDef`) to cover "becomes a creature with CDA-computed P/T," first needed by Animate Artifact.
+
+## `enchantArtifact`'s `card.mod` branch
+
+Mirrors `enchantLand`'s existing `if (card.mod) { embedded } else { Kudzu-style }` split exactly: with `card.mod` present, the aura's mod is embedded as a record (`{iid, name, mod, controller, cardData, enterTs}`) directly into the target's own `enchantments[]` array, read by `collectEffects` like any other attached Aura. Without `card.mod`, the card takes the pre-existing Kudzu-style path (a separate battlefield permanent tracked via `enchantedArtifactIid`). The three pre-existing `enchantArtifact` users (Living Artifact, Artifact Possession, Relic Bind) have no `mod` field and so are unaffected by the new branch.
+
+A Guardian Beast check guards the embedded path only: `if (isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped))` -- ported unchanged from `enchantCreature`'s own embedded branch, since "noncreature artifacts you control can't be enchanted" is a genuine, universal "can this permanent be newly enchanted" rule, not specific to `enchantCreature`. It does not reach the Kudzu-style `else` branch, so it does not affect Living Artifact/Artifact Possession/Relic Bind.
+
+## `collectEffects` extension
+
+Two new field checks in the "Attached auras" loop, both additive and gated purely by field presence (existing Auras that only use `mod.power`/`mod.keywords`/etc. are completely unaffected):
+
+```js
+if (aura.mod.addTypes?.length) {
+  const baseIsCreature = (card.type ?? '').includes('Creature');
+  if (!aura.mod.onlyIfNotCreature || !baseIsCreature) {
+    effects.push({ layer: 4, addTypes: aura.mod.addTypes, enterTs: enchTs });
+  }
+}
+if (aura.mod.powerFn || aura.mod.toughnessFn) {
+  const baseIsCreature = (card.type ?? '').includes('Creature');
+  if (!aura.mod.onlyIfNotCreature || !baseIsCreature) {
+    effects.push({ layer: '7a', powerFn: aura.mod.powerFn, toughnessFn: aura.mod.toughnessFn, enterTs: enchTs });
+  }
+}
+```
+
+`addTypes` is pushed to Layer 4, already generically consumed by the same `effects.filter(e => e.layer === 4)` fold that Living Lands/Kormus Bell/Titania's Song's `globalTypeEffect` pipeline uses. `powerFn`/`toughnessFn` are pushed to Layer 7a, already generically consumed via `CDA_EVALUATORS` (the same mechanism Titania's Song's `manaValueCDA` uses). Neither addition required any change to the Layer 4 or Layer 7a fold logic itself.
+
+**`mod.onlyIfNotCreature`** is a new, opt-in flag checked against `card.type` -- the raw printed type, never mutated by the Layer 4 pass within the same `computeCharacteristics` call -- mirroring `matchesGlobalTypeFilter`'s `nonCreatureArtifact` branch (Section on Titania's Song / `docs/SYSTEMS.md` S18.9) exactly, and for the same reason: reading the already-baked `typeEff` here instead would cause the effect to suppress itself the moment it first applied (self-reference/oscillation). The flag is per-aura, not global -- a second Aura on the same permanent using `addTypes`/`powerFn`/`toughnessFn` without `onlyIfNotCreature` applies unconditionally, regardless of another aura's gate.
+
+## Contract
+
+Any future Aura needing "becomes a creature (or gains some other type) only while it isn't already one, with CDA-computed P/T" should set `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn`/`mod.onlyIfNotCreature` on its embedded-attach `mod` object -- no new `collectEffects` code is needed. A future consumer of `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn` that wants the effect to apply unconditionally (not gated on "not already a creature") simply omits `onlyIfNotCreature`.
+
+# End of ENGINE CONTRACT SPEC v1.1

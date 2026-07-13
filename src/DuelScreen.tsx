@@ -30,7 +30,7 @@ import { useTweaks } from './hooks/useTweaks';
 import { usePersistence, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
-import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall, normalizeAbilityCost } from './hooks/useDuelController';
+import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isArtifactOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall, normalizeAbilityCost } from './hooks/useDuelController';
 import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
@@ -319,6 +319,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       if (isPlayerOnlyTarget(castingCard, castFlow.abilityId)) return; // creature click is illegal for player-only effects
       if (isCreatureOnlyTarget(castingCard, castFlow.abilityId) && !isCre(card)) return; // noncreature click is illegal for creature-only effects
       if (isLandOnlyTarget(castingCard, castFlow.abilityId) && !isLand(card)) return; // non-land click is illegal for land-only effects
+      if (isArtifactOnlyTarget(castingCard, castFlow.abilityId) && !isArt(card)) return; // non-artifact click is illegal for artifact-only effects
       if (isCre(card) && castingCard && isProtectedFromSource(card, castingCard, s)) return; // protected from this source, illegal click target
       selectCastTarget(card.iid);
       return;
