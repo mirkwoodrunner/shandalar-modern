@@ -37,6 +37,18 @@ function runSimGame(initialState, maxSteps = 2000) {
     if (acts.length > 0) {
       state = duelReducer(state, { type: 'AI_ACTS', acts });
     }
+    // 'p' has no AI profile driving it here, but CLEANUP now prompts the
+    // human player for which cards to discard (pendingCleanupDiscard, see
+    // docs/SYSTEMS.md Section 29) instead of auto-discarding -- nothing
+    // else in this headless loop resolves that prompt, so auto-resolve it
+    // with the same "discard the last N cards" policy the engine used to
+    // apply automatically, keeping this sim's own hand-size handling
+    // deterministic and unblocking ADVANCE_PHASE.
+    if (state.pendingCleanupDiscard) {
+      const { controller, count } = state.pendingCleanupDiscard;
+      const iids = state[controller].hand.slice(-count).map(c => c.iid);
+      state = duelReducer(state, { type: 'RESOLVE_CLEANUP_DISCARD', iids });
+    }
     if (!state.over) {
       state = duelReducer(state, { type: 'ADVANCE_PHASE' });
     }

@@ -394,6 +394,7 @@ export function useDuelController(
     declineTransmutePay,
     resolveAnteExchange,
     declineAnteExchange,
+    resolveCleanupDiscard,
   } = useDuel(
     config.pDeckIds,
     config.oppArchKey,
@@ -513,7 +514,8 @@ export function useDuelController(
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
       s.pendingChoice || s.pendingTriggerTarget || s.pendingTutor || s.pendingTransmuteSacrifice ||
       s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange ||
-      s.pendingDamageShieldChoice || s.pendingLampPicks || s.pendingRiverDivide || s.pendingRiverSides
+      s.pendingDamageShieldChoice || s.pendingLampPicks || s.pendingRiverDivide || s.pendingRiverSides ||
+      s.pendingCleanupDiscard
     ) {
       return;
     }
@@ -541,7 +543,7 @@ export function useDuelController(
     fatalError, endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
-    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides, passPriority, requestPhaseAdvance,
+    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides, s.pendingCleanupDiscard, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────
@@ -1443,6 +1445,7 @@ export function useDuelController(
     declineTransmutePay,
     resolveAnteExchange,
     declineAnteExchange,
+    resolveCleanupDiscard,
 
     // Phase advance
     requestPhaseAdvance,

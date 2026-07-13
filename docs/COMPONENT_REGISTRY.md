@@ -111,6 +111,13 @@ Shared library-search modal used by Demonic Tutor and the search step of Transmu
 Key props: `library` (shuffledLib array), `filter`, `onChoose(iid)`, `onDecline()`, `titleOverride?`.
 data-testid: `tutor-modal` (root), `tutor-card-<id>` (valid card rows), `tutor-decline` (decline button).
 
+## CleanupDiscardModal (`src/ui/duel/CleanupDiscardModal.tsx`)
+
+Shared cleanup-step hand-limit discard modal. Renders when `s.pendingCleanupDiscard.controller === 'p'`. Multi-select: clicking a hand card toggles it into a local selection capped at `pendingCleanupDiscard.count`; the confirm button stays disabled until exactly `count` cards are selected. No decline button -- the discard is mandatory (CR 514.1). Used by both DuelScreen.tsx and DuelScreenMobile.tsx.
+
+Key props: `hand` (player's hand array), `count` (number of cards to discard), `onConfirm(iids)`.
+data-testid: `cleanup-discard-modal` (root), `cleanup-discard-card-<iid>` (hand card rows), `cleanup-discard-confirm` (confirm button).
+
 ## TransmuteSacrificeModal (`src/ui/duel/TransmuteSacrificeModal.tsx`)
 
 Modal for the first step of Transmute Artifact: player selects which artifact on their battlefield to sacrifice, or declines. Renders when `s.pendingTransmuteSacrifice.caster === 'p'`.

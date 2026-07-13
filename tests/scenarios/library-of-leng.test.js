@@ -50,18 +50,22 @@ describe('@engine Scenario: Library of Leng Phase 2', () => {
     expect(ns.o.gy.length).toBe(0);
   });
 
-  it('LENG-03: no Leng on the active players bf -- cleanup discards down to maxHandSize exactly (parity guard)', () => {
+  it('LENG-03: no Leng on the active players bf -- cleanup prompts a pendingCleanupDiscard for exactly the overage (parity guard)', () => {
+    // 'p' is the human path -- see docs/SYSTEMS.md Section 29 -- so cleanup no
+    // longer auto-discards for 'p'; it prompts instead. The AI ('o') auto-discard
+    // path is covered by discard-centralization.test.js's DISC-P13.
     const hand = Array.from({ length: 9 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));
     const base = makeState({ pHand: hand, phase: PHASE.END, active: 'p' });
     const state = { ...base, ruleset: { ...base.ruleset, maxHandSize: 7 } };
 
     const ns = duelReducer(state, { type: 'ADVANCE_PHASE' });
 
-    expect(ns.p.hand.length).toBe(7);
-    expect(ns.p.gy.map(c => c.iid)).toEqual(['c8', 'c7']);
+    expect(ns.p.hand.length).toBe(9);
+    expect(ns.p.gy).toEqual([]);
+    expect(ns.pendingCleanupDiscard).toEqual({ controller: 'p', count: 2 });
   });
 
-  it('LENG-04: Leng leaves the battlefield before cleanup -- discard rule resumes', () => {
+  it('LENG-04: Leng leaves the battlefield before cleanup -- discard rule resumes (prompts pendingCleanupDiscard)', () => {
     const leng = makeCardInstance('library_of_leng', 'p');
     const hand = Array.from({ length: 9 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));
     const base = makeState({ pBf: [leng], pHand: hand, phase: PHASE.END, active: 'p' });
@@ -70,8 +74,9 @@ describe('@engine Scenario: Library of Leng Phase 2', () => {
 
     const ns = duelReducer(state, { type: 'ADVANCE_PHASE' });
 
-    expect(ns.p.hand.length).toBe(7);
-    expect(ns.p.gy.map(c => c.iid)).toEqual(['c8', 'c7']);
+    expect(ns.p.hand.length).toBe(9);
+    expect(ns.p.gy).toEqual([]);
+    expect(ns.pendingCleanupDiscard).toEqual({ controller: 'p', count: 2 });
   });
 
   it('LENG-05: effect discard for p with Leng creates a discardToLibraryChoice', () => {

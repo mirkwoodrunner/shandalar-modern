@@ -153,7 +153,8 @@ Each turn is fully deterministic and processed in order:
     - cleanup effects; "until end of turn" modifiers expire
 
 12. Cleanup (`CLEANUP`)
-    - discard to hand size; damage counters removed; channelActive cleared
+    - discard to hand size (human player chooses which cards via `pendingCleanupDiscard`,
+      see Section 26; AI auto-discards); damage counters removed; channelActive cleared
 
 ---
 
@@ -3375,5 +3376,53 @@ auto-decide effect was needed there, unlike Darkpact's ante-exchange picker.
 | Circle of Protection: Artifacts | `{1}{W}` | `{2}` | artifact type | prevent |
 | Greater Realm of Preservation | `{1}{W}` | `{1}{W}` | black or red | prevent |
 | Eye for an Eye | `{W}{W}` (Instant, no activation) | -- | any source | redirect |
+
+# Section 29 — Cleanup-Step Hand-Limit Discard (pendingCleanupDiscard)
+
+## Overview
+
+CR 514.1: at cleanup, a player over their maximum hand size chooses and discards
+down to it. Previously this engine auto-discarded from the end of the hand array
+with no player choice. The human player (`'p'`) now gets an interactive picker;
+the AI opponent (`'o'`) keeps the pre-existing auto-discard (`AI.js`'s `planEnd`
+already documents this as fully delegated to `DuelCore.js`).
+
+## State Shape
+
+```
+pendingCleanupDiscard: { controller: 'p', count: number } | null
+```
+
+Set in `advPhase`'s `PHASE.CLEANUP` handler in `DuelCore.js` when the active
+player is `'p'` and `hand.length > effectiveMax` (`effectiveMax` accounts for
+Library of Leng's "no maximum hand size"). Never set for `'o'` -- the AI branch
+still uses the original `while` loop discarding the last N cards.
+
+## Phase-Advance Gate
+
+`ADVANCE_PHASE` is blocked while `pendingCleanupDiscard` is set, parallel to the
+`pendingUpkeepChoice`/`pendingConditionalCounter`/`pendingSphereTrigger` guards.
+The rest of the CLEANUP block (EOT buff expiry, emblem expiry, Pestilence-style
+sacrifice checks) still runs unconditionally in the same `advPhase` call --
+only the transition out of CLEANUP into the next turn's UNTAP waits.
+
+## Resolution Action
+
+`RESOLVE_CLEANUP_DISCARD { iids: string[] }` -- handled in `DuelCore.js`,
+adjacent to `ADVANCE_PHASE`. Rejects (no-ops) unless `iids.length` exactly
+matches `pendingCleanupDiscard.count`, all iids are unique, and all iids are
+present in the controller's hand. On success, discards each card via the
+existing `discardCard` choke point (`cause: 'gameRule'`, same as the AI path),
+so `DISCARD_REPLACEMENTS` (Library of Leng), `ON_DISCARD`, and trigger-queue
+draining all apply unchanged.
+
+## Human Resolution
+
+`CleanupDiscardModal.tsx` (shared, `src/ui/duel/CleanupDiscardModal.tsx`) renders
+on both `DuelScreen.tsx` and `DuelScreenMobile.tsx` when
+`s.pendingCleanupDiscard.controller === 'p'`. Multi-select: clicking a hand card
+toggles it in/out of a local selection capped at `count`; the confirm button is
+disabled until exactly `count` cards are selected (no decline -- CR 514.1
+discard is mandatory). Dispatched via `useDuel.js`'s `resolveCleanupDiscard(iids)`.
 
 # End of SYSTEMS v1.9
