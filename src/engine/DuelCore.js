@@ -189,6 +189,23 @@ g -= s;
 return p;
 }
 
+// Gloom: "White spells cost {3} more to cast. Activated abilities of white
+// enchantments cost {3} more to activate." Appending a plain digit string to
+// the end of a raw cost string is safe against parseMana's digit-run
+// accumulation and the activated-ability cost-stripping regex chain -- see
+// docs/ENGINE_CONTRACT_SPEC.md for the full argument. Scans the battlefield
+// fresh on every call (no caching) so the tax always reflects current board
+// state. targetCard is the card being cast (spells) or the permanent whose
+// ability is being activated (abilities) -- never Gloom itself.
+export function applyCostTax(costStr, targetCard, state, requireEnchantment = false) {
+if (!costStr) return costStr;
+const gloomOut = [...state.p.bf, ...state.o.bf].some(x => x.id === 'gloom');
+if (!gloomOut) return costStr;
+if (targetCard.color !== 'W') return costStr;
+if (requireEnchantment && !isEnch(targetCard)) return costStr;
+return costStr + '3';
+}
+
 // --- STATE QUERIES ------------------------------------------------------------
 
 export function getBF(state, iid) {
@@ -7102,7 +7119,8 @@ case "CAST_SPELL": {
   const xSpend = (c.cost?.toUpperCase().includes('X') && c.id !== 'power_sink')
     ? (action.xVal || s.xVal || 1)
     : 0;
-  if (!canPay(s[w].mana, c.cost, xSpend)) return s;
+  const taxedCastCost = applyCostTax(c.cost, c, s);
+  if (!canPay(s[w].mana, taxedCastCost, xSpend)) return s;
   if (w === "p" && s.castleMod?.name === "Tidal Lock" && (s.spellsThisTurn || 0) >= 1) return dlog(s, "Tidal Lock: only one spell per turn.", "effect");
   // Additional cost to cast (Sacrifice): paid atomically as part of this same
   // CAST_SPELL transaction, before mana payment. See ENGINE_CONTRACT_SPEC.md.
@@ -7120,7 +7138,7 @@ case "CAST_SPELL": {
     additionalCostPaid = { type: 'sacrificeCreature', card: { ...sacCard } };
   }
   s = { ...s, manaTapSnapshot: null };
-  let manaAfterPay = payMana(s[w].mana, c.cost);
+  let manaAfterPay = payMana(s[w].mana, taxedCastCost);
   if (xSpend > 0) {
     let remaining = xSpend;
     const xmp = { ...manaAfterPay };
@@ -7802,7 +7820,11 @@ case "ACTIVATE_ABILITY": {
 
   // 3. Mana cost -- strip 'T', 'sac'-family tokens, and commas, parse remainder.
   // Any literal "X" is replaced with the paid xVal (Candelabra of Tawnos).
-  const manaPart = act.cost
+  // Gloom tax is applied to the raw cost string before stripping -- the
+  // appended digit run survives every replace() below and lands safely in
+  // the final generic bucket. See applyCostTax and docs/ENGINE_CONTRACT_SPEC.md.
+  const taxedActCost = applyCostTax(act.cost, card, s, true);
+  const manaPart = taxedActCost
     .replace(/discardLastDrawn/g, "")
     .replace(/sacArt/g, "")
     .replace(/sacCre/g, "")

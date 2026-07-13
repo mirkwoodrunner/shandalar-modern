@@ -8,6 +8,28 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-13)
+- **Gloom** -- "White spells cost {3} more to cast. Activated abilities of
+  white enchantments cost {3} more to activate." New shared
+  `applyCostTax(costStr, targetCard, state, requireEnchantment)` helper
+  (`DuelCore.js`) appends a plain digit-string tax to the end of a raw cost
+  string -- safe against `parseMana`'s digit-run accumulation and the
+  `ACTIVATE_ABILITY` cost-stripping regex chain with no change to
+  `parseMana`/`canPay`/`payMana` themselves. Wired into 7 call sites: the
+  server-side `CAST_SPELL` and single-ability `ACTIVATE_ABILITY` cost checks
+  (`DuelCore.js`), 3 spell-cast `canPay` checks + `getMaxAffordableX` +
+  2 activated-ability `canPay` checks (`useDuelController.ts`), and both
+  `getManaShortfall` call sites (`DuelScreen.tsx`, `DuelScreenMobile.tsx`).
+  The Pyramids array-ability cost-check site is deliberately untouched
+  (explicit scope boundary -- Pyramids is not a white enchantment). The
+  card's own printed cost display (`HandCard.tsx`/`FieldCard.tsx`) is
+  unaffected by design, matching paper Magic -- only the actual mana
+  requirement/deduction reflects the tax. Stub count: **3 -> 2** (untriaged
+  bucket: Animate Artifact, Tawnos's Coffin). Tests: 22 Vitest
+  (`tests/scenarios/gloom.test.js`), 4 Playwright (`tests/e2e/gloom.spec.ts`,
+  both viewports). See `docs/ENGINE_CONTRACT_SPEC.md` S15 and
+  `docs/MECHANICS_INDEX.md` -- Gloom.
+
 ## Completed (2026-07-12)
 - **Protection-from-Artifact Extension + Artifact Ward** -- extends the
   pre-existing color-only protection system with an "artifact" type-based

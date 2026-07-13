@@ -242,7 +242,7 @@ export const CARD_DB = [
 {id:"consume_spirit",  name:"Consume Spirit",  type:"Sorcery", subtype:"",color:"B",cmc:3,cost:"X1B", power:null,toughness:null,text:"Spend only black mana on X.\n\nConsume Spirit deals X damage to any target and you gain X life.",effect:"drainLife",rarity:"U"},
 {id:"deathgrip",       name:"Deathgrip",       type:"Enchantment",color:"B",cmc:2,cost:"BB",  text:"{B}{B}: Counter target green spell.",activated:{cost:"BB",effect:"counterGreen"},rarity:"R"},
 {id:"fear",            name:"Fear",            type:"Enchantment",subtype:"Aura",color:"B",cmc:2,cost:"1B",  text:"Enchant creature (Target a creature as you cast this. This card enters attached to that creature.)\nEnchanted creature has fear. (It can't be blocked except by artifact creatures and/or black creatures.)",effect:"enchantCreature",mod:{keywords:[KEYWORDS.FEAR.id]},rarity:"C"},
-{id:"gloom",           name:"Gloom",           type:"Enchantment",color:"B",cmc:3,cost:"2B",  text:"White spells cost {3} more to cast.\nActivated abilities of white enchantments cost {3} more to activate.",effect:"stub" /* STUB: white spells and abilities cost 3 more to cast or activate */,rarity:"R"},
+{id:"gloom",           name:"Gloom",           type:"Enchantment",color:"B",cmc:3,cost:"2B",  text:"White spells cost {3} more to cast.\nActivated abilities of white enchantments cost {3} more to activate.",rarity:"R"},
 {id:"howl_from_beyond",name:"Howl from Beyond",type:"Instant", color:"B",cmc:1,cost:"XB",  text:"Target creature gets +X/+0 until end of turn.",effect:"pumpX",rarity:"C"},
 
 // -- RED SPELLS ----------------------------------------------

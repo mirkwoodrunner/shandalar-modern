@@ -4464,4 +4464,27 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.30
+## Gloom — 2026-07-13
+
+**Infrastructure:** A single new shared helper, `applyCostTax(costStr, targetCard, state, requireEnchantment = false)` (`DuelCore.js`, adjacent to `parseMana`/`canPay`/`payMana`), appends a plain digit-string tax (`'3'`) to the end of a raw cost string when a Gloom is on the battlefield and `targetCard.color === 'W'` (and, when `requireEnchantment` is true, `isEnch(targetCard)` also holds). No change to `parseMana`, `canPay`, or `payMana` themselves was needed: `parseMana` accumulates every digit-run found anywhere in the cost string into `generic`, and the `ACTIVATE_ABILITY` cost-stripping chain is character-level regex replacement rather than segment splitting, so an appended digit run always lands safely in the final generic bucket regardless of the cost string's existing shape. See `docs/ENGINE_CONTRACT_SPEC.md` S15 for the full mechanism writeup and the call-site table.
+
+**Clause 1 (white spells cost {3} more):** `CAST_SPELL` (`DuelCore.js`) computes the taxed cost once and reuses it for both its `canPay` check and its `payMana` call. Client-side, all 3 spell-cast `canPay` checks and the `getMaxAffordableX` X-affordability precheck (`useDuelController.ts`) now read the taxed cost.
+
+**Clause 2 (activated abilities of white enchantments cost {3} more):** the single-ability `ACTIVATE_ABILITY` path (`DuelCore.js`) applies the tax to `act.cost` before the existing token-stripping chain runs, so the taxed string flows into stripping unchanged. Client-side, both activated-ability `canPay` checks (`useDuelController.ts`) now read the taxed cost via `normalizeAbilityCost` + `applyCostTax`. The Pyramids array-ability cost-check site is explicitly untouched -- Pyramids is not a white enchantment, and no card currently needs the tax applied through that shape.
+
+**Client shortfall display:** both `getManaShortfall` call sites (`DuelScreen.tsx`, `DuelScreenMobile.tsx`) now compute their local `cost` variable through `applyCostTax` before feeding it to `costNeeded`/`shortfall`, so the cast prompt's "NEED" indicator reflects the taxed amount during the mana-wait step. `HandCard.tsx`/`FieldCard.tsx` are untouched -- the card's own printed cost display never changes, matching paper Magic.
+
+**Card data:** `{id:"gloom", ..., }` (no `effect` key -- same shape as Winter Orb: a static, non-triggered, board-wide passive with no resolve-time action, read ad hoc via `x.id === 'gloom'` battlefield scans). Removed the `effect:"stub"` sentinel.
+
+**Stub count: 3 -> 2** (untriaged bucket: Animate Artifact, Tawnos's Coffin remain).
+
+**Tests:**
+- Vitest: `tests/scenarios/gloom.test.js` (22: GLOOM-01 through GLOOM-06 `applyCostTax` unit tests, GLOOM-07 through GLOOM-12 spell-casting integration, GLOOM-13 through GLOOM-18 activated-ability integration, GLOOM-19 through GLOOM-21 client-side shortfall/X-affordability, GLOOM-22 stub-count meta test).
+- Playwright: `tests/e2e/gloom.spec.ts` (4: spell tax + activated-ability tax shortfall-then-success, both viewports, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.31

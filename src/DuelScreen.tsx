@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 // -- Engine / hooks -------------------------------------------------------------
-import { isLand, isArt, isInst, hasKw, isCre, isProtectedFromSource } from './engine/DuelCore.js';
+import { isLand, isArt, isInst, hasKw, isCre, isProtectedFromSource, applyCostTax } from './engine/DuelCore.js';
 import { PHASE } from './engine/phases.js';
 import KEYWORDS from './data/keywords.js';
 
@@ -633,11 +633,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
               const sourceCard = castFlow.kind === 'spell'
                 ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
                 : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
-              const cost = castFlow.kind === 'spell'
+              const rawCost = castFlow.kind === 'spell'
                 ? sourceCard?.cost
                 : normalizeAbilityCost(castFlow.abilityId
                     ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
                     : sourceCard?.activated?.cost);
+              const cost = sourceCard ? applyCostTax(rawCost, sourceCard, s, castFlow.kind !== 'spell') : rawCost;
               return {
                 mode: castFlow.mode ?? 'targeting',
                 targetLabel: castFlow.mode === 'targeting'

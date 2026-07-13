@@ -3,7 +3,7 @@
 // Reads from useDuel — same engine as desktop DuelScreen, no fork in data layer.
 
 import { useState, useCallback } from 'react';
-import { isLand, hasKw, isCre, isProtectedFromSource } from '../../engine/DuelCore.js';
+import { isLand, hasKw, isCre, isProtectedFromSource, applyCostTax } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
@@ -657,11 +657,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           const sourceCard = castFlow.kind === 'spell'
             ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
             : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
-          const cost = castFlow.kind === 'spell'
+          const rawCost = castFlow.kind === 'spell'
             ? sourceCard?.cost
             : normalizeAbilityCost(castFlow.abilityId
                 ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
                 : sourceCard?.activated?.cost);
+          const cost = sourceCard ? applyCostTax(rawCost, sourceCard, s_state, castFlow.kind !== 'spell') : rawCost;
           return {
             mode: castFlow.mode ?? 'targeting',
             targetLabel: castFlow.mode === 'targeting'
