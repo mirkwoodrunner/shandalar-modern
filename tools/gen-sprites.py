@@ -103,6 +103,7 @@ class Cell:
 def draw_mage(c, d, f):
     dy = BOB[f]
     st = STRIDE[f]
+    swing = 0.8 * st                                         # staff/arm swing offset
     # feet (mass)
     c.rect(13 - st, 27, 15 - st, 30, SH)
     c.rect(17 + st, 27, 19 + st, 30, SH)
@@ -110,14 +111,14 @@ def draw_mage(c, d, f):
     c.poly([(12, 14 + dy), (20, 14 + dy), (23, 28), (9, 28)], MD)
     c.poly([(12, 14 + dy), (15, 14 + dy), (13, 28), (9, 28)], LT)   # highlight
     c.poly([(18, 22), (23, 28), (16, 28)], DK)                       # shadow hem
-    # hands (accent skin) + sleeves (mass)
-    c.ell(7, 17 + dy, 11, 22 + dy, MD)
-    c.ell(21, 17 + dy, 25, 22 + dy, MD)
-    c.ell(7.5, 20 + dy, 10, 22.5 + dy, SKIN)
-    c.ell(22, 20 + dy, 24.5, 22.5 + dy, SKIN)
-    # staff (accent)
-    c.rect(23.5, 6 + dy, 25, 27, WOOD)
-    c.ell(22.5, 3 + dy, 26, 6.5 + dy, ORB)
+    # hands (accent skin) + sleeves (mass) swing in opposition to each other
+    c.ell(7 - swing, 17 + dy, 11 - swing, 22 + dy, MD)
+    c.ell(21 + swing, 17 + dy, 25 + swing, 22 + dy, MD)
+    c.ell(7.5 - swing, 20 + dy, 10 - swing, 22.5 + dy, SKIN)
+    c.ell(22 + swing, 20 + dy, 24.5 + swing, 22.5 + dy, SKIN)
+    # staff (accent) swings with the right hand
+    c.rect(23.5 + swing, 6 + dy, 25 + swing, 27, WOOD)
+    c.ell(22.5 + swing, 3 + dy, 26 + swing, 6.5 + dy, ORB)
     # head (accent skin)
     c.ell(12, 8 + dy, 20, 16 + dy, SKIN)
     c.ell(12.5, 8.5 + dy, 17, 13 + dy, (244, 218, 182, 255))  # face highlight
@@ -143,6 +144,8 @@ def draw_pegasus(c, d, f):
     if d in ('left', 'right'):
         c.ell(7, 12 + dy, 22, 22 + dy, MD)                 # body (mass)
         c.ell(7, 12 + dy, 17, 19 + dy, LT)
+        # Tail (accent) wags up and down in profile
+        c.poly([(7, 14 + dy), (3, 17 + dy + 1.8 * st), (4, 19 + dy + 1.8 * st), (8, 16 + dy)], MANE)
         for i, lx in enumerate((9, 13, 17, 20)):           # legs (mass) + hooves
             off = st if i % 2 == 0 else -st
             c.rect(lx, 21 + dy, lx + 1.6, 28 + off, MD)
@@ -150,23 +153,28 @@ def draw_pegasus(c, d, f):
         c.poly([(19, 14 + dy), (24, 6 + dy), (26, 9 + dy), (22, 17 + dy)], MD)  # neck
         c.ell(23, 4 + dy, 28, 9 + dy, MD)                  # head (mass)
         c.poly([(18, 9 + dy), (23, 5 + dy), (22, 14 + dy)], MANE)  # mane (accent)
-        c.poly([(10, 13 + dy), (17, 8 + dy - st), (15, 17 + dy)], LT)  # wing (mass)
-        c.poly([(11, 14 + dy), (16, 10 + dy), (14, 17 + dy)], HI)
-        c.line(10.5, 12.5 + dy, 16, 9 + dy, MANE, 0.5)     # wing edge (accent)
+        # Wing flap (mass) is amplified to 2.5 * st
+        c.poly([(10, 13 + dy), (17, 8 + dy - 2.5 * st), (15, 17 + dy)], LT)
+        c.poly([(11, 14 + dy), (16, 10 + dy - 1.8 * st), (14, 17 + dy)], HI)
+        c.line(10.5, 12.5 + dy, 16, 9 + dy - 2.5 * st, MANE, 0.5)  # wing edge (accent)
         c.ell(25.4, 5.4 + dy, 27, 7 + dy, PUPIL)           # eye (accent)
         if d == 'right':
             c.flip_h()
     else:
         c.ell(9, 13 + dy, 23, 24 + dy, MD)                 # body (mass)
         c.ell(10, 13 + dy, 20, 20 + dy, LT)
+        # Tail (accent) sways left and right in rear walk animation
+        if d == 'up':
+            c.poly([(15, 23 + dy), (17, 23 + dy), (16 + st, 29 + dy)], MANE)
         for i, lx in enumerate((10, 14, 18, 21)):
             off = st if i % 2 == 0 else -st
             c.rect(lx, 22 + dy, lx + 1.6, 28 + off, MD)
             c.rect(lx - 0.2, 27 + off, lx + 1.8, 28.4 + off, HOOF)
-        c.poly([(9, 14 + dy), (2, 9 + dy), (8, 20 + dy)], LT)    # wings (mass)
-        c.poly([(23, 14 + dy), (30, 9 + dy), (24, 20 + dy)], LT)
-        c.line(2.5, 9.5 + dy, 8.5, 14 + dy, MANE, 0.5)
-        c.line(29.5, 9.5 + dy, 23.5, 14 + dy, MANE, 0.5)
+        # Wings flap up and down in front/back views
+        c.poly([(9, 14 + dy), (2, 9 + dy - 2 * st), (8, 20 + dy)], LT)
+        c.poly([(23, 14 + dy), (30, 9 + dy - 2 * st), (24, 20 + dy)], LT)
+        c.line(2.5, 9.5 + dy - 2 * st, 8.5, 14 + dy, MANE, 0.5)
+        c.line(29.5, 9.5 + dy - 2 * st, 23.5, 14 + dy, MANE, 0.5)
         c.ell(12, 6 + dy, 20, 14 + dy, MD)                 # head (mass)
         if d == 'down':
             c.ell(13.5, 9 + dy, 15, 10.5 + dy, PUPIL)
@@ -194,10 +202,11 @@ def draw_spider(c, d, f):
         ]
         for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_pairs):
             off = (wsign * wig if i % 2 == 0 else -wsign * wig)
+            # Alternating legs crawl with both knee wiggle and horizontal/vertical foot strides
             c.line(ax,      ay + dy, kx,      ky + off + dy, LEG, 1.2)
-            c.line(kx,      ky + off + dy, tx, ty + dy,      LEG, 1.2)
-            c.line(32 - ax, ay + dy, 32 - kx, ky + off + dy, LEG, 1.2)
-            c.line(32 - kx, ky + off + dy, 32 - tx, ty + dy, LEG, 1.2)
+            c.line(kx,      ky + off + dy, tx, ty + off * 0.7 + dy,      LEG, 1.2)
+            c.line(32 - ax, ay + dy, 32 - kx, ky - off + dy, LEG, 1.2)
+            c.line(32 - kx, ky - off + dy, 32 - tx, ty - off * 0.7 + dy, LEG, 1.2)
 
         # Abdomen below, smaller since partially occluded
         c.ell(10, 16 + dy, 22, 28 + dy, MD)
@@ -214,9 +223,10 @@ def draw_spider(c, d, f):
             c.ell(px, py + dy, px + 3.0, py + 3.0 + dy, EYE_Y)
             c.ell(px + 0.7, py + 0.7 + dy, px + 2.2, py + 2.2 + dy, PUPIL)
 
-        # Chelicerae
-        c.rect(13.5, 14.8 + dy, 15.0, 17.2 + dy, LEG)
-        c.rect(17.0, 14.8 + dy, 18.5, 17.2 + dy, LEG)
+        # Chelicerae (bite/pinch horizontally during walk cycle)
+        pinch = 0.8 if f in (1, 3) else 0.0
+        c.rect(13.5 + pinch, 14.8 + dy, 15.0 + pinch, 17.2 + dy, LEG)
+        c.rect(17.0 - pinch, 14.8 + dy, 18.5 - pinch, 17.2 + dy, LEG)
 
     elif d == 'up':
         # TOP-DOWN REAR pose (ref 2): spider walking away, seen from above.
@@ -231,9 +241,9 @@ def draw_spider(c, d, f):
         for i, (ax, ay, kx, ky, tx, ty) in enumerate(leg_pairs):
             off = (wsign * wig if i % 2 == 0 else -wsign * wig)
             c.line(ax,      ay + dy, kx,      ky + off + dy, LEG, 1.2)
-            c.line(kx,      ky + off + dy, tx, ty + dy,      LEG, 1.2)
-            c.line(32 - ax, ay + dy, 32 - kx, ky + off + dy, LEG, 1.2)
-            c.line(32 - kx, ky + off + dy, 32 - tx, ty + dy, LEG, 1.2)
+            c.line(kx,      ky + off + dy, tx, ty + off * 0.7 + dy,      LEG, 1.2)
+            c.line(32 - ax, ay + dy, 32 - kx, ky - off + dy, LEG, 1.2)
+            c.line(32 - kx, ky - off + dy, 32 - tx, ty - off * 0.7 + dy, LEG, 1.2)
 
         # Abdomen - large and round, fills most of the cell
         c.ell(8, 13 + dy, 24, 30 + dy, MD)
@@ -267,8 +277,10 @@ def draw_spider(c, d, f):
         for i, (ax, ay, kx, ky, tx, ty) in enumerate(side_legs):
             off = (wsign * wig if i % 2 == 0 else -wsign * wig)
             ky_a = ky + (off if i < 4 else -off)
+            # Feet slide horizontally to represent forward/backward steps in profile
+            tx_off = off * 0.8
             c.line(ax, ay + dy, kx, ky_a + dy, LEG, 1.1)
-            c.line(kx, ky_a + dy, tx, ty + dy, LEG, 1.1)
+            c.line(kx, ky_a + dy, tx + tx_off, ty + dy, LEG, 1.1)
 
         # Abdomen - right end, large oval
         c.ell(15, 10 + dy, 29, 22 + dy, MD)
@@ -285,9 +297,10 @@ def draw_spider(c, d, f):
             c.ell(px, py + dy, px + 2.6, py + 2.6 + dy, EYE_Y)
             c.ell(px + 0.6, py + 0.6 + dy, px + 1.8, py + 1.8 + dy, PUPIL)
 
-        # Fangs at left tip
-        c.rect(3.0, 14.5 + dy, 4.2, 16.5 + dy, LEG)
-        c.rect(3.0, 17.0 + dy, 4.2, 19.0 + dy, LEG)
+        # Fangs at left tip (vertical biting/pinching in profile)
+        pinch = 0.6 if f in (1, 3) else 0.0
+        c.rect(3.0, 14.5 + dy + pinch, 4.2, 16.5 + dy + pinch, LEG)
+        c.rect(3.0, 17.0 + dy - pinch, 4.2, 19.0 + dy - pinch, LEG)
 
         if d == 'right':
             c.flip_h()
@@ -296,72 +309,81 @@ def draw_spider(c, d, f):
 def draw_zombie(c, d, f):
     dy = BOB[f]
     st = STRIDE[f]
+    hx = 0.6 * st                                         # head sway (floppy neck)
     c.rect(11 - st, 27, 14 - st, 30, SH)                  # feet (mass)
     c.rect(18 + st, 27, 21 + st, 30, SH)
     c.rect(11, 14 + dy, 21, 26, MD)                       # torso (mass)
     c.poly([(11, 14 + dy), (15, 14 + dy), (12, 26), (11, 26)], LT)
     c.rect(11, 23, 21, 26, DK)
     c.poly([(13, 16 + dy), (15, 22), (12.5, 22)], HI)     # tattered light rag
-    c.rect(5, 15 + dy, 11, 18 + dy, MD)                  # arms (mass)
-    c.rect(21, 15 + dy, 27, 18 + dy, MD)
-    c.ell(4.5, 15.5 + dy, 7, 18 + dy, SKIN_SH)           # hands (accent)
-    c.ell(25, 15.5 + dy, 27.5, 18 + dy, SKIN_SH)
-    c.ell(11, 5 + dy, 21, 15 + dy, MD)                   # head (mass)
-    c.ell(11.5, 5.5 + dy, 17, 11 + dy, LT)
-    c.rect(13, 13 + dy, 19, 14.4 + dy, SH)               # mouth
+    # Arms swing vertically in an asymmetrical floppy limp
+    c.rect(5, 15 + dy + 1.2 * st, 11, 18 + dy + 1.2 * st, MD)
+    c.rect(21, 15 + dy - 1.2 * st, 27, 18 + dy - 1.2 * st, MD)
+    c.ell(4.5, 15.5 + dy + 1.2 * st, 7, 18 + dy + 1.2 * st, SKIN_SH)
+    c.ell(25, 15.5 + dy - 1.2 * st, 27.5, 18 + dy - 1.2 * st, SKIN_SH)
+    # Head and face details sway side-to-side with hx
+    c.ell(11 + hx, 5 + dy, 21 + hx, 15 + dy, MD)          # head (mass)
+    c.ell(11.5 + hx, 5.5 + dy, 17 + hx, 11 + dy, LT)
+    c.rect(13 + hx, 13 + dy, 19 + hx, 14.4 + dy, SH)      # mouth
     if d == 'down':
-        c.ell(13, 8.6 + dy, 15, 10.8 + dy, EYE_W)
-        c.ell(17, 8.6 + dy, 19, 10.8 + dy, EYE_W)
-        c.ell(13.4, 9 + dy, 14.6, 10.4 + dy, PUPIL)
-        c.ell(17.4, 9 + dy, 18.6, 10.4 + dy, PUPIL)
+        c.ell(13 + hx, 8.6 + dy, 15 + hx, 10.8 + dy, EYE_W)
+        c.ell(17 + hx, 8.6 + dy, 19 + hx, 10.8 + dy, EYE_W)
+        c.ell(13.4 + hx, 9 + dy, 14.6 + hx, 10.4 + dy, PUPIL)
+        c.ell(17.4 + hx, 9 + dy, 18.6 + hx, 10.4 + dy, PUPIL)
     elif d == 'left':
-        c.ell(12.4, 8.8 + dy, 14.3, 10.8 + dy, PUPIL)
+        c.ell(12.4 + hx, 8.8 + dy, 14.3 + hx, 10.8 + dy, PUPIL)
     elif d == 'right':
-        c.ell(17.7, 8.8 + dy, 19.6, 10.8 + dy, PUPIL)
+        c.ell(17.7 + hx, 8.8 + dy, 19.6 + hx, 10.8 + dy, PUPIL)
     else:
-        c.ell(11.5, 5.5 + dy, 20.5, 11 + dy, DK)
+        c.ell(11.5 + hx, 5.5 + dy, 20.5 + hx, 11 + dy, DK)
 
 
 def draw_goblin(c, d, f):
-    dy = BOB[f]
+    dy_goblin = 1.6 * BOB[f]                               # amplified bouncy bob
     st = STRIDE[f]
     c.rect(11 - st, 27, 14 - st, 30, SH)                 # feet (mass)
     c.rect(18 + st, 27, 21 + st, 30, SH)
-    c.ell(9, 14 + dy, 23, 27, MD)                        # body (mass = team skin)
-    c.ell(10, 14 + dy, 18, 22, LT)
-    c.rect(11, 22.5, 21, 26.5, WOOD)                     # loincloth (accent)
-    c.ell(6, 16 + dy, 11, 21 + dy, MD)                  # arms (mass)
-    c.ell(21, 16 + dy, 26, 21 + dy, MD)
-    c.ell(10, 5 + dy, 22, 16 + dy, MD)                  # head (mass)
-    c.ell(10.5, 5.5 + dy, 18, 11 + dy, LT)
-    c.poly([(10, 8 + dy), (2, 5 + dy), (10, 12 + dy)], MD)   # ears (mass)
-    c.poly([(22, 8 + dy), (30, 5 + dy), (22, 12 + dy)], MD)
-    c.ell(15, 11 + dy, 17, 13.6 + dy, NOSE)             # nose (accent)
-    c.rect(13.5, 13.5 + dy, 18.5, 14.6 + dy, TEETH)     # teeth (accent)
+    c.ell(9, 14 + dy_goblin, 23, 27 + dy_goblin * 0.2, MD) # body
+    c.ell(10, 14 + dy_goblin, 18, 22 + dy_goblin * 0.2, LT)
+    c.rect(11, 22.5 + dy_goblin, 21, 26.5 + dy_goblin, WOOD) # loincloth (accent)
+    # Arms swing vertically in high-energy running pose
+    c.ell(6, 16 + dy_goblin + st, 11, 21 + dy_goblin + st, MD)
+    c.ell(21, 16 + dy_goblin - st, 26, 21 + dy_goblin - st, MD)
+    c.ell(10, 5 + dy_goblin, 22, 16 + dy_goblin, MD)     # head (mass)
+    c.ell(10.5, 5.5 + dy_goblin, 18, 11 + dy_goblin, LT)
+    # Giant floppy ears flop up and down out of phase (humorous running waggle)
+    c.poly([(10, 8 + dy_goblin), (2, 5 + dy_goblin + 1.2 * st), (10, 12 + dy_goblin)], MD)
+    c.poly([(22, 8 + dy_goblin), (30, 5 + dy_goblin - 1.2 * st), (22, 12 + dy_goblin)], MD)
+    c.ell(15, 11 + dy_goblin, 17, 13.6 + dy_goblin, NOSE)             # nose (accent)
+    c.rect(13.5, 13.5 + dy_goblin, 18.5, 14.6 + dy_goblin, TEETH)     # teeth (accent)
     if d == 'down':
-        c.ell(12.4, 8.6 + dy, 14.4, 10.6 + dy, EYE_Y)
-        c.ell(17.6, 8.6 + dy, 19.6, 10.6 + dy, EYE_Y)
-        c.ell(12.9, 9 + dy, 13.9, 10.1 + dy, PUPIL)
-        c.ell(18.1, 9 + dy, 19.1, 10.1 + dy, PUPIL)
+        c.ell(12.4, 8.6 + dy_goblin, 14.4, 10.6 + dy_goblin, EYE_Y)
+        c.ell(17.6, 8.6 + dy_goblin, 19.6, 10.6 + dy_goblin, EYE_Y)
+        c.ell(12.9, 9 + dy_goblin, 13.9, 10.1 + dy_goblin, PUPIL)
+        c.ell(18.1, 9 + dy_goblin, 19.1, 10.1 + dy_goblin, PUPIL)
     elif d == 'left':
-        c.ell(12, 8.8 + dy, 14, 10.8 + dy, EYE_Y)
-        c.ell(12.5, 9.2 + dy, 13.5, 10.3 + dy, PUPIL)
+        c.ell(12, 8.8 + dy_goblin, 14, 10.8 + dy_goblin, EYE_Y)
+        c.ell(12.5, 9.2 + dy_goblin, 13.5, 10.3 + dy_goblin, PUPIL)
     elif d == 'right':
-        c.ell(18, 8.8 + dy, 20, 10.8 + dy, EYE_Y)
-        c.ell(18.5, 9.2 + dy, 19.5, 10.3 + dy, PUPIL)
+        c.ell(18, 8.8 + dy_goblin, 20, 10.8 + dy_goblin, EYE_Y)
+        c.ell(18.5, 9.2 + dy_goblin, 19.5, 10.3 + dy_goblin, PUPIL)
     else:
-        c.ell(10.5, 5.5 + dy, 21.5, 11 + dy, DK)
+        c.ell(10.5, 5.5 + dy_goblin, 21.5, 11 + dy_goblin, DK)
 
 
 def draw_fish(c, d, f):
     dy = BOB[f]
-    tw = (1.6 if f == 1 else -1.6 if f == 3 else 0.0)
-    c.poly([(3, 11 + dy + tw), (3, 21 + dy - tw), (10, 16 + dy)], DK)   # tail (mass)
+    # Swim tail wave offset (amplified to 3.0)
+    tw = (3.0 if f == 1 else -3.0 if f == 3 else 0.0)
+    # Tail fin beats up and down dynamically
+    c.poly([(3, 10 + dy + tw), (3, 22 + dy + tw), (10, 16 + dy)], DK)   # tail (mass)
     c.ell(8, 9 + dy, 27, 23 + dy, MD)                    # body (mass)
-    c.ell(10, 9.5 + dy, 24, 17 + dy, LT)                 # back highlight
-    c.ell(11, 17 + dy, 24, 22 + dy, BELLY)              # belly (accent)
-    c.poly([(13, 9 + dy), (17, 4 + dy), (20, 9 + dy)], DK)    # top fin (mass)
-    c.poly([(14, 22 + dy), (18, 26 + dy), (20, 22 + dy)], DK) # bottom fin (mass)
+    # Body highlight and belly flex out-of-phase with tail (3D wriggle effect)
+    c.ell(10 - tw * 0.2, 9.5 + dy, 24 - tw * 0.2, 17 + dy, LT)
+    c.ell(11 + tw * 0.2, 17 + dy, 24 + tw * 0.2, 22 + dy, BELLY)
+    # Dorsal and ventral fins flex with drag (lagging behind tail motion)
+    c.poly([(13, 9 + dy), (17 - tw * 0.4, 4 + dy), (20, 9 + dy)], DK)    # top fin (mass)
+    c.poly([(14, 22 + dy), (18 + tw * 0.4, 26 + dy), (20, 22 + dy)], DK) # bottom fin (mass)
     c.line(20, 11 + dy, 20, 20 + dy, SH, 0.8)            # gill
     c.ell(22, 12.6 + dy, 25.2, 15.8 + dy, EYE_W)         # eye (accent)
     c.ell(23, 13.6 + dy, 24.6, 15.2 + dy, PUPIL)
