@@ -4567,4 +4567,36 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.33
+## Bug Fix: End Turn Stack-Priority Deadlock -- 2026-07-13
+
+Clicking End Turn while a priority window was open and the stack was
+non-empty (e.g. opponent responds to a spell with a counterspell and passes,
+player has no further action) got stuck on "Ending Turn..." forever with no
+recovery -- `endTurnPending` also disables the manual Pass Priority control,
+so there was no escape short of reloading.
+
+**Root cause:** the End Turn skip-ahead effect in `useDuelController.ts`
+checked `if (s.stack.length > 0) return;` before checking
+`if (s.priorityWindow) { ... passPriority('p') ... }`. That ordering is
+correct once the window is closed (mid-resolution, owned by other effects),
+but wrong while the window is open awaiting the player's pass -- the stack
+check returned every render before the loop could ever pass the player's
+priority, so nothing progressed.
+
+**Fix:** swapped the two guards -- the open-priority-window check (and its
+`passPriority('p')` call) now runs first; the stack-non-empty guard only
+applies once the window is already closed. No changes to `DuelCore.js`,
+`phases.js`, or either screen component.
+
+**Tests:**
+- Vitest: none (pure effect-ordering fix, no new reducer logic).
+- Playwright: `tests/e2e/end-turn-stack-priority-deadlock.spec.ts` (4:
+  DEADLOCK-01/02 desktop, DEADLOCK-03/04 mobile -- deadlock repro + confirms
+  Pestilence is actually countered once the skip completes).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.34

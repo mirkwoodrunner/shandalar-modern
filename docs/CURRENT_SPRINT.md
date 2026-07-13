@@ -9,6 +9,13 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-13)
+- **Bug Fix: End Turn Stack-Priority Deadlock** -- clicking End Turn with an
+  open priority window and a non-empty stack (opponent responds with a
+  counterspell and passes) previously hung on "Ending Turn..." forever --
+  root cause was a check-ordering bug in `useDuelController.ts`'s End Turn
+  skip-ahead effect (stack-non-empty guard ran before the open-priority-window
+  guard). Fixed by swapping the two checks. See `docs/MECHANICS_INDEX.md` --
+  Bug Fix: End Turn Stack-Priority Deadlock.
 - **Cleanup-Step Hand-Limit Discard** -- CR 514.1 fix: the cleanup-step
   hand-limit discard previously auto-discarded the last N cards in hand array
   order with zero player choice. New `pendingCleanupDiscard` state (parallel
