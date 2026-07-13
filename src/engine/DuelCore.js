@@ -7739,6 +7739,9 @@ case "ACTIVATE_ABILITY": {
   if (act.cost.includes("discardLastDrawn") && !s[w].hand.length) {
     return dlog(s, `${card.name}: no card to discard.`, "info");
   }
+  if (act.cost.includes("discardRandom") && !s[w].hand.length) {
+    return dlog(s, `${card.name}: no card to discard.`, "info");
+  }
   // Osai Vultures: "Remove two carrion counters..." -- same pre-flight shape
   // as sacArt/sacCre above, gating on counter availability instead.
   // Adapted from Card-Forge/forge (o/osai_vultures.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -7840,6 +7843,17 @@ case "ACTIVATE_ABILITY": {
     s = dlog(s, `${card.name}: ${w} discards ${last.name}.`, "info");
   }
 
+  // 2d'. Discard a card at random as a cost (Coral Helm).
+  // Math.random() here: same flagged violation as discardX/discardOne/coinFlip sites.
+  // Pending seeded-RNG migration (Milestone B).
+  if (act.cost.includes("discardRandom")) {
+    const h = s[w].hand;
+    const idx = Math.floor(Math.random() * h.length);
+    const dc = h[idx];
+    s = discardCard(s, w, dc.iid, { cause: 'cost', sourceName: card.name });
+    s = dlog(s, `${card.name}: ${w} discards ${dc.name} at random.`, "info");
+  }
+
   // 3. Mana cost -- strip 'T', 'sac'-family tokens, and commas, parse remainder.
   // Any literal "X" is replaced with the paid xVal (Candelabra of Tawnos).
   // Gloom tax is applied to the raw cost string before stripping -- the
@@ -7848,6 +7862,7 @@ case "ACTIVATE_ABILITY": {
   const taxedActCost = applyCostTax(act.cost, card, s, true);
   const manaPart = taxedActCost
     .replace(/discardLastDrawn/g, "")
+    .replace(/discardRandom/g, "")
     .replace(/sacArt/g, "")
     .replace(/sacCre/g, "")
     .replace(/payLife2/g, "")
