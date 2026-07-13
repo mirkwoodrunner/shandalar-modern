@@ -14,6 +14,7 @@ import { MulliganModal } from '../Mulligan/MulliganModal';
 import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker } from '../duel/TargetingOverlay.jsx';
 import { EngineErrorOverlay } from '../duel/EngineErrorOverlay';
 import { TutorModal } from '../duel/TutorModal';
+import { CleanupDiscardModal } from '../duel/CleanupDiscardModal';
 import { TransmuteSacrificeModal } from '../duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from '../duel/TransmutePayModal';
 import { XSelectModal } from '../duel/XSelectModal';
@@ -70,6 +71,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
     resolveAnteExchange, declineAnteExchange,
+    resolveCleanupDiscard,
     resolveConditionalCounter,
     resolveUpkeepChoice,
     resolveChoice,
@@ -361,6 +363,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
           onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
           titleOverride={`${s_state.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
+
+      {s_state.pendingCleanupDiscard && s_state.pendingCleanupDiscard.controller === 'p' && (
+        <CleanupDiscardModal
+          hand={s_state.p.hand}
+          count={s_state.pendingCleanupDiscard.count}
+          onConfirm={(iids: string[]) => resolveCleanupDiscard(iids)}
         />
       )}
 

@@ -80,7 +80,14 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
       await waitForMain1(page);
     });
 
-    test('Cleanup hand-size discard: excess cards move from hand to the graveyard, visible in the banner', async ({ page }) => {
+    test('Cleanup hand-size discard: player picks cards via CleanupDiscardModal, excess cards move from hand to the graveyard', async ({ page }) => {
+      // As of the cleanup-step player-choice feature (docs/SYSTEMS.md Section
+      // 29), the human player no longer auto-discards at CLEANUP -- they pick
+      // via CleanupDiscardModal. See tests/scenarios/cleanup-discard.test.js
+      // for the engine-level coverage and tests/e2e/cleanup-discard.spec.ts
+      // for deeper modal-interaction coverage; this test keeps its original
+      // "excess cards move from hand to the graveyard, visible in the banner"
+      // scope, now driven through the modal instead of an automatic discard.
       const gyCountBefore = await readGraveyardCountFromUI(page);
       expect(gyCountBefore).not.toBeNull();
 
@@ -106,6 +113,11 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
       await page.waitForFunction(() => (window as any).__duelState?.().p.hand.length === 9, { timeout: 5_000 });
 
       await page.evaluate(() => (window as any).__duelDispatch({ type: 'ADVANCE_PHASE' })); // END -> CLEANUP
+
+      await page.waitForSelector('[data-testid="cleanup-discard-modal"]', { timeout: 5_000 });
+      await page.locator('[data-testid="cleanup-discard-card-cleanup-c8"]').click();
+      await page.locator('[data-testid="cleanup-discard-card-cleanup-c7"]').click();
+      await page.locator('[data-testid="cleanup-discard-confirm"]').click();
 
       await page.waitForFunction(() => (window as any).__duelState?.().p.hand.length === 7, { timeout: 5_000 });
       await page.waitForTimeout(150); // let React flush the banner re-render

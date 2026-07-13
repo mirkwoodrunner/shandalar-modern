@@ -35,6 +35,7 @@ import type { DuelConfig } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
 import { TutorModal } from './ui/duel/TutorModal';
+import { CleanupDiscardModal } from './ui/duel/CleanupDiscardModal';
 import { TransmuteSacrificeModal } from './ui/duel/TransmuteSacrificeModal';
 import { TransmutePayModal } from './ui/duel/TransmutePayModal';
 import { ConditionalCounterModal } from './ui/duel/ConditionalCounterModal';
@@ -229,6 +230,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     confirmTransmuteSacrifice, declineTransmuteSacrifice,
     confirmTransmutePay, declineTransmutePay,
     resolveAnteExchange, declineAnteExchange,
+    resolveCleanupDiscard,
     showMulligan, mulliganCount, handleKeep, handleMulligan,
     showLotus, setShowLotus, handleLotusChoose, handleLotusCancel,
     pendingDualLand, setPendingDualLand,
@@ -1133,6 +1135,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
           onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
           titleOverride={`${s.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
+
+      {s.pendingCleanupDiscard && s.pendingCleanupDiscard.controller === 'p' && (
+        <CleanupDiscardModal
+          hand={s.p.hand}
+          count={s.pendingCleanupDiscard.count}
+          onConfirm={(iids: string[]) => resolveCleanupDiscard(iids)}
         />
       )}
 

@@ -9,6 +9,23 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-13)
+- **Cleanup-Step Hand-Limit Discard** -- CR 514.1 fix: the cleanup-step
+  hand-limit discard previously auto-discarded the last N cards in hand array
+  order with zero player choice. New `pendingCleanupDiscard` state (parallel
+  to `pendingUpkeepChoice`/`pendingConditionalCounter`/`pendingSphereTrigger`)
+  and `RESOLVE_CLEANUP_DISCARD` reducer case give the human player ('p') an
+  interactive multi-select-then-confirm picker; the AI ('o') keeps its
+  existing auto-discard, already documented as fully delegated to
+  `DuelCore.js` by `AI.js`'s `planEnd`. New shared `CleanupDiscardModal.tsx`
+  (modeled on `TutorModal.tsx`'s visuals + `BandFormationPanel.tsx`'s
+  toggle-to-select mechanic, no decline option since the discard is
+  mandatory), wired into both `DuelScreen.tsx` and `DuelScreenMobile.tsx`.
+  New `resolveCleanupDiscard` dispatcher in `useDuel.js`;
+  `useDuelController.ts`'s End Turn auto-pass effect gained
+  `s.pendingCleanupDiscard` in its player-required-choice guard. Discards
+  route through the existing `discardCard` choke point unchanged (Library of
+  Leng's infinite-hand-size case preserved). See `docs/SYSTEMS.md` Section 29
+  and `docs/MECHANICS_INDEX.md` -- Cleanup-Step Hand-Limit Discard.
 - **Coral Helm** -- "{3}, Discard a card at random: Target creature gets
   +2/+2 until end of turn." New `discardRandom` cost token in the
   `ACTIVATE_ABILITY` reducer (preflight guard + cost-execution block via

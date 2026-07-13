@@ -5513,9 +5513,18 @@ ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { 
 const ac = ns.active;
 // Library of Leng: "You have no maximum hand size." See docs/MECHANICS_INDEX.md.
 const effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize;
+// AI ('o') keeps the auto-discard (planEnd in AI.js treats this as fully
+// delegated to DuelCore). The human ('p') instead gets a pendingCleanupDiscard
+// prompt -- see docs/SYSTEMS.md Section 29 -- so ADVANCE_PHASE stalls at
+// CLEANUP until RESOLVE_CLEANUP_DISCARD supplies which cards to lose.
+if (ac === 'o') {
 while (ns[ac].hand.length > effectiveMax) {
 const disc = ns[ac].hand[ns[ac].hand.length - 1];
 ns = discardCard(ns, ac, disc.iid, { cause: 'gameRule' });
+}
+} else {
+const overBy = ns.p.hand.length - effectiveMax;
+if (overBy > 0) ns = { ...ns, pendingCleanupDiscard: { controller: 'p', count: overBy } };
 }
 // Expire all EOT buffs on all permanents. SYSTEMS.md S3.1
 for (const w of ["p","o"]) {
@@ -6921,6 +6930,10 @@ pendingAnteExchange: null,
 // Resolved via RESOLVE_DAMAGE_SHIELD_CHOICE / DECLINE_DAMAGE_SHIELD_CHOICE.
 pendingDamageShieldChoice: null,
 pendingConditionalCounter: null,
+// Cleanup-step hand-limit discard: { controller: 'p', count: number }. See
+// docs/SYSTEMS.md Section 29. AI ('o') never sets this -- see the CLEANUP
+// branch above.
+pendingCleanupDiscard: null,
 priorityWindow: false,
 priorityPasser: null,
 manaTapSnapshot: null,
@@ -7506,6 +7519,7 @@ case "ADVANCE_PHASE": {
   if (s.pendingUpkeepChoice) return s;
   if (s.pendingConditionalCounter) return s;
   if (s.pendingSphereTrigger) return s;
+  if (s.pendingCleanupDiscard) return s;
   if (s.pendingLampPicks?.length) {
     console.warn('[DuelCore] ADVANCE_PHASE blocked: lamp pick pending');
     return s;
@@ -7516,6 +7530,20 @@ case "ADVANCE_PHASE": {
   }
   s = { ...s, manaTapSnapshot: null };
   return advPhase(s);
+}
+
+case "RESOLVE_CLEANUP_DISCARD": {
+  const pcd = s.pendingCleanupDiscard;
+  if (!pcd) return s;
+  const iids = Array.isArray(action.iids) ? action.iids : [];
+  if (iids.length !== pcd.count) return s;
+  if (new Set(iids).size !== iids.length) return s;
+  const handIids = new Set(s[pcd.controller].hand.map(c => c.iid));
+  if (!iids.every(iid => handIids.has(iid))) return s;
+  let ns = s;
+  for (const iid of iids) ns = discardCard(ns, pcd.controller, iid, { cause: 'gameRule' });
+  ns = { ...ns, pendingCleanupDiscard: null };
+  return dlog(ns, `${pcd.controller} discards ${iids.length} card(s) to hand size.`, 'effect');
 }
 
 case "SEL_CARD": return { ...s, selCard: action.iid };

@@ -4529,4 +4529,42 @@ COMPLETE
 
 ---
 
+## Cleanup-Step Hand-Limit Discard -- 2026-07-13
+
+CR 514.1 fix: cleanup-step hand-limit discard previously auto-discarded the
+last N cards in hand array order with no player choice. Human player (`'p'`)
+now gets an interactive multi-select picker; AI (`'o'`) keeps the original
+auto-discard (already documented as fully delegated to `DuelCore.js` by
+`AI.js`'s `planEnd`). See `docs/SYSTEMS.md` Section 29 for the full spec.
+
+**New state field:** `pendingCleanupDiscard: { controller: 'p', count: number } | null`.
+Set in `advPhase`'s `PHASE.CLEANUP` branch when `'p'`'s hand exceeds
+`effectiveMax` (Library of Leng's infinite-hand-size case preserved
+unchanged). `ADVANCE_PHASE` gains a guard blocking phase transitions while it
+is set, parallel to `pendingUpkeepChoice`/`pendingConditionalCounter`/
+`pendingSphereTrigger`.
+
+**New action:** `RESOLVE_CLEANUP_DISCARD { iids }` -- rejects unless `iids`
+exactly matches the required count, contains no duplicates, and every iid is
+in the controller's hand; otherwise discards each card via the existing
+`discardCard` choke point (`cause: 'gameRule'`), so `DISCARD_REPLACEMENTS`,
+`ON_DISCARD`, and trigger-queue draining all apply unchanged.
+
+**UI:** new shared `CleanupDiscardModal.tsx` (`src/ui/duel/`), modeled on
+`TutorModal.tsx`'s visual language with `BandFormationPanel.tsx`'s
+toggle-to-select mechanic. No decline option -- discard is mandatory. Wired
+into both `DuelScreen.tsx` and `DuelScreenMobile.tsx` identically. New
+`resolveCleanupDiscard` dispatcher added to `useDuel.js`; `useDuelController.ts`'s
+End Turn auto-pass effect gained `s.pendingCleanupDiscard` in its
+player-required-choice guard list.
+
+**Tests:**
+- Vitest: `tests/scenarios/cleanup-discard.test.js` (pending-state shape, wrong-count/duplicate/foreign-iid rejection, valid discard + phase resume, Library of Leng regression).
+- Playwright: `tests/e2e/cleanup-discard.spec.ts` (`@engine @mobile`).
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.33

@@ -394,16 +394,21 @@ describe('@engine Scenario: discard centralization Phase 1', () => {
     expect(s4.o.life).toBe(20);
   });
 
-  it('DISC-P13: CLEANUP hand-size discard (cause:gameRule) discards down to maxHandSize', () => {
-    const pHandCards = Array.from({ length: 9 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));
-    const base = makeState({ pHand: pHandCards, phase: PHASE.END, active: 'p' });
+  it('DISC-P13: CLEANUP hand-size discard (cause:gameRule) discards down to maxHandSize for the AI', () => {
+    // The AI ('o') keeps the original auto-discard-last-N behavior at CLEANUP
+    // (AI.js's planEnd treats this as fully delegated to DuelCore). The human
+    // ('p') path now prompts via pendingCleanupDiscard instead of
+    // auto-discarding -- see tests/scenarios/cleanup-discard.test.js.
+    const oHandCards = Array.from({ length: 9 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));
+    const base = makeState({ oHand: oHandCards, phase: PHASE.END, active: 'o' });
     const state = { ...base, ruleset: { ...base.ruleset, maxHandSize: 7 } };
 
     const ns = duelReducer(state, { type: 'ADVANCE_PHASE' }); // -> CLEANUP
 
-    expect(ns.p.hand.length).toBe(7);
-    expect(ns.p.hand.map(c => c.iid)).toEqual(['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6']);
-    expect(ns.p.gy.map(c => c.iid)).toEqual(['c8', 'c7']);
+    expect(ns.o.hand.length).toBe(7);
+    expect(ns.o.hand.map(c => c.iid)).toEqual(['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6']);
+    expect(ns.o.gy.map(c => c.iid)).toEqual(['c8', 'c7']);
+    expect(ns.pendingCleanupDiscard).toBeFalsy();
   });
 
   it("DISC-P14: Jandor's Ring discardLastDrawn as an activation cost (cause:cost), verbatim dlog", () => {

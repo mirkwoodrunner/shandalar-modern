@@ -139,6 +139,9 @@ dispatch({ type: 'RESOLVE_ANTE_EXCHANGE', iid }), []);
 const declineAnteExchange = useCallback(() =>
 dispatch({ type: 'DECLINE_ANTE_EXCHANGE' }), []);
 
+const resolveCleanupDiscard = useCallback((iids) =>
+dispatch({ type: 'RESOLVE_CLEANUP_DISCARD', iids }), []);
+
 return {
 state,
 dispatch,
@@ -177,6 +180,7 @@ confirmTransmutePay,
 declineTransmutePay,
 resolveAnteExchange,
 declineAnteExchange,
+resolveCleanupDiscard,
 };
 }
 
