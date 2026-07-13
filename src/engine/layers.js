@@ -208,6 +208,23 @@ function collectEffects(card, state) {
     if (aura.mod.layerDef) {
       effects.push({ ...aura.mod.layerDef, enterTs: enchTs });
     }
+    // Animate Artifact: "as long as enchanted artifact isn't a creature, it's
+    // an artifact creature with P/T equal to its mana value." onlyIfNotCreature
+    // is an opt-in gate checked against card.type (the raw printed type, never
+    // mutated by Layer 4 -- see matchesGlobalTypeFilter's nonCreatureArtifact
+    // branch above) so this doesn't chase its own Layer-4 output and oscillate.
+    if (aura.mod.addTypes?.length) {
+      const baseIsCreature = (card.type ?? '').includes('Creature');
+      if (!aura.mod.onlyIfNotCreature || !baseIsCreature) {
+        effects.push({ layer: 4, addTypes: aura.mod.addTypes, enterTs: enchTs });
+      }
+    }
+    if (aura.mod.powerFn || aura.mod.toughnessFn) {
+      const baseIsCreature = (card.type ?? '').includes('Creature');
+      if (!aura.mod.onlyIfNotCreature || !baseIsCreature) {
+        effects.push({ layer: '7a', powerFn: aura.mod.powerFn, toughnessFn: aura.mod.toughnessFn, enterTs: enchTs });
+      }
+    }
   }
 
   // 4. eotBuffs (temporary effects from spells / activated abilities)

@@ -4487,4 +4487,27 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.31
+## Animate Artifact — 2026-07-13
+
+**Card:** Animate Artifact (`animate_artifact`, U Enchantment — Aura, cmc 4) -- "Enchant artifact. As long as enchanted artifact isn't a creature, it's an artifact creature with power and toughness each equal to its mana value." `effect:"enchantArtifact", mod:{addTypes:["Creature"], powerFn:"manaValueCDA", toughnessFn:"manaValueCDA", onlyIfNotCreature:true}`. Reuses Titania's Song's `manaValueCDA` CDA evaluator (`(card) => card.cmc ?? 0`) completely unchanged -- no new evaluator added.
+
+**`enchantArtifact` gains a `card.mod` branch** (`DuelCore.js`), mirroring `enchantLand`'s existing `if (card.mod) { embedded } else { Kudzu-style }` split: with `card.mod` present, the aura embeds a record (`{iid, name, mod, controller, cardData, enterTs}`) into the target's own `enchantments[]` array instead of becoming a separate Kudzu-style bf permanent tracked via `enchantedArtifactIid`. The three pre-existing `enchantArtifact` users (Living Artifact, Artifact Possession, Relic Bind) have no `mod` field, so they fall through to the unchanged `else` branch -- byte-identical Kudzu-style behavior. A Guardian Beast check (ported from `enchantCreature`'s embedded branch -- a genuine "can this permanent be newly enchanted" rule, not specific to that case) guards the embedded path only: `if (isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped))`, so it protects a controller's own noncreature artifacts from a *new* Animate Artifact attachment exactly as it already does for `enchantCreature`, without reaching the three Kudzu-style users at all.
+
+**`collectEffects`'s "Attached auras" loop (`layers.js`) gains two new field checks**, additive and gated by field presence (existing Auras using only `mod.power`/`mod.keywords`/etc. are unaffected): `mod.addTypes` pushes a Layer 4 effect (already generically consumed -- the same `effects.filter(e => e.layer === 4)` fold Living Lands/Kormus Bell/Titania's Song use), and `mod.powerFn`/`mod.toughnessFn` push a Layer 7a effect (already generically consumed via `CDA_EVALUATORS`). Both are gated by a new opt-in `mod.onlyIfNotCreature` flag: when set, the effect is suppressed if `(card.type ?? '').includes('Creature')` is already true. This check reads `card.type` -- the raw printed type, never mutated by the Layer 4 pass -- mirroring `matchesGlobalTypeFilter`'s `nonCreatureArtifact` branch exactly, which is what avoids a self-reference/oscillation bug once `typeEff` has already been baked onto the card by a prior `recomputeTypeEffects` pass. `onlyIfNotCreature` is per-aura opt-in (only Animate Artifact sets it) -- a second, hypothetical Aura using `addTypes`/`powerFn` without the flag would apply unconditionally, unaffected by another aura's gate on the same permanent.
+
+**Side-benefit fix, in scope:** `enchantArtifact` was previously absent from `useDuelController.ts`'s `EXPLICIT_TARGET_EFFECTS` (a known gap flagged, not fixed, in the Tap Centralization Phase 1 entry above) -- Living Artifact, Artifact Possession, and Relic Bind all silently auto-resolved their target instead of prompting a picker when more than one legal artifact existed. Adding `enchantArtifact` to that set fixes this for all four cards sharing the effect name. A new `ARTIFACT_ONLY_TARGET_EFFECTS`/`isArtifactOnlyTarget` pair (mirroring `LAND_ONLY_TARGET_EFFECTS`/`isLandOnlyTarget` exactly) rejects a non-artifact battlefield click during targeting; the guard was added to both `src/DuelScreen.tsx` and `src/ui/Mobile/DuelScreenMobile.tsx` alongside the existing three (`isPlayerOnlyTarget`/`isCreatureOnlyTarget`/`isLandOnlyTarget`) click-routing guards. Relic Bind's separate card-data `requiresTarget:'opponentArtifact'` field (an unused, purely documentary string -- the real "opponent controls" legality gate is `CAST_SPELL`'s dedicated `relic_bind` id check) does not collide with `CastFlowState.requiresTarget` (the unrelated boolean the new set also now drives true for these four cards).
+
+**Mobile bugfix found while testing this card's e2e coverage (not this feature's own scope, but blocking it):** `src/ui/Mobile/FieldCard.tsx` computed creature status via `card.type?.includes('Creature')` (the raw printed type only) instead of the engine's real `isCre` (which reads `typeEff ?? type`), unlike `src/ui/Card/FieldCard.tsx` (desktop), which already imports and uses the engine's `isCre`. This meant any `typeEff`-driven creature-type change (Living Lands, Kormus Bell, Titania's Song, and now Animate Artifact) never displayed correctly on the true `?duel=sandbox-mobile` route -- masked until now because no prior e2e spec exercised that route for a type-changing effect. Fixed to mirror desktop's exact pattern (`isCreEngine(card) || card.isAnimatedLand === true`).
+
+**Stub count: 2 -> 1** (untriaged bucket: Tawnos's Coffin remains).
+
+**Tests:**
+- Vitest: `tests/scenarios/animate-artifact.test.js` (26: AA-01 through AA-06 `enchantArtifact` branch, AA-07 through AA-14 `collectEffects`/type-change, AA-15 through AA-22 targeting, AA-23/AA-24 meta, AA-25/AA-26 layer-ordering/Guardian-Beast-scope regression).
+- Playwright: `tests/e2e/animate-artifact.spec.ts` (4: animate + attack, targeting-restriction click guard, dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.32

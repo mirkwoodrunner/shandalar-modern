@@ -1839,12 +1839,34 @@ if (tgtC && isLand(tgtC)) {
 break;
 }
 case "enchantArtifact": {
-  // Living Artifact: Kudzu-style bf-permanent aura -- must remain a first-class
-  // permanent (not an embedded enchantments[] record) so its triggeredAbilities
-  // (ON_PLAYER_DAMAGED) and its own upkeep field are dispatched normally by the
-  // existing per-permanent scan loops (emitEvent, the UPKEEP switch).
-  // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
   if (tgtC && isArt(tgtC)) {
+    if (card.mod) {
+      // Animate Artifact: embed aura mod record in the artifact's enchantments
+      // array, same shape as enchantCreature/enchantLand's embedded path.
+      // Guardian Beast check ported from enchantCreature -- a genuine "can this
+      // permanent be newly enchanted" rule, not specific to that case.
+      if (isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped)) {
+        return dlog(s, `Guardian Beast prevents ${card.name} from enchanting ${tgtC.name}.`, 'effect');
+      }
+      const auraRecord = {
+        iid:        card.iid,
+        name:       card.name,
+        mod:        { ...card.mod },
+        controller: caster,
+        cardData:   { ...card },
+        enterTs:    ns.layerClock ?? 0,
+      };
+      ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+        c.iid === tgtC.iid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
+      )}};
+      ns = dlog(ns, `${card.name} enchants ${tgtC.name}.`, 'effect');
+      return ns;
+    }
+    // Living Artifact: Kudzu-style bf-permanent aura -- must remain a first-class
+    // permanent (not an embedded enchantments[] record) so its triggeredAbilities
+    // (ON_PLAYER_DAMAGED) and its own upkeep field are dispatched normally by the
+    // existing per-permanent scan loops (emitEvent, the UPKEEP switch).
+    // Adapted from Card-Forge/forge (l/living_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
     const pArr = { ...card, controller: caster, tapped: false, summoningSick: false,
       attacking: false, blocking: null, damage: 0, counters: {}, eotBuffs: [], enchantments: [],
       enchantedArtifactIid: tgtC.iid };

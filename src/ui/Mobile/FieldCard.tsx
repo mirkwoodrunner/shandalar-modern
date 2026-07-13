@@ -4,7 +4,7 @@ import { CardArtImage } from '../Card/CardArtImage';
 import { frameOf } from '../Card/frame';
 import type { CardData } from '../Card/types';
 import s from './styles.module.css';
-import { getDisplayPT, getPow, getTou } from '../../engine/DuelCore.js';
+import { getDisplayPT, getPow, getTou, isCre as isCreEngine } from '../../engine/DuelCore.js';
 
 interface FieldCardProps {
   card: CardData;
@@ -21,7 +21,7 @@ interface FieldCardProps {
 
 export function FieldCard({ card, selected, attacking, density = 'creature', onClick, isTarget, isPendingAttackerTarget, isBlockerSelected, isAssignedBlocker, state }: FieldCardProps) {
   const frame = frameOf(card);
-  const isCre = card.type?.includes('Creature');
+  const isCre = isCreEngine(card as any) || (card as any).isAnimatedLand === true;
   const tapped = card.tapped;
   const { power: dispPow, toughness: dispTou } = !isCre
     ? { power: 0, toughness: 0 }
