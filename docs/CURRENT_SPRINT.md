@@ -9,6 +9,21 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-13)
+- **Coral Helm** -- "{3}, Discard a card at random: Target creature gets
+  +2/+2 until end of turn." New `discardRandom` cost token in the
+  `ACTIVATE_ABILITY` reducer (preflight guard + cost-execution block via
+  `discardCard(..., {cause:'cost'})` + mana-strip regex), matching the
+  existing `discardLastDrawn` pattern. Uses `Math.random()` with a flag
+  comment matching all other random sites (pending Milestone B). Card
+  entry: `activated:{cost:"3,discardRandom", effect:"pumpCreature"},
+  mod:{power:2, toughness:2}` -- `pumpCreature` was already in
+  `ACTIVATE_TARGET_EFFECTS` and `resolveEff`, so no routing or UI changes
+  were needed. New `planActivatedAbilities` branch in `AI.js` fires when
+  the AI has a creature to pump, a card to discard, and >= 3 mana. Stub
+  count: **5 -> 4** (remaining: Tawnos's Coffin, Blaze of Glory, Oubliette,
+  Ring of Ma'ruf). Tests: 4 Vitest (`tests/scenarios/coral-helm.test.js`),
+  4 Playwright (`tests/e2e/coral-helm.spec.ts`, both viewports). See
+  `docs/MECHANICS_INDEX.md` -- Coral Helm.
 - **Animate Artifact** -- "Enchant artifact. As long as enchanted artifact
   isn't a creature, it's an artifact creature with power and toughness each
   equal to its mana value." `enchantArtifact` gains a `card.mod` embedded-attach

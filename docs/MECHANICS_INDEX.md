@@ -2614,9 +2614,7 @@ directly, not through `computeCharacteristics()` (see M3 below).
 
 Deferred: **Alchor's Tomb** (needs a generic color-choice UI; existing
 pickers are all mana-specific), **Blaze of Glory** (blocking model can't
-represent one blocker blocking multiple attackers), **Coral Helm** (Milestone
-B/seeded RNG -- would need a new `Math.random()` call site; the existing
-random-discard code only discards from the opponent's hand), **Reverse
+represent one blocker blocking multiple attackers), **Reverse
 Polarity** (needs artifact-source-tagged damage tracking `hurt()` doesn't
 have), **Sacrifice** (no "additional cost to cast" mechanism exists for
 spells).
@@ -4510,4 +4508,25 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.32
+## Coral Helm -- 2026-07-13
+
+**Card:** Coral Helm (`coral_helm`, U Artifact, cmc 3) -- "{3}, Discard a card at random: Target creature gets +2/+2 until end of turn." `activated:{cost:"3,discardRandom", effect:"pumpCreature"}, mod:{power:2, toughness:2}`.
+
+**`discardRandom` cost token** (new, `DuelCore.js` `ACTIVATE_ABILITY` reducer): three-point addition mirroring the existing `discardLastDrawn` pattern -- a preflight guard (activation rejected if activating player's hand is empty), a cost-execution block (picks a random index from `s[w].hand` via `Math.random()`, routes through `discardCard(..., {cause:'cost'})` -- same flagged `Math.random()` violation as `discardX`/`discardOne`/coin-flip sites, pending Milestone B seeded-RNG migration), and a mana-strip `.replace(/discardRandom/g, "")` so the token is excluded from the parsed mana cost. No changes to `parseMana`, `canPay`, `payMana`, or `discardCard` itself.
+
+**`pumpCreature` + `mod`:** Both existed and were already wired. `"pumpCreature"` was already in `ACTIVATE_TARGET_EFFECTS` (`useDuelController.ts`), so the targeting flow (UI + AI) fires without any routing changes. `resolveEff`'s `pumpCreature` case reads `card.mod.power`/`card.mod.toughness` from the Coral Helm card definition (same pattern as Wyluli Wolf). No changes to either screen file.
+
+**AI:** New branch in `planActivatedAbilities` (`AI.js`) for the `pumpCreature` + `discardRandom` combo: fires when the AI has creatures to pump, a card to discard, and >= 3 mana available; targets the highest-`evaluateCreatureValue` own creature.
+
+**Stub count: 1 -> 0** (untriaged bucket empty; 5 remaining stubs total are Tawnos's Coffin, Blaze of Glory, Oubliette, Ring of Ma'ruf, and Coral Helm -- now 4).
+
+**Tests:**
+- Vitest: `tests/scenarios/coral-helm.test.js` (4: HELM-01 basic pump + discard, HELM-02 buff expiry at CLEANUP, HELM-03 empty-hand preflight block, HELM-04 stack empty when mana insufficient).
+- Playwright: `tests/e2e/coral-helm.spec.ts` (4: pump visible on tile + discard, buff absent after CLEANUP, dual viewport, `@engine`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.33

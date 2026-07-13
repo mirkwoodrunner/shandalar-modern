@@ -318,6 +318,20 @@ function planActivatedAbilities(state, profile) {
       }
       continue;
     }
+
+    // Coral Helm: {3}, Discard a card at random: Target creature gets +2/+2 until end of turn.
+    // Only fire if the AI has creatures to pump, a card to discard, and enough mana.
+    if (c.activated?.effect === 'pumpCreature' && c.activated.cost?.includes('discardRandom')) {
+      if (state.o.hand.length === 0) continue;
+      const manaAvail = Object.values(state.o.mana).reduce((a, v) => a + v, 0);
+      if (manaAvail < 3) continue;
+      const ownCreatures = state.o.bf.filter(x => isCre(x, state));
+      if (!ownCreatures.length) continue;
+      const target = ownCreatures.reduce((a, b) =>
+        evaluateCreatureValue(b, state) > evaluateCreatureValue(a, state) ? b : a);
+      actions.push({ type: 'ACTIVATE_ABILITY', sourceId: c.iid, targets: [target.iid] });
+      continue;
+    }
   }
 
   return actions;
