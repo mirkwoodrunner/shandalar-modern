@@ -16,7 +16,7 @@ function makeReadyInstance(id, controller, overrides = {}) {
   return { ...inst, iid: `${id}-1`, summoningSick: false, tapped: false, eotBuffs: [], ...overrides };
 }
 
-describe('@engine Scenario: batch-14 -- Living Artifact', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Living Artifact', () => {
   it('gets vitality counters equal to combat damage dealt to its controller, exactly once', () => {
     const artifact = { iid: 'art-1', id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const living = makeReadyInstance('living_artifact', 'p', { enchantedArtifactIid: 'art-1', counters: {} });
@@ -87,7 +87,7 @@ describe('@engine Scenario: batch-14 -- Living Artifact', () => {
   });
 });
 
-describe('@engine Scenario: batch-14 -- Elder Spawn', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Elder Spawn', () => {
   it("can't be blocked by red creatures", () => {
     const spawn = makeReadyInstance('elder_spawn', 'p');
     const redBlocker = makeCreature('rb-1', { controller: 'o', color: 'R' });
@@ -126,7 +126,7 @@ describe('@engine Scenario: batch-14 -- Elder Spawn', () => {
   });
 });
 
-describe('@engine Scenario: batch-14 -- Amrou Kithkin / Bog Rats block-restriction bugfix', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Amrou Kithkin / Bog Rats block-restriction bugfix', () => {
   it("Amrou Kithkin can't be blocked by creatures with power 3 or greater", () => {
     const kithkin = makeReadyInstance('amrou_kithkin', 'p');
     const bigBlocker = makeCreature('big-1', { controller: 'o', power: 3, toughness: 3 });
@@ -146,7 +146,7 @@ describe('@engine Scenario: batch-14 -- Amrou Kithkin / Bog Rats block-restricti
   });
 });
 
-describe('@engine Scenario: batch-14 -- Osai Vultures', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Osai Vultures', () => {
   it('gets exactly 1 carrion counter regardless of how many creatures died this turn', () => {
     const vultures = makeReadyInstance('osai_vultures', 'p');
     const victim1 = makeCreature('v-1', { controller: 'o', toughness: 1, damage: 1 });
@@ -185,7 +185,7 @@ describe('@engine Scenario: batch-14 -- Osai Vultures', () => {
   });
 });
 
-describe('@engine Scenario: batch-14 -- Scavenging Ghoul', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Scavenging Ghoul', () => {
   it('gets a corpse counter for each creature that died this turn', () => {
     const ghoul = makeReadyInstance('scavenging_ghoul', 'p');
     const victim1 = makeCreature('v-1', { controller: 'o', toughness: 1, damage: 1 });
@@ -217,7 +217,7 @@ describe('@engine Scenario: batch-14 -- Scavenging Ghoul', () => {
   });
 });
 
-describe('@engine Scenario: batch-14 -- Sage of Lat-Nam', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Sage of Lat-Nam', () => {
   it('draws a card when tapped and an artifact is sacrificed', () => {
     const sage = makeReadyInstance('sage_of_lat_nam', 'p');
     const art = { iid: 'art-1', id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
@@ -239,7 +239,7 @@ describe('@engine Scenario: batch-14 -- Sage of Lat-Nam', () => {
   });
 });
 
-describe('@engine Scenario: batch-14 -- Island of Wak-Wak', () => {
+describe('@engine-batch-stubs-2 Scenario: batch-14 -- Island of Wak-Wak', () => {
   it('sets a flying creature\'s power to 0 until end of turn', () => {
     const wakwak = { ...makeReadyInstance('island_of_wak_wak', 'p'), type: 'Land' };
     const flier = makeCreature('fl-1', { controller: 'o', power: 4, toughness: 4, keywords: [KEYWORDS.FLYING.id] });
@@ -261,7 +261,7 @@ describe('@engine Scenario: batch-14 -- Island of Wak-Wak', () => {
   });
 });
 
-describe("@engine Scenario: batch-14 -- Urza's Avenger", () => {
+describe("@engine-batch-stubs-2 Scenario: batch-14 -- Urza's Avenger", () => {
   it('opens a 4-option modal choice when activated', () => {
     const avenger = makeReadyInstance('urzass_avenger', 'p');
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [avenger] });

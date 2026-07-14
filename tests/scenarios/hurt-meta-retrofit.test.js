@@ -10,7 +10,7 @@ import { duelReducer, hurt, inferSourceType } from '../../src/engine/DuelCore.js
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand, makeSpell } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: hurt() meta retrofit -- spell-source call sites', () => {
+describe('@engine-combat-3 Scenario: hurt() meta retrofit -- spell-source call sites', () => {
   it('Lightning Bolt (damage3, Instant) tags meta with its own iid and sourceType "spell"', () => {
     const bolt = makeSpell('bolt-1', { id: 'lightning_bolt', name: 'Lightning Bolt', color: 'R', cost: 'R', cmc: 1, effect: 'damage3' });
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pHand: [bolt] });
@@ -34,7 +34,7 @@ describe('@engine Scenario: hurt() meta retrofit -- spell-source call sites', ()
   });
 });
 
-describe('@engine Scenario: hurt() meta retrofit -- enchantment trigger call sites', () => {
+describe('@engine-combat-3 Scenario: hurt() meta retrofit -- enchantment trigger call sites', () => {
   it('Manabarbs (tapping a land for mana) tags meta with the enchantment\'s own iid', () => {
     const manabarbs = makeSpell('barbs-1', { id: 'manabarbs', name: 'Manabarbs', type: 'Enchantment', color: 'R', cost: '3R', cmc: 4 });
     const forest = makeLand('land-1', { id: 'forest', name: 'Forest', controller: 'p', produces: ['G'] });
@@ -46,7 +46,7 @@ describe('@engine Scenario: hurt() meta retrofit -- enchantment trigger call sit
   });
 });
 
-describe('@engine Scenario: hurt() meta retrofit -- combat lifelink meta (previously untagged)', () => {
+describe('@engine-combat-3 Scenario: hurt() meta retrofit -- combat lifelink meta (previously untagged)', () => {
   it('lifelink life-gain from an unblocked attacker now carries sourceIid/sourceType (creature, combat)', () => {
     const attacker = makeCreature('att-1', { id: 'serra_angel', name: 'Serra Angel', controller: 'p', power: 4, toughness: 4, keywords: ['LIFELINK'], attacking: true });
     const base = makeState({ phase: PHASE.COMBAT_AFTER_BLOCKERS, active: 'p', pBf: [attacker] });
@@ -57,7 +57,7 @@ describe('@engine Scenario: hurt() meta retrofit -- combat lifelink meta (previo
   });
 });
 
-describe('@engine Scenario: hurt() meta retrofit -- regression (Part 1 is behavior-invisible on its own)', () => {
+describe('@engine-combat-3 Scenario: hurt() meta retrofit -- regression (Part 1 is behavior-invisible on its own)', () => {
   it('Hurricane deals identical damage to both players and flying creatures as before the retrofit', () => {
     const flier = makeCreature('flier-1', { id: 'giant_albatross', name: 'Giant Albatross', controller: 'o', power: 3, toughness: 5, keywords: ['FLYING'] });
     const hurricane = makeSpell('hur-1', { id: 'hurricane', name: 'Hurricane', type: 'Sorcery', color: 'G', cost: 'XG', cmc: 2, effect: 'hurricane' });

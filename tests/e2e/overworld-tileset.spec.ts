@@ -56,7 +56,7 @@ async function sampleTerrainCanvas(page) {
 }
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`overworld @mobile ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('terrain renders sprites (not a flat color, not blank)', async ({ page }) => {
@@ -93,7 +93,7 @@ for (const vp of VIEWPORTS) {
 // Runs at both desktop and mobile because WorldMap is shared.
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile fog-edge mask ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`overworld @mobile fog-edge mask ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('tileset painted within 2 s of page load (eager preload)', async ({ page }) => {
@@ -218,7 +218,7 @@ for (const vp of VIEWPORTS) {
 
 // Fallback: when the tilesheet assets fail to load, the map must still render
 // the legacy TERRAIN_BG colors -- no blank tiles, no thrown errors.
-test.describe('@overworld @mobile asset-load fallback', () => {
+test.describe('@overworld-visual-2 @mobile asset-load fallback', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('blocks tilesheets -> flat TERRAIN_BG fallback still renders', async ({ page }) => {
@@ -261,7 +261,7 @@ const RETRY_VIEWPORTS = [
 ];
 
 for (const vp of RETRY_VIEWPORTS) {
-  test.describe(`@overworld @mobile tilesheet retry — ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`overworld @mobile tilesheet retry — ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('retry recovery: warn emitted, tiles render after retry succeeds', async ({ page }) => {
@@ -347,7 +347,7 @@ for (const vp of RETRY_VIEWPORTS) {
 // a pass at one and fail at the other is a hard fail for this feature.
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile tint-blend dithering ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`overworld @mobile tint-blend dithering ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test.beforeEach(async ({ page }) => {
@@ -568,7 +568,7 @@ for (const vp of VIEWPORTS) {
 // Singleton parity guard: the retry state is module-level and shared, so
 // exhausting retries in one viewport context must show the same terminal state
 // when a second load occurs (no per-screen re-initialization of _loadStarted).
-test.describe('@overworld @mobile singleton parity guard', () => {
+test.describe('@overworld-visual-2 @mobile singleton parity guard', () => {
   test('terminal failure state is not reset between viewport changes', async ({ browser }) => {
     // Load mobile viewport first; exhaust retries for tileset.
     const mobileCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });

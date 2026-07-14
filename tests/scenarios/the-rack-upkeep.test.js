@@ -42,7 +42,7 @@ function makeHand(count) {
   return Array.from({ length: count }, (_, i) => makeLand(`hand-${i}`));
 }
 
-describe('@engine Scenario: the-rack-upkeep -- fires only on the opponent-of-controller upkeep', () => {
+describe('@engine-card-scenarios-8 Scenario: the-rack-upkeep -- fires only on the opponent-of-controller upkeep', () => {
   it("RACK-01: opponent's upkeep with 1 card in hand takes 2 damage", () => {
     const rack = makeRack('rack-1', { controller: 'p' });
     const state = makeState({ phase: PHASE.UNTAP, active: 'o', pBf: [rack], oHand: makeHand(1) });

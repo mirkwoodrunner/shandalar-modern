@@ -43,7 +43,7 @@ const FAMILY_RULES = [
   { family: 'premodern', test: f => /cardsPremodern/.test(f) },
 
   { family: 'overworld-generation', test: f => /(map-terrain-clustering|monster-variety|terrain-decoration-bounds|castle-boss-routing|difficulty\.spec|\bmap\.spec|overworld-desktop)/.test(f) },
-  { family: 'overworld-visual', test: f => /overworld|dungeon-tileset|structure-icons|plaque-visibility|hooded-figure-sprites|preduel-sandbox|ruins\.spec/.test(f) },
+  { family: 'overworld-visual', test: f => /overworld|dungeon-tileset|structure-icons|plaque-visibility|hooded-figure-sprites|preduel-sandbox|ruins\.spec|henchman-visibility/.test(f) },
 
   { family: 'engine-ai', test: f => /(^|\/)AI\.|(^|\/)ai-|mcts-rollout/.test(f) },
   { family: 'engine-core-mechanics', test: f => /DuelCore\.(reducer|snapshot)|tap-centralization|cleanup-discard|undo-tap-activate|no-tap-activation-auras|tap-triggered-auras/.test(f) },
@@ -55,7 +55,7 @@ const FAMILY_RULES = [
   { family: 'engine-banding-ante', test: f => /banding-|ante-|ante_system|ante-system-complete/.test(f) },
   { family: 'engine-layers-copy', test: f => /layer1-copy-artifact|layer2-control-change|layer3-text-substitution|copy-mechanism-generalized|copy-and-modal-choice|layer-engine\.spec|type-change-cards|type-eff-baking|vesuvan-doppelganger|tetravus|enchanted-slot/.test(f) },
   { family: 'engine-batch-stubs', test: f => /batch-14-quick-win-stubs|stub-batch-rd-conv-stasis|deferral-sweep|additional-cost-sacrifice|discard-centralization|gemini-removal-smoke/.test(f) },
-  { family: 'engine-cast-flow-ui', test: f => /sandbox-|duel-controller|ability-stack-bugs|engine-fatal-error-overlay|generalized-choice-mechanisms|mobile-targeting|tutor-modal|lotus-cancel-undo|power-sink-x-select|undo-mana-taps-all-phases|card-type-line|exile-zone|ancestral-recall-targeting/.test(f) },
+  { family: 'engine-cast-flow-ui', test: f => /sandbox-|duel-controller|useDuelController|ability-stack-bugs|engine-fatal-error-overlay|generalized-choice-mechanisms|mobile-targeting|tutor-modal|lotus-cancel-undo|power-sink-x-select|undo-mana-taps-all-phases|card-type-line|exile-zone|ancestral-recall-targeting/.test(f) },
 
   // catch-all for standalone single-card scenario files with no other natural home
   { family: 'engine-card-scenarios', test: () => true },
@@ -68,7 +68,7 @@ function classify(file) {
   return 'engine-card-scenarios';
 }
 
-const vitestFiles = VITEST_DIRS.flatMap(d => findFiles(d, ['.test.js'])).filter(f => !f.endsWith('_template.test.js'));
+const vitestFiles = VITEST_DIRS.flatMap(d => findFiles(d, ['.test.js', '.test.ts', '.test.tsx'])).filter(f => !f.endsWith('_template.test.js'));
 const pwFiles = PW_DIRS.flatMap(d => findFiles(d, ['.spec.ts', '.spec.js']));
 
 const families = new Map(); // family -> { vitest: [{file,count}], pw: [{file,count}] }
@@ -96,15 +96,18 @@ function packFamily(familyName, entries) {
       leaves.push(current);
       current = { vitestFiles: [], pwFiles: [], count: 0 };
     }
-    if (e.file.endsWith('.test.js')) current.vitestFiles.push(e.file);
+    if (e.file.endsWith('.test.js') || e.file.endsWith('.test.ts') || e.file.endsWith('.test.tsx')) current.vitestFiles.push(e.file);
     else current.pwFiles.push(e.file);
     current.count += e.count;
   }
   if (current.count > 0) leaves.push(current);
 
-  if (leaves.length === 1) return { [familyName]: leaves[0] };
+  const tagName = leaves.length === 1 ? `@${familyName}` : null;
   const out = {};
-  leaves.forEach((leaf, i) => { out[`${familyName}-${i + 1}`] = leaf; });
+  leaves.forEach((leaf, i) => {
+    const name = tagName || `@${familyName}-${i + 1}`;
+    out[name] = { ...leaf, family: familyName };
+  });
   return out;
 }
 
@@ -115,17 +118,11 @@ for (const [familyName, { vitest, pw }] of families) {
   Object.assign(tags, packed);
 }
 
-// Default `related`: every other leaf tag sharing the same family prefix
-// (strip trailing "-<n>" if present).
-function baseFamily(tagName) {
-  const meta = tagName.match(/^(.*?)(-\d+)?$/);
-  return meta[1];
-}
+// Default `related`: every other leaf tag sharing the same family.
 for (const tagName of Object.keys(tags)) {
-  const base = baseFamily(tagName);
-  const related = Object.keys(tags).filter(t => t !== tagName && baseFamily(t) === base);
+  const family = tags[tagName].family;
+  const related = Object.keys(tags).filter(t => t !== tagName && tags[t].family === family);
   tags[tagName].related = related;
-  tags[tagName].family = base;
 }
 
 // stable key order

@@ -23,7 +23,7 @@ function toUpkeep(pBf) {
   return duelReducer(s1, { type: 'ADVANCE_PHASE' }); // -> UPKEEP, queues choice(s)
 }
 
-describe('@engine Scenario: Tetravus', () => {
+describe('@engine-layers-copy-1 Scenario: Tetravus', () => {
 
   it('enters the battlefield with three +1/+1 counters (etbCounters)', () => {
     const spell = { iid: 'tv-1', id: 'tetravus', name: 'Tetravus', type: 'Artifact Creature', cmc: 6, cost: '6', power: 1, toughness: 1, etbCounters: { P1P1: 3 } };

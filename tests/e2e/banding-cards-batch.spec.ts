@@ -134,7 +134,7 @@ function makeWall(iid: string, overrides: Record<string, any> = {}) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string) {
-  test.describe(`@engine Banding cards batch UI [${label}]`, () => {
+  test.describe(`@engine-banding-ante-1 Banding cards batch UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

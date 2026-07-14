@@ -30,7 +30,7 @@ function stateWithClayOnStack() {
   };
 }
 
-describe('@engine Scenario: Primal Clay', () => {
+describe('@engine-card-scenarios-7 Scenario: Primal Clay', () => {
 
   it('presents a pendingChoice with all three modes after entering the battlefield', () => {
     const s1 = duelReducer(stateWithClayOnStack(), { type: 'RESOLVE_STACK' });

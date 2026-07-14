@@ -12,7 +12,7 @@ import KEYWORDS from '../../src/data/keywords.js';
 const SWAMPWALK  = KEYWORDS.SWAMPWALK.id;
 const PLAINSWALK = KEYWORDS.PLAINSWALK.id;
 
-describe('@engine Scenario: Layer 3 -- Text Substitution (Magical Hack, Sleight of Mind)', () => {
+describe('@engine-layers-copy-1 Scenario: Layer 3 -- Text Substitution (Magical Hack, Sleight of Mind)', () => {
 
   // ── Magical Hack (land-type word substitution) ─────────────────────────────
 

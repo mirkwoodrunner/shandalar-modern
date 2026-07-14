@@ -11,7 +11,7 @@ import {
   OVERFLOW_X,
 } from '../../src/ui/overworld/terrainRenderer.js';
 
-describe('@overworld Scenario: terrain decoration overflow bounds', () => {
+describe('@overworld-generation Scenario: terrain decoration overflow bounds', () => {
 
   it('every FOREST decoration instruction stays within the horizontal overflow band', () => {
     for (let x = 0; x < 60; x++) {

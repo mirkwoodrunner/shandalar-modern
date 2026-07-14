@@ -13,7 +13,7 @@ function libOf(n) {
   return Array.from({ length: n }, (_, i) => ({ iid: `lib${i}`, id: 'forest', name: 'Forest' }));
 }
 
-describe('@engine Scenario: Contract from Below', () => {
+describe('@engine-banding-ante-1 Scenario: Contract from Below', () => {
   it('discards hand, antes top of library, then draws 7', () => {
     const card = makeSpell('cfb1', { id: 'contract_from_below', name: 'Contract from Below', effect: 'contractFromBelow' });
     let state = makeState({ pHand: [makeSpell('h1'), makeSpell('h2')] });
@@ -30,7 +30,7 @@ describe('@engine Scenario: Contract from Below', () => {
   });
 });
 
-describe('@engine Scenario: Demonic Attorney', () => {
+describe('@engine-banding-ante-1 Scenario: Demonic Attorney', () => {
   it('each player antes the top card of their own library', () => {
     const card = makeSpell('da1', { id: 'demonic_attorney', name: 'Demonic Attorney', effect: 'demonicAttorney' });
     let state = makeState();
@@ -56,7 +56,7 @@ describe('@engine Scenario: Demonic Attorney', () => {
   });
 });
 
-describe('@engine Scenario: Jeweled Bird', () => {
+describe('@engine-banding-ante-1 Scenario: Jeweled Bird', () => {
   it('antes itself, discards the rest of the ante to the graveyard, and draws a card', () => {
     const bird = { iid: 'jb1', id: 'jeweled_bird', name: 'Jeweled Bird', type: 'Artifact', effect: 'jeweledBirdAnte', controller: 'p', tapped: true, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     let state = makeState();
@@ -77,7 +77,7 @@ describe('@engine Scenario: Jeweled Bird', () => {
   });
 });
 
-describe('@engine Scenario: Rebirth', () => {
+describe('@engine-banding-ante-1 Scenario: Rebirth', () => {
   it('resets a low-life player to 20 and antes their top library card', () => {
     const card = makeSpell('rb1', { id: 'rebirth', name: 'Rebirth', effect: 'rebirthAnte' });
     let state = makeState();
@@ -98,7 +98,7 @@ describe('@engine Scenario: Rebirth', () => {
   });
 });
 
-describe('@engine Scenario: ante card pool integrity', () => {
+describe('@engine-banding-ante-1 Scenario: ante card pool integrity', () => {
   it('the seven ante cards resolve through duelReducer end-to-end via CAST_SPELL/RESOLVE_STACK for the non-targeted sorceries', () => {
     const cfb = makeSpell('cfb2', { id: 'contract_from_below', name: 'Contract from Below', cost: 'B', type: 'Sorcery', effect: 'contractFromBelow' });
     let state = makeState({ phase: PHASE.MAIN_1, active: 'p', pHand: [cfb] });

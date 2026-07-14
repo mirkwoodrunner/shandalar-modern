@@ -21,7 +21,7 @@ function makeTestArtifact(iid, overrides = {}) {
   };
 }
 
-describe('@engine Scenario: emblem infrastructure (shared)', () => {
+describe('@engine-card-scenarios-4 Scenario: emblem infrastructure (shared)', () => {
 
   it('EMB-01: buildDuelState initializes emblems:[] for both players', () => {
     const pDeckIds = Array(8).fill('forest');

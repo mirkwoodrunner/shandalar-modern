@@ -18,7 +18,7 @@ function makeLivingLands(iid, overrides = {}) {
   };
 }
 
-describe('@engine Scenario: type-effect baking (Deferral Sweep 2)', () => {
+describe('@engine-layers-copy-2 Scenario: type-effect baking (Deferral Sweep 2)', () => {
 
   it('bakes typeEff/subtypeEff and P/T onto a Forest while Living Lands is on the battlefield', () => {
     const forest = makeLand('forest-1', { id: 'forest', name: 'Forest', subtype: 'Forest', controller: 'p' });

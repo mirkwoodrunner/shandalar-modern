@@ -43,7 +43,7 @@ function makeSong(iid, overrides = {}) {
   };
 }
 
-describe("@engine Scenario: Titania's Song", () => {
+describe("@engine-card-scenarios-8 Scenario: Titania's Song", () => {
 
   it('TS-01: a noncreature artifact on the battlefield becomes a Creature (Layer 4) while Titania\'s Song is in play', () => {
     const art = makeArtifact('art-1');

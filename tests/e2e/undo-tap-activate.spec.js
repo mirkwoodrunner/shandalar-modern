@@ -1,7 +1,7 @@
 // tests/e2e/undo-tap-activate.spec.js
 import { test, expect } from '@playwright/test';
 
-test.describe('@engine UNDO_MANA_TAPS with activated abilities', () => {
+test.describe('@engine-core-mechanics-1 UNDO_MANA_TAPS with activated abilities', () => {
 
   test('pump ability: cannot undo land tap after pump resolves', async ({ page }) => {
     await page.goto('http://localhost:5173');

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld Difficulty system', () => {
+test.describe('@overworld-generation Difficulty system', () => {
   test('Choose screen shows color, difficulty, and name field together', async ({ page }) => {
     await page.goto('/');
     await page.getByText('BEGIN YOUR JOURNEY').click();

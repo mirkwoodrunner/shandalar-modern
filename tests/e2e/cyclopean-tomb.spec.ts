@@ -73,7 +73,7 @@ async function waitForEngineReady(page: Page) {
 // is already verified via engine state on both viewports.
 
 function runSuite(viewport: { width: number; height: number }, label: string, isMobile: boolean) {
-  test.describe(`@engine Cyclopean Tomb UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-1 Cyclopean Tomb UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

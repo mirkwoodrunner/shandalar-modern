@@ -31,7 +31,7 @@ async function tapAllLands(page: Page): Promise<number> {
 }
 
 
-test.describe('@engine @mobile TD-002: X-spell cast log', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TD-002: X-spell cast log', () => {
   test('TD-002: X-spell cast log includes resolved X value', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
@@ -169,7 +169,7 @@ test.describe('@engine @mobile TD-002: X-spell cast log', () => {
   });
 });
 
-test.describe('@engine @mobile TD-006: spell cast log includes target', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TD-006: spell cast log includes target', () => {
   test('TD-006a: cast targeting opponent player logs "targeting Opponent"', async ({ page }) => {
     // Inject lightning_bolt via URL so it is in hand at game init (synchronous)
     await page.goto(sandboxWith('lightning_bolt'));
@@ -301,7 +301,7 @@ test.describe('@engine @mobile TD-006: spell cast log includes target', () => {
   });
 });
 
-test.describe('@engine @mobile TD-003: tap-before-targeting fix', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TD-003: tap-before-targeting fix', () => {
   test('TD-003: target selection survives mana tap on desktop', async ({ page }) => {
     await page.goto('/?duel=sandbox');
     await page.waitForFunction(() => typeof (window as any).__duelDispatch === 'function');
@@ -411,7 +411,7 @@ test.describe('@engine @mobile TD-003: tap-before-targeting fix', () => {
   });
 });
 
-test.describe('@engine @mobile TD-004 — Ancestral Recall explicit targeting', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TD-004 — Ancestral Recall explicit targeting', () => {
   test('TD-004: Ancestral Recall prompts for target on mobile (draw3 explicit target)', async ({ page }) => {
     // Use the mobile route if available, otherwise standard sandbox
     await page.goto('/?duel=sandbox&mobile=1');
@@ -473,7 +473,7 @@ test.describe('@engine @mobile TD-004 — Ancestral Recall explicit targeting', 
   });
 });
 
-test.describe('@engine @mobile TD-004-B -- Desktop player target click', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TD-004-B -- Desktop player target click', () => {
   test('Ancestral Recall: opponent banner becomes clickable when card selected', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/?duel=sandbox');
@@ -569,7 +569,7 @@ test.describe('@engine @mobile TD-004-B -- Desktop player target click', () => {
   });
 });
 
-test.describe('@engine @mobile Layers audit fixes', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile Layers audit fixes', () => {
   test('Keldon Warlord counts itself and all non-Wall creatures', async ({ page }) => {
     await page.goto(sandboxWith('keldon_warlord,grizzly_bears'));
     await waitForDuel(page);
@@ -679,7 +679,7 @@ test.describe('@engine @mobile Layers audit fixes', () => {
   });
 });
 
-test.describe('@engine @mobile Enchant creature auras — walkland, web, ward cycle', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile Enchant creature auras — walkland, web, ward cycle', () => {
   test('Fishliver Oil grants islandwalk via layers', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -825,7 +825,7 @@ test.describe('@engine @mobile Enchant creature auras — walkland, web, ward cy
   });
 });
 
-test.describe('@engine @mobile tutor modal — mobile viewport', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile tutor modal — mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile: tutor modal opens, card selectable, decline works', async ({ page }) => {
@@ -860,7 +860,7 @@ test.describe('@engine @mobile tutor modal — mobile viewport', () => {
   });
 });
 
-test.describe('@engine @mobile TransmutePayModal', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TransmutePayModal', () => {
 
   test('modal is a compact top banner -- does not cover full screen', async ({ page }) => {
     await page.goto(SANDBOX_URL);

@@ -23,7 +23,7 @@ function runAI(state) {
   return duelReducer(state, { type: 'AI_ACTS', acts });
 }
 
-describe('@engine AI summoning sickness -- mana planning', () => {
+describe('@engine-ai-1 AI summoning sickness -- mana planning', () => {
   it('does not count a summoning-sick mana dork as available mana', () => {
     // AI has a sick Llanowar Elves and no lands. It should not be able to cast
     // a 1G creature because the sick Elves cannot tap for mana.

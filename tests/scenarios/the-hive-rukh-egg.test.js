@@ -7,7 +7,7 @@ import { duelReducer, checkDeath } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: The Hive, Rukh Egg', () => {
+describe('@engine-card-scenarios-7 Scenario: The Hive, Rukh Egg', () => {
 
   it('The Hive: {5},{T} creates a 1/1 colorless Insect artifact creature token with flying named Wasp', () => {
     const hive = { iid: 'hive-1', id: 'the_hive', name: 'The Hive', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 5, activated: { cost: '5,T', effect: 'createWaspToken' } };

@@ -53,7 +53,7 @@ function makeCreatureCard(iid: string, overrides: Record<string, any> = {}) {
 // Alchor's Tomb -- color choice through the generalized ChoiceModal
 // ---------------------------------------------------------------------------
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Alchor's Tomb color choice [${viewport.name}]`, () => {
+  test.describe(`@engine-cast-flow-ui-2 @mobile Alchor's Tomb color choice [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test("activating Alchor's Tomb opens ChoiceModal; picking a color sets the target's color", async ({ page }) => {
@@ -103,7 +103,7 @@ for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: '
 // Darkpact -- ante-target picker (reuses TutorModal)
 // ---------------------------------------------------------------------------
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Darkpact ante-exchange picker [${viewport.name}]`, () => {
+  test.describe(`@engine-cast-flow-ui-2 @mobile Darkpact ante-exchange picker [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test("choosing an ante card exchanges it with the top of the library", async ({ page }) => {
@@ -150,7 +150,7 @@ for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: '
 // Ashnod's Battle Gear -- untap-step optional-untap choice
 // ---------------------------------------------------------------------------
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Ashnod's Battle Gear untap-step choice [${viewport.name}]`, () => {
+  test.describe(`@engine-cast-flow-ui-2 @mobile Ashnod's Battle Gear untap-step choice [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test('choosing to keep it tapped preserves the bonus; the modal resolves through the real reducer', async ({ page }) => {

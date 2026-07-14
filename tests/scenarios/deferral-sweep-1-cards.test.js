@@ -15,7 +15,7 @@ function makeReadyInstance(id, controller, overrides = {}) {
   return { ...inst, iid: `${id}-1`, summoningSick: false, tapped: false, ...overrides };
 }
 
-describe('@engine Scenario: deferral-sweep-1 -- Cave People', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Cave People', () => {
   it('gets +1/-2 until end of turn when it attacks', () => {
     const cave = makeReadyInstance('cave_people', 'p');
     const base = makeState({ phase: PHASE.COMBAT_ATTACKERS, active: 'p', pBf: [cave] });
@@ -36,7 +36,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Cave People', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Hasran Ogress', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Hasran Ogress', () => {
   it('deals 3 damage to its controller when it attacks if they decline to pay {2}', () => {
     const ogress = makeReadyInstance('hasran_ogress', 'p');
     const base = makeState({ phase: PHASE.COMBAT_ATTACKERS, active: 'p', pBf: [ogress] });
@@ -60,7 +60,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Hasran Ogress', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Citanul Druid', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Citanul Druid', () => {
   it('gets a +1/+1 counter when an opponent casts an artifact spell', () => {
     const druid = makeReadyInstance('citanul_druid', 'p');
     const artifactSpell = makeSpell('as-1', { id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', color: '', cmc: 1, cost: '1', controller: 'o' });
@@ -80,7 +80,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Citanul Druid', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Throne of Bone', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Throne of Bone', () => {
   it('may pay {1} to gain 1 life when a player casts a black spell', () => {
     const throne = { ...makeReadyInstance('throne_of_bone', 'p'), damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const blackSpell = makeSpell('bs-1', { id: 'test_black', name: 'Test Black Spell', type: 'Sorcery', color: 'B', cmc: 1, cost: 'B', controller: 'o' });
@@ -102,7 +102,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Throne of Bone', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Urza\'s Chalice', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Urza\'s Chalice', () => {
   it('may pay {1} to gain 1 life when a player casts an artifact spell', () => {
     const chalice = { ...makeReadyInstance('urzass_chalice', 'p'), damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const artifactSpell = makeSpell('as-1', { id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', color: '', cmc: 1, cost: '1', controller: 'p' });
@@ -115,7 +115,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Urza\'s Chalice', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Dingus Egg', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Dingus Egg', () => {
   it("deals 2 damage to a land's controller when that land is put into a graveyard from the battlefield", () => {
     const egg = { ...makeReadyInstance('dingus_egg', 'p'), damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const land = makeLand('l-1', { controller: 'o' });
@@ -135,7 +135,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Dingus Egg', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Tablet of Epityr', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Tablet of Epityr', () => {
   it('may pay {1} to gain 1 life when an artifact you control dies', () => {
     const tablet = { ...makeReadyInstance('tablet_of_epityr', 'p'), damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const ownArtifact = { iid: 'oa-1', id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
@@ -156,7 +156,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Tablet of Epityr', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Urza\'s Miter', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Urza\'s Miter', () => {
   it('may pay {3} to draw a card when an artifact you control dies without being sacrificed', () => {
     const miter = { ...makeReadyInstance('urzass_miter', 'p'), damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
     const ownArtifact = { iid: 'oa-1', id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
@@ -181,7 +181,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Urza\'s Miter', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Khabál Ghoul', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Khabál Ghoul', () => {
   it('gets a +1/+1 counter for each creature that died this turn at each end step', () => {
     const ghoul = makeReadyInstance('khabal_ghoul', 'p');
     const victim1 = makeCreature('v-1', { controller: 'o', toughness: 1, damage: 1 });
@@ -200,7 +200,7 @@ describe('@engine Scenario: deferral-sweep-1 -- Khabál Ghoul', () => {
   });
 });
 
-describe('@engine Scenario: deferral-sweep-1 -- Reverse Polarity', () => {
+describe('@engine-batch-stubs-2 Scenario: deferral-sweep-1 -- Reverse Polarity', () => {
   it('gains life equal to twice the artifact damage taken this turn', () => {
     const spell = makeSpell('rp-1', { id: 'reverse_polarity', name: 'Reverse Polarity', type: 'Instant', color: 'W', cmc: 2, cost: 'WW', effect: 'reversePolarityGain', controller: 'p' });
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pHand: [spell] });

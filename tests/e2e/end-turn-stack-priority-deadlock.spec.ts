@@ -138,7 +138,7 @@ async function runPestilenceActuallyCountered(page: Page) {
   expect(s.p.gy.some((c: any) => c.id === 'pestilence')).toBe(true);
 }
 
-test.describe('@engine @mobile End Turn stack-priority deadlock -- desktop', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn stack-priority deadlock -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('DEADLOCK-01: End Turn completes when opponent responds with a counterspell and passes', async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe('@engine @mobile End Turn stack-priority deadlock -- desktop', () 
   });
 });
 
-test.describe('@engine @mobile End Turn stack-priority deadlock -- mobile', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn stack-priority deadlock -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('DEADLOCK-03: End Turn completes on mobile ActionBar', async ({ page }) => {

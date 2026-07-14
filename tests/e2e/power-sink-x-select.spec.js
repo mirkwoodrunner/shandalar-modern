@@ -57,7 +57,7 @@ async function setOppMana(page, mana) {
 
 // ── Test Suite: Desktop (1280x800) ───────────────────────────────────────────
 
-test.describe('@engine @mobile Power Sink + X-select -- Desktop 1280x800', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile Power Sink + X-select -- Desktop 1280x800', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
   });
@@ -371,7 +371,7 @@ test.describe('@engine @mobile Power Sink + X-select -- Desktop 1280x800', () =>
 
 // ── Test Suite: Mobile (390x844) ──────────────────────────────────────────────
 
-test.describe('@engine @mobile Power Sink + X-select -- Mobile 390x844', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile Power Sink + X-select -- Mobile 390x844', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
   });

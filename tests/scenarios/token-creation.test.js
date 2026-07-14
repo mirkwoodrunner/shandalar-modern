@@ -9,7 +9,7 @@ import { TOKEN_DB } from '../../src/data/tokens.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Token creation infrastructure', () => {
+describe('@engine-card-scenarios-8 Scenario: Token creation infrastructure', () => {
 
   it('makeTokenInstance produces the same instance shape as makeCardInstance, plus isToken', () => {
     const token = makeTokenInstance('wasp', 'p');

@@ -20,7 +20,7 @@ function toBlockersPhase(state) {
   return duelReducer(s1, { type: 'ADVANCE_PHASE' });        // -> COMBAT_BLOCKERS
 }
 
-describe('@engine AI banding heuristics (CR 702.22, phase 2)', () => {
+describe('@engine-ai-1 AI banding heuristics (CR 702.22, phase 2)', () => {
 
   // -- Band formation gating (planAttack) -------------------------------------
 

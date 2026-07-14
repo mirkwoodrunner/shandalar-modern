@@ -35,7 +35,7 @@ function stateWithVesuvanOnStack(oBf, targetIid, iid = 'ves-1') {
   };
 }
 
-describe('@engine Scenario: Vesuvan Doppelganger', () => {
+describe('@engine-layers-copy-2 Scenario: Vesuvan Doppelganger', () => {
 
   it('declining the ETB copy leaves a 0/0 Shapeshifter that dies to state-based actions', () => {
     const state = stateWithVesuvanOnStack([], null);

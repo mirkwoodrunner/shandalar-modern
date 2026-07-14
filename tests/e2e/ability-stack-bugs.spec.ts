@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@engine @mobile ability stack bugs', () => {
+test.describe('@engine-cast-flow-ui-1 @mobile ability stack bugs', () => {
 
   const BASE = 'http://localhost:5173/?duel=sandbox';
 

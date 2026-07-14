@@ -31,7 +31,7 @@ async function tapAllLands(page: Page): Promise<number> {
 }
 
 
-test.describe('@engine @mobile Group P handler tests', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Group P handler tests', () => {
   test('Group P -- morale pumps attackers only', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -87,7 +87,7 @@ test.describe('@engine @mobile Group P handler tests', () => {
   });
 });
 
-test.describe('@engine @mobile Tutor and Transmute modal flows', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Tutor and Transmute modal flows', () => {
   test('Demonic Tutor: modal opens on resolve, player selects card', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -262,7 +262,7 @@ test.describe('@engine @mobile Tutor and Transmute modal flows', () => {
   });
 });
 
-test.describe('@engine @mobile Counter-spell targeting (CTR)', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Counter-spell targeting (CTR)', () => {
 
   // CTR-01: Player counters opponent's Lightning Bolt with Counterspell
   test('CTR-01: player counters opponent spell -- target removed from stack', async ({ page }) => {
@@ -485,7 +485,7 @@ test.describe('@engine @mobile Counter-spell targeting (CTR)', () => {
 
 });
 
-test.describe('@engine @mobile AI Regrowth targeting — mobile parity', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile AI Regrowth targeting — mobile parity', () => {
   test('AI-REGROWTH-01 mobile: AI Regrowth produces no targeting log entry', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(sandboxWith('regrowth'));
@@ -533,7 +533,7 @@ test.describe('@engine @mobile AI Regrowth targeting — mobile parity', () => {
   });
 });
 
-test.describe('@engine @mobile Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Bug fixes: mana dorks / Ley Druid / Berserk AI timing', () => {
 
   test('BF-01: Llanowar Elves taps for green mana (not colorless)', async ({ page }) => {
     await page.goto(sandboxWith('llanowar_elves,forest'));
@@ -599,7 +599,7 @@ test.describe('@engine @mobile Bug fixes: mana dorks / Ley Druid / Berserk AI ti
 
 });
 
-test.describe('@engine @mobile P/T display', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile P/T display', () => {
   test('PT-01: pump ability updates displayed P/T (eotBuffs)', async ({ page }) => {
     // Frozen Shade starts 0/1. After activating B once it should show 1/2 in UI.
     await page.goto(sandboxWith('frozen_shade,swamp'));
@@ -666,7 +666,7 @@ test.describe('@engine @mobile P/T display', () => {
   });
 });
 
-test.describe('@engine @mobile P/T display (mobile)', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile P/T display (mobile)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('PT-01-mobile: pump ability updates displayed P/T on mobile', async ({ page }) => {
@@ -696,7 +696,7 @@ test.describe('@engine @mobile P/T display (mobile)', () => {
   });
 });
 
-test.describe('@engine @mobile Counterspell stack visibility', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Counterspell stack visibility', () => {
   test('CS-01: AI Counterspell appears on stack before resolving', async ({ page }) => {
     // Give player a Lightning Bolt. Inject Counterspell + UU mana into AI hand.
     await page.goto(sandboxWith('lightning_bolt,mountain'));
@@ -759,7 +759,7 @@ test.describe('@engine @mobile Counterspell stack visibility', () => {
   });
 });
 
-test.describe('@engine @mobile Blocker UI', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Blocker UI', () => {
   test('BLK-03: pending blocker highlighted on desktop during COMBAT_BLOCKERS', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(sandboxWith('grizzly_bears,forest'));
@@ -807,7 +807,7 @@ test.describe('@engine @mobile Blocker UI', () => {
   });
 });
 
-test.describe('@engine @mobile Combat priority windows (B33) — desktop 1280x800', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Combat priority windows (B33) — desktop 1280x800', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('CBT-PW-01: Done Attacking advances to COMBAT_AFTER_ATTACKERS', async ({ page }) => {
@@ -928,7 +928,7 @@ test.describe('@engine @mobile Combat priority windows (B33) — desktop 1280x80
   });
 });
 
-test.describe('@engine @mobile Mobile combat priority windows — 390x844', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Mobile combat priority windows — 390x844', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('CBT-MOB-01: Done Attacking advances phase on mobile', async ({ page }) => {
@@ -984,7 +984,7 @@ test.describe('@engine @mobile Mobile combat priority windows — 390x844', () =
   });
 });
 
-test.describe('@engine @mobile Conditional Counter Modal (Force Spike / Power Sink)', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile Conditional Counter Modal (Force Spike / Power Sink)', () => {
   test('Force Spike: pendingConditionalCounter set when it resolves vs player spell', async ({ page }) => {
     await page.goto('/?duel=sandbox&aiSpeed=0');
     await page.waitForFunction(() => (window as any).__duelState !== undefined);
@@ -1170,7 +1170,7 @@ async function runDHE2ETest(page: Page) {
   expect(stateAfterOwnUpkeep.p.life).toBe(17); // 3 damage dealt
 }
 
-test.describe('@engine @mobile DH-E2E-01: Demonic Hordes upkeep active-player guard', () => {
+test.describe('@engine-cast-flow-ui-4 @mobile DH-E2E-01: Demonic Hordes upkeep active-player guard', () => {
   test('desktop (1280x800): guard suppresses drawback on opponent upkeep; fires on own upkeep', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await runDHE2ETest(page);

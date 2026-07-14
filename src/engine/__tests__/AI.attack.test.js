@@ -19,7 +19,7 @@ function runAI(state) {
 
 // --- Tests -------------------------------------------------------------------
 
-describe('@engine AI attack declaration', () => {
+describe('@engine-ai-1 AI attack declaration', () => {
   it('declares attack with a single eligible creature', () => {
     const creature = makeCreature('c1');
     const state = makeState({ phase: PHASE.COMBAT_ATTACKERS, active: 'o', oBf: [creature] });

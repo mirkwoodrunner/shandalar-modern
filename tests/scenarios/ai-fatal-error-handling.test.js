@@ -48,7 +48,7 @@ function decideAiMainLoopWithErrorHandling(acts, shouldThrow) {
   }
 }
 
-describe('@engine AI priority window effect -- fatal error handling (mirrors useDuelController.ts)', () => {
+describe('@engine-ai-2 AI priority window effect -- fatal error handling (mirrors useDuelController.ts)', () => {
   it('FATAL-AI-01: aiDecide() throwing produces a FATAL_ERROR result, not a priority dispatch', () => {
     const result = decideAiPriorityDispatchWithErrorHandling([], true);
     expect(result).toEqual({
@@ -68,7 +68,7 @@ describe('@engine AI priority window effect -- fatal error handling (mirrors use
   });
 });
 
-describe('@engine AI main loop heuristic path -- fatal error handling (mirrors useDuelController.ts)', () => {
+describe('@engine-ai-2 AI main loop heuristic path -- fatal error handling (mirrors useDuelController.ts)', () => {
   it('FATAL-AI-04: aiDecide() throwing produces a FATAL_ERROR result, not APPLY_AI_ACTIONS', () => {
     const result = decideAiMainLoopWithErrorHandling([], true);
     expect(result).toEqual({

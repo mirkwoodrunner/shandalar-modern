@@ -18,7 +18,7 @@ function spellItem(id, effect, caster, targets = [], extra = {}) {
   };
 }
 
-describe('@engine Scenario: Simple-tier Forge batch -- spell effects', () => {
+describe('@engine-tier-simple-1 Scenario: Simple-tier Forge batch -- spell effects', () => {
 
   it('Amnesia (discardAllNonland): target player discards all nonland cards, keeps lands', () => {
     const land = makeLand('l-1');

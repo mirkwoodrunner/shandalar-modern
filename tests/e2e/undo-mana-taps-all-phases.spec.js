@@ -67,7 +67,7 @@ async function setSnapshotViaDummyTap(page) {
 // Suite A — DuelScreen.tsx (/?duel=sandbox)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile DuelScreen — undo button phase-agnostic (sandbox)', () => {
+test.describe('@engine-cast-flow-ui-6 @mobile DuelScreen — undo button phase-agnostic (sandbox)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/?duel=sandbox&aiSpeed=0');
@@ -120,7 +120,7 @@ test.describe('@engine @mobile DuelScreen — undo button phase-agnostic (sandbo
 // Suite B — DuelScreen.tsx at mobile viewport (sandbox, isMobile=true path)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile DuelScreen at mobile viewport — undo button phase-agnostic', () => {
+test.describe('@engine-cast-flow-ui-6 @mobile DuelScreen at mobile viewport — undo button phase-agnostic', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?duel=sandbox&aiSpeed=0');
@@ -155,7 +155,7 @@ test.describe('@engine @mobile DuelScreen at mobile viewport — undo button pha
 // would have caught the regression before it was fixed.
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile DuelScreenMobile — undo button phase-agnostic (sandbox-mobile)', () => {
+test.describe('@engine-cast-flow-ui-6 @mobile DuelScreenMobile — undo button phase-agnostic (sandbox-mobile)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?duel=sandbox-mobile&aiSpeed=0');

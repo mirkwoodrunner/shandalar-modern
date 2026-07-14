@@ -97,7 +97,7 @@ async function forceDuelOutcome(page: Page, winner: 'p' | 'o') {
   );
 }
 
-test.describe('@engine @mobile Ante system -- toggle, banner, reconciliation', () => {
+test.describe('@engine-banding-ante-1 @mobile Ante system -- toggle, banner, reconciliation', () => {
 
   test('ANTE-01: title screen toggle defaults off and switches on click', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });

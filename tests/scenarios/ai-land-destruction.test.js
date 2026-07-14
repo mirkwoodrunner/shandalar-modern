@@ -111,7 +111,7 @@ function makeAIState({ oHand = [], oBf = [], pBf = [], oMana = {}, extra = {} } 
 // Group A: DuelCore destroyTargetLand resolution
 // ---------------------------------------------------------------------------
 
-describe('@engine DuelCore -- destroyTargetLand spell resolution', () => {
+describe('@engine-ai-2 DuelCore -- destroyTargetLand spell resolution', () => {
   it('A1: destroys the target land and logs the kill', () => {
     const land = makeBasicLand('land-1');
     const base = makeState({ pBf: [land] });
@@ -168,7 +168,7 @@ describe('@engine DuelCore -- destroyTargetLand spell resolution', () => {
 // Group B: DuelCore ACTIVATE_ABILITY who-awareness and sac cost
 // ---------------------------------------------------------------------------
 
-describe('@engine DuelCore -- ACTIVATE_ABILITY who-awareness and sac cost', () => {
+describe('@engine-ai-2 DuelCore -- ACTIVATE_ABILITY who-awareness and sac cost', () => {
   it('B1: who:"o" tap-only ability -- taps the AI card and pushes to stack', () => {
     // Demonic Hordes: {BBB}{T}: Destroy target land
     const hordes = makeDemonicHordes('hordes-1');
@@ -267,7 +267,7 @@ describe('@engine DuelCore -- ACTIVATE_ABILITY who-awareness and sac cost', () =
 // Group C: AI selectTarget for destroyTargetLand spell-cast cards
 // ---------------------------------------------------------------------------
 
-describe('@engine AI -- selectTarget for destroyTargetLand (via getAIPlan)', () => {
+describe('@engine-ai-2 AI -- selectTarget for destroyTargetLand (via getAIPlan)', () => {
   it('C1: Sinkhole -- AI plans a cast with a valid land target when human has lands', () => {
     const sinkhole = makeSinkhole();
     const land = makeBasicLand('land-1');
@@ -352,7 +352,7 @@ describe('@engine AI -- selectTarget for destroyTargetLand (via getAIPlan)', () 
 // Group D: AI planActivatedAbilities for Strip Mine and Demonic Hordes
 // ---------------------------------------------------------------------------
 
-describe('@engine AI -- planActivatedAbilities for destroyTargetLand abilities', () => {
+describe('@engine-ai-2 AI -- planActivatedAbilities for destroyTargetLand abilities', () => {
   it('D1: Strip Mine -- AI plans activation when human has a land', () => {
     const mine = makeStripMine('strip-1');
     const land = makeBasicLand('land-1');

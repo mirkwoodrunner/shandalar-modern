@@ -43,7 +43,7 @@ async function waitForTerrainPainted(page) {
 }
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile sprite + tree rendering ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`@overworld-visual-1 @mobile sprite + tree rendering ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('goblin.png and zombie.png are no longer black-box sprites (alpha ratio > 30%)', async ({ page }) => {

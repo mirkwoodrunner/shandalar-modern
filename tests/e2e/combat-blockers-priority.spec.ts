@@ -121,7 +121,7 @@ async function injectNoBlockerScenario(page: Page): Promise<{ attIid: string }> 
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Combat blockers priority window [desktop]', () => {
+test.describe('@engine-phases-priority-1 @mobile Combat blockers priority window [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
@@ -190,7 +190,7 @@ test.describe('@engine @mobile Combat blockers priority window [desktop]', () =>
 // Mobile suite (390x844) -- DuelScreenMobile.tsx render path
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Combat blockers priority window [mobile]', () => {
+test.describe('@engine-phases-priority-1 @mobile Combat blockers priority window [mobile]', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {

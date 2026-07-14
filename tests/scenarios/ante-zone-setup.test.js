@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { buildDuelState, resolveEff } from '../../src/engine/DuelCore.js';
 import RULESETS from '../../src/data/rulesets.js';
 
-describe('@engine Scenario: ante zone setup and reconciliation', () => {
+describe('@engine-banding-ante-1 Scenario: ante zone setup and reconciliation', () => {
 
   it('removes the anted card from the library so it can never be drawn', () => {
     const pDeckIds = ['plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'savannah_lions'];

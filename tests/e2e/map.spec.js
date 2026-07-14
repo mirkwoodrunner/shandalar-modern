@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld map grid', () => {
+test.describe('@overworld-generation map grid', () => {
 
   test('MAP_W and MAP_H are 64 and 40', async ({ page }) => {
     const errors = [];

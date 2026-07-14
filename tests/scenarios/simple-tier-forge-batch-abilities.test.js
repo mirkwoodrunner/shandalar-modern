@@ -10,7 +10,7 @@ import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 import KEYWORDS from '../../src/data/keywords.js';
 
-describe('@engine Scenario: Simple-tier Forge batch -- activated abilities', () => {
+describe('@engine-tier-simple-1 Scenario: Simple-tier Forge batch -- activated abilities', () => {
 
   it('Orcish Mechanics (T,sacArt cost): sacrifices an artifact you control, deals 2 damage on resolve', () => {
     const mechanics = makeCreature('om-1', {

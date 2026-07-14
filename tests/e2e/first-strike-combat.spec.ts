@@ -101,7 +101,7 @@ function makeBaseState(overrides: Record<string, any> = {}) {
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile first-strike combat damage -- desktop', () => {
+test.describe('@engine-combat-1 @mobile first-strike combat damage -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
@@ -183,7 +183,7 @@ test.describe('@engine @mobile first-strike combat damage -- desktop', () => {
 // Mobile suite (390x844) -- same tests at mobile viewport
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile first-strike combat damage -- mobile', () => {
+test.describe('@engine-combat-1 @mobile first-strike combat damage -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {

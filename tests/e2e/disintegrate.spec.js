@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@engine Disintegrate', () => {
+test.describe('@engine-card-scenarios-1 Disintegrate', () => {
   const BASE = 'http://localhost:5173/?duel=sandbox&aiSpeed=0';
 
   async function waitForDuel(page) {

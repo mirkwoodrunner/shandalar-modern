@@ -16,7 +16,7 @@ async function waitForMain1(page: Page) {
 }
 
 
-test.describe('@engine @mobile duel-controller AI loop, priority, and combat driving', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile duel-controller AI loop, priority, and combat driving', () => {
   // ---------------------------------------------------------------------------
   // 1. AI loop parity — desktop
   // ---------------------------------------------------------------------------

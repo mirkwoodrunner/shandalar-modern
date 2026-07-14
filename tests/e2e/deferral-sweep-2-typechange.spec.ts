@@ -143,12 +143,12 @@ function batchTests() {
   });
 }
 
-test.describe('@engine @mobile Deferral Sweep 2 -- type-change -- desktop (1280x800)', () => {
+test.describe('@engine-batch-stubs-1 @mobile Deferral Sweep 2 -- type-change -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   batchTests();
 });
 
-test.describe('@engine @mobile Deferral Sweep 2 -- type-change -- mobile (390x844)', () => {
+test.describe('@engine-batch-stubs-1 @mobile Deferral Sweep 2 -- type-change -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   batchTests();
 });

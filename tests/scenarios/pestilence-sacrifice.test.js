@@ -26,7 +26,7 @@ function advanceToCleanup(state) {
   return duelReducer(preCleanup, { type: 'ADVANCE_PHASE' });
 }
 
-describe('@engine Scenario: pestilence-sacrifice -- end-step sacrifice condition', () => {
+describe('@engine-card-scenarios-7 Scenario: pestilence-sacrifice -- end-step sacrifice condition', () => {
   it('PEST-01: remains on battlefield when opponent controls a non-black creature and p controls none', () => {
     const pest = makePestilence('pest-1', { controller: 'p' });
     const whiteCre = makeCreature('wc-1', { id: 'white_knight', name: 'White Knight', color: 'W', controller: 'o' });

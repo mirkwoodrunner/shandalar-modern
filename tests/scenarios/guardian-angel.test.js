@@ -3,7 +3,7 @@ import { duelReducer } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Guardian Angel', () => {
+describe('@engine-card-scenarios-5 Guardian Angel', () => {
   it('GA-01: prevents X damage to creature', () => {
     const tgt = makeCreature('c1');
     const gaCard = { iid: 'ga1', id: 'guardian_angel', name: 'Guardian Angel', type: 'Enchantment', cost: 'W', cmc: 1, effect: 'guardianAngel', requiresTarget: true };

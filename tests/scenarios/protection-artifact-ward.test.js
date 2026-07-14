@@ -29,7 +29,7 @@ function artifactCreature(iid, overrides = {}) {
 // ---------------------------------------------------------------------------
 // Combat extension (8)
 // ---------------------------------------------------------------------------
-describe('@engine Scenario: protection from artifact -- canBlockDuel', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- canBlockDuel', () => {
   it('PROT-01: artifact creature cannot block a creature with protection from artifact', () => {
     const attacker = artifactCreature('att-1', { controller: 'o' });
     const blocker = makeCreature('bl-1', { controller: 'p', enchantments: [wardAura('Artifact Ward', ['artifact'])] });
@@ -47,7 +47,7 @@ describe('@engine Scenario: protection from artifact -- canBlockDuel', () => {
   });
 });
 
-describe('@engine Scenario: protection from artifact -- resolveCombat damage prevention', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- resolveCombat damage prevention', () => {
   it('PROT-03: combat damage from an artifact attacker to a protected blocker is prevented (first resolveCombat site)', () => {
     const attacker = artifactCreature('att-1', { controller: 'o', power: 3, toughness: 3 });
     const blocker = makeCreature('bl-1', { controller: 'p', power: 2, toughness: 2 });
@@ -130,7 +130,7 @@ describe('@engine Scenario: protection from artifact -- resolveCombat damage pre
 // ---------------------------------------------------------------------------
 // Non-combat damage (6)
 // ---------------------------------------------------------------------------
-describe('@engine Scenario: protection from artifact -- non-combat damage (consumeCreatureDamageShields)', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- non-combat damage (consumeCreatureDamageShields)', () => {
   it('PROT-09: an artifact source dealing damage via hurtCreature is fully prevented', () => {
     const artifactSource = artifactCreature('src-1', { controller: 'o' });
     const target = makeCreature('tgt-1', { controller: 'p', enchantments: [wardAura('Artifact Ward', ['artifact'])] });
@@ -201,7 +201,7 @@ describe('@engine Scenario: protection from artifact -- non-combat damage (consu
 // ---------------------------------------------------------------------------
 // Targeting legality (10)
 // ---------------------------------------------------------------------------
-describe('@engine Scenario: protection from artifact -- targeting legality (CAST_SPELL)', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- targeting legality (CAST_SPELL)', () => {
   function artifactTargetSpell(iid, overrides = {}) {
     return makeSpell(iid, { id: 'artifact_zap', name: 'Artifact Zap', type: 'Artifact', color: '', cost: '1', cmc: 1, effect: 'protArtifactTestFizzle', ...overrides });
   }
@@ -331,7 +331,7 @@ describe('@engine Scenario: protection from artifact -- targeting legality (CAST
 // ---------------------------------------------------------------------------
 // Card-level and click-guard-equivalent (4)
 // ---------------------------------------------------------------------------
-describe('@engine Scenario: protection from artifact -- Artifact Ward card data + isProtectedFromSource', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- Artifact Ward card data + isProtectedFromSource', () => {
   it('PROT-25: Artifact Ward\'s mod.protection correctly surfaces on the enchanted creature via computeCharacteristics', () => {
     const target = makeCreature('tgt-1', { enchantments: [wardAura('Artifact Ward', ['artifact'])] });
     const source = artifactCreature('src-1');
@@ -372,7 +372,7 @@ describe('@engine Scenario: protection from artifact -- Artifact Ward card data 
 // ---------------------------------------------------------------------------
 // Additional coverage (4) -- mixed-format regression + direct helper edge cases
 // ---------------------------------------------------------------------------
-describe('@engine Scenario: protection from artifact -- additional coverage', () => {
+describe('@engine-combat-3 Scenario: protection from artifact -- additional coverage', () => {
   it('PROT-29: mixed single-letter/full-word protection array formats both work together on the same creature', () => {
     // Ward cycle uses single-letter color codes (mod.protection:["B"]); Artifact
     // Ward uses the full word "artifact" (no letter-code equivalent for a type).

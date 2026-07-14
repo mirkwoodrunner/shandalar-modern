@@ -19,7 +19,7 @@ async function dismissMulligan(page: Page) {
   }
 }
 
-test.describe('@engine Aladdin\'s Lamp', () => {
+test.describe('@engine-card-scenarios-1 Aladdin\'s Lamp', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('AL-UI-01: lamp pick modal renders when pendingLampPicks present (desktop)', async ({ page }) => {

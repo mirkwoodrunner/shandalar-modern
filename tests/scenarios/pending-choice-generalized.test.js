@@ -12,7 +12,7 @@ function makeArt(iid, overrides = {}) {
   return { iid, id: 'alchorss_tomb', name: "Alchor's Tomb", type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 4, ...overrides };
 }
 
-describe('@engine Scenario: generalized pendingChoice (Part 1)', () => {
+describe('@engine-card-scenarios-7 Scenario: generalized pendingChoice (Part 1)', () => {
 
   it('a choice created directly from resolveEff (colorChoiceTarget, no triggered ability) resolves correctly', () => {
     const tomb = makeArt('tomb-1', { activated: { cost: '2,T', effect: 'colorChoiceTarget' } });

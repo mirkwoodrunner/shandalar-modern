@@ -47,7 +47,7 @@ function makeBlackCreature(iid: string, name: string) {
 }
 
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Circle of Protection: Black damage shield [${viewport.name}]`, () => {
+  test.describe(`@engine-combat-1 @mobile Circle of Protection: Black damage shield [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test('activating it opens the TutorModal picker; choosing the attacker prevents its next damage', async ({ page }) => {
@@ -112,7 +112,7 @@ for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: '
 }
 
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Eye for an Eye redirect [${viewport.name}]`, () => {
+  test.describe(`@engine-combat-1 @mobile Eye for an Eye redirect [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test('casting it opens the picker with mode "redirect" and an unrestricted pool', async ({ page }) => {

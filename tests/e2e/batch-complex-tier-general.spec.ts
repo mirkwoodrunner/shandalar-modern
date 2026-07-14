@@ -204,12 +204,12 @@ function batchTests() {
   });
 }
 
-test.describe('@engine @mobile Complex-tier Forge batch (C1-C4) -- desktop (1280x800)', () => {
+test.describe('@engine-tier-complex-1 @mobile Complex-tier Forge batch (C1-C4) -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   batchTests();
 });
 
-test.describe('@engine @mobile Complex-tier Forge batch (C1-C4) -- mobile (390x844)', () => {
+test.describe('@engine-tier-complex-1 @mobile Complex-tier Forge batch (C1-C4) -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   batchTests();
 });

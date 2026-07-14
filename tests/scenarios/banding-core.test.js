@@ -32,7 +32,7 @@ function toBlockersPhase(state) {
   return duelReducer(s1, { type: 'ADVANCE_PHASE' });        // -> COMBAT_BLOCKERS
 }
 
-describe('@engine Banding core (CR 702.22)', () => {
+describe('@engine-banding-ante-2 Banding core (CR 702.22)', () => {
 
   // -- Band formation validity (702.22c) -------------------------------------
 

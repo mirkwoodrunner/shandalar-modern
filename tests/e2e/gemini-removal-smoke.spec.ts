@@ -127,12 +127,12 @@ function runSmoke() {
   });
 }
 
-test.describe('@engine @mobile Gemini removal smoke -- desktop', () => {
+test.describe('@engine-batch-stubs-1 @mobile Gemini removal smoke -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
   runSmoke();
 });
 
-test.describe('@engine @mobile Gemini removal smoke -- mobile', () => {
+test.describe('@engine-batch-stubs-1 @mobile Gemini removal smoke -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
   runSmoke();
 

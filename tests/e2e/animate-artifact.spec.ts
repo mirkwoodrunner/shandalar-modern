@@ -129,7 +129,7 @@ async function enterAnimateArtifactCastFlow(page: Page, aaIid: string) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Animate Artifact UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-1 Animate Artifact UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

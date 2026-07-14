@@ -1,4 +1,4 @@
-// tests/e2e/engine-fatal-error-overlay.spec.ts
+// tests/e2e/engine.spec.ts
 //
 // Regression coverage for the fatal-AI-error overlay (useDuelController.ts's
 // "AI priority window effect" and "AI main loop" heuristic path). Both call
@@ -66,7 +66,7 @@ async function triggerFatalErrorViaEndTurn(page: Page) {
   await expect(page.getByText('Duel Engine Error')).toBeVisible({ timeout: 5_000 });
 }
 
-test.describe('@engine Fatal AI error overlay -- desktop', () => {
+test.describe('@engine-cast-flow-ui-2 Fatal AI error overlay -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('ENGINE-ERR-01: forced AI error after End Turn shows the error overlay instead of a permanent freeze', async ({ page }) => {
@@ -87,7 +87,7 @@ test.describe('@engine Fatal AI error overlay -- desktop', () => {
   });
 });
 
-test.describe('@engine @mobile Fatal AI error overlay -- mobile (real DuelScreenMobile tree)', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile Fatal AI error overlay -- mobile (real DuelScreenMobile tree)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('ENGINE-ERR-03: forced AI error after End Turn shows the error overlay on the mobile ActionBar', async ({ page }) => {

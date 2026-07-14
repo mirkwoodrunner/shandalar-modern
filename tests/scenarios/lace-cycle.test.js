@@ -17,7 +17,7 @@ function laceCard(iid, name, laceColor) {
   };
 }
 
-describe('@engine Scenario: Lace cycle (Chaoslace/Deathlace/Lifelace/Purelace/Thoughtlace)', () => {
+describe('@engine-card-scenarios-5 Scenario: Lace cycle (Chaoslace/Deathlace/Lifelace/Purelace/Thoughtlace)', () => {
 
   it('Chaoslace: turns a targeted permanent red', () => {
     const target = makeCreature('cr-1', { controller: 'o', color: 'U' });

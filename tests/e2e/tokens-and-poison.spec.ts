@@ -35,7 +35,7 @@ async function waitForDuelReady(page: Page) {
 // The Hive -- token creation renders on the battlefield
 // ---------------------------------------------------------------------------
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile The Hive creates a Wasp token [${viewport.name}]`, () => {
+  test.describe(`@engine-card-scenarios-2 @mobile The Hive creates a Wasp token [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test('activating The Hive creates a 1/1 Wasp token that appears on the battlefield', async ({ page }) => {
@@ -83,7 +83,7 @@ for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: '
 // components, each edited independently; verify both render the indicator).
 // ---------------------------------------------------------------------------
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Poison counter display [${viewport.name}]`, () => {
+  test.describe(`@engine-card-scenarios-2 @mobile Poison counter display [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test('the opponent poison counter total renders once a poison-granting creature connects', async ({ page }) => {

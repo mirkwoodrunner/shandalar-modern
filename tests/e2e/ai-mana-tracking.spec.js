@@ -200,7 +200,7 @@ function makeVanillaCreature(iid) {
 
 // ---------------------------------------------------------------------------
 
-test.describe('@engine AI virtual mana tracking — ramp spell chaining', () => {
+test.describe('@engine-ai-1 AI virtual mana tracking — ramp spell chaining', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for Vite-built module to be available.

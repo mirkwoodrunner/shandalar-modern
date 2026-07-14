@@ -272,7 +272,7 @@ function makeStackDamage3(targetIid, caster = 'p') {
 
 // ─── 1. Power Surge ───────────────────────────────────────────────────────────
 
-describe('@engine Power Surge', () => {
+describe('@engine-phases-priority-1 Power Surge', () => {
   let baseState;
 
   beforeEach(() => {
@@ -392,7 +392,7 @@ describe('@engine Power Surge', () => {
 
 // ─── 2. Holy Ground ───────────────────────────────────────────────────────────
 
-describe('@engine Holy Ground', () => {
+describe('@engine-phases-priority-1 Holy Ground', () => {
   it('HG-01: FORESTWALK suppressed by Holy Ground on defender BF', () => {
     const attacker = makeCreatureCard('att-1', {
       controller: 'p',
@@ -505,7 +505,7 @@ describe('@engine Holy Ground', () => {
 
 // ─── 3. Sengir Vampire Counter Trigger ───────────────────────────────────────
 
-describe('@engine Sengir Vampire', () => {
+describe('@engine-phases-priority-1 Sengir Vampire', () => {
   // The engine checks `card.triggered === 'sengirCounter'` in emitEvent when
   // ON_CREATURE_DIES fires. We kill a creature by resolving a damage3 spell
   // from the stack against a toughness-2 creature, which calls checkDeath
@@ -623,7 +623,7 @@ describe('@engine Sengir Vampire', () => {
 
 // ─── 4. Force of Nature Upkeep ────────────────────────────────────────────────
 
-describe('@engine Force of Nature Upkeep', () => {
+describe('@engine-phases-priority-1 Force of Nature Upkeep', () => {
   it('FN-01: human player controls Force of Nature → pendingUpkeepChoice set at UPKEEP; subsequent ADVANCE_PHASE blocked', () => {
     const fon = makeForceOfNatureCard('fon-1', 'p');
     const state = buildTestState({
@@ -747,7 +747,7 @@ describe('@engine Force of Nature Upkeep', () => {
 
 // ─── 5. Priority Window / Instant-Speed System ───────────────────────────────
 
-describe('@engine Priority Window', () => {
+describe('@engine-phases-priority-1 Priority Window', () => {
   it('PW-01: OPEN_PRIORITY_WINDOW → priorityWindow true; priorityPasser null', () => {
     const state = buildTestState({ phase: PHASE.MAIN_1 });
 
@@ -925,7 +925,7 @@ function makeDemonicHordesCard(iid, controller = 'p') {
   };
 }
 
-describe('@engine Demonic Hordes Upkeep', () => {
+describe('@engine-phases-priority-1 Demonic Hordes Upkeep', () => {
   it('DH-01: opponent controls Demonic Hordes on player turn — drawback does not fire', () => {
     // active='p', but DH is controlled by 'o'. The active-player guard (w !== ns.active)
     // must skip the handler so 'o' DH does not tap and 'o' does not take damage.

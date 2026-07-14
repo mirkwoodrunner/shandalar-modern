@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld overworld desktop layout', () => {
+test.describe('@overworld-generation overworld desktop layout', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('desktop overworld renders toolbar and sidebars', async ({ page }) => {

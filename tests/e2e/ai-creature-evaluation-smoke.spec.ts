@@ -76,7 +76,7 @@ async function runSmoke(page: Page) {
   expect(terminated).toBe(true);
 }
 
-test.describe('@engine Creature evaluator AI smoke -- desktop', () => {
+test.describe('@engine-ai-1 Creature evaluator AI smoke -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('AI plays a full duel to completion with no console errors', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('@engine Creature evaluator AI smoke -- desktop', () => {
   });
 });
 
-test.describe('@engine @mobile Creature evaluator AI smoke -- mobile', () => {
+test.describe('@engine-ai-1 @mobile Creature evaluator AI smoke -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('AI plays a full duel to completion with no console errors (mobile)', async ({ page }) => {

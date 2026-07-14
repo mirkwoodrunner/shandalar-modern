@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { resolveEff } from '../../src/engine/DuelCore.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: ownershipChanges reconciliation model', () => {
+describe('@engine-card-scenarios-7 Scenario: ownershipChanges reconciliation model', () => {
 
   it('Bronze Tablet: opponent declines payment -- both cards permanently exchange ownership', () => {
     const bronzeTablet = { iid: 'bt1', id: 'bronze_tablet', name: 'Bronze Tablet', type: 'Artifact', effect: 'bronzeTabletExchange', controller: 'p', tapped: true, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };

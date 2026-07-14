@@ -41,7 +41,7 @@ const SRC = readFileSync(new URL('../../src/engine/DuelCore.js', import.meta.url
 
 // ─── Infrastructure (LAND-01 .. LAND-09) ─────────────────────────────────────
 
-describe('@engine Scenario: destroyLand -- basic behavior', () => {
+describe('@engine-card-scenarios-6 Scenario: destroyLand -- basic behavior', () => {
   it('LAND-01: no shield present -- land moves to gy, dlog matches pre-migration text', () => {
     const land = makeLand('l1', { name: 'Forest', controller: 'p' });
     const state = makeState({ pBf: [land] });
@@ -61,7 +61,7 @@ describe('@engine Scenario: destroyLand -- basic behavior', () => {
   });
 });
 
-describe('@engine Scenario: destroyLand -- landDestructionShields', () => {
+describe('@engine-card-scenarios-6 Scenario: destroyLand -- landDestructionShields', () => {
   it('LAND-03: shield present -- land survives, shield consumed, no gy move', () => {
     const land = makeLand('l1', { name: 'Forest', controller: 'p' });
     const base = makeState({ pBf: [land] });
@@ -110,7 +110,7 @@ describe('@engine Scenario: destroyLand -- landDestructionShields', () => {
   });
 });
 
-describe('@engine Scenario: getEffectiveAbilityEffect -- three-shape priority', () => {
+describe('@engine-card-scenarios-6 Scenario: getEffectiveAbilityEffect -- three-shape priority', () => {
   it('LAND-07: returns the array-sourced effect, the single activated.effect, or card.effect, in priority order', () => {
     const pyr = makePyramids('pyr-1');
     expect(getEffectiveAbilityEffect(pyr, 'pyramids_prevent_destruction')).toBe('preventLandDestructionOnce');
@@ -124,7 +124,7 @@ describe('@engine Scenario: getEffectiveAbilityEffect -- three-shape priority', 
   });
 });
 
-describe('@engine Scenario: land destruction centralization -- migration tripwire', () => {
+describe('@engine-card-scenarios-6 Scenario: land destruction centralization -- migration tripwire', () => {
   it('LAND-08: none of the 9 migrated sites still contain their pre-migration raw zMove(...,"gy") call', () => {
     expect(SRC).not.toContain('if (tgtC && isLand(tgtC)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }');
     expect(SRC).not.toContain('for (const w of ["p","o"]) for (const c of [...ns[w].bf].filter(isLand)) ns = zMove(ns, c.iid, w, w, "gy");');
@@ -155,7 +155,7 @@ describe('@engine Scenario: land destruction centralization -- migration tripwir
 
 // ─── Migration parity (LAND-P01 .. LAND-P09) ─────────────────────────────────
 
-describe('@engine Scenario: migrated raw-site parity', () => {
+describe('@engine-card-scenarios-6 Scenario: migrated raw-site parity', () => {
   it('LAND-P01: destroyTargetLand -- indestructible land is NOT destroyed, non-indestructible land is destroyed via destroyLand()', () => {
     const indestructibleLand = makeLand('l1', { name: 'Forest', controller: 'o', keywords: ['INDESTRUCTIBLE'] });
     const src = { id: 'stone_rain', name: 'Stone Rain', effect: 'destroyTargetLand', iid: 'sr-1' };
@@ -273,7 +273,7 @@ describe('@engine Scenario: migrated raw-site parity', () => {
 
 // ─── Regression, sacrifice sites (LAND-R01 .. LAND-R04) ──────────────────────
 
-describe('@engine Scenario: sacrifice-vs-destroy boundary -- unmigrated sites ignore landDestructionShields', () => {
+describe('@engine-card-scenarios-6 Scenario: sacrifice-vs-destroy boundary -- unmigrated sites ignore landDestructionShields', () => {
   it('LAND-R01: Balance\'s excess-land sacrifice proceeds even with a shield present on an excess land', () => {
     const p1 = makeLand('p1', { controller: 'p' });
     const p2 = makeLand('p2', { controller: 'p' });
@@ -326,7 +326,7 @@ describe('@engine Scenario: sacrifice-vs-destroy boundary -- unmigrated sites ig
 
 // ─── Pyramids card-level (PYR-01 .. PYR-03) ──────────────────────────────────
 
-describe('@engine Scenario: Pyramids', () => {
+describe('@engine-card-scenarios-6 Scenario: Pyramids', () => {
   it('PYR-01: mode 1 (destroyLandAura) activation destroys a targeted Aura attached to a land, identical to Savaen Elves\' existing behavior', () => {
     const pyr = makePyramids('pyr-1', { controller: 'p' });
     const aura = makeCreature('aura-1', { id: 'some_land_aura', name: 'Some Land Aura', type: 'Enchantment', subtype: 'Aura', enchantedLandIid: 'host-1', controller: 'o' });

@@ -18,7 +18,7 @@ function testArtifact(iid, controller, overrides = {}) {
   return { iid, id: 'test_artifact', name: 'Test Artifact', type: 'Artifact', color: '', cmc: 1, cost: '1', keywords: [], tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], controller, ...overrides };
 }
 
-describe('@engine Scenario: Blight', () => {
+describe('@engine-card-scenarios-7 Scenario: Blight', () => {
   it('BLIGHT-01: enchanting a land with Blight, then tapping it for mana, destroys it', () => {
     const land = makeLand('land-1', { controller: 'o', produces: ['G'] });
     const blight = makeReadyInstance('blight', 'p', { enchantedLandIid: 'land-1' });
@@ -63,7 +63,7 @@ describe('@engine Scenario: Blight', () => {
   });
 });
 
-describe('@engine Scenario: Psychic Venom', () => {
+describe('@engine-card-scenarios-7 Scenario: Psychic Venom', () => {
   it("PV-01: enchanting a land with Psychic Venom, then tapping it, deals 2 damage to the land's controller", () => {
     const land = makeLand('land-1', { controller: 'o', produces: ['G'] });
     const venom = makeReadyInstance('psychic_venom', 'p', { enchantedLandIid: 'land-1' });
@@ -102,7 +102,7 @@ describe('@engine Scenario: Psychic Venom', () => {
   });
 });
 
-describe('@engine Scenario: Relic Bind', () => {
+describe('@engine-card-scenarios-7 Scenario: Relic Bind', () => {
   it('RB-01: enchanting an opponent\'s artifact with Relic Bind, then tapping it, opens a modal choice', () => {
     const art = testArtifact('art-1', 'o');
     const relic = makeReadyInstance('relic_bind', 'p', { enchantedArtifactIid: 'art-1' });
@@ -172,7 +172,7 @@ describe('@engine Scenario: Relic Bind', () => {
   });
 });
 
-describe('@engine Scenario: Blight + Psychic Venom cross-card, and migration regression spot-check', () => {
+describe('@engine-card-scenarios-7 Scenario: Blight + Psychic Venom cross-card, and migration regression spot-check', () => {
   it('BOTH-01: Blight and Psychic Venom enchanting two different lands each fire only for their own host', () => {
     const landA = makeLand('land-a', { controller: 'o', produces: ['G'] });
     const landB = makeLand('land-b', { controller: 'o', produces: ['U'] });

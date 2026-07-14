@@ -44,7 +44,7 @@ function stateWithCopyOnStack(copyArtifact, oBf, targetIid) {
   };
 }
 
-describe('@engine Scenario: Layer 1 -- Copy Artifact', () => {
+describe('@engine-layers-copy-1 Scenario: Layer 1 -- Copy Artifact', () => {
 
   it('copies the printed P/T, type (adds Enchantment), and keywords from the target artifact', () => {
     const juggernaut = makeCreature('jug-1', {

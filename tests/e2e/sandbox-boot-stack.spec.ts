@@ -31,7 +31,7 @@ async function tapAllLands(page: Page): Promise<number> {
 }
 
 
-test.describe('@engine @mobile Sandbox boot', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile Sandbox boot', () => {
   test('lands on duel screen without title interaction', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -55,7 +55,7 @@ test.describe('@engine @mobile Sandbox boot', () => {
   });
 });
 
-test.describe('@engine @mobile Action bar controls', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile Action bar controls', () => {
   test('Pass Priority button is present', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -75,7 +75,7 @@ test.describe('@engine @mobile Action bar controls', () => {
   });
 });
 
-test.describe('@engine @mobile window.__duelDispatch escape hatch', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile window.__duelDispatch escape hatch', () => {
   test('dispatch and state are exposed in sandbox mode', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await waitForDuel(page);
@@ -94,7 +94,7 @@ test.describe('@engine @mobile window.__duelDispatch escape hatch', () => {
   });
 });
 
-test.describe('@engine @mobile ?cards= injection', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile ?cards= injection', () => {
   async function getHandIds(page: Page): Promise<string[]> {
     await page.waitForFunction(() => {
       const s = (window as any).__duelState?.();
@@ -151,7 +151,7 @@ test.describe('@engine @mobile ?cards= injection', () => {
   });
 });
 
-test.describe('@engine @mobile Universal stack priority', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile Universal stack priority', () => {
   test('7A: Sorcery lands on stack, does not resolve immediately', async ({ page }) => {
     // lightning_bolt is an instant, use a sorcery. fireball works.
     await page.goto(sandboxWith('fireball'));
@@ -316,7 +316,7 @@ test.describe('@engine @mobile Universal stack priority', () => {
   });
 });
 
-test.describe('@engine @mobile Stack pill mobile interaction', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile Stack pill mobile interaction', () => {
   test('7G: Mobile -- stack pill collapses and re-expands on tap', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(sandboxWith('grizzly_bears'));
@@ -352,7 +352,7 @@ test.describe('@engine @mobile Stack pill mobile interaction', () => {
   });
 });
 
-test.describe('@engine @mobile AI spell priority window', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile AI spell priority window', () => {
   test('8A: AI cast lands spell on stack; priorityWindow opens before resolution', async ({ page }) => {
     await page.goto(sandboxWith('grizzly_bears'));
     await waitForDuel(page);
@@ -514,7 +514,7 @@ test.describe('@engine @mobile AI spell priority window', () => {
   });
 });
 
-test.describe('@engine @mobile Combat blockers', () => {
+test.describe('@engine-cast-flow-ui-3 @mobile Combat blockers', () => {
   async function waitForPlayerMain1(page: Page) {
     await page.waitForFunction(() => {
       const s = (window as any).__duelState?.();

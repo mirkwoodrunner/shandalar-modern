@@ -55,7 +55,7 @@ function makeFakeEnemy(overrides = {}) {
 // ---------------------------------------------------------------------------
 // DESKTOP suite (1280x800)
 // ---------------------------------------------------------------------------
-test.describe('@overworld @mobile desktop henchman visibility + chase radius', () => {
+test.describe('@overworld-visual-1 @mobile desktop henchman visibility + chase radius', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('1. henchman spawn creates enemies[] entry, not a blind popup', async ({ page }) => {
@@ -345,7 +345,7 @@ test.describe('@overworld @mobile desktop henchman visibility + chase radius', (
 // ---------------------------------------------------------------------------
 // MOBILE suite (390x844) — same 5 tests at mobile viewport
 // ---------------------------------------------------------------------------
-test.describe('@overworld @mobile mobile henchman visibility + chase radius', () => {
+test.describe('@overworld-visual-1 @mobile mobile henchman visibility + chase radius', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('1. henchman spawn creates enemies[] entry, not a blind popup', async ({ page }) => {

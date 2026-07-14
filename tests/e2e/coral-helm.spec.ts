@@ -122,7 +122,7 @@ function runSuite(
   url: string,
   waitForScreen: (page: Page) => Promise<void>,
 ) {
-  test.describe(`@engine Coral Helm [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-1 Coral Helm [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

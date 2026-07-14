@@ -8,7 +8,7 @@ import { duelReducer, getTou } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Complex-tier Forge batch C4 checkpoint A -- triggered abilities', () => {
+describe('@engine-tier-complex-1 Scenario: Complex-tier Forge batch C4 checkpoint A -- triggered abilities', () => {
 
   it('El-Hajjâj: gains life equal to unblocked combat damage dealt', () => {
     const hajjaj = makeCreature('eh-1', {

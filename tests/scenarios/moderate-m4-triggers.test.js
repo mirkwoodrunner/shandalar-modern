@@ -8,7 +8,7 @@ import { duelReducer, checkDeath } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Moderate-tier Forge batch M4 -- triggered abilities', () => {
+describe('@engine-tier-moderate-2 Scenario: Moderate-tier Forge batch M4 -- triggered abilities', () => {
 
   it("Abu Ja'far: on death, destroys creatures blocking or blocked by it (no regeneration)", () => {
     const abu = makeCreature('aj-1', {

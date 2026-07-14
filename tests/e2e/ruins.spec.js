@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld @mobile Ruins — desktop', () => {
+test.describe('@overworld-visual-2 @mobile Ruins — desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('ruin tile renders plaque on revealed map', async ({ page }) => {
@@ -9,7 +9,7 @@ test.describe('@overworld @mobile Ruins — desktop', () => {
   });
 });
 
-test.describe('@overworld @mobile Ruins — mobile', () => {
+test.describe('@overworld-visual-2 @mobile Ruins — mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('ruin tile renders plaque on mobile', async ({ page }) => {

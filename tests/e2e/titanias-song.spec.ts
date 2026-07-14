@@ -94,7 +94,7 @@ async function recomputeViaLandPlay(page: Page, who: 'p' | 'o' = 'p') {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string) {
-  test.describe(`@engine Titania's Song UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-2 Titania's Song UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

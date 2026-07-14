@@ -17,7 +17,7 @@ async function waitForDungeon(page: any) {
 }
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile ${vp.name} ${vp.width}x${vp.height}`, () => {
+  test.describe(`@overworld-visual-1 @mobile ${vp.name} ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('1: revealed floor cells render <img> tiles, not blank divs', async ({ page }) => {

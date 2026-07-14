@@ -9,7 +9,7 @@ import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 import KEYWORDS from '../../src/data/keywords.js';
 
-describe('@engine Scenario: Moderate-tier Forge batch M2 -- keyword-line cards', () => {
+describe('@engine-tier-moderate-1 Scenario: Moderate-tier Forge batch M2 -- keyword-line cards', () => {
 
   it('Crimson Manticore: deals 1 damage to a target attacking creature', () => {
     const manticore = makeCreature('cm-1', { id: 'crimson_manticore', name: 'Crimson Manticore', controller: 'p', keywords: [KEYWORDS.FLYING.id], activated: { cost: 'R,T', effect: 'damage1AttackerOrBlocker' } });

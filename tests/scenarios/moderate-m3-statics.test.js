@@ -9,7 +9,7 @@ import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 import KEYWORDS from '../../src/data/keywords.js';
 
-describe('@engine Scenario: Moderate-tier Forge batch M3 -- static/continuous effects', () => {
+describe('@engine-tier-moderate-1 Scenario: Moderate-tier Forge batch M3 -- static/continuous effects', () => {
 
   it('Angelic Voices: pumps your creatures +1/+1 only while you control no nonartifact, nonwhite creature', () => {
     const voices = { iid: 'av-1', id: 'angelic_voices', name: 'Angelic Voices', type: 'Enchantment', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };

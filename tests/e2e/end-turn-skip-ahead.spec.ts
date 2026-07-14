@@ -149,7 +149,7 @@ async function runEndTurn04(page: Page) {
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile End Turn skip-ahead -- desktop', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn skip-ahead -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('END-TURN-01: End Turn skips ahead to opponent turn', async ({ page }) => {
@@ -173,7 +173,7 @@ test.describe('@engine @mobile End Turn skip-ahead -- desktop', () => {
 // Mobile suite (390x844) -- parity check, not a new feature
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile End Turn skip-ahead -- mobile', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn skip-ahead -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('END-TURN-05: End Turn skips ahead to opponent turn (mobile ActionBar)', async ({ page }) => {

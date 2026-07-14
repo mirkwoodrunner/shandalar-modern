@@ -42,7 +42,7 @@ const CASES = [
   { id: 'circle_of_protection_green', color: 'G', creatureId: 'craw_wurm' },
 ];
 
-describe.each(CASES)('@engine Scenario: $id', ({ id, color, creatureId }) => {
+describe.each(CASES)('engine Scenario: $id', ({ id, color, creatureId }) => {
   it(`activates for its printed cost, shields only against $color sources, and prevents matching damage`, () => {
     const card = getCardById(id);
     expect(card).not.toBeNull();
@@ -74,7 +74,7 @@ describe.each(CASES)('@engine Scenario: $id', ({ id, color, creatureId }) => {
   });
 });
 
-describe('@engine Scenario: circle_of_protection_artifacts', () => {
+describe('@engine-combat-1 Scenario: circle_of_protection_artifacts', () => {
   it('costs {2} to activate (not {1}, unlike the color-specific cycle) and shields by type, not color', () => {
     const card = getCardById('circle_of_protection_artifacts');
     expect(card.activated.cost).toBe('2');
@@ -93,7 +93,7 @@ describe('@engine Scenario: circle_of_protection_artifacts', () => {
   });
 });
 
-describe('@engine Scenario: greater_realm_of_preservation', () => {
+describe('@engine-combat-1 Scenario: greater_realm_of_preservation', () => {
   it('costs {1}{W} to activate (its own cost, distinct from the base CoP cycle) and shields black OR red sources', () => {
     const card = getCardById('greater_realm_of_preservation');
     expect(card.activated.cost).toBe('1W');

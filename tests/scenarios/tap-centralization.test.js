@@ -35,7 +35,7 @@ function fired(state, watcherIid) {
   return state.p.bf.find(c => c.iid === watcherIid)?.counters?.P1P1 || 0;
 }
 
-describe('@engine Scenario: tap centralization Phase 1', () => {
+describe('@engine-core-mechanics-2 Scenario: tap centralization Phase 1', () => {
   it('TAP-01: tapPermanent taps an untapped permanent and returns new state', () => {
     const creature = makeCreature('c1', { controller: 'p', tapped: false });
     const state = makeState({ pBf: [creature] });

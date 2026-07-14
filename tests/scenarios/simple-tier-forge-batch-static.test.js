@@ -24,7 +24,7 @@ function moatEnch() {
   return { iid: 'moat-1', id: 'moat', name: 'Moat', type: 'Enchantment', controller: 'o', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [] };
 }
 
-describe('@engine Scenario: Simple-tier Forge batch -- static/continuous effects', () => {
+describe('@engine-tier-simple-2 Scenario: Simple-tier Forge batch -- static/continuous effects', () => {
 
   it('Castle: untapped creatures you control get +0/+2', () => {
     const cre = makeCreature('cr-1', { controller: 'p', tapped: false, toughness: 2 });

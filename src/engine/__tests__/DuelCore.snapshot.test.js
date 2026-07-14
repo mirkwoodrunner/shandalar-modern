@@ -9,7 +9,7 @@ import { makePlayerState, makeState, makeCreature, makeLand } from './_factory.j
 
 // --- Snapshot tests ----------------------------------------------------------
 
-describe('@engine DuelCore snapshot — fixed action sequence', () => {
+describe('@engine-core-mechanics-1 DuelCore snapshot — fixed action sequence', () => {
   it('fixed tap + play land sequence matches snapshot', () => {
     // land-tap: already on battlefield, will be tapped for mana
     // land-play: in hand, will be played onto the battlefield

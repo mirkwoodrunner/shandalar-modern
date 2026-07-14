@@ -23,7 +23,7 @@ function withShields(base, creatureDamageShields) {
 
 // ─── Infrastructure (CDMG-01 .. CDMG-12) ─────────────────────────────────────
 
-describe('@engine Scenario: hurtCreature -- basic behavior', () => {
+describe('@engine-combat-2 Scenario: hurtCreature -- basic behavior', () => {
   it('CDMG-01: applies full damage and runs checkDeath when no shields are present', () => {
     const cre = makeCreature('c1', { toughness: 2, damage: 0, controller: 'p' });
     const state = makeState({ pBf: [cre] });
@@ -42,7 +42,7 @@ describe('@engine Scenario: hurtCreature -- basic behavior', () => {
   });
 });
 
-describe('@engine Scenario: consumeCreatureDamageShields -- exact-source redirect (Jade Monolith)', () => {
+describe('@engine-combat-2 Scenario: consumeCreatureDamageShields -- exact-source redirect (Jade Monolith)', () => {
   it('CDMG-03: a matching exact-source shield redirects the entire amount and is consumed', () => {
     const cre = makeCreature('c1', { toughness: 5, damage: 0, controller: 'p' });
     const base = makeState({ pBf: [cre] });
@@ -63,7 +63,7 @@ describe('@engine Scenario: consumeCreatureDamageShields -- exact-source redirec
   });
 });
 
-describe('@engine Scenario: consumeCreatureDamageShields -- point redirect (Personal Incarnation)', () => {
+describe('@engine-combat-2 Scenario: consumeCreatureDamageShields -- point redirect (Personal Incarnation)', () => {
   it('CDMG-05: a single point-redirect shield absorbs 1 point, remainder applies, shield consumed', () => {
     const cre = makeCreature('c1', { toughness: 10, damage: 0, controller: 'p' });
     const base = makeState({ pBf: [cre] });
@@ -123,7 +123,7 @@ describe('@engine Scenario: consumeCreatureDamageShields -- point redirect (Pers
   });
 });
 
-describe('@engine Scenario: creature damage shields -- turn reset', () => {
+describe('@engine-combat-2 Scenario: creature damage shields -- turn reset', () => {
   it('CDMG-10: CLEANUP clears creatureDamageShields alongside damageShields', () => {
     const cre = makeCreature('c1', { toughness: 10, damage: 0, controller: 'p' });
     const base = makeState({ phase: PHASE.END, active: 'p', pBf: [cre] });
@@ -134,7 +134,7 @@ describe('@engine Scenario: creature damage shields -- turn reset', () => {
   });
 });
 
-describe('@engine Scenario: consumeCreatureDamageShields -- unit-level no-op', () => {
+describe('@engine-combat-2 Scenario: consumeCreatureDamageShields -- unit-level no-op', () => {
   it('CDMG-11: no entries for the target is a no-op; remainingAmt === amt', () => {
     const state = makeState({});
     const { state: s1, remainingAmt } = consumeCreatureDamageShields(state, 'nonexistent', 5, { sourceIid: 'src-1' });
@@ -143,7 +143,7 @@ describe('@engine Scenario: consumeCreatureDamageShields -- unit-level no-op', (
   });
 });
 
-describe('@engine Scenario: creature damage centralization -- migration tripwire', () => {
+describe('@engine-combat-2 Scenario: creature damage centralization -- migration tripwire', () => {
   it('CDMG-12: exactly 3 raw `damage: c.damage + N` sites remain after migration (2 inside dmgWithShield\'s own definition, 1 inside hurt()\'s untouched player-to-creature redirect at the former line 408 -- explicitly excluded from migration per spec)', () => {
     const src = readFileSync(new URL('../../src/engine/DuelCore.js', import.meta.url), 'utf8');
     const matches = src.match(/damage: c\.damage ?\+/g) || [];
@@ -153,7 +153,7 @@ describe('@engine Scenario: creature damage centralization -- migration tripwire
 
 // ─── Migration parity (CDMG-P01 .. CDMG-P08) ─────────────────────────────────
 
-describe('@engine Scenario: migrated raw-site parity', () => {
+describe('@engine-combat-2 Scenario: migrated raw-site parity', () => {
   it('CDMG-P01: damage2 (simple if/else inline mutation, same trio pattern as ping/damage1) applies identical damage and dlog text', () => {
     const src = { id: 'shock', name: 'Shock', effect: 'damage2', iid: 'shock-1' };
     const tgt = makeCreature('tgt-1', { toughness: 5, controller: 'o' });
@@ -247,7 +247,7 @@ describe('@engine Scenario: migrated raw-site parity', () => {
 
 // ─── dmgWithShield insertion sites (CDMG-S01 .. CDMG-S09) ────────────────────
 
-describe('@engine Scenario: dmgWithShield sites -- non-combat', () => {
+describe('@engine-combat-2 Scenario: dmgWithShield sites -- non-combat', () => {
   it('CDMG-S01: Tracker\'s damage to the target creature is reduced by a creature-damage shield before the flat damageShield check', () => {
     const tracker = makeCreature('tr-1', { id: 'tracker', name: 'Tracker', power: 3, toughness: 3, controller: 'p' });
     const tgt = makeCreature('tgt-1', { power: 2, toughness: 10, controller: 'o', damageShield: 1 });
@@ -314,7 +314,7 @@ describe('@engine Scenario: dmgWithShield sites -- non-combat', () => {
   });
 });
 
-describe('@engine Scenario: dmgWithShield sites -- combat (regular and first-strike)', () => {
+describe('@engine-combat-2 Scenario: dmgWithShield sites -- combat (regular and first-strike)', () => {
   it('CDMG-S06: regular-pass attacker damage to the blocker is reduced by a creature-damage shield on the blocker; the counter-hit on the attacker is unaffected', () => {
     const attacker = makeCreature('att-1', { power: 3, toughness: 5, controller: 'o' });
     const blocker = makeCreature('bl-1', { power: 2, toughness: 10, controller: 'p' });
@@ -411,7 +411,7 @@ function makePersonalIncarnation(iid, overrides = {}) {
   });
 }
 
-describe('@engine Scenario: Jade Monolith', () => {
+describe('@engine-combat-2 Scenario: Jade Monolith', () => {
   it('CARD-01: activation targets a creature and records a redirect entry via the human picker', () => {
     const jm = makeJadeMonolith('jm-1');
     const targetCre = makeCreature('tc-1', { controller: 'o' });
@@ -472,7 +472,7 @@ describe('@engine Scenario: Jade Monolith', () => {
   });
 });
 
-describe('@engine Scenario: Personal Incarnation', () => {
+describe('@engine-combat-2 Scenario: Personal Incarnation', () => {
   it('CARD-05: activating {0} twice, then taking 3 damage, redirects 2 and marks 1', () => {
     const pi = makePersonalIncarnation('pi-1', { controller: 'p' });
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [pi] });

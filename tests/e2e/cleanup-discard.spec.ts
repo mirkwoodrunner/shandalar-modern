@@ -55,7 +55,7 @@ async function openCleanupDiscardModal(page: Page, count = 2, total = 9) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine CleanupDiscardModal [${label}]`, () => {
+  test.describe(`@engine-core-mechanics-1 CleanupDiscardModal [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

@@ -62,7 +62,7 @@ function fired(state, watcherIid) {
   return state.p.bf.find(c => c.iid === watcherIid)?.counters?.P1P1 || 0;
 }
 
-describe('@engine Scenario: Artifact Possession', () => {
+describe('@engine-card-scenarios-3 Scenario: Artifact Possession', () => {
   it('AP-01: enchanting an artifact with Artifact Possession, then tapping it (e.g. for mana), deals 2 damage to its controller', () => {
     const art = testArtifact('art-1', 'o');
     const ap = makeReadyInstance('artifact_possession', 'p', { enchantedArtifactIid: 'art-1' });
@@ -109,7 +109,7 @@ describe('@engine Scenario: Artifact Possession', () => {
   });
 });
 
-describe('@engine Scenario: Haunting Wind', () => {
+describe('@engine-card-scenarios-3 Scenario: Haunting Wind', () => {
   it('HW-01: ANY artifact tapping deals 1 damage to its controller', () => {
     const art = testArtifact('art-1', 'o');
     const hw = makeReadyInstance('haunting_wind', 'p');
@@ -148,7 +148,7 @@ describe('@engine Scenario: Haunting Wind', () => {
   });
 });
 
-describe('@engine Scenario: Powerleech', () => {
+describe('@engine-card-scenarios-3 Scenario: Powerleech', () => {
   it("PL-01: an opponent's artifact tapping gains the Powerleech controller 1 life", () => {
     const art = testArtifact('art-1', 'o');
     const pl = makeReadyInstance('powerleech', 'p');
@@ -186,7 +186,7 @@ describe('@engine Scenario: Powerleech', () => {
   });
 });
 
-describe('@engine Scenario: cross-card / migration regression (BOTH)', () => {
+describe('@engine-card-scenarios-3 Scenario: cross-card / migration regression (BOTH)', () => {
   it('BOTH-01: site 1 (addMana branch) and site 2 (generic tap-cost step) both correctly emit ON_ABILITY_ACTIVATED_NO_TAP', () => {
     // Site 1: act.effect === "addMana" with no {T} in cost.
     const manaArt = testArtifact('art-1', 'p', { activated: { cost: '', effect: 'addMana', mana: 'C' } });

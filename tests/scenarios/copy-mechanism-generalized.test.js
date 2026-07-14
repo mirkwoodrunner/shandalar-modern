@@ -41,7 +41,7 @@ function stateWithOnStack(card, oBf, targetIid) {
   };
 }
 
-describe('@engine Scenario: applyPermanentCopy generalization', () => {
+describe('@engine-layers-copy-1 Scenario: applyPermanentCopy generalization', () => {
 
   it('Copy Artifact regression: still copies printed P/T/type/keywords via typeSuffix (byte-for-byte behavior)', () => {
     const juggernaut = makeCreature('jug-1', {
