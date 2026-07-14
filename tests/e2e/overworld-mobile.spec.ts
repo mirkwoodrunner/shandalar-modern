@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld @mobile overworld mobile layout', () => {
+test.describe('@overworld-visual-1 @mobile overworld mobile layout', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile overworld renders compact layout', async ({ page }) => {

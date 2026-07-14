@@ -164,7 +164,7 @@ async function runBandingSmoke(page: Page) {
   expect(terminated).toBe(true);
 }
 
-test.describe('@engine AI banding smoke -- desktop', () => {
+test.describe('@engine-ai-1 AI banding smoke -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('AI forms a band via the real driver and plays the duel to completion with no console errors', async ({ page }) => {
@@ -173,7 +173,7 @@ test.describe('@engine AI banding smoke -- desktop', () => {
   });
 });
 
-test.describe('@engine @mobile AI banding smoke -- mobile', () => {
+test.describe('@engine-ai-1 @mobile AI banding smoke -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('AI forms a band via the real driver and plays the duel to completion with no console errors (mobile)', async ({ page }) => {

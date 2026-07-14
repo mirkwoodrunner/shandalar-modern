@@ -1,0 +1,628 @@
+{
+  "tags": {
+    "@engine-ai-1": {
+      "family": "engine-ai",
+      "vitestFiles": [
+        "src/engine/__tests__/AI.attack.test.js",
+        "src/engine/__tests__/AI.banding.test.js",
+        "src/engine/__tests__/AI.sim.test.js",
+        "src/engine/__tests__/AI.summoningSick.tap.test.js",
+        "src/engine/__tests__/mcts-rollout.test.js",
+        "src/hooks/__tests__/ai-driver-blockers-gating.test.ts"
+      ],
+      "pwFiles": [
+        "tests/e2e/ai-banding-smoke.spec.ts",
+        "tests/e2e/ai-creature-evaluation-smoke.spec.ts",
+        "tests/e2e/ai-mana-tracking.spec.js"
+      ],
+      "related": [
+        "@engine-ai-2"
+      ]
+    },
+    "@engine-ai-2": {
+      "family": "engine-ai",
+      "vitestFiles": [
+        "tests/scenarios/ai-creature-evaluation.test.js",
+        "tests/scenarios/ai-fatal-error-handling.test.js",
+        "tests/scenarios/ai-land-destruction.test.js",
+        "tests/scenarios/ai-mulligan-no-restall.test.js",
+        "tests/scenarios/ai-priority-passthrough.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-ai-1"
+      ]
+    },
+    "@engine-banding-ante-1": {
+      "family": "engine-banding-ante",
+      "vitestFiles": [
+        "tests/scenarios/ante-cards.test.js",
+        "tests/scenarios/ante-exchange-darkpact.test.js",
+        "tests/scenarios/ante-toggle-exclusion.test.js",
+        "tests/scenarios/ante-zone-setup.test.js",
+        "tests/scenarios/banding-cards-batch.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/ante-system-complete.spec.ts",
+        "tests/e2e/banding-cards-batch.spec.ts",
+        "tests/e2e/banding-core.spec.ts"
+      ],
+      "related": [
+        "@engine-banding-ante-2"
+      ]
+    },
+    "@engine-banding-ante-2": {
+      "family": "engine-banding-ante",
+      "vitestFiles": [
+        "tests/scenarios/banding-core.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-banding-ante-1"
+      ]
+    },
+    "@engine-batch-stubs-1": {
+      "family": "engine-batch-stubs",
+      "vitestFiles": [
+        "tests/scenarios/additional-cost-sacrifice.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/additional-cost-sacrifice.spec.ts",
+        "tests/e2e/deferral-sweep-1.spec.ts",
+        "tests/e2e/deferral-sweep-2-typechange.spec.ts",
+        "tests/e2e/discard-centralization.spec.ts",
+        "tests/e2e/gemini-removal-smoke.spec.ts",
+        "tests/e2e/stub-batch-rd-conv-stasis.spec.ts"
+      ],
+      "related": [
+        "@engine-batch-stubs-2",
+        "@engine-batch-stubs-3"
+      ]
+    },
+    "@engine-batch-stubs-2": {
+      "family": "engine-batch-stubs",
+      "vitestFiles": [
+        "tests/scenarios/batch-14-quick-win-stubs.test.js",
+        "tests/scenarios/deferral-sweep-1-cards.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-batch-stubs-1",
+        "@engine-batch-stubs-3"
+      ]
+    },
+    "@engine-batch-stubs-3": {
+      "family": "engine-batch-stubs",
+      "vitestFiles": [
+        "tests/scenarios/discard-centralization.test.js",
+        "tests/scenarios/stub-batch-rd-conv-stasis.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-batch-stubs-1",
+        "@engine-batch-stubs-2"
+      ]
+    },
+    "@engine-card-scenarios-1": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "src/engine/__tests__/sphereCycle.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/aladdins-lamp.spec.ts",
+        "tests/e2e/ali-from-cairo-life-floor.spec.ts",
+        "tests/e2e/animate-artifact.spec.ts",
+        "tests/e2e/batch-a4-sphere-cycle.spec.ts",
+        "tests/e2e/coral-helm.spec.ts",
+        "tests/e2e/cyclopean-tomb.spec.ts",
+        "tests/e2e/disintegrate.spec.js",
+        "tests/e2e/force-of-nature-mobile-parity.spec.ts",
+        "tests/e2e/gloom.spec.ts",
+        "tests/e2e/guardian-angel.spec.ts"
+      ],
+      "related": [
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-2": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/aladdins-lamp.test.js",
+        "tests/scenarios/alchors-tomb.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/land-destruction-pyramids.spec.ts",
+        "tests/e2e/library-of-leng.spec.ts",
+        "tests/e2e/pestilence-sacrifice.spec.ts",
+        "tests/e2e/raging-river.spec.ts",
+        "tests/e2e/the-rack-upkeep.spec.ts",
+        "tests/e2e/titanias-song.spec.ts",
+        "tests/e2e/tokens-and-poison.spec.ts"
+      ],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-3": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/animate-artifact.test.js",
+        "tests/scenarios/artifact-possession-haunting-wind-powerleech.test.js",
+        "tests/scenarios/black-vise-upkeep.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-4": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/coral-helm.test.js",
+        "tests/scenarios/cyclopean-tomb.test.js",
+        "tests/scenarios/dual-land-mountainwalk.test.js",
+        "tests/scenarios/emblem-infrastructure.test.js",
+        "tests/scenarios/eye-for-an-eye.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-5": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/gloom.test.js",
+        "tests/scenarios/guardian-angel.test.js",
+        "tests/scenarios/lace-cycle.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-6": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/land-destruction-pyramids.test.js",
+        "tests/scenarios/library-of-leng.test.js",
+        "tests/scenarios/life-floor.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-7",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-7": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/ownership-exchange.test.js",
+        "tests/scenarios/pending-choice-generalized.test.js",
+        "tests/scenarios/pestilence-sacrifice.test.js",
+        "tests/scenarios/poison-counters.test.js",
+        "tests/scenarios/primal-clay.test.js",
+        "tests/scenarios/raging-river.test.js",
+        "tests/scenarios/relic-bind-blight-psychic-venom.test.js",
+        "tests/scenarios/the-hive-rukh-egg.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-8"
+      ]
+    },
+    "@engine-card-scenarios-8": {
+      "family": "engine-card-scenarios",
+      "vitestFiles": [
+        "tests/scenarios/the-rack-upkeep.test.js",
+        "tests/scenarios/titanias-song.test.js",
+        "tests/scenarios/token-creation.test.js",
+        "tests/scenarios/trigger-events-expansion.test.js",
+        "tests/scenarios/upkeep-choice-registry.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-card-scenarios-1",
+        "@engine-card-scenarios-2",
+        "@engine-card-scenarios-3",
+        "@engine-card-scenarios-4",
+        "@engine-card-scenarios-5",
+        "@engine-card-scenarios-6",
+        "@engine-card-scenarios-7"
+      ]
+    },
+    "@engine-cast-flow-ui-1": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [
+        "src/hooks/__tests__/useDuelController.castFlow.test.ts"
+      ],
+      "pwFiles": [
+        "tests/e2e/ability-stack-bugs.spec.ts",
+        "tests/e2e/ancestral-recall-targeting.spec.ts",
+        "tests/e2e/card-type-line.spec.ts"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-2",
+        "@engine-cast-flow-ui-3",
+        "@engine-cast-flow-ui-4",
+        "@engine-cast-flow-ui-5",
+        "@engine-cast-flow-ui-6"
+      ]
+    },
+    "@engine-cast-flow-ui-2": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/duel-controller.spec.ts",
+        "tests/e2e/engine-fatal-error-overlay.spec.ts",
+        "tests/e2e/exile-zone.spec.ts",
+        "tests/e2e/generalized-choice-mechanisms.spec.ts",
+        "tests/e2e/lotus-cancel-undo.spec.js",
+        "tests/e2e/mobile-targeting.spec.ts",
+        "tests/e2e/power-sink-x-select.spec.js"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-1",
+        "@engine-cast-flow-ui-3",
+        "@engine-cast-flow-ui-4",
+        "@engine-cast-flow-ui-5",
+        "@engine-cast-flow-ui-6"
+      ]
+    },
+    "@engine-cast-flow-ui-3": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/sandbox-boot-stack.spec.ts"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-1",
+        "@engine-cast-flow-ui-2",
+        "@engine-cast-flow-ui-4",
+        "@engine-cast-flow-ui-5",
+        "@engine-cast-flow-ui-6"
+      ]
+    },
+    "@engine-cast-flow-ui-4": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/sandbox-combat-ai-parity.spec.ts"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-1",
+        "@engine-cast-flow-ui-2",
+        "@engine-cast-flow-ui-3",
+        "@engine-cast-flow-ui-5",
+        "@engine-cast-flow-ui-6"
+      ]
+    },
+    "@engine-cast-flow-ui-5": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/sandbox-targeting-modals.spec.ts",
+        "tests/e2e/tutor-modal.spec.ts"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-1",
+        "@engine-cast-flow-ui-2",
+        "@engine-cast-flow-ui-3",
+        "@engine-cast-flow-ui-4",
+        "@engine-cast-flow-ui-6"
+      ]
+    },
+    "@engine-cast-flow-ui-6": {
+      "family": "engine-cast-flow-ui",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/undo-mana-taps-all-phases.spec.js"
+      ],
+      "related": [
+        "@engine-cast-flow-ui-1",
+        "@engine-cast-flow-ui-2",
+        "@engine-cast-flow-ui-3",
+        "@engine-cast-flow-ui-4",
+        "@engine-cast-flow-ui-5"
+      ]
+    },
+    "@engine-combat-1": {
+      "family": "engine-combat",
+      "vitestFiles": [
+        "src/engine/__tests__/blocking.test.js",
+        "src/engine/__tests__/counter-targeting.test.js",
+        "src/engine/__tests__/lava-axe-psionic-blast.test.js",
+        "tests/scenarios/circle-of-protection.test.js",
+        "tests/scenarios/combat-damage.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/creature-damage-centralization.spec.ts",
+        "tests/e2e/damage-shields.spec.ts",
+        "tests/e2e/first-strike-combat.spec.ts",
+        "tests/e2e/lava-axe-targeting.spec.ts",
+        "tests/e2e/protection-artifact-ward.spec.ts"
+      ],
+      "related": [
+        "@engine-combat-2",
+        "@engine-combat-3"
+      ]
+    },
+    "@engine-combat-2": {
+      "family": "engine-combat",
+      "vitestFiles": [
+        "tests/scenarios/creature-damage-centralization.test.js",
+        "tests/scenarios/damage-shields.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-combat-1",
+        "@engine-combat-3"
+      ]
+    },
+    "@engine-combat-3": {
+      "family": "engine-combat",
+      "vitestFiles": [
+        "tests/scenarios/damage-source-meta.test.js",
+        "tests/scenarios/hurt-meta-retrofit.test.js",
+        "tests/scenarios/protection-artifact-ward.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-combat-1",
+        "@engine-combat-2"
+      ]
+    },
+    "@engine-core-mechanics-1": {
+      "family": "engine-core-mechanics",
+      "vitestFiles": [
+        "src/engine/__tests__/DuelCore.reducer.test.js",
+        "src/engine/__tests__/DuelCore.snapshot.test.js",
+        "tests/scenarios/cleanup-discard.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/cleanup-discard.spec.ts",
+        "tests/e2e/no-tap-activation-auras.spec.ts",
+        "tests/e2e/tap-triggered-auras.spec.ts",
+        "tests/e2e/undo-tap-activate.spec.js"
+      ],
+      "related": [
+        "@engine-core-mechanics-2"
+      ]
+    },
+    "@engine-core-mechanics-2": {
+      "family": "engine-core-mechanics",
+      "vitestFiles": [
+        "tests/scenarios/tap-centralization.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-core-mechanics-1"
+      ]
+    },
+    "@engine-layers-copy-1": {
+      "family": "engine-layers-copy",
+      "vitestFiles": [
+        "tests/scenarios/copy-mechanism-generalized.test.js",
+        "tests/scenarios/layer1-copy-artifact.test.js",
+        "tests/scenarios/layer2-control-change.test.js",
+        "tests/scenarios/layer3-text-substitution.test.js",
+        "tests/scenarios/tetravus.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/copy-and-modal-choice.spec.ts",
+        "tests/e2e/enchanted-slot.spec.ts",
+        "tests/e2e/layer-engine.spec.js"
+      ],
+      "related": [
+        "@engine-layers-copy-2"
+      ]
+    },
+    "@engine-layers-copy-2": {
+      "family": "engine-layers-copy",
+      "vitestFiles": [
+        "tests/scenarios/type-change-cards.test.js",
+        "tests/scenarios/type-eff-baking.test.js",
+        "tests/scenarios/vesuvan-doppelganger.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-layers-copy-1"
+      ]
+    },
+    "@engine-phases-priority-1": {
+      "family": "engine-phases-priority",
+      "vitestFiles": [
+        "src/engine/__tests__/phase6.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/combat-blockers-priority.spec.ts"
+      ],
+      "related": [
+        "@engine-phases-priority-2"
+      ]
+    },
+    "@engine-phases-priority-2": {
+      "family": "engine-phases-priority",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/end-turn-skip-ahead.spec.ts",
+        "tests/e2e/end-turn-stack-priority-deadlock.spec.ts",
+        "tests/e2e/end-turn-with-activated-permanent.spec.ts",
+        "tests/e2e/instant-cast-priority-window.spec.js"
+      ],
+      "related": [
+        "@engine-phases-priority-1"
+      ]
+    },
+    "@engine-tier-complex-1": {
+      "family": "engine-tier-complex",
+      "vitestFiles": [
+        "tests/scenarios/complex-c1-activated.test.js",
+        "tests/scenarios/complex-c2-keywords.test.js",
+        "tests/scenarios/complex-c3-statics.test.js",
+        "tests/scenarios/complex-c4-triggers-a.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/batch-complex-tier-general.spec.ts"
+      ],
+      "related": [
+        "@engine-tier-complex-2"
+      ]
+    },
+    "@engine-tier-complex-2": {
+      "family": "engine-tier-complex",
+      "vitestFiles": [
+        "tests/scenarios/complex-c4-triggers-b.test.js",
+        "tests/scenarios/complex-c4-triggers-c.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-tier-complex-1"
+      ]
+    },
+    "@engine-tier-moderate-1": {
+      "family": "engine-tier-moderate",
+      "vitestFiles": [
+        "tests/scenarios/moderate-m1-activated.test.js",
+        "tests/scenarios/moderate-m2-keywords.test.js",
+        "tests/scenarios/moderate-m3-statics.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/batch-moderate-tier-forge-2.spec.ts"
+      ],
+      "related": [
+        "@engine-tier-moderate-2"
+      ]
+    },
+    "@engine-tier-moderate-2": {
+      "family": "engine-tier-moderate",
+      "vitestFiles": [
+        "tests/scenarios/moderate-m4-triggers.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-tier-moderate-1"
+      ]
+    },
+    "@engine-tier-simple-1": {
+      "family": "engine-tier-simple",
+      "vitestFiles": [
+        "tests/scenarios/simple-tier-forge-batch-abilities.test.js",
+        "tests/scenarios/simple-tier-forge-batch-effects.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/batch-simple-tier-forge-1.spec.ts",
+        "tests/e2e/batch1a-desert-landwalk.spec.ts",
+        "tests/e2e/batch1b-wall-destruction-sacrifice.spec.ts"
+      ],
+      "related": [
+        "@engine-tier-simple-2"
+      ]
+    },
+    "@engine-tier-simple-2": {
+      "family": "engine-tier-simple",
+      "vitestFiles": [
+        "tests/scenarios/simple-tier-forge-batch-static.test.js"
+      ],
+      "pwFiles": [],
+      "related": [
+        "@engine-tier-simple-1"
+      ]
+    },
+    "@overworld-generation": {
+      "family": "overworld-generation",
+      "vitestFiles": [
+        "tests/scenarios/castle-boss-routing.test.js",
+        "tests/scenarios/map-terrain-clustering.test.js",
+        "tests/scenarios/monster-variety.test.js",
+        "tests/scenarios/terrain-decoration-bounds.test.js"
+      ],
+      "pwFiles": [
+        "tests/e2e/difficulty.spec.js",
+        "tests/e2e/map.spec.js",
+        "tests/e2e/overworld-desktop.spec.ts"
+      ],
+      "related": []
+    },
+    "@overworld-visual-1": {
+      "family": "overworld-visual",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/dungeon-tileset.spec.ts",
+        "tests/e2e/henchman-visibility.spec.ts",
+        "tests/e2e/hooded-figure-sprites.spec.ts",
+        "tests/e2e/overworld-map-centering.spec.ts",
+        "tests/e2e/overworld-mobile.spec.ts",
+        "tests/e2e/overworld-sprite-and-tree-rendering.spec.ts",
+        "tests/e2e/overworld-sprites.spec.ts"
+      ],
+      "related": [
+        "@overworld-visual-2"
+      ]
+    },
+    "@overworld-visual-2": {
+      "family": "overworld-visual",
+      "vitestFiles": [],
+      "pwFiles": [
+        "tests/e2e/overworld-tileset.spec.ts",
+        "tests/e2e/overworld-visual.spec.ts",
+        "tests/e2e/plaque-visibility.spec.ts",
+        "tests/e2e/preduel-sandbox.spec.ts",
+        "tests/e2e/ruins.spec.js",
+        "tests/e2e/structure-icons.spec.ts"
+      ],
+      "related": [
+        "@overworld-visual-1"
+      ]
+    },
+    "@premodern": {
+      "family": "premodern",
+      "vitestFiles": [
+        "tests/scenarios/cardsPremodern.test.js"
+      ],
+      "pwFiles": [],
+      "related": []
+    }
+  }
+}

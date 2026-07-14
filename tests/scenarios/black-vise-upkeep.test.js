@@ -79,7 +79,7 @@ function advanceUntil(state, predicate, maxSteps = 20) {
   throw new Error('advanceUntil: predicate never satisfied within maxSteps');
 }
 
-describe('@engine Scenario: black-vise-upkeep -- fires only on the chosen (opponent-of-controller) upkeep', () => {
+describe('@engine-card-scenarios-3 Scenario: black-vise-upkeep -- fires only on the chosen (opponent-of-controller) upkeep', () => {
   it("BV-01: chosen player's (opponent's) upkeep with 7 cards in hand takes 3 damage", () => {
     const vise = makeVise('vise-1', { controller: 'p' });
     const state = makeState({ phase: PHASE.UNTAP, active: 'o', pBf: [vise], oHand: makeHand(7) });

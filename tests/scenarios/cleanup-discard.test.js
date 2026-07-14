@@ -14,7 +14,7 @@ function withMaxHandSize(state, maxHandSize = 7) {
   return { ...state, ruleset: { ...state.ruleset, maxHandSize } };
 }
 
-describe('@engine Scenario: Cleanup-step hand-limit discard (pendingCleanupDiscard)', () => {
+describe('@engine-core-mechanics-1 Scenario: Cleanup-step hand-limit discard (pendingCleanupDiscard)', () => {
   it('CLEAN-01: p over hand limit at CLEANUP -- sets pendingCleanupDiscard instead of auto-discarding', () => {
     const hand = Array.from({ length: 9 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));
     const state = withMaxHandSize(makeState({ pHand: hand, phase: PHASE.END, active: 'p' }));

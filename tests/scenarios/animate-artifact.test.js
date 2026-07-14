@@ -62,7 +62,7 @@ function castAndResolve(state, who, iid, tgt) {
 
 const FULL_MANA = { W: 0, U: 1, B: 0, R: 0, G: 0, C: 3 };
 
-describe('@engine Scenario: Animate Artifact', () => {
+describe('@engine-card-scenarios-3 Scenario: Animate Artifact', () => {
 
   it("AA-01: attaches via the embedded path -- lands in the target's enchantments[] array, not tracked via enchantedArtifactIid", () => {
     const art = makeArtifact('art-1');

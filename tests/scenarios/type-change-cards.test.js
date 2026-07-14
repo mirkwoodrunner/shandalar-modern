@@ -27,7 +27,7 @@ const EVIL_PRESENCE = { id: 'evil_presence', name: 'Evil Presence', type: 'Encha
 const DISENCHANT = { id: 'disenchant', name: 'Disenchant', type: 'Instant', color: 'W', cmc: 2, cost: '1W', keywords: [], effect: 'destroyArtOrEnch' };
 const LIGHTNING_BOLT = { id: 'lightning_bolt', name: 'Lightning Bolt', type: 'Instant', color: 'R', cmc: 1, cost: 'R', keywords: [], effect: 'damage3' };
 
-describe('@engine Scenario: Deferral Sweep 2 -- type-changing continuous effects', () => {
+describe('@engine-layers-copy-2 Scenario: Deferral Sweep 2 -- type-changing continuous effects', () => {
 
   it('Living Lands: animates only Forests, leaving other lands and creatures untouched', () => {
     const forest = makeLand('forest-1', { subtype: 'Forest' });

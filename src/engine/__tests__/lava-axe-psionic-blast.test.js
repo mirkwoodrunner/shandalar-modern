@@ -25,7 +25,7 @@ function stackItem(card, caster, targets = [], xVal = 1) {
 
 const lavaAxeCard = { effect: 'damage5', name: 'Lava Axe', id: 'lava_axe', type: 'Sorcery' };
 
-describe('@engine Lava Axe (damage5) targeting', () => {
+describe('@engine-combat-1 Lava Axe (damage5) targeting', () => {
   it('LAVA-AXE-01: player target -- opponent life drops by 5', () => {
     const s = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     const ns = resolveEff(s, stackItem(lavaAxeCard, 'p', ['o']));
@@ -56,7 +56,7 @@ describe('@engine Lava Axe (damage5) targeting', () => {
 
 const psionicCard = { effect: 'psionicBlast', name: 'Psionic Blast', id: 'psionic_blast', type: 'Instant' };
 
-describe('@engine Psionic Blast (psionicBlast) targeting', () => {
+describe('@engine-combat-1 Psionic Blast (psionicBlast) targeting', () => {
   it('PSIONIC-01: player target -- opponent takes 4, caster takes 2', () => {
     const s = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     const ns = resolveEff(s, stackItem(psionicCard, 'p', ['o']));

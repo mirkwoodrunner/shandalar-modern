@@ -94,7 +94,7 @@ function makePersonalIncarnation(iid: string) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Creature damage centralization UI [${label}]`, () => {
+  test.describe(`@engine-combat-1 Creature damage centralization UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

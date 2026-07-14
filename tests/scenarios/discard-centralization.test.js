@@ -38,7 +38,7 @@ function makeReplacerPermanent(iid, controller = 'p') {
   };
 }
 
-describe('@engine Scenario: discard centralization Phase 1', () => {
+describe('@engine-batch-stubs-3 Scenario: discard centralization Phase 1', () => {
   afterEach(() => {
     delete DISCARD_REPLACEMENTS['test_replacer'];
   });

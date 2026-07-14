@@ -90,7 +90,7 @@ async function triggerRagingRiverAttack(page: Page, riverWho: 'p' | 'o'): Promis
   return { defenderWho, atkIid, defIid };
 }
 
-test.describe('@engine Raging River', () => {
+test.describe('@engine-card-scenarios-2 Raging River', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('RR-UI-01: AI attacks with Raging River — human sees divide panel, confirming does not hang the phase', async ({ page }) => {
@@ -221,7 +221,7 @@ test.describe('@engine Raging River', () => {
   });
 });
 
-test.describe('@engine @mobile Raging River — mobile viewport', () => {
+test.describe('@engine-card-scenarios-2 @mobile Raging River — mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('RR-UI-03: river divide panel — mobile viewport parity', async ({ page }) => {

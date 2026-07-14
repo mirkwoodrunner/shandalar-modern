@@ -117,7 +117,7 @@ async function resolveStackAndGetState(page: Page): Promise<any> {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string) {
-  test.describe(`@engine Additional-cost Sacrifice UI [${label}]`, () => {
+  test.describe(`@engine-batch-stubs-1 Additional-cost Sacrifice UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

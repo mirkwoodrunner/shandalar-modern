@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { hurt, getLifeFloor } from '../../src/engine/DuelCore.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Life floor (Ali from Cairo)', () => {
+describe('@engine-card-scenarios-6 Life floor (Ali from Cairo)', () => {
 
   it('LF-01: getLifeFloor returns null with no lifeFloor permanents', () => {
     const state = makeState({ pBf: [makeCreature('c-1', { controller: 'p' })] });

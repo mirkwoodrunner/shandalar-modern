@@ -238,12 +238,12 @@ function batchTests() {
   });
 }
 
-test.describe('@engine @mobile Moderate-tier Forge batch 2 -- desktop (1280x800)', () => {
+test.describe('@engine-tier-moderate-1 @mobile Moderate-tier Forge batch 2 -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   batchTests();
 });
 
-test.describe('@engine @mobile Moderate-tier Forge batch 2 -- mobile (390x844)', () => {
+test.describe('@engine-tier-moderate-1 @mobile Moderate-tier Forge batch 2 -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   batchTests();
 });

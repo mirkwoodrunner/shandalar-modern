@@ -8,7 +8,7 @@ import { evaluateCreatureValue, evaluateBoard } from '../../src/engine/AI.js';
 import KEYWORDS from '../../src/data/keywords.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: creature evaluator (Forge CreatureEvaluator port)', () => {
+describe('@engine-ai-2 Scenario: creature evaluator (Forge CreatureEvaluator port)', () => {
   it('scores a vanilla 2/2 using the base + power/toughness/cmc formula', () => {
     const state = makeState();
     const bear = makeCreature('c1', { power: 2, toughness: 2, cmc: 2, keywords: [] });

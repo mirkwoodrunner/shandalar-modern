@@ -7,7 +7,7 @@ import { duelReducer, zMove } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand, makeSpell } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: trigger-events-expansion -- ON_ATTACKS_DECLARED', () => {
+describe('@engine-card-scenarios-8 Scenario: trigger-events-expansion -- ON_ATTACKS_DECLARED', () => {
   it('fires once when the active player commits at least one attacker, only for that attacker', () => {
     const watcher = makeCreature('w-1', {
       controller: 'p', power: 1, toughness: 1,
@@ -34,7 +34,7 @@ describe('@engine Scenario: trigger-events-expansion -- ON_ATTACKS_DECLARED', ()
   });
 });
 
-describe('@engine Scenario: trigger-events-expansion -- ON_SPELL_CAST', () => {
+describe('@engine-card-scenarios-8 Scenario: trigger-events-expansion -- ON_SPELL_CAST', () => {
   it('fires after the spell is placed on the stack, with color/type payload available to conditions', () => {
     const watcher = makeCreature('w-1', {
       controller: 'o', power: 1, toughness: 1,
@@ -61,7 +61,7 @@ describe('@engine Scenario: trigger-events-expansion -- ON_SPELL_CAST', () => {
   });
 });
 
-describe('@engine Scenario: trigger-events-expansion -- ON_PERMANENT_LEAVES_BF', () => {
+describe('@engine-card-scenarios-8 Scenario: trigger-events-expansion -- ON_PERMANENT_LEAVES_BF', () => {
   it('fires alongside ON_CREATURE_DIES when a permanent moves bf -> gy via zMove', () => {
     const watcher = { iid: 'w-1', id: 'test_watcher', name: 'Test Watcher', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [],
       triggeredAbilities: [{ id: 'watch', trigger: { event: 'ON_PERMANENT_LEAVES_BF' }, condition: { type: 'permanentWasLand' }, effect: { type: 'addCounter', counter: '+1/+1', amount: 1 } }],
@@ -87,7 +87,7 @@ describe('@engine Scenario: trigger-events-expansion -- ON_PERMANENT_LEAVES_BF',
   });
 });
 
-describe('@engine Scenario: trigger-events-expansion -- ON_END_STEP', () => {
+describe('@engine-card-scenarios-8 Scenario: trigger-events-expansion -- ON_END_STEP', () => {
   it('fires when the END phase is entered', () => {
     const watcher = makeCreature('w-1', {
       controller: 'p', power: 1, toughness: 1,
@@ -100,7 +100,7 @@ describe('@engine Scenario: trigger-events-expansion -- ON_END_STEP', () => {
   });
 });
 
-describe('@engine Scenario: trigger-events-expansion -- APNAP ordering on new events', () => {
+describe('@engine-card-scenarios-8 Scenario: trigger-events-expansion -- APNAP ordering on new events', () => {
   it('resolves the active player\'s ON_SPELL_CAST trigger before the non-active player\'s', () => {
     const apWatcher = makeCreature('ap-1', { controller: 'p', name: 'AP Watcher', power: 1, toughness: 1,
       triggeredAbilities: [{ id: 'ap_watch', trigger: { event: 'ON_SPELL_CAST' }, effect: { type: 'addCounter', counter: '+1/+1', amount: 1 } }] });

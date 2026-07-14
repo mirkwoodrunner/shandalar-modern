@@ -28,7 +28,7 @@ function makeEyeForAnEye(iid, overrides = {}) {
   });
 }
 
-describe('@engine Scenario: damage shields -- choosing a source', () => {
+describe('@engine-combat-2 Scenario: damage shields -- choosing a source', () => {
   it('activating Circle of Protection: Black opens a pool of matching permanents and stack spells only', () => {
     const cop = makeCoPBlack('cop-1');
     const blackCreature = makeCreature('bc-1', { id: 'sengir_vampire', name: 'Sengir Vampire', color: 'B', controller: 'o' });
@@ -101,7 +101,7 @@ describe('@engine Scenario: damage shields -- choosing a source', () => {
   });
 });
 
-describe('@engine Scenario: damage shields -- hurt() exact-identity matching', () => {
+describe('@engine-combat-2 Scenario: damage shields -- hurt() exact-identity matching', () => {
   it('prevents damage whose sourceIid exactly matches the chosen source, consuming the shield', () => {
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     const state = {
@@ -150,7 +150,7 @@ describe('@engine Scenario: damage shields -- hurt() exact-identity matching', (
   });
 });
 
-describe('@engine Scenario: damage shields -- redirect mode (Eye for an Eye)', () => {
+describe('@engine-combat-2 Scenario: damage shields -- redirect mode (Eye for an Eye)', () => {
   it('applies the original damage normally, then deals an equal amount to the chosen source\'s controller from Eye for an Eye', () => {
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     const state = {
@@ -203,7 +203,7 @@ describe('@engine Scenario: damage shields -- redirect mode (Eye for an Eye)', (
   });
 });
 
-describe('@engine Scenario: damage shields -- Eye for an Eye card resolution', () => {
+describe('@engine-combat-2 Scenario: damage shields -- Eye for an Eye card resolution', () => {
   it('casting Eye for an Eye opens pendingDamageShieldChoice with mode "redirect" and an unrestricted pool', () => {
     const efe = makeEyeForAnEye('efe-1');
     const redCreature = makeCreature('rc-1', { id: 'shivan_dragon', name: 'Shivan Dragon', color: 'R', controller: 'o' });

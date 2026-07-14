@@ -35,7 +35,7 @@ function makeSacrifice(iid, overrides = {}) {
 
 // ── Engine-level infrastructure (SAC-01 .. SAC-10) ──────────────────────────
 
-describe('@engine Scenario: additional-cost-sacrifice -- CAST_SPELL payment', () => {
+describe('@engine-batch-stubs-1 Scenario: additional-cost-sacrifice -- CAST_SPELL payment', () => {
   it('SAC-01: casting Sacrifice with one creature moves it bf->gy and adds B mana equal to its cmc on resolve', () => {
     const sac = makeSacrifice('sac-1');
     const cre = makeCreature('cre-1', { name: 'Big Bear', cmc: 3, controller: 'p' });
@@ -211,7 +211,7 @@ describe('@engine Scenario: additional-cost-sacrifice -- CAST_SPELL payment', ()
 // beginCastFlow / advanceCastFlow / selectAdditionalCost / cancelCastFlow in
 // useDuelController.ts, without rendering the hook itself.
 
-describe('@engine Scenario: additional-cost-sacrifice -- castFlow state shape', () => {
+describe('@engine-batch-stubs-1 Scenario: additional-cost-sacrifice -- castFlow state shape', () => {
   it('SAC-11: beginCastFlow opens additionalCost mode for a targetless card carrying additionalCost', () => {
     const sacCard = { id: 'sacrifice', additionalCost: { type: 'sacrificeCreature' }, cost: 'B', effect: 'addManaFromSacrificedValue' };
     const pBf = [makeCreature('cre-11', { controller: 'p' })];
@@ -327,7 +327,7 @@ describe('@engine Scenario: additional-cost-sacrifice -- castFlow state shape', 
 
 // ── Regression/parity (SAC-19 .. SAC-22) ────────────────────────────────────
 
-describe('@engine Scenario: additional-cost-sacrifice -- regression guards', () => {
+describe('@engine-batch-stubs-1 Scenario: additional-cost-sacrifice -- regression guards', () => {
   it('SAC-19: a targetless, non-X, no-additionalCost card still takes the instant-cast shortcut when affordable', () => {
     const grizzly = { id: 'grizzly_bears', type: 'Creature', cost: '1G', effect: undefined };
     const hasX = /X/i.test(grizzly.cost || '') && grizzly.id !== 'power_sink';

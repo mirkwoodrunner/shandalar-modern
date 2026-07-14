@@ -40,7 +40,7 @@ function reachableFrom(tiles, sx, sy) {
   return seen;
 }
 
-describe('@overworld MapGenerator coherent-noise terrain', () => {
+describe('@overworld-generation MapGenerator coherent-noise terrain', () => {
   it('is deterministic for a given seed', () => {
     const a = generateMap(7);
     const b = generateMap(7);

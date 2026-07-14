@@ -70,7 +70,7 @@ function makeHandCard(iid: string, name: string) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Discard centralization Phase 1 UI [${label}]`, () => {
+  test.describe(`@engine-batch-stubs-1 Discard centralization Phase 1 UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {
@@ -84,7 +84,7 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
       // As of the cleanup-step player-choice feature (docs/SYSTEMS.md Section
       // 29), the human player no longer auto-discards at CLEANUP -- they pick
       // via CleanupDiscardModal. See tests/scenarios/cleanup-discard.test.js
-      // for the engine-level coverage and tests/e2e/cleanup-discard.spec.ts
+      // for the engine coverage and tests/e2e/cleanup-discard.spec.ts
       // for deeper modal-interaction coverage; this test keeps its original
       // "excess cards move from hand to the graveyard, visible in the banner"
       // scope, now driven through the modal instead of an automatic discard.

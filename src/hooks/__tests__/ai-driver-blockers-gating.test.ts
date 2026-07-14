@@ -18,7 +18,7 @@ import { aiDecide } from '../../engine/AI.js';
 import { makeState, makeCreature } from '../../engine/__tests__/_factory.js';
 import { PHASE } from '../../engine/phases.js';
 
-describe('@engine AI driver COMBAT_BLOCKERS gating', () => {
+describe('@engine-ai-1 AI driver COMBAT_BLOCKERS gating', () => {
   function makeBlockersState() {
     const attacker = makeCreature('att-o-1', {
       controller: 'o',

@@ -12,7 +12,7 @@ function tryBlock(state, blId, attId) {
   return duelReducer(state, { type: 'DECLARE_BLOCKER', blId, attId });
 }
 
-describe('@engine blocking legality -- tapped creatures (rule 509.1a)', () => {
+describe('@engine-combat-1 blocking legality -- tapped creatures (rule 509.1a)', () => {
   it('rejects a tapped creature as a blocker', () => {
     const attacker = makeCreature('att1', { controller: 'o', attacking: true });
     const blocker  = makeCreature('bl1',  { controller: 'p', tapped: true });

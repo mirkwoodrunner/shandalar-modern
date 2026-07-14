@@ -54,7 +54,7 @@ async function revealMap(page, steps = 12) {
 // ---------------------------------------------------------------------------
 
 for (const vp of VIEWPORTS) {
-  test.describe(`@overworld @mobile structure icons [${vp.name} ${vp.width}x${vp.height}]`, () => {
+  test.describe(`overworld @mobile structure icons [${vp.name} ${vp.width}x${vp.height}]`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test('no console image-load errors on fresh load', async ({ page }) => {
@@ -168,7 +168,7 @@ for (const vp of VIEWPORTS) {
 // Image-load failure graceful-degradation test (desktop only -- WorldMap
 // is shared so the same path is exercised on mobile)
 // ---------------------------------------------------------------------------
-test.describe('@overworld @mobile structure icon asset-load degradation [desktop]', () => {
+test.describe('@overworld-visual-2 @mobile structure icon asset-load degradation [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('aborting structure PNGs does not crash the overworld', async ({ page }) => {

@@ -16,7 +16,7 @@ function makeReadyInstance(id, controller, overrides = {}) {
   return { ...inst, iid: `${id}-1`, summoningSick: false, tapped: false, eotBuffs: [], ...overrides };
 }
 
-describe('@engine Scenario: banding-cards-batch -- Battering Ram', () => {
+describe('@engine-banding-ante-1 Scenario: banding-cards-batch -- Battering Ram', () => {
   it('gains banding at the beginning of combat on its controller\'s turn', () => {
     const ram = makeReadyInstance('battering_ram', 'p');
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [ram] });
@@ -85,7 +85,7 @@ describe('@engine Scenario: banding-cards-batch -- Battering Ram', () => {
   });
 });
 
-describe('@engine Scenario: banding-cards-batch -- Mishra\'s War Machine', () => {
+describe('@engine-banding-ante-1 Scenario: banding-cards-batch -- Mishra\'s War Machine', () => {
   it('queues an upkeep choice for the human controller', () => {
     const mwm = makeReadyInstance('mishrass_war_machine', 'p');
     const card1 = { iid: 'c1', id: 'forest', name: 'Forest' };
@@ -146,7 +146,7 @@ describe('@engine Scenario: banding-cards-batch -- Mishra\'s War Machine', () =>
   });
 });
 
-describe('@engine Scenario: banding-cards-batch -- Nalathni Dragon', () => {
+describe('@engine-banding-ante-1 Scenario: banding-cards-batch -- Nalathni Dragon', () => {
   it('activating once grants +1/+0 until end of turn and increments the activation count', () => {
     const dragon = makeReadyInstance('nalathni_dragon', 'p');
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [dragon] });
@@ -185,7 +185,7 @@ describe('@engine Scenario: banding-cards-batch -- Nalathni Dragon', () => {
   });
 });
 
-describe('@engine Scenario: banding-cards-batch -- Knights of Thorn (control case)', () => {
+describe('@engine-banding-ante-1 Scenario: banding-cards-batch -- Knights of Thorn (control case)', () => {
   it('cannot be blocked by red creatures (protection)', () => {
     const knight = makeReadyInstance('knights_of_thorn', 'p');
     const redBlocker = makeCreature('rb-1', { controller: 'o', color: 'R' });

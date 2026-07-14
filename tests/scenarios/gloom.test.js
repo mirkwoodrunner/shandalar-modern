@@ -39,7 +39,7 @@ function makeWhiteEnchAbility(iid, overrides = {}) {
 
 // ─── applyCostTax unit tests (GLOOM-01 .. GLOOM-06) ────────────────────────────
 
-describe('@engine Scenario: Gloom -- applyCostTax unit tests', () => {
+describe('@engine-card-scenarios-5 Scenario: Gloom -- applyCostTax unit tests', () => {
   it('GLOOM-01: Gloom absent -- cost string returned unchanged for both a white and a non-white card', () => {
     const state = makeState({ pBf: [], oBf: [] });
     expect(applyCostTax('1W', { color: 'W' }, state)).toBe('1W');
@@ -76,7 +76,7 @@ describe('@engine Scenario: Gloom -- applyCostTax unit tests', () => {
 
 // ─── Spell-casting integration (GLOOM-07 .. GLOOM-12) ──────────────────────────
 
-describe('@engine Scenario: Gloom -- spell-casting integration', () => {
+describe('@engine-card-scenarios-5 Scenario: Gloom -- spell-casting integration', () => {
   it('GLOOM-07: CAST_SPELL -- a white spell costs 3 more with Gloom out; printed-cost-sufficient mana no longer suffices', () => {
     const spell = makeWhiteSpell('spell-1');
     let state = makeState({ phase: PHASE.MAIN_1, active: 'p', pHand: [spell], oBf: [makeGloom('gloom-1', { controller: 'o' })] });
@@ -143,7 +143,7 @@ describe('@engine Scenario: Gloom -- spell-casting integration', () => {
 
 // ─── Activated-ability integration (GLOOM-13 .. GLOOM-18) ──────────────────────
 
-describe('@engine Scenario: Gloom -- activated-ability integration', () => {
+describe('@engine-card-scenarios-5 Scenario: Gloom -- activated-ability integration', () => {
   it('GLOOM-13: ACTIVATE_ABILITY -- a white enchantment\'s ability costs 3 more with Gloom out; printed-cost-sufficient mana no longer suffices', () => {
     const ench = makeWhiteEnchAbility('ench-1');
     let state = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [ench], oBf: [makeGloom('gloom-1', { controller: 'o' })] });
@@ -213,7 +213,7 @@ describe('@engine Scenario: Gloom -- activated-ability integration', () => {
 
 // ─── Client-side / shortfall (GLOOM-19 .. GLOOM-21) ────────────────────────────
 
-describe('@engine Scenario: Gloom -- client-side shortfall and X-affordability', () => {
+describe('@engine-card-scenarios-5 Scenario: Gloom -- client-side shortfall and X-affordability', () => {
   it('GLOOM-19: getManaShortfall, given a tax-adjusted cost string for a white spell, correctly reports the increased needed.generic amount', () => {
     const state = makeState({ pBf: [], oBf: [makeGloom('gloom-1', { controller: 'o' })] });
     const whiteSpellCard = { color: 'W', cost: '1W' };
@@ -251,7 +251,7 @@ describe('@engine Scenario: Gloom -- client-side shortfall and X-affordability',
 
 // ─── Meta (GLOOM-22) ────────────────────────────────────────────────────────────
 
-describe('@engine Scenario: Gloom -- stub count meta test', () => {
+describe('@engine-card-scenarios-5 Scenario: Gloom -- stub count meta test', () => {
   it('GLOOM-22: exactly 2 lowercase effect:"stub" entries remain in cards.js (Animate Artifact, Tawnos\'s Coffin) -- Gloom no longer appears in that bucket', () => {
     const src = readFileSync(new URL('../../src/data/cards.js', import.meta.url), 'utf8');
     const matches = src.match(/effect:"stub"/g) || [];

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { duelReducer } from '../../src/engine/DuelCore.js';
 import { makeState } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Aladdin\'s Lamp', () => {
+describe('@engine-card-scenarios-2 Aladdin\'s Lamp', () => {
   it('AL-01: activate X=3 pushes charge', () => {
     const state = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     state.p.mana = { C: 10, W: 0, U: 0, B: 0, R: 0, G: 0 };

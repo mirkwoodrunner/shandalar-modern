@@ -158,7 +158,7 @@ async function runEndTurnWithActivatedPermanent(page: Page) {
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile End Turn with non-mana activated-ability permanent -- desktop', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn with non-mana activated-ability permanent -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('END-TURN-PERM-01: End Turn does not stall with Pestilence in play (desktop)', async ({ page }) => {
@@ -170,7 +170,7 @@ test.describe('@engine @mobile End Turn with non-mana activated-ability permanen
 // Mobile suite (390x844)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile End Turn with non-mana activated-ability permanent -- mobile', () => {
+test.describe('@engine-phases-priority-2 @mobile End Turn with non-mana activated-ability permanent -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('END-TURN-PERM-01: End Turn does not stall with Pestilence in play (mobile)', async ({ page }) => {

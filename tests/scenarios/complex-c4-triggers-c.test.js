@@ -12,7 +12,7 @@ function makeArt(iid, overrides = {}) {
   return { iid, id: 'mox_ruby', name: 'Mox Ruby', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 0, ...overrides };
 }
 
-describe('@engine Scenario: Complex-tier Forge batch C4 checkpoint C -- triggered abilities (final)', () => {
+describe('@engine-tier-complex-2 Scenario: Complex-tier Forge batch C4 checkpoint C -- triggered abilities (final)', () => {
 
   it("Time Vault: skips its controller's turn while tapped, untapping it, and grants an extra turn when activated", () => {
     // Vault is controlled by 'o': the skip check runs against whichever player

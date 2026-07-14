@@ -19,7 +19,7 @@ function makeTomb(iid, overrides = {}) {
   };
 }
 
-describe('@engine Scenario: Alchor\'s Tomb', () => {
+describe('@engine-card-scenarios-2 Scenario: Alchor\'s Tomb', () => {
 
   it('turns a targeted creature you control into the chosen color, indefinitely', () => {
     const tomb = makeTomb('tomb-1');

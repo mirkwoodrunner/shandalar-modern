@@ -36,7 +36,7 @@ async function playLotusToField(page) {
 }
 
 // Suite A -- Desktop (DuelScreen.tsx)
-test.describe('@engine @mobile Black Lotus -- Desktop', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile Black Lotus -- Desktop', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/?duel=sandbox&aiSpeed=0');
@@ -128,7 +128,7 @@ test.describe('@engine @mobile Black Lotus -- Desktop', () => {
 });
 
 // Suite B -- Mobile (DuelScreenMobile.tsx)
-test.describe('@engine @mobile Black Lotus -- Mobile', () => {
+test.describe('@engine-cast-flow-ui-2 @mobile Black Lotus -- Mobile', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/?duel=sandbox&aiSpeed=0');

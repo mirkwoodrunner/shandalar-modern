@@ -99,7 +99,7 @@ function makeBaseState(overrides: Record<string, any> = {}) {
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Pestilence sacrifice condition -- desktop', () => {
+test.describe('@engine-card-scenarios-2 @mobile Pestilence sacrifice condition -- desktop', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
@@ -133,7 +133,7 @@ test.describe('@engine @mobile Pestilence sacrifice condition -- desktop', () =>
 // Mobile suite (390x844) -- same test at mobile viewport
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Pestilence sacrifice condition -- mobile', () => {
+test.describe('@engine-card-scenarios-2 @mobile Pestilence sacrifice condition -- mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {

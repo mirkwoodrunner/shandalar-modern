@@ -306,12 +306,12 @@ function batchTests() {
   });
 }
 
-test.describe('@engine @mobile Simple-tier Forge batch 1 -- desktop (1280x800)', () => {
+test.describe('@engine-tier-simple-1 @mobile Simple-tier Forge batch 1 -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   batchTests();
 });
 
-test.describe('@engine @mobile Simple-tier Forge batch 1 -- mobile (390x844)', () => {
+test.describe('@engine-tier-simple-1 @mobile Simple-tier Forge batch 1 -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   batchTests();
 });

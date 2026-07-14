@@ -25,7 +25,7 @@ function makeDiscardWatcher(iid, controller = 'p') {
   };
 }
 
-describe('@engine Scenario: Library of Leng Phase 2', () => {
+describe('@engine-card-scenarios-6 Scenario: Library of Leng Phase 2', () => {
   it('LENG-01: p controls Leng with a 10-card hand -- cleanup causes zero discards', () => {
     const leng = makeCardInstance('library_of_leng', 'p');
     const hand = Array.from({ length: 10 }, (_, i) => makeSpell(`c${i}`, { id: 'lightning_bolt', name: `c${i}` }));

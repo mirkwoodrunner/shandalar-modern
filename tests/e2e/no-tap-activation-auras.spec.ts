@@ -37,7 +37,7 @@ async function waitForEngineReady(page: Page) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string) {
-  test.describe(`@engine No-tap-activation Auras UI [${label}]`, () => {
+  test.describe(`@engine-core-mechanics-1 No-tap-activation Auras UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

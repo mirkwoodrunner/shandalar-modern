@@ -109,7 +109,7 @@ async function runCombatWithAli(page: any, withAli: boolean) {
 // ---------------------------------------------------------------------------
 // DESKTOP (1280x800)
 // ---------------------------------------------------------------------------
-test.describe('@engine Life floor — Ali from Cairo [desktop]', () => {
+test.describe('@engine-card-scenarios-1 Life floor — Ali from Cairo [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('ALI-01: lethal damage is floored at 1 when Ali is on battlefield', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('@engine Life floor — Ali from Cairo [desktop]', () => {
 // ---------------------------------------------------------------------------
 // MOBILE (390x844)
 // ---------------------------------------------------------------------------
-test.describe('@engine Life floor — Ali from Cairo [mobile]', () => {
+test.describe('@engine-card-scenarios-1 Life floor — Ali from Cairo [mobile]', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('ALI-01: lethal damage is floored at 1 when Ali is on battlefield', async ({ page }) => {

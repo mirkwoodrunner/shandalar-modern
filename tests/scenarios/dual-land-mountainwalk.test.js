@@ -11,7 +11,7 @@ import { canBlockDuel } from '../../src/engine/DuelCore.js';
 import { getCardById } from '../../src/data/cards.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: dual land subtypes and mountainwalk', () => {
+describe('@engine-card-scenarios-4 Scenario: dual land subtypes and mountainwalk', () => {
 
   it('all 10 original dual lands have the correct two-type subtype', () => {
     const expected = {

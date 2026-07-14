@@ -12,7 +12,7 @@ function makeArt(iid, overrides = {}) {
   return { iid, id: 'mox_ruby', name: 'Mox Ruby', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 0, ...overrides };
 }
 
-describe('@engine Scenario: Complex-tier Forge batch C3 -- static/continuous effects', () => {
+describe('@engine-tier-complex-1 Scenario: Complex-tier Forge batch C3 -- static/continuous effects', () => {
 
   it("Angry Mob: 2 + opponent's Swamps on its controller's turn, flat 2/2 otherwise", () => {
     const mob = makeCreature('am-1', { id: 'angry_mob', name: 'Angry Mob', controller: 'p', power: 2, toughness: 2, layerDef: { layer: '7a', powerFn: 'angryMobPT', toughnessFn: 'angryMobPT' } });

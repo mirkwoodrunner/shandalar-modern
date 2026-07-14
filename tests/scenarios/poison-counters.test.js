@@ -8,7 +8,7 @@ import { duelReducer, checkWinConditions } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Poison counters', () => {
+describe('@engine-card-scenarios-7 Scenario: Poison counters', () => {
 
   it('the win threshold is 10, not 5 (default when ruleset.poisonCountersToWin is unset)', () => {
     const s9 = makeState({ phase: PHASE.MAIN_1 });

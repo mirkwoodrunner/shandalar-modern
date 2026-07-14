@@ -1,5 +1,5 @@
 // src/engine/__tests__/sphereCycle.test.js
-// @engine
+// engine
 // Sphere lifegain cycle: Crystal Rod, Iron Star, Ivory Cup, Wooden Sphere.
 // Tests CAST_SPELL trigger detection and SPHERE_TRIGGER_RESOLVE resolution.
 
@@ -153,7 +153,7 @@ function makeGreenSpell(iid) {
   };
 }
 
-describe('@engine Sphere Lifegain Cycle', () => {
+describe('@engine-card-scenarios-1 Sphere Lifegain Cycle', () => {
 
   // SPHERE-01: Crystal Rod on player bf, opponent casts blue -> trigger set for player.
   it('SPHERE-01: Crystal Rod triggers when opponent casts a blue spell', () => {

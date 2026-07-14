@@ -8,7 +8,7 @@ import { duelReducer, getPow, getTou } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Complex-tier Forge batch C4 checkpoint B -- triggered abilities', () => {
+describe('@engine-tier-complex-2 Scenario: Complex-tier Forge batch C4 checkpoint B -- triggered abilities', () => {
 
   it('Goblins of the Flarg: sacrificed once its controller controls a Dwarf', () => {
     const goblin = makeCreature('gf-1', { id: 'goblins_of_the_flarg', name: 'Goblins of the Flarg', controller: 'p' });

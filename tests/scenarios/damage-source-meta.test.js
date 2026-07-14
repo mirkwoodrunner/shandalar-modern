@@ -7,7 +7,7 @@ import { duelReducer, hurt } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: damage-source-meta -- hurt() backward compatibility', () => {
+describe('@engine-combat-3 Scenario: damage-source-meta -- hurt() backward compatibility', () => {
   it('string-only 3-arg call behaves exactly as before (no meta)', () => {
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     const state = { ...base, p: { ...base.p, life: 20 } };
@@ -25,7 +25,7 @@ describe('@engine Scenario: damage-source-meta -- hurt() backward compatibility'
   });
 });
 
-describe('@engine Scenario: damage-source-meta -- damageBySourceType tracking', () => {
+describe('@engine-combat-3 Scenario: damage-source-meta -- damageBySourceType tracking', () => {
   it('accumulates damage by source type per player and resets at CLEANUP', () => {
     const base = makeState({ phase: PHASE.MAIN_1, active: 'p' });
     let state = { ...base, p: { ...base.p, life: 20 }, turnState: { ...base.turnState, damageBySourceType: {} } };
@@ -46,7 +46,7 @@ describe('@engine Scenario: damage-source-meta -- damageBySourceType tracking', 
   });
 });
 
-describe('@engine Scenario: damage-source-meta -- damageRedirect hook', () => {
+describe('@engine-combat-3 Scenario: damage-source-meta -- damageRedirect hook', () => {
   it('Veteran-Bodyguard-shape: redirects unblocked combat creature damage (non-lethal)', () => {
     const bodyguard = makeCreature('vb-1', { id: 'veteran_bodyguard', name: 'Veteran Bodyguard', controller: 'p', power: 2, toughness: 5, tapped: false, damageRedirect: { from: 'unblockedCreatures' } });
     const base = makeState({ phase: PHASE.COMBAT_DAMAGE, active: 'o', pBf: [bodyguard] });

@@ -113,7 +113,7 @@ async function enterAncestralRecallTargetingMode(page: Page) {
 // Desktop suite (1280x800)
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Ancestral Recall player-only targeting [desktop]', () => {
+test.describe('@engine-cast-flow-ui-1 @mobile Ancestral Recall player-only targeting [desktop]', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
@@ -222,7 +222,7 @@ test.describe('@engine @mobile Ancestral Recall player-only targeting [desktop]'
 // Mobile suite (390x844) -- DuelScreenMobile.tsx render path
 // ---------------------------------------------------------------------------
 
-test.describe('@engine @mobile Ancestral Recall player-only targeting [mobile]', () => {
+test.describe('@engine-cast-flow-ui-1 @mobile Ancestral Recall player-only targeting [mobile]', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {

@@ -71,7 +71,7 @@ function makeLibCard(iid: string, name: string) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Library of Leng Phase 2 UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-2 Library of Leng Phase 2 UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

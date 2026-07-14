@@ -10,7 +10,7 @@ const ANTE_ONLY_IDS = new Set(
   CARD_DB.filter(c => c.anteOnly).map(c => c.id)
 );
 
-describe('@engine Scenario: ante-only card exclusion from generated starting decks', () => {
+describe('@engine-banding-ante-1 Scenario: ante-only card exclusion from generated starting decks', () => {
 
   it('flags exactly the seven known ante cards as anteOnly', () => {
     expect(ANTE_ONLY_IDS).toEqual(new Set([

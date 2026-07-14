@@ -32,7 +32,7 @@ function withMana(state, who, amount) {
   return { ...state, [who]: { ...state[who], mana: { ...state[who].mana, C: amount } } };
 }
 
-describe('@engine Scenario: Cyclopean Tomb', () => {
+describe('@engine-card-scenarios-4 Scenario: Cyclopean Tomb', () => {
 
   it('CT-01: activation only allowed during the controller\'s own upkeep; refused in any other phase with no mana spent', () => {
     const tomb = makeTomb('tomb-1', { controller: 'p' });

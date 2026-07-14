@@ -19,7 +19,7 @@ function makeArt(iid, overrides = {}) {
   };
 }
 
-describe('@engine Scenario: upkeep-choice registry (Part 3)', () => {
+describe('@engine-card-scenarios-8 Scenario: upkeep-choice registry (Part 3)', () => {
 
   it('Force of Nature still works unchanged: pay GGGG', () => {
     // Constructed directly at the pendingUpkeepChoice-already-queued state so the

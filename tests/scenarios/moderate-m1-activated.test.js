@@ -12,7 +12,7 @@ function makeArt(iid, overrides = {}) {
   return { iid, id: 'mox_ruby', name: 'Mox Ruby', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 0, ...overrides };
 }
 
-describe('@engine Scenario: Moderate-tier Forge batch M1 -- activated abilities and spells', () => {
+describe('@engine-tier-moderate-1 Scenario: Moderate-tier Forge batch M1 -- activated abilities and spells', () => {
 
   it("Ashnod's Transmogrant: sacrifices itself, puts +1/+1 counter and makes target creature an artifact", () => {
     const transmogrant = makeArt('at-1', { id: 'ashnodss_transmogrant', name: "Ashnod's Transmogrant", activated: { cost: 'T,sac', effect: 'counterAndArtifactType' } });

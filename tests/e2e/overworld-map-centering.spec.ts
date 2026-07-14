@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('@overworld @mobile overworld map centering', () => {
+test.describe('@overworld-visual-1 @mobile overworld map centering', () => {
 
   test('map is centered on player at game start', async ({ page }) => {
     await page.goto('/');

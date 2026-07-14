@@ -128,7 +128,7 @@ async function noBandingScenario(page: Page) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string) {
-  test.describe(`@engine Banding core UI [${label}]`, () => {
+  test.describe(`@engine-banding-ante-1 Banding core UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

@@ -14,7 +14,7 @@ import { canPay } from '../../engine/DuelCore.js';
 
 // ── CAST-FLOW-01 ──────────────────────────────────────────────────────────────
 
-describe('@engine getManaShortfall', () => {
+describe('@engine-cast-flow-ui-1 getManaShortfall', () => {
   it('CAST-FLOW-01: returns null when pool already satisfies cost', () => {
     const pool = { W: 0, U: 2, B: 0, R: 0, G: 0, C: 0 };
     expect(getManaShortfall(pool, 'UU', 0)).toBeNull();
@@ -33,7 +33,7 @@ describe('@engine getManaShortfall', () => {
 
 // ── CAST-FLOW-02 ──────────────────────────────────────────────────────────────
 
-describe('@engine getManaShortfall shortfall computation', () => {
+describe('@engine-cast-flow-ui-1 getManaShortfall shortfall computation', () => {
   it('CAST-FLOW-02: returns needed/have when pool is short on colored mana', () => {
     const pool = { W: 0, U: 1, B: 0, R: 0, G: 0, C: 0 };
     const result = getManaShortfall(pool, 'UU', 0);
@@ -71,7 +71,7 @@ describe('@engine getManaShortfall shortfall computation', () => {
 //
 // Vanilla creature: no targeting at all.
 
-describe('@engine needsAnyTarget / isOptionalTarget classification', () => {
+describe('@engine-cast-flow-ui-1 needsAnyTarget / isOptionalTarget classification', () => {
   const twiddle = { id: 'twiddle', effect: 'tapTarget', optionalTarget: true };
   const counterspell = { id: 'counterspell', effect: 'counter' };
   const grizzlyBears = { id: 'grizzly_bears', type: 'Creature', cost: 'GG', effect: undefined };
@@ -108,7 +108,7 @@ describe('@engine needsAnyTarget / isOptionalTarget classification', () => {
 
 // ── CAST-FLOW-04 ──────────────────────────────────────────────────────────────
 
-describe('@engine CAST-FLOW-04: non-targeting non-land card flow shape', () => {
+describe('@engine-cast-flow-ui-1 CAST-FLOW-04: non-targeting non-land card flow shape', () => {
   it('vanilla creature has no target requirement and no optional target', () => {
     const grizzlyBears = { id: 'grizzly_bears', type: 'Creature', cost: 'GG', effect: undefined };
     const hasTarget = needsAnyTarget(grizzlyBears) || isOptionalTarget(grizzlyBears);
@@ -132,7 +132,7 @@ describe('@engine CAST-FLOW-04: non-targeting non-land card flow shape', () => {
 
 // ── CAST-FLOW-05 ──────────────────────────────────────────────────────────────
 
-describe('@engine CAST-FLOW-05: optional-target card can proceed with 0 targets', () => {
+describe('@engine-cast-flow-ui-1 CAST-FLOW-05: optional-target card can proceed with 0 targets', () => {
   it('Twiddle requiresTarget = false (optional), so 0 targets is valid for confirm', () => {
     const twiddle = { id: 'twiddle', effect: 'tapTarget', optionalTarget: true };
     const req = needsAnyTarget(twiddle) && !isOptionalTarget(twiddle);
@@ -152,7 +152,7 @@ describe('@engine CAST-FLOW-05: optional-target card can proceed with 0 targets'
 
 // ── CAST-FLOW-06 ──────────────────────────────────────────────────────────────
 
-describe('@engine CAST-FLOW-06: required target blocks confirm at 0 targets', () => {
+describe('@engine-cast-flow-ui-1 CAST-FLOW-06: required target blocks confirm at 0 targets', () => {
   it('damage3 spell requiresTarget = true, confirm blocked at 0 targets', () => {
     const lightningBolt = { id: 'lightning_bolt', effect: 'damage3' };
     const requiresTarget = needsAnyTarget(lightningBolt) && !isOptionalTarget(lightningBolt);
@@ -180,7 +180,7 @@ describe('@engine CAST-FLOW-06: required target blocks confirm at 0 targets', ()
 
 // ── CAST-FLOW-07 ──────────────────────────────────────────────────────────────
 
-describe('@engine CAST-FLOW-07: cancel flow undo logic', () => {
+describe('@engine-cast-flow-ui-1 CAST-FLOW-07: cancel flow undo logic', () => {
   it('should dispatch UNDO_MANA_TAPS when manaTapSnapshot is non-null', () => {
     const manaTapSnapshot = { pMana: { U: 1 }, lands: [] };
     const shouldUndo = manaTapSnapshot !== null;
@@ -196,7 +196,7 @@ describe('@engine CAST-FLOW-07: cancel flow undo logic', () => {
 
 // ── CAST-FLOW-08 ──────────────────────────────────────────────────────────────
 
-describe('@engine CAST-FLOW-08: Counterspell targeting uses explicit stack-item id', () => {
+describe('@engine-cast-flow-ui-1 CAST-FLOW-08: Counterspell targeting uses explicit stack-item id', () => {
   it('Counterspell is a counter effect, needsAnyTarget = true', () => {
     const counterspell = { id: 'counterspell', effect: 'counter' };
     expect(needsAnyTarget(counterspell)).toBe(true);
@@ -226,7 +226,7 @@ describe('@engine CAST-FLOW-08: Counterspell targeting uses explicit stack-item 
 
 // ── Additional: EXPLICIT_TARGET_EFFECTS integrity ─────────────────────────────
 
-describe('@engine EXPLICIT_TARGET_EFFECTS integrity', () => {
+describe('@engine-cast-flow-ui-1 EXPLICIT_TARGET_EFFECTS integrity', () => {
   it('includes damage3 (Lightning Bolt effect)', () => {
     expect(EXPLICIT_TARGET_EFFECTS.has('damage3')).toBe(true);
   });

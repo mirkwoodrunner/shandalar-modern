@@ -62,7 +62,7 @@ function stateWithMulliganFlag(overrides = {}, pFlag = false, oFlag = false) {
 
 // --- MULLIGAN reducer --------------------------------------------------------
 
-describe('@engine MULLIGAN reducer -- o.mulliganDecided flag', () => {
+describe('@engine-ai-2 MULLIGAN reducer -- o.mulliganDecided flag', () => {
   it('sets o.mulliganDecided to true on the first opponent mulligan', () => {
     const cards = Array.from({ length: 14 }, (_, i) => makeCard(`c${i}`, i < 7 ? 'Land' : 'Creature'));
     const s = stateWithMulliganFlag(
@@ -127,7 +127,7 @@ describe('@engine MULLIGAN reducer -- o.mulliganDecided flag', () => {
 
 // --- MULLIGAN_KEEP reducer ---------------------------------------------------
 
-describe('@engine MULLIGAN_KEEP reducer', () => {
+describe('@engine-ai-2 MULLIGAN_KEEP reducer', () => {
   it('sets o.mulliganDecided to true without changing the hand', () => {
     const cards = Array.from({ length: 7 }, (_, i) => makeCard(`k${i}`));
     const s = stateWithMulliganFlag({ oHand: cards }, false, false);
@@ -151,7 +151,7 @@ describe('@engine MULLIGAN_KEEP reducer', () => {
 
 // --- aiDecide -- shouldMulligan gating via mulliganDecided -------------------
 
-describe('@engine aiDecide -- mulliganDecided prevents shouldMulligan from re-firing', () => {
+describe('@engine-ai-2 aiDecide -- mulliganDecided prevents shouldMulligan from re-firing', () => {
   // Bad hand: 1 land in 7 cards -- shouldMulligan returns true.
   function badHand() {
     return [
@@ -200,7 +200,7 @@ describe('@engine aiDecide -- mulliganDecided prevents shouldMulligan from re-fi
 
 // --- Integration: MULLIGAN dispatch seals the decision -----------------------
 
-describe('@engine Integration: MULLIGAN dispatch -> mulliganDecided -> no re-fire', () => {
+describe('@engine-ai-2 Integration: MULLIGAN dispatch -> mulliganDecided -> no re-fire', () => {
   it('a second aiDecide call after a dispatched MULLIGAN does not re-offer mulligan', () => {
     // Bad hand triggers MULLIGAN on first aiDecide call.
     const hand = [makeCard('l1', 'Land'), ...Array.from({ length: 6 }, (_, i) => makeCard(`c${i}`, 'Creature'))];

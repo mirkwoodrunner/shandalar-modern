@@ -3,7 +3,7 @@ import { duelReducer, canBlockDuel } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Raging River', () => {
+describe('@engine-card-scenarios-7 Raging River', () => {
   it('RR-01: trigger populates pendingRiverDivide', () => {
     const state = makeState();
     state.p.attackers = ['a1'];

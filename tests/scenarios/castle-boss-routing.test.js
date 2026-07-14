@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { MAGE_BOSS_ARCHS } from '../../src/engine/MapGenerator.js';
 import { ARCHETYPES } from '../../src/data/cards.js';
 
-describe('@overworld castle boss-deck routing', () => {
+describe('@overworld-generation castle boss-deck routing', () => {
   const colors = ['W', 'U', 'B', 'R', 'G'];
 
   it('maps every castle color to an existing BOSS_* archetype', () => {

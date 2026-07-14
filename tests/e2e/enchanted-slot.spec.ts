@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const SANDBOX_URL = '/?duel=sandbox&aiSpeed=0';
 
-test.describe('@engine EnchantedCardSlot', () => {
+test.describe('@engine-layers-copy-1 EnchantedCardSlot', () => {
   test('unenchanted card renders without slot overhead', async ({ page }) => {
     await page.goto(SANDBOX_URL);
     await page.waitForSelector('[data-testid="duel-screen"]', { timeout: 10_000 });

@@ -92,7 +92,7 @@ function makeMountain(iid) {
 
 // ---------------------------------------------------------------------------
 
-test.describe('@engine ActionBar Cast button — instant casting during priority windows', () => {
+test.describe('@engine-phases-priority-2 ActionBar Cast button — instant casting during priority windows', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForFunction(() => document.readyState === 'complete', { timeout: 15000 });

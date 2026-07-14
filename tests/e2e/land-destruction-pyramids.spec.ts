@@ -94,7 +94,7 @@ function makeCreature(iid: string, overrides: Record<string, any> = {}) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Land destruction + Pyramids UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-2 Land destruction + Pyramids UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

@@ -67,7 +67,7 @@ function makeArtifactZap(iid: string, overrides: Record<string, any> = {}) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string, waitForScreen: (page: Page) => Promise<void>) {
-  test.describe(`@engine Protection from artifact + Artifact Ward UI [${label}]`, () => {
+  test.describe(`@engine-combat-1 Protection from artifact + Artifact Ward UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

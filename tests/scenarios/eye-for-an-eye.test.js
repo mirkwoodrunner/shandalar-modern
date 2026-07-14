@@ -10,7 +10,7 @@ import { PHASE } from '../../src/engine/phases.js';
 import { getCardById } from '../../src/data/cards.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: eye_for_an_eye', () => {
+describe('@engine-card-scenarios-4 Scenario: eye_for_an_eye', () => {
   it('has no color/type restriction and mode "redirect"', () => {
     const card = getCardById('eye_for_an_eye');
     expect(card.type).toBe('Instant');

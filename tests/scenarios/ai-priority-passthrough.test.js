@@ -66,7 +66,7 @@ function decideAiPriorityDispatch(acts) {
   }
 }
 
-describe('@engine AI priority window effect -- decision logic (mirrors useDuelController.ts)', () => {
+describe('@engine-ai-2 AI priority window effect -- decision logic (mirrors useDuelController.ts)', () => {
   it('AI-PRIORITY-01: aiDecide() returning [] dispatches PASS_PRIORITY for "o"', () => {
     expect(decideAiPriorityDispatch([])).toEqual({ type: 'PASS_PRIORITY', who: 'o' });
   });
@@ -86,7 +86,7 @@ describe('@engine AI priority window effect -- decision logic (mirrors useDuelCo
   });
 });
 
-describe('@engine AI priority window effect -- window actually closes on PASS_PRIORITY (DuelCore.js, real production code)', () => {
+describe('@engine-ai-2 AI priority window effect -- window actually closes on PASS_PRIORITY (DuelCore.js, real production code)', () => {
   it('AI-PRIORITY-05: with Pestilence on the battlefield and "p" already passed, dispatching PASS_PRIORITY for "o" closes the window', () => {
     const pestilence = makePestilence('pest-1', { controller: 'p' });
     const state = {

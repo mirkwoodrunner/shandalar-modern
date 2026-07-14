@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 
 const SANDBOX_URL = '/?duel=sandbox&aiSpeed=0&cards=demonic_tutor';
 
-test.describe('@engine @mobile TutorModal confirmation', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TutorModal confirmation', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto(SANDBOX_URL);
@@ -57,7 +57,7 @@ test.describe('@engine @mobile TutorModal confirmation', () => {
 
 });
 
-test.describe('@engine @mobile TutorModal — mobile viewport', () => {
+test.describe('@engine-cast-flow-ui-5 @mobile TutorModal — mobile viewport', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('confirm button visible after selection on mobile', async ({ page }) => {

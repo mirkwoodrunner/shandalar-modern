@@ -23,7 +23,7 @@ async function waitForEngineReady(page: Page) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string) {
-  test.describe(`@engine Stub Batch: Reverse Damage / Conversion / Stasis [${label}]`, () => {
+  test.describe(`@engine-batch-stubs-1 Stub Batch: Reverse Damage / Conversion / Stasis [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

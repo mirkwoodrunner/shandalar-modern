@@ -12,7 +12,7 @@ import { duelReducer } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeLand, makeSpell } from '../../src/engine/__tests__/_factory.js';
 
-describe('@engine Scenario: Darkpact ante-exchange (Part 2)', () => {
+describe('@engine-banding-ante-1 Scenario: Darkpact ante-exchange (Part 2)', () => {
 
   it('pendingAnteExchange only lists the caster\'s own ante cards (anteP + anteExtraP), never the opponent\'s', () => {
     const darkpact = makeSpell('dp-1', { id: 'darkpact', name: 'Darkpact', color: 'B', cost: 'BBB', cmc: 3, anteOnly: true, effect: 'darkpactExchange' });

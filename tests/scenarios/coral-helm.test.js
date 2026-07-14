@@ -31,7 +31,7 @@ function makeHelm(overrides = {}) {
   };
 }
 
-describe('@engine Coral Helm -- discardRandom cost + pumpCreature', () => {
+describe('@engine-card-scenarios-4 Coral Helm -- discardRandom cost + pumpCreature', () => {
 
   it('HELM-01: activation discards a hand card and pumps the target creature +2/+2', () => {
     const helm = makeHelm();

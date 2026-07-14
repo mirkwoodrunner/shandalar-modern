@@ -1,5 +1,5 @@
 // tests/e2e/batch-a4-sphere-cycle.spec.ts
-// @engine @mobile
+// engine @mobile
 // Playwright e2e for Batch A4: Sphere Lifegain Cycle
 // Dual-viewport: 1280x800 desktop and 390x844 mobile.
 
@@ -231,7 +231,7 @@ function sphereTests() {
 // ---------------------------------------------------------------------------
 // Desktop suite
 // ---------------------------------------------------------------------------
-test.describe('@engine @mobile Batch A4 Sphere Cycle -- desktop (1280x800)', () => {
+test.describe('@engine-card-scenarios-1 @mobile Batch A4 Sphere Cycle -- desktop (1280x800)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT });
   sphereTests();
 });
@@ -239,7 +239,7 @@ test.describe('@engine @mobile Batch A4 Sphere Cycle -- desktop (1280x800)', () 
 // ---------------------------------------------------------------------------
 // Mobile suite
 // ---------------------------------------------------------------------------
-test.describe('@engine @mobile Batch A4 Sphere Cycle -- mobile (390x844)', () => {
+test.describe('@engine-card-scenarios-1 @mobile Batch A4 Sphere Cycle -- mobile (390x844)', () => {
   test.use({ viewport: MOBILE_VIEWPORT });
   sphereTests();
 });

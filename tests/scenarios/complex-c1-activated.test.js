@@ -12,7 +12,7 @@ function makeArt(iid, overrides = {}) {
   return { iid, id: 'mox_ruby', name: 'Mox Ruby', type: 'Artifact', controller: 'p', tapped: false, damage: 0, counters: {}, eotBuffs: [], enchantments: [], cmc: 0, ...overrides };
 }
 
-describe('@engine Scenario: Complex-tier Forge batch C1 -- activated abilities and spells', () => {
+describe('@engine-tier-complex-1 Scenario: Complex-tier Forge batch C1 -- activated abilities and spells', () => {
 
   it('Alabaster Potion: mode "gain" -- target player gains X life', () => {
     const spell = { iid: 'ap-1', id: 'alabaster_potion', name: 'Alabaster Potion', type: 'Instant', cmc: 2, cost: 'XWW', effect: 'alabasterPotionChoice' };

@@ -24,7 +24,7 @@ function makeReverseDamage(iid, overrides = {}) {
   });
 }
 
-describe('@engine Scenario: Reverse Damage', () => {
+describe('@engine-batch-stubs-3 Scenario: Reverse Damage', () => {
   it('RD-01: casting with a legal source on board and choosing it (human path) records gainLifeOnPrevent:true', () => {
     const rd = makeReverseDamage('rd-1');
     const redCreature = makeCreature('rc-1', { id: 'shivan_dragon', name: 'Shivan Dragon', color: 'R', controller: 'o' });
@@ -113,7 +113,7 @@ describe('@engine Scenario: Reverse Damage', () => {
 const CONVERSION = { id: 'conversion', name: 'Conversion', type: 'Enchantment', color: 'W', cmc: 4, cost: '2WW', keywords: [],
   effect: 'globalTypeEffect', globalTypeEffect: { filter: 'Mountain', setSubtypes: ['Plains'] }, upkeep: 'sacrificeUnless_WW' };
 
-describe('@engine Scenario: Conversion', () => {
+describe('@engine-batch-stubs-3 Scenario: Conversion', () => {
   it('CONV-01: casting with a Mountain on the battlefield sets its subtypeEff/landTypeOverride to Plains', () => {
     const mountain = makeLand('mtn-1', { id: 'mountain', name: 'Mountain', subtype: 'Basic Mountain', color: '', produces: ['R'] });
     let state = makeState({ phase: PHASE.MAIN_1, active: 'p', pBf: [mountain], pHand: [{ ...CONVERSION, iid: 'conv-hand' }] });
@@ -211,7 +211,7 @@ function makeStasis(iid, overrides = {}) {
   };
 }
 
-describe('@engine Scenario: Stasis', () => {
+describe('@engine-batch-stubs-3 Scenario: Stasis', () => {
   it('STAS-01: with Stasis on the battlefield, the active player\'s untap step leaves their battlefield completely untouched', () => {
     const stasis = makeStasis('stasis-1');
     const tappedLand = makeLand('land-1', { tapped: true, controller: 'p' });

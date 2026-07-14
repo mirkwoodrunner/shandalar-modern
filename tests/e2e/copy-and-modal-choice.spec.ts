@@ -70,7 +70,7 @@ async function castFromHand(page: Page, nameRegex: RegExp) {
 }
 
 for (const viewport of [{ name: 'desktop', width: 1280, height: 800 }, { name: 'mobile', width: 390, height: 844 }]) {
-  test.describe(`@engine @mobile Vesuvan Doppelganger + Primal Clay [${viewport.name}]`, () => {
+  test.describe(`@engine-layers-copy-1 @mobile Vesuvan Doppelganger + Primal Clay [${viewport.name}]`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
     test.beforeEach(async ({ page }) => {

@@ -19,7 +19,7 @@ async function dismissMulligan(page: Page) {
   }
 }
 
-test.describe('@engine Guardian Angel', () => {
+test.describe('@engine-card-scenarios-1 Guardian Angel', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('GA-UI-01: renders temp ability bar when tempAbilities present (desktop)', async ({ page }) => {

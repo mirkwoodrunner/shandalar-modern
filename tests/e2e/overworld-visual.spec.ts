@@ -4,7 +4,7 @@ const DESKTOP = { width: 1280, height: 800 };
 const MOBILE  = { width: 390, height: 844 };
 
 for (const [label, viewport] of [['desktop', DESKTOP], ['mobile', MOBILE]] as const) {
-  test.describe(`@overworld @mobile Overworld visual polish — ${label}`, () => {
+  test.describe(`@overworld-visual-2 @mobile Overworld visual polish — ${label}`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {

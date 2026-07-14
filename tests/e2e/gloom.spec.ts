@@ -56,7 +56,7 @@ async function waitForEngineReady(page: Page) {
 }
 
 function runSuite(viewport: { width: number; height: number }, label: string, url: string) {
-  test.describe(`@engine Gloom cost tax UI [${label}]`, () => {
+  test.describe(`@engine-card-scenarios-1 Gloom cost tax UI [${label}]`, () => {
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {
