@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 // scripts/run-targeted.js
-// Run tests for specific tags via: npm run test:targeted -- @engine @overworld
-// Tags are passed as CLI args. Both Vitest and Playwright are run for each set.
-// Multiple tags are OR-combined so any test matching any tag is included.
+// Run tests for specific tags via: npm run test:targeted -- @engine-combat-1 @overworld-generation
+// Tags are resolved against scripts/test-tags.json (the tag manifest) to an
+// explicit list of Vitest + Playwright files, which are then run directly.
+// This bypasses Vitest's --testNamePattern, which does not reliably scope
+// Vitest in this repo (see docs/CURRENT_SPRINT.md), and it means tag mode no
+// longer needs a human/agent to hand-declare file counts -- the manifest is
+// the single source of truth for which files a tag covers.
+//
+// Run `node scripts/list-test-tags.js` to see all valid tags.
 //
 // Alternative --files mode: npm run test:targeted -- --files <vitest files...> --pw-files <pw files...> --declared-vitest <N> --declared-pw-files <M>
-// Runs Vitest directly against specific files (bypassing --testNamePattern, which
-// does not reliably scope Vitest in this repo) and Playwright against specific spec files.
+// Runs Vitest/Playwright directly against explicit file lists you supply,
+// for ad-hoc runs against files not (yet) covered by the manifest.
 
+import fs from 'fs';
 import { spawnSync } from 'child_process';
 
-const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@premodern'];
+const MANIFEST_PATH = new URL('./test-tags.json', import.meta.url);
+const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
 
 const VITEST_CASE_CEILING = 75;
 const PW_FILE_CEILING = 20;
@@ -88,7 +96,42 @@ function runFilesMode(argv) {
   }
 
   console.log(`[targeted] --files mode. Vitest files: ${vitestFiles.length}, Playwright files: ${pwFiles.length}`);
+  runFileLists(vitestFiles, pwFiles);
+}
 
+function countVitestCases(files) {
+  if (files.length === 0) return 0;
+  const result = spawnSync('grep', ['-ohP', '^\\s*(it|test)\\(', ...files], { encoding: 'utf8' });
+  const out = result.stdout || '';
+  return out.split('\n').filter(l => l.trim().length > 0).length;
+}
+
+function runTagMode(argv) {
+  const tags = argv.filter(a => a.startsWith('@'));
+
+  if (tags.length === 0) {
+    console.error('[targeted] Error: no tags provided. Usage: npm run test:targeted -- @engine-combat-1 @overworld-generation');
+    console.error('[targeted] Run `node scripts/list-test-tags.js` to see all valid tags.');
+    process.exit(1);
+  }
+
+  const unknown = tags.filter(t => !manifest.tags[t]);
+  if (unknown.length > 0) {
+    console.error(`[targeted] Unknown tag(s): ${unknown.join(', ')}.`);
+    console.error('[targeted] Run `node scripts/list-test-tags.js` to see all valid tags.');
+    process.exit(1);
+  }
+
+  const vitestFiles = [...new Set(tags.flatMap(t => manifest.tags[t].vitestFiles))];
+  const pwFiles = [...new Set(tags.flatMap(t => manifest.tags[t].pwFiles))];
+
+  console.log(`[targeted] Running tags: ${tags.join(', ')}`);
+  console.log(`[targeted] Resolved to ${vitestFiles.length} Vitest file(s), ${pwFiles.length} Playwright file(s).`);
+
+  runFileLists(vitestFiles, pwFiles);
+}
+
+function runFileLists(vitestFiles, pwFiles) {
   // --- Vitest ------------------------------------------------------------------
   let vitestFailed = false;
   if (vitestFiles.length > 0) {
@@ -116,59 +159,6 @@ function runFilesMode(argv) {
   } else {
     console.log('\n[targeted] No Playwright files given, skipping Playwright.');
   }
-
-  if (vitestFailed || pwFailed) {
-    console.error('\n[targeted] One or more targeted test suites failed.');
-    process.exit(1);
-  }
-
-  console.log('\n[targeted] All targeted tests passed.');
-}
-
-function countVitestCases(files) {
-  if (files.length === 0) return 0;
-  const result = spawnSync('grep', ['-ohP', '^\\s*(it|test)\\(', ...files], { encoding: 'utf8' });
-  const out = result.stdout || '';
-  return out.split('\n').filter(l => l.trim().length > 0).length;
-}
-
-function runTagMode(argv) {
-  const tags = argv.filter(a => a.startsWith('@'));
-
-  if (tags.length === 0) {
-    console.error('[targeted] Error: no tags provided. Usage: npm run test:targeted -- @engine @overworld');
-    process.exit(1);
-  }
-
-  const unknown = tags.filter(t => !VALID_TAGS.includes(t));
-  if (unknown.length > 0) {
-    console.error(`[targeted] Unknown tag(s): ${unknown.join(', ')}. Valid tags: ${VALID_TAGS.join(', ')}`);
-    process.exit(1);
-  }
-
-  const pattern = tags.join('|');
-  console.log(`[targeted] Running tags: ${tags.join(', ')}`);
-  console.log(`[targeted] Pattern: ${pattern}`);
-
-  // --- Vitest ------------------------------------------------------------------
-  console.log('\n[targeted] Running Vitest...');
-  const vitestResult = spawnSync(
-    'npm',
-    ['test', '--', '--testNamePattern', pattern],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
-
-  const vitestFailed = vitestResult.status !== 0;
-
-  // --- Playwright --------------------------------------------------------------
-  console.log('\n[targeted] Running Playwright...');
-  const pwResult = spawnSync(
-    'npm',
-    ['run', 'test:e2e', '--', '--grep', pattern],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
-
-  const pwFailed = pwResult.status !== 0;
 
   if (vitestFailed || pwFailed) {
     console.error('\n[targeted] One or more targeted test suites failed.');

@@ -331,23 +331,23 @@ docs/AI.md                   — AI role definitions
 
 **Targeted testing is mandatory, not optional.** For any prompt that edits files under
 `src/`, run `npm run test:targeted -- <tag1> <tag2> ...` for the tag(s) that match the
-files changed (see the lookup table below), then `npm run test:audit -- <same tags>`
-once targeted passes. This is the default for every scoped change -- do not skip straight
-to a full-suite run because it "feels safer."
+files changed (see the lookup table below, or `node scripts/list-test-tags.js`), then
+`npm run test:audit -- <same tags>` once targeted passes. This is the default for every
+scoped change -- do not skip straight to a full-suite run because it "feels safer."
 
-`npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
-plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+
-individual test executions). Do not run these bare commands by default. Only run the
-full suite when Chris explicitly asks for it -- a full-suite or
-pre-merge/pre-release validation request. A `test:audit` failure is NOT
-itself permission to run the full suite. See the escalation path below.
+`npm test` and `npm run test:e2e` run the **entire** suite unscoped (~1,000 Vitest cases
+plus ~82 Playwright spec files, ~53 of them doubled again by the `mobile-chrome`
+project). Do not run these bare commands by default. Only run the full suite when Chris
+explicitly asks for it -- a full-suite or pre-merge/pre-release validation request. A
+`test:audit` failure is NOT itself permission to run the full suite. See the escalation
+path below.
 
 Doc-only changes (nothing under `src/` touched) need no test run at all.
 
 ### Unit tests (Vitest)
 ```
-npm run test:targeted -- @engine @overworld     # DEFAULT: run only tagged tests
-npm run test:audit -- @engine                   # DEFAULT: audit a random untouched tag area
+npm run test:targeted -- @engine-combat-1 @overworld-generation   # DEFAULT: run only tagged tests
+npm run test:audit -- @engine-combat-1                            # DEFAULT: audit a related untouched tag
 npm test                     # full suite -- audit-failure escalation or explicit user request only
 npm run test:e2e             # full Playwright suite -- same restriction
 npm run test:e2e:ui          # Playwright UI mode
@@ -359,42 +359,73 @@ All Playwright e2e specs now live in `tests/e2e/` (consolidated 2026-06-24 from 
 
 ### Tag taxonomy
 
-Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Four tags are defined:
+`scripts/test-tags.json` is the single source of truth for tags -- it maps every test
+file to exactly one tag. Do not hand-maintain a tag list here; it would go stale the
+moment a tag splits. Instead:
 
-| Tag | Coverage |
-|---|---|
-| `@engine` | Duel engine: DuelCore, AI, MCTS, phases, combat, cardHandlers, cast-flow |
-| `@overworld` | Overworld/map/dungeon/sprite/structure specs and scenario tests |
-| `@mobile` | Any describe with a mobile viewport; desktop/mobile parity pairs |
-| `@premodern` | Premodern card pool structural integrity tests |
-
-Tags are additive prefixes: `@engine @mobile Combat parity [mobile]` means the test belongs to both the engine and mobile areas.
+- **Run `node scripts/list-test-tags.js`** to see every current tag, its family, live
+  test count, and related tags. Filter with `--family <family>` or find a specific
+  file's tag with `--file <path>`.
+- **Every tag is capped at 50 live test cases** (Vitest + Playwright combined, since
+  `test:targeted`/`test:audit` always run both suites for a tag together).
+  `scripts/validate-test-tags.js` enforces this -- run it any time you suspect a tag has
+  grown past cap, or let `test:targeted`/`test:audit` catch it for you.
+- **When a tag grows past 50**, split it: move some of its files into a new
+  `@<family>-N` leaf tag in `scripts/test-tags.json` (bump the trailing number, add a
+  `related` entry pointing back at its siblings). `scripts/build-test-tags.js` can
+  regenerate the whole manifest by filename classification if you'd rather start over
+  for a family than hand-split it.
+- **Families** group leaf tags by subject area (`engine-ai`, `engine-combat`,
+  `overworld-visual`, `premodern`, etc.) -- a tag's `family` field in the manifest is
+  what `test:audit`'s related-tag network uses (see below). Every describe/test.describe
+  title carries its tag as a literal string prefix (e.g. `@engine-combat-1 Scenario:
+  ...`), same convention as before, just at finer granularity.
+- **`@mobile` is not a standalone selectable tag.** Mobile-viewport Playwright tests
+  stay bundled with their subject-area tag (most already share a file with their desktop
+  counterpart) -- the literal `@mobile` word stays in the title as a marker only, and is
+  cross-checked against `playwright.config.js`'s `mobile-chrome` `testMatch` array by
+  `scripts/validate-test-tags.js`.
+- **`@premodern`** (premodern card pool structural integrity tests) is small enough
+  (16 tests) to stay a single un-split tag.
 
 Persistence tests (`@persistence`) were removed pending a save-state retool; see `src/hooks/usePersistence.ts` for the untested hook they used to cover.
 
-### File path -> tag lookup
+### File path -> tag family lookup
 
-Use this to pick the tag(s) for `test:targeted`/`test:audit` mechanically instead of guessing.
-A change often matches more than one row -- pass all matching tags. If a touched file isn't
-covered here, fall back to the tag taxonomy table above.
+Use this to pick the *family* for `test:targeted`/`test:audit`, then run
+`node scripts/list-test-tags.js --family <family>` to pick the specific leaf tag(s)
+matching your change (a family often has 2-3 leaf tags). If a touched file isn't
+covered here, `node scripts/list-test-tags.js --file <test-file-path>` finds the tag for
+any specific test file directly.
 
-| Path pattern | Tag(s) |
+| Path pattern | Family |
 |---|---|
-| `src/engine/DuelCore.js`, `AI.js`, `MCTS.js`, `cardHandlers.js`, `phases.js`, `layers.js` | `@engine` |
-| `src/hooks/useDuel.js`, `useDuelController.ts`, `usePhaseAdvance.ts` | `@engine` |
-| `src/DuelScreen.tsx`, `src/ui/duel/*`, `src/ui/Battlefield/*`, `src/ui/Card/*`, `src/ui/Hand/*`, `src/ui/Stack/*`, `src/ui/ActionBar/*`, `src/ui/Phase/*` | `@engine` |
-| `src/engine/MapGenerator.js`, `DungeonGenerator.js`, `EnemyAI.js` | `@overworld` |
-| `src/hooks/useOverworldController.js` | `@overworld` |
-| `src/OverworldGame.jsx`, `src/ui/overworld/*`, `src/ui/dungeon/*` | `@overworld` |
-| `src/hooks/useIsMobile.ts`, `src/ui/Mobile/*`, `DuelScreenMobile.tsx`, `OverworldGameMobile.jsx`, any `isMobile`/`@media`-guarded code | `@mobile` |
-| `src/data/cardsPremodern.js`, premodern pool structural files | `@premodern` |
-| `src/data/cards.js`, `src/data/keywords.js` | `@engine` (add `@premodern` too if the change is premodern-pool-specific) |
+| `src/engine/DuelCore.js`, `AI.js`, `MCTS.js`, `cardHandlers.js`, `phases.js`, `layers.js` | one of the `engine-*` families -- see `list-test-tags.js` |
+| `src/hooks/useDuel.js`, `useDuelController.ts`, `usePhaseAdvance.ts` | `engine-cast-flow-ui` |
+| `src/DuelScreen.tsx`, `src/ui/duel/*`, `src/ui/Battlefield/*`, `src/ui/Card/*`, `src/ui/Hand/*`, `src/ui/Stack/*`, `src/ui/ActionBar/*`, `src/ui/Phase/*` | `engine-cast-flow-ui`, `engine-phases-priority` |
+| `src/engine/MapGenerator.js`, `DungeonGenerator.js`, `EnemyAI.js` | `overworld-generation` |
+| `src/hooks/useOverworldController.js` | `overworld-generation` |
+| `src/OverworldGame.jsx`, `src/ui/overworld/*`, `src/ui/dungeon/*` | `overworld-visual` |
+| `src/hooks/useIsMobile.ts`, `src/ui/Mobile/*`, `DuelScreenMobile.tsx`, `OverworldGameMobile.jsx`, any `isMobile`/`@media`-guarded code | whichever family owns the affected screen/feature -- `@mobile` is not its own family, see above |
+| `src/data/cardsPremodern.js`, premodern pool structural files | `premodern` |
+| `src/data/cards.js`, `src/data/keywords.js` | depends on which cards/handlers changed -- use `list-test-tags.js --file` against the relevant scenario test, or target several `engine-*` families for a broad change |
 
 ### Targeted and audit scripts
 
-`npm run test:targeted -- @tag1 @tag2` runs both Vitest and Playwright for the given tags (OR-combined). This is the default command for scoped changes -- see policy above.
+`npm run test:targeted -- @tag1 @tag2` resolves each tag against `scripts/test-tags.json`
+to an explicit file list (union across multiple tags) and runs Vitest + Playwright
+directly against those files. This is the default command for scoped changes -- see
+policy above.
 
-`npm run test:audit -- @tag1` picks one random tag from the untargeted remainder, runs its full suite, and exits non-zero with a **STOP** message if anything fails. **An audit failure is a hard stop** -- it means the current change has a side effect outside its declared scope:
+`npm run test:audit -- @tag1` picks one tag at random from the tags **related** to
+whatever was just targeted -- every other leaf tag in the same family, plus any tag
+explicitly listed in `@tag1`'s `related` array in the manifest -- and only falls back to
+a fully random pick across all tags if `@tag1` has no family peers and no declared
+relations. This replaces the old pure-random pick: after an engine-only change, the
+audit exercises another engine-ish area, not an unrelated overworld tag. It runs that
+tag's full file set and exits non-zero with a **STOP** message if anything fails. **An
+audit failure is a hard stop** -- it means the current change has a side effect outside
+its declared scope:
 
 ```
 1. STOP. Do not run the full suite automatically.

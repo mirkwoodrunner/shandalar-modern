@@ -8,6 +8,27 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-14)
+- **Test tag reorganization** -- the old 4-tag scheme (`@engine`/`@overworld`/`@mobile`/`@premodern`)
+  had grown too coarse: `@engine` alone covered 1,282 tests, causing `test:audit` to
+  force-stop on large, slow runs, and its random "pick an untouched tag" logic had no
+  notion of relevance to what was just changed. Replaced with a manifest-driven scheme:
+  `scripts/test-tags.json` maps every test file to one of 40 leaf tags (`@<family>-N`,
+  e.g. `@engine-combat-1`), each capped at 50 live test cases (Vitest + Playwright
+  combined) by `scripts/validate-test-tags.js`. `@mobile` is no longer a standalone tag --
+  mobile-viewport Playwright tests stay bundled with their subject-area tag; the literal
+  `@mobile` marker remains for humans and is cross-checked against
+  `playwright.config.js`'s `mobile-chrome` `testMatch` array. `scripts/run-targeted.js`
+  and `scripts/run-audit.js` now resolve tags to explicit file lists via the manifest
+  instead of Vitest's unreliable `--testNamePattern`; `test:audit` now picks from tags
+  related to what was targeted (same family, or an explicit `related` entry) instead of
+  a fully random tag. New `scripts/list-test-tags.js` replaces the old static markdown
+  tag table for finding which tag(s) to target. Also split `tests/e2e/sandbox.spec.ts`
+  (107 tests in one file, couldn't be brought under cap by file-level bucketing alone)
+  into three topic files, and tagged `tests/e2e/duel-controller.spec.ts` (previously had
+  no tag at all and was silently excluded from every tagged run). See `CLAUDE.md` --
+  Testing / Tag taxonomy.
+
 ## Completed (2026-07-13)
 - **Bug Fix: End Turn Stack-Priority Deadlock** -- clicking End Turn with an
   open priority window and a non-empty stack (opponent responds with a
