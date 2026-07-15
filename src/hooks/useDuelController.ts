@@ -131,6 +131,7 @@ export function normalizeAbilityCost(cost: any): string {
 // PLAYER_ONLY_TARGET_EFFECTS/isPlayerOnlyTarget's shape exactly.
 export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
+  'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -319,6 +320,7 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
   // Land destruction centralization batch:
   'preventLandDestructionOnce', // Pyramids mode 2 -- "target land"
+  'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).

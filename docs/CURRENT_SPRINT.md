@@ -8,6 +8,38 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-15)
+- **Tawnos's Coffin** -- "{3}, {T}: Exile target creature and all Auras
+  attached to it. Note the number and kind of counters that were on that
+  creature. When this artifact leaves the battlefield or becomes untapped,
+  return that exiled card..." New `tawnosCoffinExile` `resolveEff` case
+  snapshots counters and attached Auras (embedded + a generic, currently
+  unexercised Kudzu-style `enchantedCreatureIid` check) onto the Coffin
+  itself before calling `zMove`, since `zMove` unconditionally strips
+  counters and cascades embedded Auras to the graveyard on every
+  bf-leaving move. New shared `tawnosCoffinReturn(state, sourceCard)`
+  helper resolves the return from three sites: the `ON_PERMANENT_LEAVES_BF`
+  triggered ability (leaves-the-battlefield clause, same
+  `findLeftBattlefieldCard` pattern as Titania's Song/Cyclopean Tomb), and
+  two new narrow, `id === 'tawnos_coffin'`-gated insertion points added to
+  the existing `optionalUntapAlways` machinery for the "becomes untapped"
+  clause (the UNTAP-phase map, the `optionalUntap` upkeep-choice resolver)
+  -- no general `ON_UNTAP` event was built, matching `ON_TAP`'s precedent
+  without extending it. Fixed a pre-existing bug found along the way: the
+  UNTAP-phase map only honored `optionalUntapAlways` for creatures
+  (Phyrexian Gremlins, its only prior user); the non-creature branch
+  checked `whileTappedPump` only, so an artifact using `optionalUntapAlways`
+  (as Tawnos's Coffin does) would have auto-untapped every turn regardless
+  of the player's decline choice. `tawnosCoffinExile` added to
+  `ACTIVATE_TARGET_EFFECTS`/`CREATURE_ONLY_TARGET_EFFECTS`
+  (`useDuelController.ts`) -- reuses the existing Jade Monolith-style
+  click-guard, no new component. Stub count: untriaged bucket **1 -> 0**
+  (Blaze of Glory, Oubliette, and Ring of Ma'ruf remain, milestone-blocked,
+  not untriaged). Tests: 28 Vitest (`tests/scenarios/tawnos-coffin.test.js`),
+  4 Playwright (`tests/e2e/tawnos-coffin.spec.ts`, both viewports,
+  `@engine-card-scenarios-2`). See `docs/MECHANICS_INDEX.md` -- Tawnos's
+  Coffin, `docs/ENGINE_CONTRACT_SPEC.md` S7.12.
+
 ## Completed (2026-07-13)
 - **Bug Fix: End Turn Stack-Priority Deadlock** -- clicking End Turn with an
   open priority window and a non-empty stack (opponent responds with a
