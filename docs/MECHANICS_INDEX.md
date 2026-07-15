@@ -1660,6 +1660,31 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 
 ## Bug Fix Log
 
+### Fix: AI turn permanently deadlocks under Silence, with no log trace (SILENCE-DEADLOCK-1)
+
+- Root cause: `OPEN_PRIORITY_WINDOW` in `DuelCore.js` is a silent no-op whenever a
+  `SILENCE` castle/dungeon modifier is active (`priorityWindow` never becomes `true`).
+  `useDuelController.ts`'s "priority window close effect" only clears the AI loop's
+  re-entry guard (`aiRef.current`) on a `true -> false` transition, which under Silence
+  can never happen -- so once the AI cast a spell (pushing it to the stack) while
+  Silence was active, `aiRef.current` stayed `true` forever and the AI main loop's
+  `s.active !== 'o' || aiRef.current` guard permanently blocked further AI action.
+  Nothing threw, so the existing `reportFatalAiError`/`EngineErrorOverlay` crash-overlay
+  safety net never engaged either -- the game just froze at "Opp thinking..." with no
+  error and nothing in the log explaining why.
+- Fix: added a "Silence stack watchdog" `useEffect` in `useDuelController.ts` that
+  detects the dead-end directly (stack non-empty, `priorityWindow` false, Silence
+  active) and resolves the stack + clears `aiRef.current` itself, instead of waiting on
+  a close-transition that can't occur.
+- `OPEN_PRIORITY_WINDOW`'s Silence no-op in `DuelCore.js` now also calls `dlog()` so the
+  in-game LOG records "Silence prevents a priority window from opening." when it
+  happens.
+- Added a general AI stall watchdog (`useDuelController.ts`, `AI_STALL_TIMEOUT_MS`)
+  that reuses the existing `reportFatalAiError`/`EngineErrorOverlay` machinery as a
+  timeout-based fallback for any other/future AI-turn deadlock that isn't a thrown
+  error, so it surfaces a diagnosable overlay instead of hanging silently.
+- Regression test: `PW-05c` in `src/engine/__tests__/phase6.test.js`.
+
 ### Fix: Demonic Hordes upkeep drawback fires on wrong player's turn (DH-UPKEEP-1)
 
 - `demonicHordesUpkeep` in `DuelCore.js` was missing the active-player guard present on sibling

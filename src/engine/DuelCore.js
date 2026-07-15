@@ -7621,7 +7621,9 @@ case "DECLARE_BLOCKER": {
 }
 
 case "OPEN_PRIORITY_WINDOW":
-  if (s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE') return s;
+  if (s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE') {
+    return dlog(s, 'Silence prevents a priority window from opening.', 'info');
+  }
   return { ...s, priorityWindow: true, priorityPasser: null };
 
 case "PASS_PRIORITY": {

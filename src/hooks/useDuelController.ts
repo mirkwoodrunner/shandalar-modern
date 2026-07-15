@@ -353,6 +353,10 @@ function scoreLibCard(card: any, _state: any): number {
   return 0.40;
 }
 
+// Safety-net timeout for the AI stall watchdog below: how long the opponent's
+// turn can go without any state progression before it's treated as a hang.
+const AI_STALL_TIMEOUT_MS = 10000;
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useDuelController(
@@ -611,6 +615,22 @@ export function useDuelController(
     }
     prevPriorityWindow.current = s.priorityWindow;
   }, [s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Silence stack watchdog ──────────────────────────────────────────────────
+  // Under a SILENCE castle/dungeon mod, OPEN_PRIORITY_WINDOW (DuelCore.js) is a
+  // permanent no-op, so priorityWindow can never transition true -> false and
+  // the priority window close effect above never fires. Without this, a stack
+  // item pushed while Silence is active (e.g. the AI casting a spell during its
+  // Main Phase) leaves aiRef.current stuck true forever, deadlocking the AI
+  // loop's re-entry guard below.
+  useEffect(() => {
+    const silenced = s.castleMod?.name === 'SILENCE' || s.dungeonMod === 'SILENCE';
+    if (!silenced || s.priorityWindow || s.over) return;
+    if (s.stack && s.stack.length > 0) {
+      aiRef.current = false;
+      resolveStack();
+    }
+  }, [s.stack?.length, s.castleMod, s.dungeonMod, s.priorityWindow, s.over]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── AI priority window effect ──────────────────────────────────────────────
   // On the player's turn: AI responds after 200 ms (instant/counterspell evaluation).
@@ -876,6 +896,23 @@ export function useDuelController(
     }, aiSpeed);
     return () => clearTimeout(t);
   }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── AI stall watchdog ────────────────────────────────────────────────────────
+  // Safety net for AI-turn deadlocks not already caught by a specific fix (see
+  // the Silence stack watchdog above for one known cause). If the opponent's
+  // turn produces no meaningful state progression within AI_STALL_TIMEOUT_MS,
+  // surface the same overlay used for thrown AI errors instead of leaving
+  // "Opp thinking..." spinning forever with no diagnosis.
+  useEffect(() => {
+    if (fatalError || s.over || s.active !== 'o') return;
+    const timer = setTimeout(() => {
+      reportFatalAiError(
+        new Error(`AI turn watchdog: opponent has not yielded priority in ${AI_STALL_TIMEOUT_MS}ms`),
+        'AI stall watchdog'
+      );
+    }, AI_STALL_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [fatalError, s.over, s.active, s.turn, s.phase, s.stack?.length, s.priorityWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {

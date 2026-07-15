@@ -820,6 +820,22 @@ describe('@engine-phases-priority-1 Priority Window', () => {
     expect(result.priorityWindow).toBe(false);
   });
 
+  it('PW-05c: SILENCE-suppressed OPEN_PRIORITY_WINDOW logs why the window did not open', () => {
+    // Regression test: the AI turn loop used to deadlock forever here because
+    // this no-op left no trace anywhere -- see useDuelController.ts's Silence
+    // stack watchdog and the "Fatal AI Error Silent Hang" bug fix log entry.
+    const state = buildTestState({
+      phase: PHASE.MAIN_1,
+      dungeonMod: 'SILENCE',
+      stack: [{ id: 'shock', iid: 'shock-1' }],
+    });
+
+    const result = duelReducer(state, { type: 'OPEN_PRIORITY_WINDOW' });
+
+    expect(result.priorityWindow).toBe(false);
+    expect(result.log.at(-1).text).toBe('Silence prevents a priority window from opening.');
+  });
+
   it('PW-06: instant can be cast while priority window is open', () => {
     // CAST_SPELL has no priority window gate — an instant can be cast at any time.
     // Without stackType:"batch", instants land on the stack; a RESOLVE_STACK
