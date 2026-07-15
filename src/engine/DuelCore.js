@@ -4004,6 +4004,45 @@ case "lockArtifactWhileTapped": {
   }
   break;
 }
+// Tawnos's Coffin: "{3}, {T}: Exile target creature and all Auras attached
+// to it. Note the number and kind of counters that were on that creature."
+// zMove unconditionally strips counters and cascades embedded Auras to their
+// controller's graveyard whenever a permanent leaves the battlefield (S10) --
+// neither of which this card wants -- so the snapshot happens BEFORE zMove is
+// called, onto Tawnos's Coffin itself. The return (leaves-bf trigger, or
+// becomes-untapped via the two insertion points in the UNTAP phase block) is
+// handled by the shared tawnosCoffinReturn() helper. See
+// docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
+case "tawnosCoffinExile": {
+  if (!tgtC || !isCre(tgtC)) {
+    ns = dlog(ns, `${card.name} fizzles -- no valid creature target.`, "effect");
+    break;
+  }
+  const tgtOwner = tgtC.controller;
+  const counters = { ...tgtC.counters };
+  const embeddedAuras = (tgtC.enchantments || []).map(aura => ({ kind: 'embedded', record: { ...aura } }));
+  const kudzuAuras = [...ns.p.bf, ...ns.o.bf]
+    .filter(c => c.enchantedCreatureIid === tgtC.iid)
+    .map(c => ({ kind: 'kudzu', iid: c.iid, controller: c.controller }));
+  const auraRecords = [...embeddedAuras, ...kudzuAuras];
+
+  // Strip enchantments before zMove so its cascade-to-graveyard block has
+  // nothing left to cascade -- the data is already captured above.
+  ns = { ...ns, [tgtOwner]: { ...ns[tgtOwner], bf: ns[tgtOwner].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, enchantments: [] } : c
+  ) } };
+  ns = zMove(ns, tgtC.iid, tgtOwner, tgtOwner, "exile");
+  for (const rec of kudzuAuras) {
+    ns = zMove(ns, rec.iid, rec.controller, rec.controller, "exile");
+  }
+
+  const srcOwner = ns.p.bf.some(c => c.iid === card.iid) ? 'p' : 'o';
+  ns = { ...ns, [srcOwner]: { ...ns[srcOwner], bf: ns[srcOwner].bf.map(c => c.iid === card.iid
+    ? { ...c, exiledCreatureIid: tgtC.iid, exiledCreatureOwner: tgtOwner, exiledCreatureCounters: counters, exiledAuraRecords: auraRecords }
+    : c) } };
+  ns = dlog(ns, `${card.name} exiles ${tgtC.name}${auraRecords.length ? " and its Auras" : ""}.`, "effect");
+  break;
+}
 // Wall of Wonder: "gets +4/-4 until end of turn and can attack this turn as
 // though it didn't have defender."
 case "wallOfWonderPump": {
@@ -4884,6 +4923,13 @@ if (stasisOut) {
   ns = dlog(ns, `Stasis: ${ns.active} skips their untap step.`, "effect");
 } else {
 const optionalUntapTargets = ns[ns.active].bf.filter(c => c.optionalUntap && c.tapped && (c.whileTappedPump || c.optionalUntapAlways));
+// Tawnos's Coffin: snapshot pre-untap tapped state for cards this map is
+// about to process, so a tapped -> untapped transition within this same
+// automatic pass can be detected below (insertion point 1 of 2 -- see
+// docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return). Scoped to
+// id === 'tawnos_coffin' with exiledCreatureIid set; inert for every other
+// permanent.
+const preUntapCoffins = ns[ns.active].bf.filter(c => c.id === 'tawnos_coffin' && c.tapped && c.exiledCreatureIid);
 ns = { ...ns, [ns.active]: { ...ns[ns.active], bf: ns[ns.active].bf.map(c => {
 const base = { ...c, summoningSick:false, damage:0 };
 // Island Fish Jasconius / Leviathan / Time Vault: "doesn't untap during your
@@ -4909,7 +4955,7 @@ if (c.optionalUntap && c.optionalUntapAlways) return base; // stays tapped; choi
 cresUntapped++;
 return { ...base, tapped:false };
 }
-if (c.optionalUntap && c.tapped && c.whileTappedPump) return base; // stays tapped; choice queued below
+if (c.optionalUntap && c.tapped && (c.whileTappedPump || c.optionalUntapAlways)) return base; // stays tapped; choice queued below
 // Phyrexian Gremlins: locked artifact doesn't untap while the locking
 // creature remains tapped.
 if (c.lockedByIid) {
@@ -4922,6 +4968,15 @@ if (isArt(c)) {
 }
 return { ...base, tapped:false };
 }) } };
+// Tawnos's Coffin: insertion point 1 of 2 -- if the automatic pass above
+// untapped a coffin that has an exiled creature on file, return it now. See
+// docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
+for (const coffin of preUntapCoffins) {
+  const afterCoffin = ns[ns.active].bf.find(c => c.iid === coffin.iid);
+  if (afterCoffin && !afterCoffin.tapped) {
+    ns = tawnosCoffinReturn(ns, afterCoffin);
+  }
+}
 if (ns.active === 'p') {
   for (const t of optionalUntapTargets) {
     ns = queueUpkeepChoice(ns, { cardName: t.name, handlerKey: 'optionalUntap', iid: t.iid });
@@ -5871,6 +5926,60 @@ function emitEvent(state, event) {
   return { ...state, triggerQueue: [...state.triggerQueue, ...sorted] };
 }
 
+// Tawnos's Coffin: shared exile-return resolver. Called from three sites --
+// the ON_PERMANENT_LEAVES_BF triggered ability ('tawnosCoffinReturn' case
+// below), and the two untap-detection insertion points (untap-step map,
+// optionalUntap choice handler) in the UNTAP phase block above. sourceCard is
+// Tawnos's Coffin itself: either still live on the battlefield (untap path)
+// or already departed (findLeftBattlefieldCard, leaves-bf path) -- either way
+// it still carries the exiledCreatureIid/exiledCreatureOwner/
+// exiledCreatureCounters/exiledAuraRecords fields set by tawnosCoffinExile.
+// See docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
+function tawnosCoffinReturn(state, sourceCard) {
+  if (!sourceCard.exiledCreatureIid) return state;
+  const owner = sourceCard.exiledCreatureOwner;
+  const exiled = state[owner].exile.find(c => c.iid === sourceCard.exiledCreatureIid);
+  if (!exiled) {
+    return dlog(state, `${sourceCard.name}: the exiled creature is no longer in exile.`, "effect");
+  }
+  const counters = sourceCard.exiledCreatureCounters || {};
+  const auraRecords = sourceCard.exiledAuraRecords || [];
+  const embeddedAuras = auraRecords.filter(r => r.kind === 'embedded').map(r => r.record);
+
+  let ns = zMove(state, sourceCard.exiledCreatureIid, owner, owner, "bf");
+  ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c =>
+    c.iid === sourceCard.exiledCreatureIid
+      ? { ...c, tapped: true, counters: { ...counters }, enchantments: embeddedAuras }
+      : c
+  ) } };
+  const returned = ns[owner].bf.find(c => c.iid === sourceCard.exiledCreatureIid);
+  ns = dlog(ns, `${returned?.name ?? exiled.name} returns to the battlefield tapped${embeddedAuras.length ? " with its Auras" : ""}.`, "effect");
+
+  for (const rec of auraRecords) {
+    if (rec.kind === 'kudzu') {
+      ns = zMove(ns, rec.iid, rec.controller, rec.controller, "bf");
+      ns = { ...ns, [rec.controller]: { ...ns[rec.controller], bf: ns[rec.controller].bf.map(c =>
+        c.iid === rec.iid ? { ...c, enchantedCreatureIid: sourceCard.exiledCreatureIid } : c
+      ) } };
+    }
+  }
+
+  // Clear Tawnos's Coffin's own tracking fields, if it's still on the
+  // battlefield (the untap-detection path). If it already left the
+  // battlefield (the ON_PERMANENT_LEAVES_BF path), there's nothing to clear
+  // -- its tracking fields simply stop mattering once it's gone.
+  for (const w of ['p', 'o']) {
+    if (ns[w].bf.some(c => c.iid === sourceCard.iid)) {
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c =>
+        c.iid === sourceCard.iid
+          ? { ...c, exiledCreatureIid: undefined, exiledCreatureOwner: undefined, exiledCreatureCounters: undefined, exiledAuraRecords: undefined }
+          : c
+      ) } };
+    }
+  }
+  return ns;
+}
+
 function resolveTriggeredEffect(state, sourceCard, effect, payload) {
   switch (effect.type) {
     case 'addCounter': {
@@ -6322,6 +6431,17 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         'effect'
       );
     }
+    // Tawnos's Coffin: "When this artifact leaves the battlefield or becomes
+    // untapped, return that exiled card..." This is the leaves-bf half of the
+    // return trigger (scope:'self' on ON_PERMANENT_LEAVES_BF); sourceCard here
+    // is the just-departed Coffin, found via findLeftBattlefieldCard, still
+    // carrying its exiledCreatureIid/exiledCreatureOwner/exiledCreatureCounters/
+    // exiledAuraRecords tracking fields. Shared with the two untap-detection
+    // insertion points via the tawnosCoffinReturn() helper above. See
+    // docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
+    case 'tawnosCoffinReturn': {
+      return tawnosCoffinReturn(state, sourceCard);
+    }
     // Cyclopean Tomb: "When this artifact is put into a graveyard from the
     // battlefield, at the beginning of each of your upkeeps for the rest of
     // the game, remove all mire counters..." sourceCard here is the
@@ -6513,8 +6633,15 @@ const UPKEEP_CHOICE_HANDLERS = {
         return dlog(s, `${choice.cardName} remains tapped.`, "info");
       }
       const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
-      const ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
-      return dlog(ns, `${choice.cardName} untaps.`, "info");
+      let ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c => c.iid === choice.iid ? { ...c, tapped: false } : c) } };
+      ns = dlog(ns, `${choice.cardName} untaps.`, "info");
+      // Tawnos's Coffin: insertion point 2 of 2 -- see
+      // docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
+      const untappedCoffin = ns[owner].bf.find(c => c.iid === choice.iid);
+      if (untappedCoffin && untappedCoffin.id === 'tawnos_coffin' && untappedCoffin.exiledCreatureIid) {
+        ns = tawnosCoffinReturn(ns, untappedCoffin);
+      }
+      return ns;
     },
   },
   // Energy Flux: "sacrifice this artifact unless you pay {2}." choice.iid is the artifact.

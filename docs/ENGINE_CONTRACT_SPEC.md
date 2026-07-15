@@ -1005,6 +1005,87 @@ exercise the full set.
   metadata only -- nothing in the codebase consumes it programmatically
   (verified before adding).
 
+## 7.12 Tawnos's Coffin Exile/Return (Untap-Detection Insertion Points)
+
+Tawnos's Coffin ("You may choose not to untap this artifact during your
+untap step. {3}, {T}: Exile target creature and all Auras attached to it...
+When this artifact leaves the battlefield or becomes untapped, return that
+exiled card...") is the first card to combine `optionalUntapAlways` with a
+snapshot-before-`zMove` exile/return pattern. Two reusable precedents were
+extended; no new general-purpose systems were built.
+
+- **`optionalUntapAlways` artifact-branch fix.** Before this phase, the
+  UNTAP-phase map (`DuelCore.js`, the `stasisOut`-guarded block) only
+  honored `c.optionalUntapAlways` inside the `isCre(c)` branch; the
+  non-creature branch checked `c.whileTappedPump` only. Since
+  `optionalUntapAlways`'s only prior user (Phyrexian Gremlins) is a
+  creature, this gap was latent and untested. Tawnos's Coffin is an
+  artifact, so the non-creature branch's check was widened to `c.optionalUntap
+  && c.tapped && (c.whileTappedPump || c.optionalUntapAlways)`. This does not
+  change Phyrexian Gremlins' behavior (creature branch untouched) or Ashnod's
+  Battle Gear/Tawnos's Weaponry's behavior (still gated on `whileTappedPump`,
+  now simply OR'd with a flag they don't set) -- it only activates for
+  permanents that set `optionalUntapAlways` without being a creature, which
+  today is Tawnos's Coffin alone.
+- **Snapshot-before-`zMove` pattern** (`tawnosCoffinExile`, the `resolveEff`
+  case for the activated ability): `zMove` unconditionally strips `counters`
+  on every zone change and cascades a departing permanent's embedded
+  `enchantments` to their controller's graveyard (S10) -- neither of which
+  this card wants. The exile action snapshots `{ ...tgtC.counters }` and
+  every attached Aura (both embedded, via `tgtC.enchantments`, and the
+  hypothetical Kudzu-style separate-permanent case, via a generic
+  `enchantedCreatureIid` scan across both battlefields -- no real card uses
+  this host-field shape yet; the check is forward-compatible, not
+  load-bearing) BEFORE calling `zMove`, storing the snapshot on Tawnos's
+  Coffin itself as `exiledCreatureIid` / `exiledCreatureOwner` /
+  `exiledCreatureCounters` / `exiledAuraRecords`. The target creature's own
+  `enchantments` array is cleared to `[]` immediately before its `zMove`
+  call specifically so the cascade-to-graveyard block has nothing left to
+  cascade -- the data already lives in the snapshot.
+- **`tawnosCoffinReturn(state, sourceCard)`** (module-private helper,
+  `DuelCore.js`, directly above `resolveTriggeredEffect`) is the single
+  shared resolver for "return that exiled card," called from three sites:
+  1. The `tawnosCoffinReturn` triggered-effect case in
+     `resolveTriggeredEffect`, reached via Tawnos's Coffin's own
+     `ON_PERMANENT_LEAVES_BF` (`scope:'self'`) triggered ability -- the same
+     `findLeftBattlefieldCard`-sourced `sourceCard` pattern Titania's Song's
+     `titaniasSongPersist` and Cyclopean Tomb's `createCyclopeanTombEmblem`
+     already use to read a just-departed permanent's custom tracking fields.
+  2. The UNTAP-phase map, insertion point 1 of 2: a `preUntapCoffins`
+     snapshot (cards with `id === 'tawnos_coffin'`, tapped, with
+     `exiledCreatureIid` set) taken immediately before the map runs is
+     compared against the map's own output; any coffin the map itself
+     untapped gets `tawnosCoffinReturn` called inline with the live,
+     post-map permanent as `sourceCard`.
+  3. The `optionalUntap` upkeep-choice resolver, insertion point 2 of 2:
+     after setting `tapped: false` on an `action.choice === "UNTAP"`
+     resolution, if the untapped permanent is Tawnos's Coffin with
+     `exiledCreatureIid` set, `tawnosCoffinReturn` is called the same way.
+
+  The resolver moves the exiled creature back to the battlefield via
+  `zMove`, then explicitly re-sets `tapped: true`, restores `counters` from
+  the snapshot, and restores embedded Auras onto `enchantments` -- all
+  fields `zMove`'s return-to-battlefield path resets or drops. Kudzu-style
+  separate-permanent Auras (if any were ever captured) are `zMove`'d back
+  independently and re-pointed at the returned creature's iid. If the
+  exiled card is no longer in exile (removed by an unrelated effect in the
+  meantime), the resolver fizzles gracefully and does not attempt any Aura
+  return either. Tawnos's Coffin's own tracking fields are cleared only if
+  it is still found on a battlefield after the return (the untap-path
+  case) -- when `sourceCard` arrived via the leaves-bf path it is already
+  gone, so there is nothing left to clear.
+- **No general `ON_UNTAP` event was built.** Unlike `ON_TAP`
+  (Section 7.5), there is no codebase-wide "a permanent just untapped"
+  event -- the two insertion points above are narrow, `id ===
+  'tawnos_coffin'`-gated checks at the only two places a permanent can
+  become untapped through this codebase's existing mechanisms, not a new
+  general-purpose subsystem. A permanent untapping via any OTHER mechanism
+  (e.g. a hypothetical "untap target artifact" effect) does **not** trigger
+  a Tawnos's Coffin-style return -- this is a deliberate, accepted scope
+  boundary, not a bug. Any future card needing a similar "becomes untapped"
+  check should add its own narrow, id-gated check at the relevant site(s)
+  rather than assuming a general `ON_UNTAP` event already exists.
+
 ---
 
 # 8. Determinism Contract

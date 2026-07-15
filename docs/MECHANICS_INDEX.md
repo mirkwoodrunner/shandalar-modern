@@ -4599,4 +4599,27 @@ COMPLETE
 
 ---
 
+## Tawnos's Coffin -- 2026-07-15
+
+**Card:** Tawnos's Coffin (`tawnos_coffin`, colorless Artifact, cmc 4) -- "You may choose not to untap this artifact during your untap step. {3}, {T}: Exile target creature and all Auras attached to it. Note the number and kind of counters that were on that creature. When this artifact leaves the battlefield or becomes untapped, return that exiled card to the battlefield under its owner's control tapped with the noted number and kind of counters on it. If you do, return the other exiled cards to the battlefield under their owner's control attached to that permanent." `optionalUntap:true, optionalUntapAlways:true, activated:{cost:"3,T", effect:"tawnosCoffinExile"}, triggeredAbilities:[{id:'tawnos_coffin_leaves_bf', trigger:{event:'ON_PERMANENT_LEAVES_BF', scope:'self'}, effect:{type:'tawnosCoffinReturn'}}]`. This is the last stub in the untriaged bucket.
+
+**Pre-existing bug found and fixed:** `optionalUntapAlways`'s only prior user (Phyrexian Gremlins) is a creature, and the UNTAP-phase map only ever checked `c.optionalUntapAlways` inside the `isCre(c)` branch -- the non-creature branch checked `c.whileTappedPump` only, so an artifact with `optionalUntapAlways` (and no `whileTappedPump`) would have auto-untapped every turn regardless of the player's decline choice. Fixed by widening the non-creature branch's check to `c.whileTappedPump || c.optionalUntapAlways`. Does not change Phyrexian Gremlins' (creature branch untouched) or Ashnod's Battle Gear/Tawnos's Weaponry's (still gated on `whileTappedPump`) behavior. See `docs/ENGINE_CONTRACT_SPEC.md` S7.12.
+
+**`tawnosCoffinExile`** (new `resolveEff` case, `DuelCore.js`): snapshots `{ ...tgtC.counters }` and every attached Aura (embedded via `tgtC.enchantments`, plus a generic, currently-unexercised `enchantedCreatureIid` scan for the hypothetical Kudzu-style case -- no real card uses that host-field shape yet) onto Tawnos's Coffin itself as `exiledCreatureIid`/`exiledCreatureOwner`/`exiledCreatureCounters`/`exiledAuraRecords`, BEFORE calling `zMove` on the target -- `zMove` unconditionally strips `counters` and cascades embedded Auras to the graveyard on every bf-leaving move, so the target's `enchantments` is cleared to `[]` first so that cascade has nothing left to catch.
+
+**`tawnosCoffinReturn(state, sourceCard)`** (new shared module-private helper, `DuelCore.js`, directly above `resolveTriggeredEffect`): the single resolver for "return that exiled card," called from three sites -- the `tawnosCoffinReturn` triggered-effect case (leaves-the-battlefield path, `sourceCard` read via `findLeftBattlefieldCard`, same pattern as Titania's Song/Cyclopean Tomb), and two narrow, `id === 'tawnos_coffin'`-gated insertion points added to the existing `optionalUntapAlways` machinery for the "becomes untapped" clause: the UNTAP-phase map itself (comparing a pre-map tapped snapshot against the map's own output) and the `optionalUntap` upkeep-choice resolver (after `action.choice === "UNTAP"` sets `tapped: false`). No general `ON_UNTAP` event was built -- deliberately out of scope, matching `ON_TAP`'s existing precedent but not extending it; a permanent untapping via any other mechanism does not trigger a return. See `docs/ENGINE_CONTRACT_SPEC.md` S7.12 for the full writeup.
+
+**UI:** `tawnosCoffinExile` added to `ACTIVATE_TARGET_EFFECTS` (opens the targeting UI step) and `CREATURE_ONLY_TARGET_EFFECTS` (rejects a non-creature battlefield click) in `useDuelController.ts` -- no new component, reusing the exact click-guard both `DuelScreen.tsx` and `DuelScreenMobile.tsx` already run for Jade Monolith.
+
+**Stub count: untriaged bucket 1 -> 0** (Blaze of Glory, Oubliette, and Ring of Ma'ruf remain, milestone-blocked, not untriaged).
+
+**Tests:**
+- Vitest: `tests/scenarios/tawnos-coffin.test.js` (28: TC-01 through TC-08 exile action, TC-09 through TC-14 return via leaves-the-battlefield, TC-15 through TC-22 return via becomes-untapped, TC-23 through TC-28 card-level/meta).
+- Playwright: `tests/e2e/tawnos-coffin.spec.ts` (4: exile + destroy + return, exile + untap + return, both viewports, `@engine-card-scenarios-2`).
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.34
