@@ -26,11 +26,25 @@
 // tests/e2e/end-turn-skip-ahead.spec.ts's mobile suite -- that one reuses the
 // desktop tree and does not exercise src/ui/Mobile/ActionBar.tsx or the
 // mobile EngineErrorOverlay wiring added in DuelScreenMobile.tsx.
+//
+// All page.goto() calls pass waitUntil: 'domcontentloaded' instead of the
+// Playwright default 'load' (see tests/e2e/ante-system-complete.spec.ts for
+// the same established convention): the title screen's <link> to
+// fonts.googleapis.com hangs the 'load' event indefinitely under this
+// environment's outbound network policy, and the app is fully interactive
+// well before web fonts resolve.
 
 import { test, expect, Page } from '@playwright/test';
 
 async function waitForDuel(page: Page) {
   await page.waitForSelector('[data-testid="duel-screen"]', { timeout: 10_000 });
+}
+
+// DuelScreenMobile.tsx never renders a node with data-testid="duel-screen"
+// (only DuelScreen.tsx does) -- the sandbox-mobile route's outer wrapper is
+// duel-screen-wrapper (see land-destruction-pyramids.spec.ts precedent).
+async function waitForDuelMobile(page: Page) {
+  await page.waitForSelector('[data-testid="duel-screen-wrapper"]', { timeout: 10_000 });
 }
 
 async function dismissMulligan(page: Page) {
@@ -70,7 +84,7 @@ test.describe('@engine-cast-flow-ui-2 Fatal AI error overlay -- desktop', () => 
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('ENGINE-ERR-01: forced AI error after End Turn shows the error overlay instead of a permanent freeze', async ({ page }) => {
-    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.goto('/?duel=sandbox&aiSpeed=0', { waitUntil: 'domcontentloaded' });
     await waitForDuel(page);
     await triggerFatalErrorViaEndTurn(page);
 
@@ -78,12 +92,17 @@ test.describe('@engine-cast-flow-ui-2 Fatal AI error overlay -- desktop', () => 
   });
 
   test('ENGINE-ERR-02: "Exit to Overworld" on the error overlay forfeits and navigates away', async ({ page }) => {
-    await page.goto('/?duel=sandbox&aiSpeed=0');
+    await page.goto('/?duel=sandbox&aiSpeed=0', { waitUntil: 'domcontentloaded' });
     await waitForDuel(page);
     await triggerFatalErrorViaEndTurn(page);
 
     await page.getByRole('button', { name: 'Exit to Overworld' }).click();
-    await page.waitForURL((url) => url.pathname === '/', { timeout: 5_000 });
+    // page.waitForURL() waits for a *future* navigation event; the reload here
+    // completes before the call is even reached, so there's no event left to
+    // observe and it hangs to its timeout regardless of the current URL.
+    // expect(page).toHaveURL() polls the current URL instead, so it works
+    // whether the navigation already landed or is still in flight.
+    await expect(page).toHaveURL('/', { timeout: 5_000 });
   });
 });
 
@@ -91,19 +110,20 @@ test.describe('@engine-cast-flow-ui-2 @mobile Fatal AI error overlay -- mobile (
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('ENGINE-ERR-03: forced AI error after End Turn shows the error overlay on the mobile ActionBar', async ({ page }) => {
-    await page.goto('/?duel=sandbox-mobile&aiSpeed=0');
-    await waitForDuel(page);
+    await page.goto('/?duel=sandbox-mobile&aiSpeed=0', { waitUntil: 'domcontentloaded' });
+    await waitForDuelMobile(page);
     await triggerFatalErrorViaEndTurn(page);
 
     await expect(page.getByText(/forced AI error for testing/)).toBeVisible();
   });
 
   test('ENGINE-ERR-04: "Exit to Overworld" works on the mobile overlay', async ({ page }) => {
-    await page.goto('/?duel=sandbox-mobile&aiSpeed=0');
-    await waitForDuel(page);
+    await page.goto('/?duel=sandbox-mobile&aiSpeed=0', { waitUntil: 'domcontentloaded' });
+    await waitForDuelMobile(page);
     await triggerFatalErrorViaEndTurn(page);
 
     await page.getByRole('button', { name: 'Exit to Overworld' }).click();
-    await page.waitForURL((url) => url.pathname === '/', { timeout: 5_000 });
+    // See the desktop suite's ENGINE-ERR-02 comment on toHaveURL vs waitForURL.
+    await expect(page).toHaveURL('/', { timeout: 5_000 });
   });
 });

@@ -8,6 +8,26 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-16)
+- **Test-only fixes for two hand-off items** (`docs/handoff-dungeon-and-overlay-tests.md`):
+  `tests/e2e/dungeon-tileset.spec.ts` console-error checks were tripped by unrelated
+  Google Fonts requests hanging/resetting under this environment's outbound network
+  policy, not by broken sprites (all 135 sprite paths confirmed present on disk) --
+  scoped the checks to `/assets/dungeon/` via a `requestfailed` listener.
+  `tests/e2e/engine-fatal-error-overlay.spec.ts` ENGINE-ERR-02/03/04 were fixed:
+  the mobile suite was waiting on a `data-testid="duel-screen"` that
+  `DuelScreenMobile.tsx` never renders (switched to `duel-screen-wrapper`, an
+  already-established pattern elsewhere); `page.goto()` calls were switched to
+  `waitUntil: 'domcontentloaded'` (also an established convention, see
+  `ante-system-complete.spec.ts`) since the default `'load'` was blocking ~25s on
+  the same Google Fonts hang; and `page.waitForURL()` was replaced with
+  `expect(page).toHaveURL()` after finding the former never resolves in this
+  Playwright build once the target URL already matches. Also fixed a real product
+  gap found along the way: the mobile `ActionBar.tsx`'s actual clickable "End Turn"
+  button was missing `data-testid="end-turn-button"` (only the disabled "Ending
+  Turn..." placeholder had it). See `docs/MECHANICS_INDEX.md` -- Bug Fix Log,
+  `DUNGEON-TILESET-TEST-1` and `ENGINE-ERR-TEST-1`.
+
 ## Completed (2026-07-15)
 - **Tawnos's Coffin** -- "{3}, {T}: Exile target creature and all Auras
   attached to it. Note the number and kind of counters that were on that

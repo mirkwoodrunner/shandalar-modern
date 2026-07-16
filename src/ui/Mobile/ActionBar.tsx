@@ -242,6 +242,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
           className={s.actionBtn}
           onClick={!isPlayerTurn ? undefined : onEnd}
           disabled={!isPlayerTurn}
+          data-testid="end-turn-button"
           style={{
             background: 'linear-gradient(180deg, #3a2018, #1c0e0a)',
             border: '1px solid #a85030',
