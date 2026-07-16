@@ -14,7 +14,7 @@
 // for high-aggression profiles (aggression >= 0.9). All evaluation uses virtual
 // state — DuelCore remains the sole mutator.
 
-import { ARCHETYPES } from '../data/cards.js';
+import { ARCHETYPES, getCardById } from '../data/cards.js';
 import KEYWORDS from '../data/keywords.js';
 import {
   isLand, isCre, isInst, isSort, isArt,
@@ -992,6 +992,27 @@ export function chooseDiscardToLibrary(choice, state) {
   if (isLand(card)) return 'graveyard';
   const landCount = state.o.bf.filter(isLand).length;
   return card.cmc <= landCount ? 'library' : 'graveyard';
+}
+
+// chooseMarufFetch: answers Ring of Ma'ruf's pendingMarufPicks for the AI.
+// Picks from the pseudo-binder (an id-string list, not instances): prefer the
+// highest-cmc nonland the AI could plausibly cast (cmc at most its battlefield
+// land count), else the lowest-cmc nonland, else the first id. Fully
+// DETERMINISTIC -- same inputs, same pick; no RNG (same policy-function
+// convention as chooseDiscardToLibrary above).
+export function chooseMarufFetch(binderIds, state) {
+  if (!binderIds || !binderIds.length) return null;
+  const cards = binderIds.map(id => getCardById(id)).filter(Boolean);
+  const nonLands = cards.filter(c => !isLand(c));
+  if (!nonLands.length) return binderIds[0];
+  const landCount = state.o.bf.filter(isLand).length;
+  const castable = nonLands.filter(c => (c.cmc || 0) <= landCount);
+  if (castable.length) {
+    // Highest cmc castable; reduce keeps the earlier card on ties (deterministic).
+    return castable.reduce((a, b) => ((b.cmc || 0) > (a.cmc || 0) ? b : a)).id;
+  }
+  // Nothing castable yet: cheapest nonland, soonest to become playable.
+  return nonLands.reduce((a, b) => ((b.cmc || 0) < (a.cmc || 0) ? b : a)).id;
 }
 
 function planAttack(state, profile) {

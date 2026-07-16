@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { isLand, isArt, hasKw, isCre, isProtectedFromSource, applyCostTax } from '../../engine/DuelCore.js';
+import { getCardById } from '../../data/cards.js';
 import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
@@ -363,6 +364,16 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           onChoose={(iid: string) => dispatch({ type: 'RESOLVE_DAMAGE_SHIELD_CHOICE', iid })}
           onDecline={() => dispatch({ type: 'DECLINE_DAMAGE_SHIELD_CHOICE' })}
           titleOverride={`${s_state.pendingDamageShieldChoice.shieldSourceName} — Choose a Source`}
+        />
+      )}
+
+      {s_state.pendingMarufPicks?.[0]?.who === 'p' && (
+        <TutorModal
+          library={[...new Set(s_state.p.binderIds as string[])].map((id: string) => getCardById(id)).filter(Boolean).map((c: any) => ({ ...c, iid: c.id }))}
+          filter="any"
+          onChoose={(iid: string) => dispatch({ type: 'MARUF_PICK', id: iid })}
+          onDecline={() => { /* the draw replacement already happened; a card must be chosen */ }}
+          titleOverride="Ring of Ma'rûf — Choose a Card From Outside the Game"
         />
       )}
 

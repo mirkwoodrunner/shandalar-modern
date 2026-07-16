@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
-import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, planGuardianAngelTempAbilities, chooseLampPick, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
+import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, planGuardianAngelTempAbilities, chooseLampPick, chooseMarufFetch, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
 const { aiDecide, AI_PROFILES } = AIModule;
 import { isLand, isCre, isArt, canPay, parseMana, applyCostTax } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
@@ -412,6 +412,7 @@ export function useDuelController(
     config.castleMod,
     config.anteEnabled ?? false,
     config.oppLife ?? null,
+    config.binderIds ?? [],
   );
 
   const s = state;
@@ -523,7 +524,7 @@ export function useDuelController(
       s.pendingUpkeepChoice || s.pendingConditionalCounter || s.pendingSphereTrigger ||
       s.pendingChoice || s.pendingTriggerTarget || s.pendingTutor || s.pendingTransmuteSacrifice ||
       s.pendingTransmutePay || s.pendingLotus || s.pendingBop || s.pendingAnteExchange ||
-      s.pendingDamageShieldChoice || s.pendingLampPicks || s.pendingRiverDivide || s.pendingRiverSides ||
+      s.pendingDamageShieldChoice || s.pendingLampPicks || s.pendingMarufPicks?.length || s.pendingRiverDivide || s.pendingRiverSides ||
       s.pendingCleanupDiscard
     ) {
       return;
@@ -559,7 +560,7 @@ export function useDuelController(
     fatalError, endTurnPending, s.turn, s.over, s.priorityWindow, s.priorityPasser, s.stack?.length,
     s.pendingUpkeepChoice, s.pendingConditionalCounter, s.pendingSphereTrigger,
     s.pendingChoice, s.pendingTriggerTarget, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay,
-    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides, s.pendingCleanupDiscard, passPriority, requestPhaseAdvance,
+    s.pendingLotus, s.pendingBop, s.pendingAnteExchange, s.pendingDamageShieldChoice, s.pendingLampPicks, s.pendingMarufPicks, s.pendingRiverDivide, s.pendingRiverSides, s.pendingCleanupDiscard, passPriority, requestPhaseAdvance,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sandbox escape hatch ───────────────────────────────────────────────────
@@ -839,6 +840,14 @@ export function useDuelController(
       return;
     }
 
+    // AI selects Ring of Ma'ruf fetch from its pseudo-binder (deterministic
+    // policy function in AI.js -- see chooseMarufFetch).
+    if (s.pendingMarufPicks?.[0]?.who === 'o') {
+      const chosen = chooseMarufFetch(s.o.binderIds, s);
+      if (chosen) dispatch({ type: 'MARUF_PICK', id: chosen });
+      return;
+    }
+
     // AI divides Raging River non-flying defenders into piles
     if (s.pendingRiverDivide?.defender === 'o') {
       const division = chooseRiverDivide(s.pendingRiverDivide.nonFlyerIids, s, AI_PROFILES.GENERIC);
@@ -898,7 +907,7 @@ export function useDuelController(
       }
     }, aiSpeed);
     return () => clearTimeout(t);
-  }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange, s.pendingLampPicks, s.pendingRiverDivide, s.pendingRiverSides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fatalError, s.phase, s.active, s.turn, s.over, s.pendingChoice, s.pendingTriggerTarget, s.pendingUpkeepChoice, s.stack?.length, s.pendingTutor, s.pendingTransmuteSacrifice, s.pendingTransmutePay, s.pendingConditionalCounter, s.pendingAnteExchange, s.pendingLampPicks, s.pendingMarufPicks, s.pendingRiverDivide, s.pendingRiverSides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── AI stall watchdog ────────────────────────────────────────────────────────
   // Safety net for AI-turn deadlocks not already caught by a specific fix (see
