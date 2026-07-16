@@ -740,6 +740,22 @@ function runDrawFollowUps(ns, who, followUps) {
 function performDraws(s, who, n, followUps = []) {
   let ns = s;
   for (let i = 0; i < n; i++) {
+    // Ring of Ma'ruf: draw replacement. Consumed BEFORE Aladdin's Lamp when both
+    // are pending (documented ordering simplification -- real rules would let the
+    // player order simultaneous replacements). See docs/ENGINE_CONTRACT_SPEC.md.
+    // Adapted from Card-Forge/forge (r/ring_of_maruf.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    if ((ns[who].marufCharges || 0) > 0) {
+      ns = { ...ns, [who]: { ...ns[who], marufCharges: ns[who].marufCharges - 1 } };
+      if ((ns[who].binderIds || []).length) {
+        // Suspend the draw loop like the lamp. No cardIids integrity list: the
+        // pick shows the binder, which cannot change while the pick is pending.
+        const pick = { who, remainingDraws: n - i - 1, followUps };
+        ns = { ...ns, pendingMarufPicks: [...(ns.pendingMarufPicks || []), pick] };
+        return dlog(ns, `Ring of Ma'r\u00fbf: ${who} chooses a card from outside the game.`, "effect");
+      }
+      // Empty binder: charge consumed, fizzle to a normal draw (fall through).
+      ns = dlog(ns, `Ring of Ma'r\u00fbf: no cards outside the game -- drawing normally.`, "effect");
+    }
     const charges = ns[who].lampCharges || [];
     if (charges.length && ns[who].lib.length) {
       // Aladdin's Lamp: LIFO charge consumption. Suspend the draw loop.
@@ -1586,6 +1602,15 @@ if (x < 1) {
 }
 ns = { ...ns, [caster]: { ...ns[caster], lampCharges: [...(ns[caster].lampCharges || []), x] } };
 ns = dlog(ns, `${card.name}: ${caster} charges the Lamp with ${x}.`, "effect");
+break;
+}
+// Adapted from Card-Forge/forge (r/ring_of_maruf.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "marufCharge": {
+// Ring of Ma'ruf: the exile-self cost was paid at activation time via the
+// existing "exile" cost token (see ACTIVATE_ABILITY). No target, no UI step.
+// The charge is consumed by performDraws; the pick resolves via MARUF_PICK.
+ns = { ...ns, [caster]: { ...ns[caster], marufCharges: (ns[caster].marufCharges || 0) + 1 } };
+ns = dlog(ns, `${card.name}: the next card ${caster} would draw this turn is replaced.`, "effect");
 break;
 }
 case "guardianAngel": {
@@ -5577,6 +5602,10 @@ if (ns.pendingLampPicks?.length) {
   console.error('[DuelCore] CLEANUP: lamp pick still pending -- force clearing');
   ns = { ...ns, pendingLampPicks: [] };
 }
+if (ns.pendingMarufPicks?.length) {
+  console.error('[DuelCore] CLEANUP: maruf pick still pending -- force clearing');
+  ns = { ...ns, pendingMarufPicks: [] };
+}
 if (ns.pendingRiverDivide || ns.pendingRiverSides) {
   console.error('[DuelCore] CLEANUP: river division/siding still pending -- force clearing');
   ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: null };
@@ -5653,8 +5682,8 @@ for (const w of ["p","o"]) {
   if (ns[w].damageShield || ns[w].combatDamageShield) ns = { ...ns, [w]: { ...ns[w], damageShield: 0, combatDamageShield: null } };
   // Guardian Angel: clear temporary abilities granted this turn
   ns = { ...ns, [w]: { ...ns[w], tempAbilities: [] } };
-  // Aladdin's Lamp: clear unused charges
-  ns = { ...ns, [w]: { ...ns[w], lampCharges: [] } };
+  // Aladdin's Lamp / Ring of Ma'ruf: clear unused charges ("this turn" scoping)
+  ns = { ...ns, [w]: { ...ns[w], lampCharges: [], marufCharges: 0 } };
 }
 // Siren's Call: destroy non-Wall creatures the active player didn't attack with
 // this turn (creatures the effect targeted at cast time -- excludes anything
@@ -7043,7 +7072,7 @@ function queueUpkeepChoice(state, choice) {
 
 // --- DUEL STATE BUILDER -------------------------------------------------------
 
-export function buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife) {
+export function buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife, binderIds = []) {
 const pd = shuffle(pDeckIds.map(id => makeCardInstance(id, "p")).filter(Boolean));
 const od = shuffle((ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck).map(id => makeCardInstance(id, "o")).filter(Boolean));
 const ph = pd.splice(0, ruleset.startingHandSize);
@@ -7066,8 +7095,12 @@ landsPlayed: 0,
 spellsThisTurn: 0,
 totalCardsCast: 0,
 peakDamage: 0,
-p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [] },
-o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [] },
+// binderIds: Ring of Ma'ruf's "outside the game". The player's is a snapshot of
+// the overworld binder (card IDs, crossing the World Map / Duel boundary the same
+// way pDeckIds does); the opponent's is a pseudo-binder snapshotted from its
+// archetype deck list. Read-only except for MARUF_PICK fetch-removal.
+p: { life: startLife, lib: pd, hand: ph, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [], binderIds: [...binderIds] },
+o: { life: oppLife ?? ruleset.startingLife, lib: od, hand: oh, bf: [], gy: [], exile: [], mana: { W:0,U:0,B:0,R:0,G:0,C:0 }, extraTurns: 0, mulls: 0, lifeAnim: null, poisonCounters: 0, channelActive: false, mulliganDecided: false, emblems: [], binderIds: [...(ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck)] },
 stack: [],
 attackers: [],
 blockers: {},
@@ -7724,6 +7757,10 @@ case "ADVANCE_PHASE": {
     console.warn('[DuelCore] ADVANCE_PHASE blocked: lamp pick pending');
     return s;
   }
+  if (s.pendingMarufPicks?.length) {
+    console.warn('[DuelCore] ADVANCE_PHASE blocked: maruf pick pending');
+    return s;
+  }
   if (s.pendingRiverDivide || s.pendingRiverSides) {
     console.warn('[DuelCore] ADVANCE_PHASE blocked: river division or siding pending');
     return s;
@@ -8294,6 +8331,35 @@ case "LAMP_PICK": {
 
   // Continue drawing: 1 more card from the remaining draw count, then re-enter for nested charges.
   return performDraws(ns, head.who, 1 + head.remainingDraws, head.followUps);
+}
+
+case "MARUF_PICK": {
+  // Ring of Ma'ruf: resolve a suspended draw-replacement pick from the binder.
+  // Adapted from Card-Forge/forge (r/ring_of_maruf.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const head = s.pendingMarufPicks?.[0];
+  if (!head) return s;
+  const binder = s[head.who].binderIds || [];
+  const idx = binder.indexOf(action.id);
+  if (idx === -1) return s;
+  // Mint a fresh instance: the fetched card joins the duel ephemerally; the
+  // overworld binder itself is never mutated (the duel only holds a snapshot).
+  const fetched = makeCardInstance(action.id, head.who);
+  if (!fetched) return s;
+  let ns = {
+    ...s,
+    [head.who]: {
+      ...s[head.who],
+      hand: [...s[head.who].hand, fetched],
+      // Remove ONE occurrence: duplicate ids stay individually fetchable.
+      binderIds: binder.filter((_, i) => i !== idx),
+    },
+    pendingMarufPicks: s.pendingMarufPicks.slice(1),
+  };
+  ns = dlog(ns, `Ring of Ma'r\u00fbf: ${head.who} reveals ${fetched.name} and puts it into their hand.`, 'effect');
+
+  // The fetched card satisfied the replaced draw itself, so resume with only
+  // the remaining draws -- no `+ 1`, unlike LAMP_PICK above.
+  return performDraws(ns, head.who, head.remainingDraws, head.followUps);
 }
 
 case "RIVER_DIVIDE": {

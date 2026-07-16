@@ -4714,4 +4714,31 @@ COMPLETE
 
 ---
 
+## Ring of Ma'ruf -- 2026-07-16
+
+**Card:** Ring of Ma'ruf (`ring_of_maruf`, colorless Artifact, cmc 5) -- "{5}, {T}, Exile this artifact: The next time you would draw a card this turn, instead put a card you own from outside the game into your hand." `activated:{cost:"5,T,exile",effect:"marufCharge"}`. Was deferred as "requires a sideboard/outside-the-game zone"; no new zone was needed -- "outside the game" maps to the overworld **binder**, snapshotted as card IDs into `duelCfg.binderIds` at duel launch (the same boundary-crossing convention as `pDeckIds`). The AI opponent gets a **pseudo-binder**: its archetype's deck list, snapshotted at `buildDuelState` time.
+
+**Mechanism reuse:** the exile-self cost is the pre-existing `exile` cost token (Feldon's Cane); the replacement is a `performDraws` draw-replacement extension mirroring Aladdin's Lamp's `lampCharges` (new `marufCharges` counter, `pendingMarufPicks` suspension, `MARUF_PICK` resume) with one arithmetic difference: the resume passes `head.remainingDraws` with **no `+ 1`**, because the fetched card itself satisfies the replaced draw. Consumption ordering when both Ring and Lamp charges are pending on one draw: Ring first (documented simplification). Unconsumed charges clear in the CLEANUP block alongside `lampCharges`.
+
+**Fizzle rule:** consuming a charge with an EMPTY binder logs and falls through to a normal top-card draw (charge still spent). This covers every non-overworld construction path (tests, sandbox direct-builds), which default to `binderIds: []`.
+
+**Ephemerality:** `MARUF_PICK` mints a fresh instance (`makeCardInstance`) into the hand and removes ONE occurrence of the id from the in-duel snapshot (duplicates stay individually fetchable); the overworld binder itself is never mutated by the duel and `handleDuelEnd` is untouched.
+
+**AI:** `chooseMarufFetch(binderIds, state)` (`AI.js`) -- deterministic policy function (highest-cmc castable nonland by battlefield land count, else lowest-cmc nonland, else first id), following the `chooseDiscardToLibrary` precedent; auto-dispatched by `useDuelController`'s pending-pick AI branch. No `Math.random()` introduced.
+
+**UI:** both `DuelScreen.tsx` and `DuelScreenMobile.tsx` render `TutorModal` (deduplicated binder card list, `MARUF_PICK` on choose, no-op decline -- the replacement already happened) when `pendingMarufPicks[0].who === 'p'`, mirroring their `pendingDamageShieldChoice` usage.
+
+**Stub count: 2 -> 1** (Blaze of Glory remains, milestone-blocked on the combat/blocking model).
+
+**Tests:**
+- Vitest: `tests/scenarios/ring-of-maruf.test.js` (22: RM-01 through RM-04 plumbing, RM-05 through RM-09 consumption/fizzle, RM-10 through RM-14 pick mechanics, RM-15 through RM-18 AI/determinism, RM-19 through RM-22 regression/meta).
+- Playwright: `tests/e2e/ring-of-maruf.spec.ts` (4: full fetch via TutorModal + empty-binder fizzle, both viewports, `@engine-card-scenarios-2`).
+
+See `docs/ENGINE_CONTRACT_SPEC.md` Section 17 for the binder snapshot contract.
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.35

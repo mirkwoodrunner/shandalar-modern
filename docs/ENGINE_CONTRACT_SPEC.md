@@ -1380,4 +1380,22 @@ if (aura.mod.powerFn || aura.mod.toughnessFn) {
 
 Any future Aura needing "becomes a creature (or gains some other type) only while it isn't already one, with CDA-computed P/T" should set `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn`/`mod.onlyIfNotCreature` on its embedded-attach `mod` object -- no new `collectEffects` code is needed. A future consumer of `mod.addTypes`/`mod.powerFn`/`mod.toughnessFn` that wants the effect to apply unconditionally (not gated on "not already a creature") simply omits `onlyIfNotCreature`.
 
+# 17. Binder Snapshot Contract (Ring of Ma'ruf's "Outside the Game")
+
+Ring of Ma'ruf maps "a card you own from outside the game" to the overworld binder. No new zone exists; the World Map / Duel boundary is crossed by a **read-only ID snapshot**, exactly as `pDeckIds` already does.
+
+## Snapshot chain
+
+`useOverworldController.launchDuel` adds `binderIds: binder.map(c => c.id)` to `duelCfg` -> `useDuelController` passes `config.binderIds ?? []` as `useDuel`'s trailing argument -> `buildDuelState`'s eighth parameter (`binderIds = []`) lands as `p.binderIds: [...binderIds]`. The opponent gets a **pseudo-binder**: `o.binderIds` is a copy of its archetype's deck list (`ARCHETYPES[oppArchKey]?.deck || ARCHETYPES.RED_BURN.deck`), snapshotted the same way at build time. Duel-state constructions that omit the argument (tests, sandbox direct-builds) get `[]` and are covered by the fizzle rule below.
+
+Both arrays are plain ID-string lists, read-only except for fetch-removal: `MARUF_PICK` removes exactly ONE occurrence of the chosen id (duplicates stay individually fetchable). **Ephemerality:** the fetched card joins the duel as a fresh instance (`makeCardInstance`); the overworld binder is never mutated by the duel -- the duel only ever consumed a snapshot, and `handleDuelEnd` is untouched.
+
+## Draw-replacement extension (`marufCharges` / `pendingMarufPicks` / `MARUF_PICK`)
+
+`marufCharge` (the Ring's activated effect; its exile-self is paid via the pre-existing `exile` cost token) increments `p[caster].marufCharges`. `performDraws` consumes one charge per replaced draw, BEFORE the `lampCharges` check -- a documented ordering simplification: when both Ring and Lamp replacements are pending on the same draw, Ring's is consumed first (real rules would let the player order simultaneous replacements). Consumption with a non-empty binder suspends the draw loop into `pendingMarufPicks` (`{ who, remainingDraws, followUps }` -- no `cardIids` integrity list, since the binder cannot change while a pick is pending); with an EMPTY binder the charge is still consumed and the draw fizzles to a normal top-card draw. `MARUF_PICK` resumes with `performDraws(ns, head.who, head.remainingDraws, head.followUps)` -- **no `+ 1`**, unlike `LAMP_PICK`, because the fetched card itself satisfied the replaced draw. Unconsumed charges expire in the same CLEANUP block that clears `lampCharges` ("this turn" scoping); ADVANCE_PHASE is gated on a pending pick just like the lamp's.
+
+## Determinism note
+
+The AI's pick is `chooseMarufFetch(binderIds, state)` in `AI.js` -- a pure, deterministic policy function (highest-cmc castable nonland, else lowest-cmc nonland, else first id), following the `chooseDiscardToLibrary` precedent, dispatched by `useDuelController`'s AI auto-resolution branch. No `Math.random()` was introduced; the pre-existing Coral Helm `discardRandom` site (and `chooseLampPick`'s all-lands fallback) remain flagged for the Milestone B seeded-RNG migration.
+
 # End of ENGINE CONTRACT SPEC v1.1

@@ -23,4 +23,6 @@ export interface DuelConfig {
   sandbox?: boolean;
   forcedHandIds?: string[];
   oppLife?: number | null;
+  /** Snapshot of the player's binder card IDs (Ring of Ma'ruf's "outside the game"). */
+  binderIds?: string[];
 }

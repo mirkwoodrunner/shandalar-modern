@@ -786,6 +786,10 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
     setDuelScreenIsCompact(isCompactMobile);
     setDuelCfg({
       pDeckIds: deck.map(c => c.id).filter(Boolean),
+      // Ring of Ma'ruf's "outside the game": snapshot the binder as card IDs,
+      // same boundary-crossing convention as pDeckIds. The duel never mutates
+      // the overworld binder -- it only consumes this snapshot.
+      binderIds: binder.map(c => c.id).filter(Boolean),
       oppArchKey,
       ruleset,
       overworldHP,
@@ -795,7 +799,7 @@ export function useOverworldController({ startConfig, onQuit, onScore, isCompact
       sandbox: isSandbox,
       _ts: Date.now(),
     });
-  }, [deck, ruleset, anteEnabled, isCompactMobile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [deck, binder, ruleset, anteEnabled, isCompactMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDuelEnd = useCallback((outcome, duelState) => {
     const won     = outcome === 'win';

@@ -9,6 +9,26 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-16)
+- **Ring of Ma'ruf** -- "{5}, {T}, Exile this artifact: The next time you would
+  draw a card this turn, instead put a card you own from outside the game into
+  your hand." No new zone: "outside the game" is the overworld **binder**,
+  snapshotted as card IDs into `duelCfg.binderIds` at duel launch (same
+  boundary-crossing convention as `pDeckIds`); the AI opponent gets a
+  pseudo-binder (its archetype deck list). Reuses the `exile` cost token
+  (Feldon's Cane) and extends the `performDraws` draw-replacement core
+  (`marufCharges`/`pendingMarufPicks`/`MARUF_PICK`, consumed before
+  `lampCharges` -- documented ordering simplification; resume has NO `+ 1`,
+  the fetched card satisfies the replaced draw). Empty binder at consumption
+  fizzles to a normal draw. Fetched cards are ephemeral fresh instances; the
+  overworld binder is never mutated (`handleDuelEnd` untouched). AI pick is
+  `chooseMarufFetch` (`AI.js`), a deterministic policy function -- no
+  `Math.random()`. Human pick UI reuses `TutorModal` on both screens. Stub
+  count as of this commit: **2 -> 1** (`blaze_of_glory` is the only remaining
+  `effect:"STUB"` entry, milestone-blocked on the combat/blocking model).
+  Tests: 22 Vitest (`tests/scenarios/ring-of-maruf.test.js`), 4 Playwright
+  (`tests/e2e/ring-of-maruf.spec.ts`, both viewports,
+  `@engine-card-scenarios-2`). See `docs/MECHANICS_INDEX.md` -- Ring of
+  Ma'ruf, `docs/ENGINE_CONTRACT_SPEC.md` Section 17.
 - **Test-only fixes for two hand-off items** (`docs/handoff-dungeon-and-overlay-tests.md`):
   `tests/e2e/dungeon-tileset.spec.ts` console-error checks were tripped by unrelated
   Google Fonts requests hanging/resetting under this environment's outbound network

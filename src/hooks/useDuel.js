@@ -27,9 +27,10 @@ import { duelReducer, buildDuelState } from '../engine/DuelCore.js';
 - @param {object}    [castleMod]   - Castle modifier if applicable
 - @param {boolean}   [anteEnabled] - Whether ante is active
 - @param {number}    [oppLife]     - Opponent starting life (overrides ruleset.startingLife)
+- @param {string[]}  [binderIds]   - Snapshot of the player's binder card IDs (Ring of Ma'ruf's "outside the game")
   */
-  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false, oppLife = null) {
-  const initialState = buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife);
+  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false, oppLife = null, binderIds = []) {
+  const initialState = buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife, binderIds);
   const [state, dispatch] = useReducer(duelReducer, initialState);
 
 // -- Action dispatchers -----------------------------------------------------
