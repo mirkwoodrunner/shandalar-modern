@@ -1088,6 +1088,93 @@ extended; no new general-purpose systems were built.
 
 ---
 
+## 7.13 One-Shot Phasing (Oubliette)
+
+Oubliette ("When this enchantment enters, target creature phases out until
+this enchantment leaves the battlefield. Tap that creature as it phases in
+this way.") is the second card built on the snapshot-before-`zMove` exile/
+return machinery from S7.12, reusing it rather than building a new phasing
+subsystem. This is explicitly **one-shot** phasing only -- a permanent
+phases out exactly once, when a specific source enters, and phases back in
+exactly once, when that source leaves. It is not a general per-turn Phasing
+keyword (phasing out/in at every untap step); a future Premodern milestone
+that needs real Phasing must build its own system on top of this one, not
+replace it.
+
+- **`snapshotAndExileCreature(state, tgtC, { suppressLeaveEvent = false } =
+  {})`** (module-private helper, `DuelCore.js`) is `tawnosCoffinExile`'s body
+  extracted so both cards share it: snapshot counters, collect embedded +
+  Kudzu-style aura records, strip `enchantments` before `zMove` so its
+  cascade-to-graveyard block has nothing to cascade, then `zMove` the
+  creature (and each Kudzu aura) to exile. Returns `{ state, tracking }`
+  where `tracking` is `{ exiledCreatureIid, exiledCreatureOwner,
+  exiledCreatureCounters, exiledAuraRecords }` -- the same shape
+  `tawnosCoffinExile` used to write onto Tawnos's Coffin directly.
+  `tawnosCoffinExile` calls this with no options (default `false` --
+  byte-identical to its pre-refactor shipped behavior); Oubliette's
+  `oubliettePhaseOut` `resolveEff` case calls it with `{ suppressLeaveEvent:
+  true }`.
+- **`zMove`'s `opts` parameter** (`zMove(s, iid, fw, tw, tz, opts = {})`):
+  purely additive, all ~40+ existing call sites unchanged. The only opts key
+  read is `suppressLeaveEvent`, which gates the `ON_PERMANENT_LEAVES_BF`
+  emission block -- when true, a permanent leaving the battlefield fires no
+  leave triggers at all (CR 702.26: phasing out is not "leaving the
+  battlefield" for trigger purposes). `recomputeTypeEffects` still runs
+  unconditionally on any bf-membership change regardless of the flag --
+  correct for phasing, since a phased-out permanent's continuous effects
+  must stop applying (the "treated as though it doesn't exist" rule).
+- **Oubliette's `oubliettePhaseOut` `resolveEff` case** differs from
+  `tawnosCoffinExile` in one structural way: Tawnos's Coffin is already on
+  the battlefield when its activated ability resolves, so it writes tracking
+  fields onto its own existing bf entry. Oubliette's effect resolves as part
+  of its own cast resolution, *before* the normal `RESOLVE_STACK` ETB push
+  places it on the battlefield -- so `oubliettePhaseOut` places Oubliette
+  onto the battlefield itself, with the tracking fields already set, using
+  the same `alreadyOnBf`-guard pattern `copyPermanentCharacteristics` and
+  `vesuvanEtbCopy` use (Section 7.2-adjacent): `RESOLVE_STACK` detects
+  Oubliette is already on the bf and skips its own push. A fizzled cast (no
+  legal creature target) does NOT place Oubliette itself -- the normal ETB
+  push handles that case exactly as any other fizzled targeted permanent.
+- **`tawnosCoffinReturn`'s `opts.phasing` parameter**
+  (`tawnosCoffinReturn(state, sourceCard, opts = {})`): Oubliette's
+  `oubliettePhaseIn` triggered-effect case (registered on
+  `ON_PERMANENT_LEAVES_BF`, `scope:'self'`, matching Tawnos's Coffin's own
+  registration pattern exactly) delegates to `tawnosCoffinReturn(state,
+  sourceCard, { phasing: true })` rather than duplicating the resolver. Two
+  gated changes fire only when `opts.phasing` is true: the returned creature
+  additionally gets `summoningSick: false` (a phased-in permanent was never
+  gone for summoning-sickness purposes -- CR 702.26e), and the log verb
+  becomes "phases in tapped" instead of "returns to the battlefield tapped".
+  The default (no-opts) path -- Tawnos's Coffin's three call sites -- is
+  untouched: same wording, same summoning-sickness behavior (a phased-in-only
+  concept does not apply there; the creature simply re-enters and picks up
+  the ordinary fresh-entry `summoningSick: true` `zMove` sets).
+- **Three faithful-phasing guarantees** (explicit product requirements, not
+  simplifications):
+  1. Phase-out fires no leave-the-battlefield triggers --
+     `suppressLeaveEvent: true` on every `zMove` the phase-out performs.
+  2. Phase-in fires no enter-the-battlefield effects -- this engine has no
+     ETB event at all (`zMove`'s to-bf branch never emits anything); "when
+     enters" effects are cast-resolution effects, which phase-in does not
+     re-invoke.
+  3. The phased-in creature is not summoning sick, despite returning tapped
+     -- see `opts.phasing` above.
+- **Cosmetic note (accepted, not a hidden-zone gap):** a phased-out
+  permanent is held in the exile zone's storage and is visible in the exile
+  UI while phased out. Real Magic treats phased-out status as public
+  information, so this is acceptable; no dedicated hidden zone was built.
+- **Target-at-cast convention (pre-existing, not new to this card):** like
+  every other when-enters-targeted permanent in this engine, Oubliette's
+  creature target is chosen at CAST time (`oubliettePhaseOut` registered in
+  both `EXPLICIT_TARGET_EFFECTS` and `CREATURE_ONLY_TARGET_EFFECTS` in
+  `useDuelController.ts`, mirroring Tawnos's Coffin's registrations exactly).
+  In paper Magic, Oubliette could be cast with no creatures in play and its
+  triggered ability would simply have no legal target; this engine's
+  documented simplification means the cast itself has no target to select
+  in that case.
+
+---
+
 # 8. Determinism Contract
 
 All systems MUST obey:
