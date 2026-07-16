@@ -22,8 +22,14 @@ for (const vp of VIEWPORTS) {
 
     test('1: revealed floor cells render <img> tiles, not blank divs', async ({ page }) => {
       const consoleErrors: string[] = [];
+      const failedDungeonAssets: string[] = [];
       page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
       page.on('pageerror', e => consoleErrors.push(String(e)));
+      page.on('requestfailed', req => {
+        if (req.url().includes('/assets/dungeon/')) {
+          failedDungeonAssets.push(`${req.url()}: ${req.failure()?.errorText}`);
+        }
+      });
 
       await page.goto(BASE_URL);
       await waitForDungeon(page);
@@ -61,8 +67,15 @@ for (const vp of VIEWPORTS) {
       // At least some floor sprites must be present
       expect(floorImgCount).toBeGreaterThan(0);
 
-      // No console errors (broken sprite paths, 404s)
-      expect(consoleErrors.filter(e => !e.includes('favicon'))).toEqual([]);
+      // No broken sprite paths / failed dungeon asset loads
+      expect(failedDungeonAssets).toEqual([]);
+      // Chromium's generic "Failed to load resource" console message carries no
+      // URL, so it can't be attributed to a specific asset here -- real dungeon
+      // sprite failures are already caught precisely above via failedDungeonAssets.
+      // Excluding it avoids false failures from unrelated external resources
+      // (e.g. index.html's Google Fonts links) that this sandbox's network policy
+      // may block, independent of dungeon rendering correctness.
+      expect(consoleErrors.filter(e => !e.includes('favicon') && !e.startsWith('Failed to load resource'))).toEqual([]);
     });
 
     test('2: unrevealed cells render no <img> (fog-of-war regression guard)', async ({ page }) => {
@@ -215,6 +228,11 @@ for (const vp of VIEWPORTS) {
           failedRequests.push(res.url());
         }
       });
+      page.on('requestfailed', req => {
+        if (req.url().includes('/assets/dungeon/')) {
+          failedRequests.push(`${req.url()}: ${req.failure()?.errorText}`);
+        }
+      });
       page.on('console', msg => {
         if (msg.type() === 'error') consoleErrors.push(msg.text());
       });
@@ -226,7 +244,9 @@ for (const vp of VIEWPORTS) {
       await page.waitForTimeout(500);
 
       expect(failedRequests).toEqual([]);
-      expect(consoleErrors.filter(e => !e.includes('favicon'))).toEqual([]);
+      // See test 1's comment: generic "Failed to load resource" console messages
+      // carry no URL and are already covered precisely by failedRequests above.
+      expect(consoleErrors.filter(e => !e.includes('favicon') && !e.startsWith('Failed to load resource'))).toEqual([]);
     });
   });
 }

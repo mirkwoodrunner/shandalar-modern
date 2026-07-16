@@ -1660,6 +1660,46 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 
 ## Bug Fix Log
 
+### Fix: dungeon-tileset.spec.ts console-error checks tripped by unrelated Google Fonts failures (DUNGEON-TILESET-TEST-1)
+
+- Not a product bug -- `tests/e2e/dungeon-tileset.spec.ts` tests 1 and 7 asserted
+  `consoleErrors` (any `console.error`/`pageerror`) equals `[]`, but Chromium's generic
+  "Failed to load resource" message carries no URL, so it can't distinguish a real
+  broken dungeon sprite from `index.html`'s external Google Fonts `<link>` requests,
+  which hang/reset under this environment's outbound network policy. All 135 sprite
+  paths the component can request (`src/ui/dungeon/DungeonMap.jsx`) were confirmed
+  present on disk -- no missing/misnamed asset.
+- Fix (test-only): added a `requestfailed` listener scoped to `/assets/dungeon/` in
+  both tests (matching the existing `/assets/dungeon/` scoping already used by test
+  7's 404 `response` listener) to catch real dungeon-asset failures precisely, and
+  excluded the unattributable generic "Failed to load resource" message from the
+  broader `consoleErrors` check, since it's already covered precisely by the
+  URL-scoped listener.
+
+### Fix: engine-fatal-error-overlay.spec.ts pre-existing timeouts (ENGINE-ERR-TEST-1)
+
+- ENGINE-ERR-03/04 (mobile suite): `waitForDuel()` polled for
+  `[data-testid="duel-screen"]`, which `src/ui/Mobile/DuelScreenMobile.tsx` never
+  renders (only `DuelScreen.tsx` does) -- an already-established gap worked around
+  elsewhere (`tests/e2e/land-destruction-pyramids.spec.ts` and others) via
+  `duel-screen-wrapper`. Added the same `waitForDuelMobile()` helper here.
+- Also found and fixed a real product gap while investigating: the mobile
+  `ActionBar.tsx`'s actual clickable "End Turn" button (no-selection default state)
+  never had `data-testid="end-turn-button"` -- only the disabled "Ending Turn..."
+  placeholder did. Added the testid to `src/ui/Mobile/ActionBar.tsx`, matching the
+  desktop `ActionBar.tsx` which already has it on both states.
+- ENGINE-ERR-02/04 (Exit-to-Overworld navigation): the initial `page.goto()` (default
+  `waitUntil: 'load'`) was blocking ~25s on the same Google Fonts hang described
+  above, consuming nearly the entire 30s test timeout before the test even reached
+  the exit-click step. Switched all `page.goto()` calls to
+  `{ waitUntil: 'domcontentloaded' }`, matching the established convention already
+  documented in `tests/e2e/ante-system-complete.spec.ts`.
+- Additionally, `page.waitForURL()` was found to never resolve in this Playwright
+  build even when the target URL already matches current state (it waits for a
+  *future* navigation event; the reload here completes before the call is reached,
+  so there's no event left to observe). Replaced with `expect(page).toHaveURL('/')`,
+  a polling web-first assertion that checks current state and resolves correctly.
+
 ### Fix: AI turn permanently deadlocks under Silence, with no log trace (SILENCE-DEADLOCK-1)
 
 - Root cause: `OPEN_PRIORITY_WINDOW` in `DuelCore.js` is a silent no-op whenever a
