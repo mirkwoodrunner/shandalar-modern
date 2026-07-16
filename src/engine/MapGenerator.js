@@ -181,15 +181,23 @@ export const HENCHMAN_TABLE = [
 ];
 
 // Town and dungeon name pools
+// Sized comfortably above each structure type's max spawn count (see spawn
+// loops below) so the procedural fallbackName() below is never needed in
+// normal play; it exists purely as a safety net.
 const TOWN_POOL = [
 "Ardestan","Veldatha","Morheim","Caelthas","Sunspire","Duskwall","Greymere",
 "Thornhaven","Ironwake","Silverbend","Coldwater","Emberfield","Ashwood","Deepmoor",
 "Starfall","Crestholm","Mistpeak","Dawncroft","Stonebridge","Oakhearth",
+"Wraithmoor","Fenwick","Brightwater","Hollowmere","Ravenscar","Goldenvale",
+"Thistledown","Windmere","Blackfen","Amberfall",
 ];
 const DUNGEON_POOL = [
 "Tomb of the Ancients","Cavern of Echoes","Vault of Shadows","The Sunken Library",
 "Crypts of Mortum","Maze of Lost Souls","The Shattered Keep","Den of the Beast",
 "Forgotten Catacombs","The Spiral Descent","Lair of the Wyrm","The Iron Labyrinth",
+"Halls of the Drowned King","The Bonepit","Sanctum of the Void","The Gnawing Deep",
+"Crypt of the Silent Bell","The Hollow Throne","Warrens of the Feral Court","The Weeping Vault",
+"Pit of a Thousand Screams","The Obsidian Descent","Ossuary of the Forgotten","The Screaming Gallery",
 ];
 
 const RUIN_POOL = [
@@ -197,7 +205,36 @@ const RUIN_POOL = [
   "The Broken Arch", "Shattered Sanctum", "Overgrown Citadel",
   "Collapsed Vault", "The Rusted Gate", "Ancient Foundations",
   "Weathered Obelisk", "The Fallen Keep", "Dusty Reliquary",
+  "The Cracked Rampart", "Scorched Cloister", "The Leaning Spire",
+  "Buried Colonnade", "The Silent Cistern", "Toppled Monolith",
+  "The Faded Threshold", "Ivy-Choked Bastion",
 ];
+
+// Safety-net fallback for the rare case a structure count exceeds its name
+// pool. Composes two thematic word fragments per type instead of a raw
+// "Type14"-style placeholder, so immersion holds even at pool exhaustion.
+// Routed through the seeded rng() passed in by generateMap (no Math.random()).
+const FALLBACK_FRAGMENTS = {
+  TOWN: {
+    adj: ["Old","New","North","South","East","West","Upper","Lower","Little","Greater"],
+    noun: ["Haven","Ford","Reach","Hollow","Cross","Watch","Mill","Vale","Rest","End"],
+  },
+  DUNGEON: {
+    adj: ["Sunken","Forgotten","Hollow","Cursed","Silent","Buried","Broken","Shrouded"],
+    noun: ["Depths","Passage","Warren","Chasm","Undercroft","Sepulcher","Labyrinth","Abyss"],
+  },
+  RUIN: {
+    adj: ["Fallen","Crumbling","Weathered","Abandoned","Scattered","Broken","Faded"],
+    noun: ["Colonnade","Archway","Bastion","Shrine","Foundation","Outpost","Gatehouse"],
+  },
+};
+
+function fallbackName(type, rng) {
+  const { adj, noun } = FALLBACK_FRAGMENTS[type];
+  const a = adj[Math.floor(rng() * adj.length)];
+  const n = noun[Math.floor(rng() * noun.length)];
+  return `The ${a} ${n}`;
+}
 
 const GUILD_QUESTS = [
 { id:"q1", title:"Purge the Risen",  desc:"Defeat undead creatures in the nearby swamp.",        rewardId:"swords",       rewardType:"card", rewardGold:0  },
@@ -407,7 +444,7 @@ const stock = shopCardPool.length
 : [];
 tiles[p.y][p.x].structure = "TOWN";
 tiles[p.y][p.x].townData = {
-name: townNames[i] || `Town${i}`,
+name: townNames[i] || fallbackName('TOWN', rng),
 stock,
 quest: rng() > 0.4 ? GUILD_QUESTS[Math.floor(rng() * GUILD_QUESTS.length)] : null,
 hasSage: rng() > 0.5,
@@ -462,7 +499,7 @@ const mod = DUNGEON_MODIFIERS[Math.floor(rng() * DUNGEON_MODIFIERS.length)];
 const rooms = 3 + Math.floor(rng() * 3);
 tiles[p.y][p.x].structure = "DUNGEON";
 tiles[p.y][p.x].dungeonData = {
-name: dungeonNames[i] || `Dungeon${i}`,
+name: dungeonNames[i] || fallbackName('DUNGEON', rng),
 mod,
 rooms,
 domColor: COLORS[Math.floor(rng() * 5)],
@@ -480,7 +517,7 @@ for (let i = 0; i < ruinCount; i++) {
   claim(p.x, p.y);
   tiles[p.y][p.x].structure = 'RUIN';
   tiles[p.y][p.x].ruinData = {
-    name: ruinNames[i] || `Ruin${i}`,
+    name: ruinNames[i] || fallbackName('RUIN', rng),
     looted: false,
     hasGuardian: rng() < 0.33,
   };
