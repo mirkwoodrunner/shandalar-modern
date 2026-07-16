@@ -94,6 +94,8 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'enchantArtifact', // Animate Artifact (and Living Artifact/Artifact Possession/Relic Bind) -- "enchant artifact"
   // Creature damage centralization batch:
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature" (activated ability; see ACTIVATE_TARGET_EFFECTS below for the actual targeting-flow gate)
+  // One-shot phasing (see THIRD_PARTY_NOTICES.md):
+  'oubliettePhaseOut', // Oubliette -- "target creature phases out"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -132,6 +134,7 @@ export function normalizeAbilityCost(cost: any): string {
 export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
   'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
+  'oubliettePhaseOut', // Oubliette -- "target creature"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member

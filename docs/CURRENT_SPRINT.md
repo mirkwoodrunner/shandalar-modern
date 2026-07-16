@@ -27,6 +27,27 @@
   button was missing `data-testid="end-turn-button"` (only the disabled "Ending
   Turn..." placeholder had it). See `docs/MECHANICS_INDEX.md` -- Bug Fix Log,
   `DUNGEON-TILESET-TEST-1` and `ENGINE-ERR-TEST-1`.
+- **Oubliette** -- "target creature phases out until this enchantment leaves
+  the battlefield. Tap that creature as it phases in this way." One-shot
+  phasing built on the Tawnos's Coffin snapshot-before-`zMove` exile/return
+  machinery (extracted into a shared `snapshotAndExileCreature` helper) --
+  not a new phasing subsystem. `zMove` gained a purely additive `opts`
+  parameter (`suppressLeaveEvent`, all ~40+ existing call sites unchanged);
+  `tawnosCoffinReturn` gained an `opts.phasing` parameter (returned creature
+  gets `summoningSick: false`, log wording becomes "phases in"). Tawnos's
+  Coffin's own shipped behavior is byte-identical throughout -- its
+  pre-existing 28-test suite passes unchanged. Three faithful-phasing
+  guarantees confirmed: no leave triggers on phase-out, no enter effects on
+  phase-in (this engine has no ETB event at all), and the phased-in
+  creature is not summoning sick despite returning tapped.
+  `oubliettePhaseOut` added to `EXPLICIT_TARGET_EFFECTS`/
+  `CREATURE_ONLY_TARGET_EFFECTS` (`useDuelController.ts`), mirroring Tawnos's
+  Coffin's own registrations -- no new component. Stub count: **3 -> 2**
+  (Blaze of Glory, Ring of Ma'ruf remain, both milestone-blocked). Tests: 24
+  Vitest (`tests/scenarios/oubliette.test.js`), 4 Playwright
+  (`tests/e2e/oubliette.spec.ts`, both viewports, `@engine-card-scenarios-1`).
+  See `docs/MECHANICS_INDEX.md` -- Oubliette, `docs/ENGINE_CONTRACT_SPEC.md`
+  S7.13.
 
 ## Completed (2026-07-15)
 - **Tawnos's Coffin** -- "{3}, {T}: Exile target creature and all Auras

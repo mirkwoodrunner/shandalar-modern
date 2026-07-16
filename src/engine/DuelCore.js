@@ -768,7 +768,7 @@ export function drawD(s, who, n = 1) {
   return performDraws(s, who, n, []);
 }
 
-export function zMove(s, iid, fw, tw, tz) {
+export function zMove(s, iid, fw, tw, tz, opts = {}) {
 let card = null;
 let fromZone = null;
 let ns = { ...s };
@@ -820,7 +820,11 @@ let moved = tokenVanishes ? ns : { ...ns, [tw]: { ...ns[tw], [tz]: [...ns[tw][tz
 // replacing it -- zMove is the single choke point for every bf -> gy/exile/hand
 // move, so this one emission site covers lands, artifacts, enchantments, and
 // creatures. Does not fire for bf -> bf control changes.
-if (fromZone === 'bf' && tz !== 'bf') {
+// opts.suppressLeaveEvent: one-shot phasing (Oubliette) -- a phased-out
+// permanent has not "left the battlefield" for trigger purposes (CR 702.26),
+// so the phase-out zMove passes this flag to skip the emission entirely.
+// Nothing else in this function reads opts.
+if (fromZone === 'bf' && tz !== 'bf' && !opts.suppressLeaveEvent) {
   if (isCre(card) && tz === 'gy') {
     // Tracks creatures that died this turn (Khabál Ghoul). Reset at CLEANUP.
     moved = { ...moved, turnState: { ...moved.turnState, creaturesDiedThisTurn: [...(moved.turnState.creaturesDiedThisTurn || []), iid] } };
@@ -4018,29 +4022,42 @@ case "tawnosCoffinExile": {
     ns = dlog(ns, `${card.name} fizzles -- no valid creature target.`, "effect");
     break;
   }
-  const tgtOwner = tgtC.controller;
-  const counters = { ...tgtC.counters };
-  const embeddedAuras = (tgtC.enchantments || []).map(aura => ({ kind: 'embedded', record: { ...aura } }));
-  const kudzuAuras = [...ns.p.bf, ...ns.o.bf]
-    .filter(c => c.enchantedCreatureIid === tgtC.iid)
-    .map(c => ({ kind: 'kudzu', iid: c.iid, controller: c.controller }));
-  const auraRecords = [...embeddedAuras, ...kudzuAuras];
-
-  // Strip enchantments before zMove so its cascade-to-graveyard block has
-  // nothing left to cascade -- the data is already captured above.
-  ns = { ...ns, [tgtOwner]: { ...ns[tgtOwner], bf: ns[tgtOwner].bf.map(c =>
-    c.iid === tgtC.iid ? { ...c, enchantments: [] } : c
-  ) } };
-  ns = zMove(ns, tgtC.iid, tgtOwner, tgtOwner, "exile");
-  for (const rec of kudzuAuras) {
-    ns = zMove(ns, rec.iid, rec.controller, rec.controller, "exile");
-  }
-
+  const { state: nsExiled, tracking } = snapshotAndExileCreature(ns, tgtC);
+  ns = nsExiled;
   const srcOwner = ns.p.bf.some(c => c.iid === card.iid) ? 'p' : 'o';
   ns = { ...ns, [srcOwner]: { ...ns[srcOwner], bf: ns[srcOwner].bf.map(c => c.iid === card.iid
-    ? { ...c, exiledCreatureIid: tgtC.iid, exiledCreatureOwner: tgtOwner, exiledCreatureCounters: counters, exiledAuraRecords: auraRecords }
+    ? { ...c, ...tracking }
     : c) } };
-  ns = dlog(ns, `${card.name} exiles ${tgtC.name}${auraRecords.length ? " and its Auras" : ""}.`, "effect");
+  ns = dlog(ns, `${card.name} exiles ${tgtC.name}${tracking.exiledAuraRecords.length ? " and its Auras" : ""}.`, "effect");
+  break;
+}
+// Oubliette: "When this enchantment enters, target creature phases out until
+// this enchantment leaves the battlefield. Tap that creature as it phases in
+// this way." One-shot phasing built on the Tawnos's Coffin snapshot/exile/
+// return machinery: the phase-out leg suppresses ON_PERMANENT_LEAVES_BF
+// (phasing fires no leave triggers, CR 702.26), and the phase-in leg
+// ('oubliettePhaseIn' below) returns the creature tapped WITHOUT summoning
+// sickness. Oubliette places itself on the battlefield here carrying the
+// tracking fields (RESOLVE_STACK's alreadyOnBf guard then skips the normal
+// ETB push) -- the effect resolves before that push, so the fields must ride
+// in on the object placed here. The fizzle branch does NOT place Oubliette:
+// the normal ETB push handles it, like any other fizzled targeted permanent.
+// See docs/ENGINE_CONTRACT_SPEC.md -- One-Shot Phasing (Oubliette).
+// Adapted from Card-Forge/forge (o/oubliette.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "oubliettePhaseOut": {
+  if (!tgtC || !isCre(tgtC)) {
+    ns = dlog(ns, `${card.name} fizzles -- no valid creature target.`, "effect");
+    break;
+  }
+  const { state: nsPhased, tracking } = snapshotAndExileCreature(ns, tgtC, { suppressLeaveEvent: true });
+  const newPerm = {
+    ...card, controller: caster, enterTs: nsPhased.layerClock ?? 0,
+    tapped: false, summoningSick: false, attacking: false, blocking: null,
+    damage: 0, counters: {}, eotBuffs: [], enchantments: [],
+    ...tracking,
+  };
+  ns = { ...nsPhased, [caster]: { ...nsPhased[caster], bf: [...nsPhased[caster].bf, newPerm] } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} phases out${tracking.exiledAuraRecords.length ? " with its Auras" : ""}.`, "effect");
   break;
 }
 // Wall of Wonder: "gets +4/-4 until end of turn and can attack this turn as
@@ -5926,6 +5943,44 @@ function emitEvent(state, event) {
   return { ...state, triggerQueue: [...state.triggerQueue, ...sorted] };
 }
 
+// Shared snapshot-and-exile helper for the Tawnos's Coffin exile machinery
+// (and Oubliette's one-shot phase-out, which reuses it with suppressed leave
+// events). zMove unconditionally strips counters and cascades embedded Auras
+// to their controller's graveyard whenever a permanent leaves the battlefield
+// (S10) -- neither of which these cards want -- so the snapshot happens
+// BEFORE zMove is called. Returns the post-exile state plus the tracking
+// fields the caller writes onto its own source permanent. The
+// suppressLeaveEvent option is threaded into EVERY zMove performed here (the
+// creature's and each Kudzu-style aura's): Tawnos's Coffin calls with the
+// default (false -- its exile leg keeps emitting ON_PERMANENT_LEAVES_BF,
+// byte-identical to shipped behavior); Oubliette passes true (phasing fires
+// no leave triggers). See docs/ENGINE_CONTRACT_SPEC.md.
+function snapshotAndExileCreature(state, tgtC, { suppressLeaveEvent = false } = {}) {
+  const tgtOwner = tgtC.controller;
+  const counters = { ...tgtC.counters };
+  const embeddedAuras = (tgtC.enchantments || []).map(aura => ({ kind: 'embedded', record: { ...aura } }));
+  const kudzuAuras = [...state.p.bf, ...state.o.bf]
+    .filter(c => c.enchantedCreatureIid === tgtC.iid)
+    .map(c => ({ kind: 'kudzu', iid: c.iid, controller: c.controller }));
+  const auraRecords = [...embeddedAuras, ...kudzuAuras];
+
+  // Strip enchantments before zMove so its cascade-to-graveyard block has
+  // nothing left to cascade -- the data is already captured above.
+  let ns = { ...state, [tgtOwner]: { ...state[tgtOwner], bf: state[tgtOwner].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, enchantments: [] } : c
+  ) } };
+  ns = zMove(ns, tgtC.iid, tgtOwner, tgtOwner, "exile", { suppressLeaveEvent });
+  for (const rec of kudzuAuras) {
+    ns = zMove(ns, rec.iid, rec.controller, rec.controller, "exile", { suppressLeaveEvent });
+  }
+  return { state: ns, tracking: {
+    exiledCreatureIid: tgtC.iid,
+    exiledCreatureOwner: tgtOwner,
+    exiledCreatureCounters: counters,
+    exiledAuraRecords: auraRecords,
+  } };
+}
+
 // Tawnos's Coffin: shared exile-return resolver. Called from three sites --
 // the ON_PERMANENT_LEAVES_BF triggered ability ('tawnosCoffinReturn' case
 // below), and the two untap-detection insertion points (untap-step map,
@@ -5935,7 +5990,12 @@ function emitEvent(state, event) {
 // it still carries the exiledCreatureIid/exiledCreatureOwner/
 // exiledCreatureCounters/exiledAuraRecords fields set by tawnosCoffinExile.
 // See docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
-function tawnosCoffinReturn(state, sourceCard) {
+// opts.phasing (Oubliette's 'oubliettePhaseIn'): the creature phases in
+// rather than returning -- it additionally gets summoningSick: false (a
+// phased-in permanent was never gone for sickness purposes, CR 702.26) and
+// the log verb becomes "phases in". The default wording and behavior are
+// byte-identical to shipped Tawnos's Coffin.
+function tawnosCoffinReturn(state, sourceCard, opts = {}) {
   if (!sourceCard.exiledCreatureIid) return state;
   const owner = sourceCard.exiledCreatureOwner;
   const exiled = state[owner].exile.find(c => c.iid === sourceCard.exiledCreatureIid);
@@ -5949,11 +6009,13 @@ function tawnosCoffinReturn(state, sourceCard) {
   let ns = zMove(state, sourceCard.exiledCreatureIid, owner, owner, "bf");
   ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c =>
     c.iid === sourceCard.exiledCreatureIid
-      ? { ...c, tapped: true, counters: { ...counters }, enchantments: embeddedAuras }
+      ? { ...c, tapped: true, counters: { ...counters }, enchantments: embeddedAuras, ...(opts.phasing ? { summoningSick: false } : {}) }
       : c
   ) } };
   const returned = ns[owner].bf.find(c => c.iid === sourceCard.exiledCreatureIid);
-  ns = dlog(ns, `${returned?.name ?? exiled.name} returns to the battlefield tapped${embeddedAuras.length ? " with its Auras" : ""}.`, "effect");
+  ns = dlog(ns, opts.phasing
+    ? `${returned?.name ?? exiled.name} phases in tapped${embeddedAuras.length ? " with its Auras" : ""}.`
+    : `${returned?.name ?? exiled.name} returns to the battlefield tapped${embeddedAuras.length ? " with its Auras" : ""}.`, "effect");
 
   for (const rec of auraRecords) {
     if (rec.kind === 'kudzu') {
@@ -6441,6 +6503,15 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     // docs/ENGINE_CONTRACT_SPEC.md -- Tawnos's Coffin Exile/Return.
     case 'tawnosCoffinReturn': {
       return tawnosCoffinReturn(state, sourceCard);
+    }
+    // Oubliette: "target creature phases out until this enchantment leaves
+    // the battlefield. Tap that creature as it phases in this way." The
+    // leaves-bf half of the one-shot phasing pair ('oubliettePhaseOut' in
+    // resolveEff). Delegates to the shared return helper with phasing
+    // semantics: tapped, NOT summoning sick, "phases in" log wording.
+    // Adapted from Card-Forge/forge (o/oubliette.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'oubliettePhaseIn': {
+      return tawnosCoffinReturn(state, sourceCard, { phasing: true });
     }
     // Cyclopean Tomb: "When this artifact is put into a graveyard from the
     // battlefield, at the beginning of each of your upkeeps for the rest of

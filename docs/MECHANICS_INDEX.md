@@ -4687,4 +4687,31 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.34
+## Oubliette -- 2026-07-16
+
+**Card:** Oubliette (`oubliette`, black Enchantment, cmc 3) -- "When this enchantment enters, target creature phases out until this enchantment leaves the battlefield. Tap that creature as it phases in this way. (Auras and Equipment phase out with it. While permanents are phased out, they're treated as though they don't exist.)" `effect:"oubliettePhaseOut", triggeredAbilities:[{id:'oubliette_leaves_bf', trigger:{event:'ON_PERMANENT_LEAVES_BF', scope:'self'}, effect:{type:'oubliettePhaseIn'}}]`. Was deferred as "phasing does not exist anywhere in this engine, would be new infrastructure from scratch"; that call predates Tawnos's Coffin, whose snapshot-before-`zMove` exile/return machinery turns out to be structurally the same shape as one-shot phasing (counters preserved, attached Auras go along, returns tapped) minus the untap-triggered leg Oubliette doesn't need.
+
+**Machinery reuse, not a new phasing system:** `tawnosCoffinExile`'s body was extracted into a shared `snapshotAndExileCreature(state, tgtC, { suppressLeaveEvent = false } = {})` helper (`DuelCore.js`) that both cards now call. `zMove` gained a purely additive `opts` parameter (`zMove(s, iid, fw, tw, tz, opts = {})`, all ~40+ existing call sites unchanged) whose only read key, `suppressLeaveEvent`, gates the `ON_PERMANENT_LEAVES_BF` emission block. `tawnosCoffinReturn` gained an `opts.phasing` parameter: when true, the returned creature additionally gets `summoningSick: false` and the log wording becomes "phases in tapped" instead of "returns to the battlefield tapped" -- the default (no-opts) path used by all three of Tawnos's Coffin's existing call sites is untouched, verified byte-identical by its own pre-existing 28-test suite (unchanged, still passing).
+
+**`oubliettePhaseOut`** (new `resolveEff` case, `DuelCore.js`): calls `snapshotAndExileCreature` with `{ suppressLeaveEvent: true }`, then places Oubliette itself onto the battlefield carrying the returned tracking fields, using the same `alreadyOnBf`-guard pattern `copyPermanentCharacteristics`/`vesuvanEtbCopy` use -- Oubliette's effect resolves before `RESOLVE_STACK`'s normal ETB push, so the fields must ride in on the object placed here rather than being written onto an already-placed permanent (Tawnos's Coffin's approach, which doesn't apply since Oubliette isn't on the battlefield yet when its own ETB trigger resolves). A fizzled cast (no legal creature target) does not place Oubliette itself; the normal ETB push handles that case.
+
+**`oubliettePhaseIn`** (new triggered-effect case in `resolveTriggeredEffect`, adjacent to `tawnosCoffinReturn`): delegates to `tawnosCoffinReturn(state, sourceCard, { phasing: true })` rather than duplicating the resolver.
+
+**Three faithful-phasing guarantees (explicit product requirements):** (1) phase-out fires no leave-the-battlefield triggers (`suppressLeaveEvent`); (2) phase-in fires no enter-the-battlefield effects (this engine has no ETB event at all -- "when enters" effects are cast-resolution effects that phase-in does not re-invoke); (3) the phased-in creature is not summoning sick despite returning tapped (`opts.phasing`'s `summoningSick: false`). See `docs/ENGINE_CONTRACT_SPEC.md` S7.13 for the full writeup.
+
+**Cosmetic note (accepted):** a phased-out permanent sits in the exile zone's storage and is visible in the exile UI. Real Magic treats phased-out status as public information, so no dedicated hidden zone was built.
+
+**UI:** `oubliettePhaseOut` added to `EXPLICIT_TARGET_EFFECTS` (opens the targeting UI step at cast) and `CREATURE_ONLY_TARGET_EFFECTS` (rejects a non-creature battlefield click) in `useDuelController.ts`, mirroring Tawnos's Coffin's own registrations. Per the engine-wide target-at-cast convention (pre-existing, not new to this card), Oubliette's creature target is chosen at cast time; with zero creatures on either battlefield the cast cannot complete, unlike paper Magic where the triggered ability would simply find no target.
+
+**Stub count: 3 -> 2** (Blaze of Glory, Ring of Ma'ruf remain, both milestone-blocked).
+
+**Tests:**
+- Vitest: `tests/scenarios/oubliette.test.js` (24: OUB-01 through OUB-06 infrastructure, OUB-07 through OUB-16 card behavior, OUB-17 through OUB-20 targeting/UI, OUB-21 through OUB-24 regression/meta).
+- Playwright: `tests/e2e/oubliette.spec.ts` (4: phase out + destroy + return, targeting restriction, both viewports, `@engine-card-scenarios-1`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.35
