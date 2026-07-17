@@ -77,20 +77,19 @@ async function waitForEngineReady(page: Page) {
 // Casts Blaze of Glory (already forced into p's hand with W mana) targeting
 // tgtIid via direct dispatch (CAST_SPELL -> RESOLVE_STACK), mirroring
 // oubliette.spec.ts's own direct-dispatch cast for its Shatter follow-up.
-// A real click-through of hand-card -> cast-button -> target -> confirm
-// races the live AI main loop: with active:'o' (required here so the engine
-// gate's bogDefender computes to 'p', letting the cast legally target the
-// defending player's creature), useDuelController.ts's AI effect calls
-// requestPhaseAdvance() after aiSpeed(=0)ms whenever the stack is empty,
-// and reliably wins the race against Playwright's click/evaluate roundtrips,
-// advancing the phase out from under the cast before it can complete. The
-// scenario setup (see below) also parks a dummy pendingUpkeepChoice to hard
-// -block that same AI loop (`if (s.pendingUpkeepChoice) return;` is checked
-// unconditionally, ahead of the active==='o' branch) for the whole window
-// between state setup and this cast; CAST_SPELL/RESOLVE_STACK/clearing that
-// flag are dispatched together in one evaluate so React's automatic batching
-// resolves them as a single render with no gap for the AI loop to run in
-// between. The dummy value is never rendered: DuelScreen.tsx/
+// A real click-through of hand-card -> cast-button -> target -> confirm, OR
+// any reliance on useDuelController's own auto-advance heuristics, races the
+// live AI main loop and the priority-window-close effect: with active:'o'
+// (required here so the engine gate's bogDefender computes to 'p', letting
+// the cast legally target the defending player's creature), those effects
+// can call requestPhaseAdvance()/advancePhase() on their own schedule and
+// push the phase forward from under a still-in-progress manual sequence.
+// The scenario setup (see below) parks a dummy pendingUpkeepChoice for the
+// ENTIRE test -- `if (s.pendingUpkeepChoice) return;` is checked
+// unconditionally at the very top of the AI main loop, ahead of the
+// active==='o' branch -- so every subsequent phase transition in these
+// tests is driven ONLY by our own explicit dispatches, never by the app's
+// own auto-advance. The dummy value is never rendered: DuelScreen.tsx/
 // DuelScreenMobile.tsx both gate their upkeep-choice modal on
 // `pendingUpkeepChoice && active === 'p'`, which is false here since
 // active is 'o' for the whole scenario.
@@ -98,7 +97,6 @@ async function castBlaze(page: Page, bogIid: string, tgtIid: string) {
   await page.evaluate(({ bogIid, tgtIid }: any) => {
     (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bogIid, tgt: tgtIid });
     (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
-    (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { pendingUpkeepChoice: null } });
   }, { bogIid, tgtIid });
   await page.waitForTimeout(150);
 }
@@ -147,18 +145,10 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
       const midState = await page.evaluate(() => (window as any).__duelState());
       expect(midState.p.bf.find((c: any) => c.iid === 'e2e-bog-def-1').blocksAllAttackers).toBe(true);
 
-      // With active:'o', useDuelController's own AI main loop may already have
-      // auto-advanced COMBAT_AFTER_ATTACKERS -> COMBAT_BLOCKERS on its own
-      // (it stops itself there via an explicit COMBAT_BLOCKERS guard, so this
-      // never overshoots) -- nudge it ourselves only if it hasn't happened yet.
-      await page.waitForFunction(() => {
-        const s = (window as any).__duelState();
-        if (s.phase === 'COMBAT_AFTER_ATTACKERS') {
-          (window as any).__duelDispatch({ type: 'ADVANCE_PHASE' });
-          return false;
-        }
-        return s.phase === 'COMBAT_BLOCKERS';
-      }, { timeout: 5000, polling: 50 });
+      // pendingUpkeepChoice is still parked (see castBlaze's doc comment), so
+      // this is the only thing that can move the phase forward here.
+      await page.evaluate(() => { (window as any).__duelDispatch({ type: 'ADVANCE_PHASE' }); }); // -> COMBAT_BLOCKERS
+      await page.waitForTimeout(150);
 
       if (label === 'desktop') {
         // Both attackers show the "BLOCKED" badge; the flagged defender
