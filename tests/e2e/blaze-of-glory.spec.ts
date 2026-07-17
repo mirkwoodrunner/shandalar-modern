@@ -77,30 +77,43 @@ async function waitForEngineReady(page: Page) {
 // Casts Blaze of Glory (already forced into p's hand with W mana) targeting
 // tgtIid via direct dispatch (CAST_SPELL -> RESOLVE_STACK), mirroring
 // oubliette.spec.ts's own direct-dispatch cast for its Shatter follow-up.
-// A real click-through of hand-card -> cast-button -> target -> confirm, OR
-// any reliance on useDuelController's own auto-advance heuristics, races the
-// live AI main loop: with active:'o' (required here so the engine gate's
-// bogDefender computes to 'p', letting the cast legally target the
-// defending player's creature), that loop can call requestPhaseAdvance() on
-// its own schedule and push the phase forward from under a still-in-progress
-// manual sequence.
 //
-// Fix: flip `active` to 'p' in the same dispatch batch as the cast. The AI
-// loop's very first guard is `if (s.active !== 'o' || aiRef.current) return;`,
-// so this permanently disengages it for the rest of the scenario -- every
-// later phase transition is then driven only by this test's own explicit
-// ADVANCE_PHASE dispatches. This is safe here: `s.active` is not one of
-// ADVANCE_PHASE's own reducer guards (priorityWindow/stack/pendingXxx), and
-// ChoiceModal renders purely off `pendingChoice.controller === 'p'`,
-// independent of `s.active`. (A pendingUpkeepChoice-based block was tried
-// first and rejected -- ADVANCE_PHASE's own reducer checks
-// `if (s.pendingUpkeepChoice) return s;` unconditionally too, so that
-// approach silently froze combat instead of letting it resolve.)
+// Two SEPARATE race windows against useDuelController's AI main loop, both
+// arising from active:'o' (required so the engine gate's bogDefender
+// computes to 'p', letting the cast legally target the defending player's
+// creature):
+//
+// 1. BEFORE this cast (between the scenario's own state setup and this call):
+//    the AI main loop fires because active==='o', finds nothing it can
+//    afford to cast, and calls requestPhaseAdvance() -- usePhaseAdvance's
+//    own hasInstants check only inspects the ABILITY_PRIORITY_PHASES branch
+//    when `inSpellPriorityPhase` is true (MAIN_1/MAIN_2/END only);
+//    COMBAT_AFTER_ATTACKERS isn't in that set, so the presence of Blaze of
+//    Glory in p's OWN hand is irrelevant to that check and advancePhase()
+//    fires anyway, silently skipping past the "before blockers" window
+//    before this cast ever runs. Blocked by parking a dummy
+//    pendingUpkeepChoice in the scenario's own DEBUG_SET_ACTIVE patch --
+//    `if (s.pendingUpkeepChoice) return;` is the AI loop's first
+//    unconditional guard. Never rendered: both duel screens gate their
+//    upkeep-choice modal on `pendingUpkeepChoice && active === 'p'`, false
+//    here since active is 'o' up to this point.
+// 2. AFTER this cast: with the flag now cleared, the AI loop could fire
+//    again for every later phase transition this test drives manually.
+//    Fixed by ALSO flipping `active` to 'p' in this same dispatch batch --
+//    the AI loop's very first guard is
+//    `if (s.active !== 'o' || aiRef.current) return;`, so this permanently
+//    disengages it for the rest of the scenario. Safe here: `s.active` is
+//    not one of ADVANCE_PHASE's own reducer guards (unlike
+//    pendingUpkeepChoice, which IS -- `if (s.pendingUpkeepChoice) return s;`
+//    is unconditional there too, so leaving that flag set instead of
+//    clearing it here would silently freeze every later ADVANCE_PHASE
+//    dispatch), and ChoiceModal renders purely off
+//    `pendingChoice.controller === 'p'`, independent of `s.active`.
 async function castBlaze(page: Page, bogIid: string, tgtIid: string) {
   await page.evaluate(({ bogIid, tgtIid }: any) => {
     (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bogIid, tgt: tgtIid });
     (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
-    (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { active: 'p' } });
+    (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { pendingUpkeepChoice: null, active: 'p' } });
   }, { bogIid, tgtIid });
   await page.waitForTimeout(150);
 }
@@ -126,6 +139,9 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
+            // Blocks the AI main loop's pre-cast auto-advance -- cleared in
+            // castBlaze's own dispatch batch. See castBlaze's doc comment.
+            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [att1.iid, att2.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [att1, att2] },
             p: { ...s.p, bf: [defender] },
@@ -226,6 +242,7 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
+            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [flyer.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [flyer] },
             p: { ...s.p, bf: [groundBlocker], life: 20 },
