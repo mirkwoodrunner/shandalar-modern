@@ -968,6 +968,9 @@ function getBandFormationAction(state, profile, attackerIds) {
 // option whose order matches the ascending-value sort, or the first option
 // if nothing matches (shouldn't happen -- permutations() always covers every
 // ordering of the same recipient set).
+// Also answers Blaze of Glory's 'blazeOfGloryDamageOrder' pendingChoice --
+// same {options:[{id,order}]} shape, same lethal-first-by-value heuristic,
+// no special-casing needed.
 export function chooseBandingDamageOrder(choice, state) {
   const options = choice?.options || [];
   if (!options.length) return null;
@@ -1319,6 +1322,21 @@ function planInstantResponse(state, profile) {
       }, 0) || 0;
       if (incoming < 4 && state.o.life > 8) continue;
       spellTargets = [];
+    }
+
+    // Blaze of Glory: defensive consolidation. Cast on the AI's own
+    // highest-toughness untapped, non-attacking creature when facing 2+
+    // attackers -- one creature absorbs everything instead of the AI
+    // spreading (or losing) several blockers. This is the card's primary
+    // real-world use case. The attacker-side "force a chump to overextend"
+    // use is intentionally out of scope here (see completion summary).
+    if (spellTargets === null && card.effect === 'blazeOfGlory') {
+      const incomingCount = (state.attackers || []).length;
+      if (incomingCount < 2) continue;
+      const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.attacking);
+      if (!candidates.length) continue;
+      const target = candidates.reduce((a, b) => getTou(b, state) > getTou(a, state) ? b : a);
+      spellTargets = [target.iid];
     }
 
     if (spellTargets === null) continue;

@@ -4741,4 +4741,31 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.35
+## Blaze of Glory -- 2026-07-17
+
+**Card:** Blaze of Glory (`blaze_of_glory`, white Instant, cmc 1) -- "Cast this spell only during combat before blockers are declared. Target creature defending player controls can block any number of creatures this turn. It blocks each attacking creature this turn if able." `effect:"blazeOfGlory"`. Was the last remaining `effect:"STUB"` entry, deferred as "blockers dict keyed by single blocker->single attacker can't represent one blocker blocking multiple attackers."
+
+**Machinery reuse, not a data-model change:** rather than restructuring the `blockers: Record<string,string>` dict to support multi-value assignments, the flagged creature's extra coverage is synthesized live. A new `getBlockerRecipients(ns, bl)` helper (`DuelCore.js`) returns a blocker's band-derived explicit recipients (via the existing `getBandMemberIds`) UNIONED with -- for a `blocksAllAttackers`-flagged creature -- every OTHER attacker `canBlockDuel` still says it could legally block, computed fresh on every call. `getEffectiveBlockers`, `computeBandBlockerShares`, and both `resolveCombat` damage passes were generalized to read through this one helper instead of `getBandMemberIds` directly, so banding's existing lethal-then-remainder damage-division math applies to a Blaze of Glory-flagged creature with zero duplicated logic. `getNextBandingChoice` gained a third loop specifically for the flagged-creature case (see below); the first two loops (band-attacker and band-blocker choices) are byte-identical to before.
+
+**CR 509.2 vs 702.22k controller distinction:** a new `blazeOfGloryDamageOrder` pendingChoice kind, NOT a reuse of `bandBlockerDamageOrder`. When an ordinary (non-banding) creature blocks 2+ attackers via the Blaze of Glory grant, its OWN controller chooses the damage assignment order (CR 509.2's general blocker-side rule) -- the opposite of CR 702.22k's banding-specific deviation, where the ACTIVE player chooses. Reuses `bandBlockerDamageOrder`'s storage slot (`turnState.combatDamageOrders`, keyed by `bandBlockerChoiceKey(bl.iid)`) since the two loops' trigger conditions are mutually exclusive (explicit band-recipients >=2 vs <2), so there's no collision. `chooseBandingDamageOrder` (`AI.js`) answers this kind too, unchanged -- same `{options:[{id,order}]}` shape, same lethal-first-by-value heuristic.
+
+**Read-time synthesis, no stored assignment:** the flagged creature never gets an entry in the `blockers` dict for its extra coverage -- there's no explicit `DECLARE_BLOCKER` action for the attackers it picks up beyond any single explicit block. "If able" falls out of the same `canBlockDuel` check `getBlockerRecipients` already runs, so a flagged creature lacking flying/reach is correctly excluded from a flying attacker with no separate must-block enforcement needed. `blocksAllAttackers` clears at end of turn alongside the other end-of-turn combat flags (Ydwen Efreet's `cantBlockThisTurn`, etc.).
+
+**UI:** `Half.tsx`'s `isCommittedBlocker`/`isBlockedAttacker` checks and `DuelScreenMobile.tsx`'s `isAssignedBlocker` both fall back to state-driven queries (`c.blocksAllAttackers` / `getEffectiveBlockers(state, c.iid).length > 0`) since the flagged creature and its extra-blocked attackers never appear in the `blockers` dict the plain checks were built around. Mobile has no attacker-side "BLOCKED" badge at all today (not for banding, not for anything) -- this is a pre-existing gap, unchanged here.
+
+**AI:** `planInstantResponse` (`AI.js`) gets a defensive-only heuristic -- casts on the AI's own highest-toughness untapped, non-attacking creature when facing 2+ attackers. The attacker-side "force an opponent's chump block to overextend" use has no AI heuristic, matching the existing Reset/Relic Bind precedent of no bespoke `planMain` heuristic for narrow-window cards.
+
+**Stub count: 1 -> 0.** This is the last `effect:"STUB"` entry in `cards.js` -- unrelated to Roadmap Milestone A, which tracks a separate, much larger unimplemented-mechanic backlog (A1-A8 in `docs/ROADMAP.md`).
+
+**Tests:**
+- Vitest: `tests/scenarios/blaze-of-glory.test.js` (18: BOG-01 through BOG-06 legality, BOG-07 through BOG-12 core mechanic, BOG-13 through BOG-16 cleanup/interactions, BOG-17 through BOG-18 regression/meta).
+- Playwright: `tests/e2e/blaze-of-glory.spec.ts` (4: multi-block cast + damage division + visual badges, illegal-cast guard, "if able" flying exclusion, mobile isAssignedBlocker highlight; both viewports, `@engine-card-scenarios-3`).
+
+See `docs/ENGINE_CONTRACT_SPEC.md` Section 7.3.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.36

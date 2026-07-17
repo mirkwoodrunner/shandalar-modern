@@ -3,7 +3,7 @@ import { FieldCard } from '../Card/FieldCard';
 import { LandPip } from '../Card/LandPip';
 import { EnchantedCardSlot } from '../Card/EnchantedCardSlot';
 import type { CardData } from '../Card/types';
-import { isLand as isLandEngine, isCre as isCreEngine } from '../../engine/DuelCore.js';
+import { isLand as isLandEngine, isCre as isCreEngine, getEffectiveBlockers } from '../../engine/DuelCore.js';
 
 interface HalfProps {
   side: 'you' | 'opp';
@@ -69,8 +69,13 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendi
         const cardH = isOpp ? 109 : 134;
         const enchantments = (c as any).enchantments ?? [];
         const isPendingBlocker = !isOpp && c.iid === pendingBlockerIid;
-        const isCommittedBlocker = !isOpp && committedBlockerIids.has(c.iid);
-        const isBlockedAttacker = isOpp && blockedAttackerIids.has(c.iid);
+        // Blaze of Glory: a flagged creature never gets an entry in the
+        // `blockers` dict (its extra coverage is read-time synthesis, not a
+        // stored assignment -- see getEffectiveBlockers/getBlockerRecipients
+        // in DuelCore.js), so both checks fall back to state-driven queries
+        // when the plain dict-based check misses.
+        const isCommittedBlocker = !isOpp && (committedBlockerIids.has(c.iid) || (c as any).blocksAllAttackers === true);
+        const isBlockedAttacker = isOpp && (blockedAttackerIids.has(c.iid) || (state && getEffectiveBlockers(state, c.iid).length > 0));
         return (
           <div
             key={c.iid}

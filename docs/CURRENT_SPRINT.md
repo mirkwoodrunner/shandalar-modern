@@ -29,6 +29,33 @@
   (`tests/e2e/ring-of-maruf.spec.ts`, both viewports,
   `@engine-card-scenarios-2`). See `docs/MECHANICS_INDEX.md` -- Ring of
   Ma'ruf, `docs/ENGINE_CONTRACT_SPEC.md` Section 17.
+- **Blaze of Glory** -- "Cast this spell only during combat before blockers
+  are declared. Target creature defending player controls can block any
+  number of creatures this turn. It blocks each attacking creature this turn
+  if able." The last remaining `effect:"STUB"` entry. Deferral reason
+  ("blockers dict can't represent one blocker blocking multiple attackers")
+  is resolved by read-time synthesis rather than a data-model change: a new
+  `getBlockerRecipients(ns, bl)` helper generalizes banding's existing
+  blocker-shares math (band-derived recipients UNION, for a flagged
+  creature, every attacker `canBlockDuel` still allows), so
+  `getEffectiveBlockers`/`computeBandBlockerShares`/the two combat-damage
+  passes all pick it up without a stored multi-value blocking assignment.
+  New `blazeOfGloryDamageOrder` pendingChoice kind (CR 509.2's ordinary
+  blocker-side damage-order rule -- the blocker's OWN controller chooses,
+  unlike banding's 702.22k active-player deviation). UI: `Half.tsx`'s
+  committed-blocker/BLOCKED-badge checks and `DuelScreenMobile.tsx`'s
+  `isAssignedBlocker` both fall back to state-driven queries since the
+  flagged creature never gets a `blockers` dict entry. AI gets a defensive
+  `planInstantResponse` heuristic only (casts on its own highest-toughness
+  untapped creature facing 2+ attackers); the attacker-side "force
+  overextension" use has no AI heuristic, matching the existing
+  Reset/Relic Bind precedent. Stub count: **1 -> 0** (last `effect:"STUB"`
+  entry closed -- this is unrelated to Roadmap Milestone A, which tracks a
+  separate, much larger unimplemented-mechanic backlog). Tests: 18 Vitest
+  (`tests/scenarios/blaze-of-glory.test.js`), 4 Playwright
+  (`tests/e2e/blaze-of-glory.spec.ts`, both viewports). See
+  `docs/MECHANICS_INDEX.md` -- Blaze of Glory, `docs/ENGINE_CONTRACT_SPEC.md`
+  Section 7.3.
 - **Test-only fixes for two hand-off items** (`docs/handoff-dungeon-and-overlay-tests.md`):
   `tests/e2e/dungeon-tileset.spec.ts` console-error checks were tripped by unrelated
   Google Fonts requests hanging/resetting under this environment's outbound network

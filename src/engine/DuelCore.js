@@ -2650,6 +2650,24 @@ ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controlle
 ns = dlog(ns, `Berserk doubles ${tgtC.name}'s power.`, "effect");
 break;
 }
+// Blaze of Glory: "Target creature defending player controls can block any
+// number of creatures this turn. It blocks each attacking creature this
+// turn if able." Sets a flag only -- no explicit DECLARE_BLOCKER action is
+// required or expected for the extra attackers; getEffectiveBlockers (below)
+// synthesizes this creature as blocking every attacker it can legally block
+// at read time. "If able" falls out of that same canBlockDuel check, so no
+// separate must-block enforcement is needed (this is a hard capability
+// grant, unlike Lure's must-block requirement, which stays AI-only per
+// existing precedent -- see planBlock's lureAttId handling in AI.js).
+case "blazeOfGlory": {
+if (!tgtC || !isCre(tgtC)) {
+ns = dlog(ns, `Blaze of Glory fizzles -- no valid creature target.`, "effect");
+break;
+}
+ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, blocksAllAttackers: true } : c) } };
+ns = dlog(ns, `${tgtC.name} can block any number of attacking creatures this turn.`, "effect");
+break;
+}
 case "forkSpell": {
 const top = ns.stack[ns.stack.length - 2];
 if (top && top.card.effect !== "forkSpell") { ns = resolveEff(ns, { ...top, id: makeId(), caster }); ns = dlog(ns, `Fork copies ${top.card.name}.`, "effect"); }
@@ -4254,13 +4272,34 @@ function getBandMemberIds(ns, attId) {
   return ns.attackers.filter(id => getBF(ns, id)?.bandId === att.bandId);
 }
 
-// getEffectiveBlockers (CR 702.22h/i): every creature blocking ANY member of
-// attId's band counts as blocking attId too. Recomputing this live on every
-// call (rather than caching at block-declaration time) is what makes it cover
-// 702.22i ("becomes blocked due to an effect") for free.
-function getEffectiveBlockers(ns, attId) {
-  const members = getBandMemberIds(ns, attId);
-  return [...ns.p.bf, ...ns.o.bf].filter(c => members.includes(c.blocking));
+// getBlockerRecipients: every attacker iid that `bl` is currently blocking --
+// its own explicit single-value block assignment (extended to that
+// attacker's whole band, CR 702.22h/i), UNION, for a Blaze of Glory-flagged
+// creature, every OTHER attacker canBlockDuel says it could legally block
+// ("if able" -- computed live so a mid-combat legality change, e.g. a
+// Twiddle tapping bl, is picked up for free, same as banding's live
+// recompute). The `explicit` set already covers band-membership fully, so a
+// BoG creature that's ALSO an explicit blocker of a banded attacker doesn't
+// get double-counted for that one attacker -- it's excluded from the BoG
+// half by the `explicit.includes(attId)` check.
+function getBlockerRecipients(ns, bl) {
+  const explicit = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+  if (!bl.blocksAllAttackers) return explicit;
+  const bogExtra = ns.attackers.filter(attId => {
+    if (explicit.includes(attId)) return false;
+    const att = getBF(ns, attId);
+    return att && canBlockDuel(bl, att, ns[bl.controller].bf, ns);
+  });
+  return [...explicit, ...bogExtra];
+}
+
+// getEffectiveBlockers (CR 702.22h/i, plus Blaze of Glory): every creature
+// that getBlockerRecipients says is blocking attId. Recomputing this live on
+// every call (rather than caching at block-declaration time) is what makes
+// it cover 702.22i ("becomes blocked due to an effect") and Blaze of Glory's
+// live legality re-check for free.
+export function getEffectiveBlockers(ns, attId) {
+  return [...ns.p.bf, ...ns.o.bf].filter(c => getBlockerRecipients(ns, c).includes(attId));
 }
 
 // Small helper: all permutations of a short array. Band/blocker-side recipient
@@ -4346,6 +4385,42 @@ function getNextBandingChoice(ns) {
       }
     }
   }
+  // Blaze of Glory (general combat rule, NOT banding): if a creature with
+  // "can block any number of creatures" is blocking 2+ attackers purely via
+  // that grant (not via band membership -- that case is fully handled by
+  // the loop above, and correctly keeps controller=ns.active per CR
+  // 702.22k), its OWN controller chooses the damage assignment order. This
+  // is the ordinary, non-banding rule (CR 509.2's blocker-side mirror): the
+  // blocking creature's controller orders a blocker that's blocking
+  // multiple attackers, full stop. Reuses bandBlockerChoiceKey's storage
+  // slot -- computeBandBlockerShares reads from that key regardless of
+  // which loop produced the answer, and the two loops' trigger conditions
+  // are mutually exclusive (explicit band-recipients >=2 above vs <2 here),
+  // so there is no slot collision. Uses its own seen-set: a creature can
+  // have `.blocking` set (added to the set above) AND be blocksAllAttackers
+  // -- that combination must still reach this loop.
+  const seenBogBlockers = new Set();
+  for (const w of ['p', 'o']) {
+    for (const bl of ns[w].bf) {
+      if (!bl.blocksAllAttackers || seenBogBlockers.has(bl.iid)) continue;
+      seenBogBlockers.add(bl.iid);
+      const recipients = getBlockerRecipients(ns, bl);
+      const key = bandBlockerChoiceKey(bl.iid);
+      if (recipients.length >= 2 && !answered[key]) {
+        return {
+          sourceCardId: bl.iid,
+          controller: w,
+          kind: 'blazeOfGloryDamageOrder',
+          key,
+          options: permutations(recipients).map((order, i) => ({
+            id: `order_${i}`,
+            order,
+            label: order.map(id => getBF(ns, id)?.name || id).join(' -> '),
+          })),
+        };
+      }
+    }
+  }
   return null;
 }
 
@@ -4364,9 +4439,13 @@ function computeBandBlockerShares(ns) {
   const seenBlockers = new Set();
   for (const w of ['p', 'o']) {
     for (const bl of ns[w].bf) {
-      if (!bl.blocking || seenBlockers.has(bl.iid)) continue;
+      // Blaze of Glory blockers may have no explicit .blocking value at all
+      // (the extra recipients are read-time synthesis, not a stored
+      // assignment) -- widened from `!bl.blocking` alone so those blockers
+      // aren't skipped before getBlockerRecipients ever runs.
+      if ((!bl.blocking && !bl.blocksAllAttackers) || seenBlockers.has(bl.iid)) continue;
       seenBlockers.add(bl.iid);
-      const recipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+      const recipients = getBlockerRecipients(ns, bl);
       if (recipients.length <= 1) continue;
       const order = resolveStoredOrder(answered[bandBlockerChoiceKey(bl.iid)], recipients);
       const bp = getPow(bl, ns);
@@ -4456,7 +4535,7 @@ if (!blockers.length) {
     // its power is divided among them instead of dealt in full to each --
     // fsBlockerShares is empty/absent for an ordinary single-recipient block,
     // so bpForAtt === bp there and nothing about non-banding combat changes.
-    const bandRecipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+    const bandRecipients = getBlockerRecipients(ns, bl);
     const bpForAtt = bandRecipients.length > 1 ? (fsBlockerShares[`${bl.iid}|${attId}`] ?? 0) : bp;
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
@@ -4550,7 +4629,7 @@ if (!blockers.length) {
   for (const bl of blockers) {
     const blGaseous = isGaseous(bl);
     const bp = getPow(bl, ns);
-    const bandRecipients = getBandMemberIds(ns, bl.blocking).filter(id => ns.attackers.includes(id));
+    const bandRecipients = getBlockerRecipients(ns, bl);
     const bpForAtt = bandRecipients.length > 1 ? (regBlockerShares[`${bl.iid}|${attId}`] ?? 0) : bp;
     const bt = getTou(bl, ns);
     const dbl = Math.min(rem, bt - bl.damage);
@@ -5671,6 +5750,10 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.canAttackDespiteDefender 
 // Clear Ydwen Efreet's "can't block this turn" flag at end of turn
 for (const w of ["p","o"]) {
 ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.cantBlockThisTurn ? { ...c, cantBlockThisTurn: false } : c) } };
+}
+// Clear Blaze of Glory's "can block any number of creatures" flag at end of turn
+for (const w of ["p","o"]) {
+ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.blocksAllAttackers ? { ...c, blocksAllAttackers: false } : c) } };
 }
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
@@ -7372,6 +7455,26 @@ case "CAST_SPELL": {
       return s;
     }
   }
+  // Blaze of Glory: "Cast this spell only during combat before blockers are
+  // declared." The only priority window that falls before blockers are
+  // declared AND after attackers are known is COMBAT_AFTER_ATTACKERS
+  // (COMBAT_ATTACKERS itself has no priority window -- see PRIORITY_PHASES
+  // in phases.js). Target must be a creature the DEFENDING player controls;
+  // either player may be the caster (the attacker can force an overextended
+  // chump block, the defender can consolidate blocks onto one creature --
+  // both are legal per the oracle text, which doesn't restrict the caster).
+  if (c.id === 'blaze_of_glory') {
+    if (s.phase !== PHASE.COMBAT_AFTER_ATTACKERS || !s.attackers.length) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Blaze of Glory can only be cast during combat before blockers are declared`);
+      return s;
+    }
+    const bogTgt = [...s.p.bf, ...s.o.bf].find(x => x.iid === action.tgt);
+    const bogDefender = s.active === 'p' ? 'o' : 'p';
+    if (!bogTgt || !isCre(bogTgt) || bogTgt.controller !== bogDefender) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: Blaze of Glory must target a creature the defending player controls`);
+      return s;
+    }
+  }
   // Protection-from-targeting legality (S17.6.3/T extension): if the chosen
   // target resolves to a permanent with protection from this spell's source,
   // reject the cast outright -- no stack item, no mana spent.
@@ -8678,7 +8781,7 @@ case "RESOLVE_CHOICE": {
   // comes back (kind/options differ, same pendingChoice shape) or combat
   // actually resolves, in which case the post-steps normally run from
   // advPhase's COMBAT_DAMAGE transition run here instead.
-  if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder') {
+  if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder' || choice.kind === 'blazeOfGloryDamageOrder') {
     const chosen = choice.options.find(o => o.id === action.optionId) || choice.options[0];
     let ns = {
       ...s,
