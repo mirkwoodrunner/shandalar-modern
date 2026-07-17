@@ -634,7 +634,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
                 selected={selIid === c.iid}
                 attacking={(s_state.attackers instanceof Set ? s_state.attackers.has(c.iid) : (s_state.attackers ?? []).includes(c.iid))}
                 isBlockerSelected={pendingBlockerIid === c.iid}
-                isAssignedBlocker={(s_state.p.bf as any[]).find((x: any) => x.iid === c.iid)?.blocking != null}
+                isAssignedBlocker={(() => { const bx = (s_state.p.bf as any[]).find((x: any) => x.iid === c.iid); return bx?.blocking != null || bx?.blocksAllAttackers === true; })()}
                 onClick={() => handleBfCardClick(c)}
                 state={s_state} />
             </EnchantedCardSlot>

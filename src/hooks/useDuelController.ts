@@ -96,6 +96,7 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature" (activated ability; see ACTIVATE_TARGET_EFFECTS below for the actual targeting-flow gate)
   // One-shot phasing (see THIRD_PARTY_NOTICES.md):
   'oubliettePhaseOut', // Oubliette -- "target creature phases out"
+  'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -135,6 +136,7 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'chooseDamageShieldSourceForTarget', // Jade Monolith -- "target creature"
   'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
   'oubliettePhaseOut', // Oubliette -- "target creature"
+  'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -730,7 +732,7 @@ export function useDuelController(
       // lives in AI.js (chooseBandingDamageOrder); this just dispatches it.
       // Sits ahead of the pay_gggg-specific logic below so it doesn't fall
       // through to that unrelated branch or its blind options[0] fallback.
-      if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder') {
+      if (choice.kind === 'bandAttackerDamageOrder' || choice.kind === 'bandBlockerDamageOrder' || choice.kind === 'blazeOfGloryDamageOrder') {
         resolveChoice(chooseBandingDamageOrder(choice, s));
         return;
       }
