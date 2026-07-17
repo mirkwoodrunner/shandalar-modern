@@ -352,6 +352,19 @@ created directly by `resolveCombat`, not via a triggered ability:
 |---|---|---|
 | `bandAttackerDamageOrder` | defending player | permutation of the attacker's 2+ effective blockers |
 | `bandBlockerDamageOrder` | active player (`s.active`) | permutation of the blocker's 2+ band-member recipients |
+| `blazeOfGloryDamageOrder` | the blocking creature's OWN controller | permutation of the blocker's 2+ Blaze-of-Glory-granted recipients |
+
+The third kind is NOT a banding rule -- it's the ordinary CR 509.2
+blocker-side mirror (a creature blocking multiple attackers has its
+controller, not the active player, choose the order), needed because Blaze
+of Glory ("can block any number of creatures... if able") grants an
+ordinary creature banding-like multi-block capacity without banding itself.
+`getBlockerRecipients(ns, bl)` is the shared helper behind all three rows:
+it returns a blocker's band-derived explicit recipients, unioned with (for a
+`blocksAllAttackers`-flagged creature) every other attacker `canBlockDuel`
+still allows -- computed live, so it responds to mid-combat legality changes
+for free, same as `getEffectiveBlockers` always has. See
+`docs/MECHANICS_INDEX.md` -- Blaze of Glory.
 
 `RESOLVE_CHOICE` stores the chosen `order` under a stable key in
 `turnState.combatDamageOrders` and re-invokes `resolveCombat`, which either

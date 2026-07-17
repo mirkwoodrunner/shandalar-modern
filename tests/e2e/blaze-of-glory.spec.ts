@@ -82,17 +82,24 @@ async function waitForEngineReady(page: Page) {
 // gate's bogDefender computes to 'p', letting the cast legally target the
 // defending player's creature), useDuelController.ts's AI effect calls
 // requestPhaseAdvance() after aiSpeed(=0)ms whenever the stack is empty,
-// which reliably wins the race against Playwright's click roundtrips and
-// advances the phase out from under the cast flow before it can complete.
-// Driving CAST_SPELL directly still exercises the real production
-// duelReducer running in the browser bundle; the tests below verify the
-// resulting VISUAL render (BLOCKED badge, outline/border highlight), which
-// is the actual UI guarantee being tested here.
+// and reliably wins the race against Playwright's click/evaluate roundtrips,
+// advancing the phase out from under the cast before it can complete. The
+// scenario setup (see below) also parks a dummy pendingUpkeepChoice to hard
+// -block that same AI loop (`if (s.pendingUpkeepChoice) return;` is checked
+// unconditionally, ahead of the active==='o' branch) for the whole window
+// between state setup and this cast; CAST_SPELL/RESOLVE_STACK/clearing that
+// flag are dispatched together in one evaluate so React's automatic batching
+// resolves them as a single render with no gap for the AI loop to run in
+// between. The dummy value is never rendered: DuelScreen.tsx/
+// DuelScreenMobile.tsx both gate their upkeep-choice modal on
+// `pendingUpkeepChoice && active === 'p'`, which is false here since
+// active is 'o' for the whole scenario.
 async function castBlaze(page: Page, bogIid: string, tgtIid: string) {
   await page.evaluate(({ bogIid, tgtIid }: any) => {
     (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bogIid, tgt: tgtIid });
+    (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { pendingUpkeepChoice: null } });
   }, { bogIid, tgtIid });
-  await page.evaluate(() => { (window as any).__duelDispatch({ type: 'RESOLVE_STACK' }); });
   await page.waitForTimeout(150);
 }
 
@@ -117,6 +124,9 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
+            // Dummy value hard-blocking the AI main loop until castBlaze
+            // clears it -- see castBlaze's doc comment.
+            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [att1.iid, att2.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [att1, att2] },
             p: { ...s.p, bf: [defender] },
@@ -224,6 +234,7 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
+            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [flyer.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [flyer] },
             p: { ...s.p, bf: [groundBlocker], life: 20 },
