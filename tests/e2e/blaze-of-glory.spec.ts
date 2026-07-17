@@ -79,24 +79,28 @@ async function waitForEngineReady(page: Page) {
 // oubliette.spec.ts's own direct-dispatch cast for its Shatter follow-up.
 // A real click-through of hand-card -> cast-button -> target -> confirm, OR
 // any reliance on useDuelController's own auto-advance heuristics, races the
-// live AI main loop and the priority-window-close effect: with active:'o'
-// (required here so the engine gate's bogDefender computes to 'p', letting
-// the cast legally target the defending player's creature), those effects
-// can call requestPhaseAdvance()/advancePhase() on their own schedule and
-// push the phase forward from under a still-in-progress manual sequence.
-// The scenario setup (see below) parks a dummy pendingUpkeepChoice for the
-// ENTIRE test -- `if (s.pendingUpkeepChoice) return;` is checked
-// unconditionally at the very top of the AI main loop, ahead of the
-// active==='o' branch -- so every subsequent phase transition in these
-// tests is driven ONLY by our own explicit dispatches, never by the app's
-// own auto-advance. The dummy value is never rendered: DuelScreen.tsx/
-// DuelScreenMobile.tsx both gate their upkeep-choice modal on
-// `pendingUpkeepChoice && active === 'p'`, which is false here since
-// active is 'o' for the whole scenario.
+// live AI main loop: with active:'o' (required here so the engine gate's
+// bogDefender computes to 'p', letting the cast legally target the
+// defending player's creature), that loop can call requestPhaseAdvance() on
+// its own schedule and push the phase forward from under a still-in-progress
+// manual sequence.
+//
+// Fix: flip `active` to 'p' in the same dispatch batch as the cast. The AI
+// loop's very first guard is `if (s.active !== 'o' || aiRef.current) return;`,
+// so this permanently disengages it for the rest of the scenario -- every
+// later phase transition is then driven only by this test's own explicit
+// ADVANCE_PHASE dispatches. This is safe here: `s.active` is not one of
+// ADVANCE_PHASE's own reducer guards (priorityWindow/stack/pendingXxx), and
+// ChoiceModal renders purely off `pendingChoice.controller === 'p'`,
+// independent of `s.active`. (A pendingUpkeepChoice-based block was tried
+// first and rejected -- ADVANCE_PHASE's own reducer checks
+// `if (s.pendingUpkeepChoice) return s;` unconditionally too, so that
+// approach silently froze combat instead of letting it resolve.)
 async function castBlaze(page: Page, bogIid: string, tgtIid: string) {
   await page.evaluate(({ bogIid, tgtIid }: any) => {
     (window as any).__duelDispatch({ type: 'CAST_SPELL', who: 'p', iid: bogIid, tgt: tgtIid });
     (window as any).__duelDispatch({ type: 'RESOLVE_STACK' });
+    (window as any).__duelDispatch({ type: 'DEBUG_SET_ACTIVE', patch: { active: 'p' } });
   }, { bogIid, tgtIid });
   await page.waitForTimeout(150);
 }
@@ -122,9 +126,6 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
-            // Dummy value hard-blocking the AI main loop until castBlaze
-            // clears it -- see castBlaze's doc comment.
-            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [att1.iid, att2.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [att1, att2] },
             p: { ...s.p, bf: [defender] },
@@ -145,8 +146,9 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
       const midState = await page.evaluate(() => (window as any).__duelState());
       expect(midState.p.bf.find((c: any) => c.iid === 'e2e-bog-def-1').blocksAllAttackers).toBe(true);
 
-      // pendingUpkeepChoice is still parked (see castBlaze's doc comment), so
-      // this is the only thing that can move the phase forward here.
+      // active is now 'p' (see castBlaze's doc comment), so the AI loop is
+      // permanently disengaged -- this dispatch is the only thing that can
+      // move the phase forward here.
       await page.evaluate(() => { (window as any).__duelDispatch({ type: 'ADVANCE_PHASE' }); }); // -> COMBAT_BLOCKERS
       await page.waitForTimeout(150);
 
@@ -224,7 +226,6 @@ function runSuite(viewport: { width: number; height: number }, label: string, ur
           type: 'DEBUG_SET_ACTIVE',
           patch: {
             phase: 'COMBAT_AFTER_ATTACKERS', active: 'o',
-            pendingUpkeepChoice: { _testBlockAi: true },
             attackers: [flyer.iid], blockers: {}, priorityWindow: false, stack: [],
             o: { ...s.o, bf: [flyer] },
             p: { ...s.p, bf: [groundBlocker], life: 20 },
