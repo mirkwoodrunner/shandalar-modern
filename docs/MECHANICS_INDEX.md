@@ -4793,4 +4793,39 @@ COMPLETE (infrastructure only -- 0 cards unlocked; see A9 audit in `docs/ROADMAP
 
 ---
 
-# End of MECHANICS INDEX v1.37
+## Legendary Creatures Batch 1+2 -- 2026-07-18
+
+**21 of the originally-scoped 26 legendary creatures shipped; 5 deferred (STOP condition, see below).** First cards in `cards.js` to set the `Legendary` supertype, so this is what actually exercises the Legend Rule Infrastructure entry above against real data instead of synthetic fixtures.
+
+**11 vanilla creatures** (no `effect` field): Jedit Ojanen, Tobias Andrion, Barktooth Warbeard, Lady Orca, The Lady of the Mountain, Sivitri Scarzam, Kasimir the Lone Wolf, Sir Shandlar of Eberyn, Jasmine Boreal, Jerrard of the Closed Fist, Torsten Von Ursus.
+
+**10 single-ability creatures**, each reusing an existing effect mechanic confirmed correct by direct inspection of `DuelCore.js`/`layers.js` (not assumed from the card's oracle text alone): Ramirez DePietro (`FIRST_STRIKE` keyword only), Riven Turnbull and Princess Lucrezia (`addMana`, single-color), Sunastian Falconer (`addMana`, `mana:["C","C"]`), Jacques le Vert (`lordEffect`, `targets:"green"`, `lordControllerOnly:true`), Ragnar (`regenerateTarget` wrapped as an activated ability), Pavel Maliki (`pumpPower` -- **not** `pumpSelf`, see below), Tuknir Deathlock (`pumpCreature` with `mod:{power:2,toughness:2}`), and the two cards below with genuinely new engine pieces.
+
+**Ramses Overdark** (`{T}: Destroy target enchanted creature.`) -- new `destroyEnchantedCreature` case in `DuelCore.js`'s `resolveEff` switch, same shape as `destroyTapped` (Royal Assassin/Merfolk Assassin) but checking `tgtC.enchantments?.length` instead of `.tapped`. Added to the existing `CREATURE_ONLY_TARGET_EFFECTS` set in `useDuelController.ts` rather than creating a parallel `ENCHANTED_*` family, per the click-guard family's own existing shape.
+
+**Bartel Runeaxe** (`Vigilance. Bartel Runeaxe can't be the target of Aura spells.`) -- new `cantBeTargetOfAuraSpells` card-data flag, checked at the single choke point where Aura-cast target legality is already enforced: the `"enchantCreature"` case in `DuelCore.js`, alongside the existing Animate Wall/Guardian Beast target guards. Confirmed via inspection that Aura-cast legality has no other call site (no `"Aura"` references anywhere in `DuelScreen.tsx`/`useDuelController.ts`) -- a real single choke point, not scattered.
+
+**Two documented deviations, not bugs to fix here:**
+- Sunastian Falconer's `{T}: Add {C}{C}` uses the array mana form (`mana:["C","C"]`, proven correct by Dark Ritual's identical shape) rather than the 2-character string form (`mana:"CC"`) that Sol Ring/Mana Vault/Mana Crypt already use in `cards.js` -- research for this batch found the string form is silently broken (`addMana`'s resolver treats a 2-char string as one unrecognized token and adds nothing). Not fixed here (out of this prompt's engine-edit scope; flagged for awareness, not force-fitted around).
+- Jacques le Vert's oracle text ("Green creatures you control get +0/+2", no "Other") does not exclude itself, but `layers.js`'s `lordEffect` collector unconditionally skips the source's own `iid` (`src.iid === card.iid -> continue`) -- every existing lord in `cards.js` is worded "Other X" already, so this self-exclusion was previously invisible. Jacques does not buff himself; documented and regression-tested (`tests/scenarios/legendary-creatures-batch-1-2.test.js`) as a known simplification rather than fixed, since fixing it would mean touching shared lord-effect infrastructure beyond this prompt's two-piece engine-edit scope.
+
+**5 cards deferred (STOP condition per the authoring prompt's own pre-flight rules): Xira Arien, Tor Wauki, Lady Caleria, Gwendlyn Di Corci, Adun Oakenshield.** Each was scoped to "reuse an existing effect," but inspection found the named precedent doesn't actually support what the card needs:
+- **Xira Arien** (`Target player draws a card.`) -- `draw1` is hardcoded to the caster, `draw3`/`drawX` don't do a single targeted card. Needs a new `drawTarget1` effect id.
+- **Tor Wauki** / **Lady Caleria** (2/3 damage to target attacking-or-blocking creature) -- `pingCombatant`/`damage1AttackerOrBlocker` are both hardcoded to exactly 1 damage. Needs new `damage2AttackerOrBlocker`/`damage3AttackerOrBlocker` effect ids.
+- **Gwendlyn Di Corci** (`Target player discards a card at random. Activate only during your turn.`) -- `discardOne` is hardcoded to always hit the opponent, never a chosen target; and no "activate only during your turn" gate exists anywhere in the engine (only `myUpkeepOnly`, phase-scoped, does). Needs a new `discardOneTarget` effect id plus a new `myTurnOnly` gating field.
+- **Adun Oakenshield** (`Return target creature card from your graveyard to your hand.`) -- `regrowthCreature` ignores any chosen target and always grabs the most-recently-buried creature card, which silently picks the wrong card whenever more than one creature is in the graveyard. Needs a new `returnCreatureFromGYToHand` effect id (same target-aware shape as `returnArtifactFromGYToHand`, filtered by `isCre` instead of `isArt`).
+
+None of these five needs are large individually, but together they exceed the two-piece `DuelCore.js` edit scope this batch was pre-approved for, so they're reported here rather than force-fit. All five are unblocked by straightforward, well-precedented additions and are good candidates for a small follow-up batch once scope is confirmed.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-batch-1-2.test.js` (34: vanilla-group stats/legend-rule/no-effect-field coverage, 2 tests per shipped ability card, plus the Jacques le Vert self-exclusion and Ramses Overdark/Bartel Runeaxe novel-piece coverage).
+- Playwright: `tests/e2e/legendary-creatures-batch-1-2.spec.js` (8: LGB-E01 through LGB-E08 -- vanilla cast, two mana abilities including the `addMana` array-form regression, Ramses Overdark success/fizzle, Bartel Runeaxe Aura-block + non-Aura removal, and the legend-rule ChoiceModal rendering generically for a real shipped card, both viewport projects).
+
+This closes roughly half of A9's legendary-creature count (21 of 55 landed here, plus the 5 deferred still counted as open); see `docs/ROADMAP.md` A9 for the remaining backlog.
+
+### Status
+PARTIAL -- 21 of 26 cards shipped; 5 deferred pending scope confirmation (see above)
+
+---
+
+# End of MECHANICS INDEX v1.38

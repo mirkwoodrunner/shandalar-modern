@@ -137,6 +137,7 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
   'oubliettePhaseOut', // Oubliette -- "target creature"
   'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
+  'destroyEnchantedCreature', // Ramses Overdark -- "target enchanted creature"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member

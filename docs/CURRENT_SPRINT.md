@@ -39,6 +39,36 @@
   choice with no modal shown to the human). See `docs/MECHANICS_INDEX.md` --
   Legend Rule Infrastructure, `docs/SYSTEMS.md` Section 30,
   `docs/ENGINE_CONTRACT_SPEC.md` Section 7.14.
+- **Legendary Creatures Batch 1+2 (partial -- 21 of 26)** -- first `cards.js`
+  entries to set the `Legendary` supertype: 11 vanilla creatures (Jedit
+  Ojanen, Tobias Andrion, Barktooth Warbeard, Lady Orca, The Lady of the
+  Mountain, Sivitri Scarzam, Kasimir the Lone Wolf, Sir Shandlar of Eberyn,
+  Jasmine Boreal, Jerrard of the Closed Fist, Torsten Von Ursus) and 10
+  single-ability creatures (Ramirez DePietro, Riven Turnbull, Princess
+  Lucrezia, Sunastian Falconer, Jacques le Vert, Ramses Overdark, Ragnar,
+  Pavel Maliki, Bartel Runeaxe, Tuknir Deathlock). Two small new engine
+  pieces, both pre-approved: `destroyEnchantedCreature` (Ramses Overdark,
+  added to `CREATURE_ONLY_TARGET_EFFECTS`) and a `cantBeTargetOfAuraSpells`
+  flag checked in `DuelCore.js`'s `enchantCreature` case (Bartel Runeaxe).
+  **5 cards deferred** (Xira Arien, Tor Wauki, Lady Caleria, Gwendlyn Di
+  Corci, Adun Oakenshield) -- a pre-flight STOP condition fired because their
+  named "reuse an existing effect" precedents (`draw1`, `pingCombatant`/
+  `damage1AttackerOrBlocker`, `discardOne`, `regrowthCreature`) don't
+  actually support what these cards need on inspection, and fixing that
+  needs new `DuelCore.js` resolver logic beyond the two-piece scope this
+  batch was approved for. Also two documented (not fixed) deviations:
+  Sunastian Falconer's mana ability uses the array `mana` form to sidestep a
+  pre-existing `addMana` bug where a 2-char mana string silently adds
+  nothing (also affects Sol Ring/Mana Vault/Mana Crypt, unrelated to this
+  batch); Jacques le Vert doesn't buff itself because `layers.js`'s
+  `lordEffect` collector unconditionally excludes the source's own `iid`.
+  Closes roughly half of A9's legendary-creature count: 21 of 55, with the 5
+  deferred cards plus Batches 3-5 and the held-out near-neighbors (Boris
+  Devilboon, Ur-Drago, Gosta Dirk, Livonya Silone, Tetsuo Umezawa, Angus
+  Mackenzie) still open. Tests: 34 Vitest
+  (`tests/scenarios/legendary-creatures-batch-1-2.test.js`), 8 Playwright
+  (`tests/e2e/legendary-creatures-batch-1-2.spec.js`). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 1+2.
 
 ## Completed (2026-07-16)
 - **Ring of Ma'ruf** -- "{5}, {T}, Exile this artifact: The next time you would
