@@ -1844,6 +1844,10 @@ case "enchantCreature": {
 // getPow/getTou/hasKw read enchantments[].mod. Cascade removal handled by zMove.
 // SYSTEMS.md S10 (Card System), S5.2 (Damage Rules)
 if (tgtC && card.mod) {
+  // Bartel Runeaxe: "can't be the target of Aura spells" -- reject before attaching.
+  if (tgtC.cantBeTargetOfAuraSpells) {
+    return dlog(s, `${tgtC.name} can't be the target of Aura spells.`, 'info');
+  }
   // Animate Wall: Wall-only target guard -- reject before attaching.
   if (card.mod.enchantWallOnly && !tgtC.subtype?.includes('Wall')) {
     return dlog(s, `${card.name} can only enchant Walls.`, 'info');
@@ -2174,6 +2178,12 @@ break;
 }
 case "destroyTapped": {
 if (tgtC && tgtC.tapped) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+break;
+}
+// Ramses Overdark: "Destroy target enchanted creature." Same shape as destroyTapped
+// above, restricted to creatures with at least one attached Aura instead of tapped.
+case "destroyEnchantedCreature": {
+if (tgtC && tgtC.enchantments?.length) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
 case "regenerate": {
