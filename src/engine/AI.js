@@ -997,6 +997,27 @@ export function chooseDiscardToLibrary(choice, state) {
   return card.cmc <= landCount ? 'library' : 'graveyard';
 }
 
+// chooseLegendRuleKeep: answers CR 704.5j's legendRuleChoice. Keeps whichever
+// same-named legendary copy has more invested value -- counters, attached
+// Auras, and damage-adjusted toughness (a copy sitting on marked damage is
+// worth less than an undamaged one) -- falling back to the first option
+// deterministically when nothing distinguishes them. Fully DETERMINISTIC --
+// same inputs, same pick; no RNG (same policy-function convention as
+// chooseDiscardToLibrary/chooseMarufFetch above).
+export function chooseLegendRuleKeep(choice, state) {
+  const options = choice?.options || [];
+  if (!options.length) return null;
+  const investedValue = (iid) => {
+    const c = getBF(state, iid);
+    if (!c) return -Infinity;
+    const counterTotal = Object.values(c.counters || {}).reduce((a, b) => a + b, 0);
+    const auraCount = (c.enchantments || []).length;
+    const damageAdjustedToughness = getTou(c, state) - (c.damage || 0);
+    return counterTotal * 10 + auraCount * 10 + damageAdjustedToughness;
+  };
+  return options.reduce((best, o) => (investedValue(o.id) > investedValue(best.id) ? o : best), options[0]).id;
+}
+
 // chooseMarufFetch: answers Ring of Ma'ruf's pendingMarufPicks for the AI.
 // Picks from the pseudo-binder (an id-string list, not instances): prefer the
 // highest-cmc nonland the AI could plausibly cast (cmc at most its battlefield

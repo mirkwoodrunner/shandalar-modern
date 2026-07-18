@@ -1186,6 +1186,48 @@ replace it.
   documented simplification means the cast itself has no target to select
   in that case.
 
+## 7.14 Legend Rule (CR 704.5j) State-Based Action
+
+Infrastructure-only contract (no `cards.js` entry sets `Legendary` yet -- see
+`docs/SYSTEMS.md` Section 30 for the full writeup, including the exact
+insertion-point table and the AI policy function).
+
+- **`checkLegendRule(state)`** (exported, `DuelCore.js`) is threaded manually
+  at every site that can change a player's battlefield composition or a
+  permanent's controller, mirroring `checkDeath`'s own ~15-site manual-call
+  convention rather than a single centralized dispatch wrapper. It piggybacks
+  on existing centralization points (`RESOLVE_STACK`'s post-`resolveEff` tail,
+  `PLAY_LAND`, `createToken`, `checkDeath`'s `checkControlGrants` tail,
+  `tawnosCoffinReturn`'s shared return path) instead of adding a fresh call at
+  every individual card effect, plus a handful of sites that bypass all of
+  those (Nether Shadow's graveyard recursion, Ghazbán Ogre's
+  `controlToHighestLife`, the `modalChoice` `RESOLVE_CHOICE` re-entry into
+  `resolveEff`, and Transmute Artifact's direct tutor-to-bf placement).
+- **Resolution differs from `checkDeath`:** CR 704.5j gives the *controller*
+  the choice of which copy to keep, so a violation does not move anything
+  automatically -- it creates a `pendingChoice` (`kind: 'legendRuleChoice'`)
+  via the existing `createPendingChoice()` factory (Section 7.3-adjacent /
+  `docs/SYSTEMS.md` Section 27.1), same generic `{id,label}[]` options shape
+  every other `pendingChoice` kind uses. `RESOLVE_CHOICE`'s
+  `'legendRuleChoice'` branch moves every non-chosen same-named copy to its
+  owner's graveyard via `zMove` directly -- a legend-rule loss is a graveyard
+  move (CR 704.5j), not a destroy, so it does not route through `checkDeath`'s
+  destroy-and-log path.
+- **Collision convention:** same single-slot `pendingChoice` degradation as
+  Library of Leng's `discardToLibraryChoice` (Section 7.7-adjacent) -- if the
+  slot is already occupied, `checkLegendRule` no-ops for now and the next
+  SBA-triggering call re-detects the violation. The `'legendRuleChoice'`
+  `RESOLVE_CHOICE` branch re-invokes `checkLegendRule` after resolving so a
+  simultaneous second violation (the other player independently duplicating a
+  different legendary name) is queued immediately rather than waiting on an
+  unrelated later event.
+- **AI side:** `chooseLegendRuleKeep(choice, state)` (`AI.js`) is a
+  deterministic policy function (no `Math.random()`), dispatched from
+  `useDuelController.ts`'s `pendingChoice` `useEffect` alongside
+  `bandAttackerDamageOrder`/`discardToLibraryChoice`. No UI change was needed
+  -- `ChoiceModal.tsx` already renders any `{id,label}[]` options array
+  generically.
+
 ---
 
 # 8. Determinism Contract

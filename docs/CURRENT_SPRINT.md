@@ -8,6 +8,38 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-18)
+- **Legend Rule Infrastructure (CR 704.5j)** -- state-based action enforcing
+  "a player can't control two or more legendary permanents with the same
+  name." Infrastructure only: no `cards.js` entry sets `Legendary` yet, so
+  this unlocks **0 cards** by itself -- same shape as how the Layer system
+  shipped before the cards that needed it were batched in. The 61 Legends-set
+  creatures this enables going forward are a separate future batch; see the
+  A9 audit in `docs/ROADMAP.md`. New `isLegendary(c)` type helper mirrors
+  `isCre`/`isLand` exactly. New `checkLegendRule(state)` (exported,
+  `DuelCore.js`) is threaded manually at every battlefield-composition/
+  control-change site, matching `checkDeath`'s own ~15-site manual-call
+  convention rather than a single centralized wrapper -- piggybacks on
+  existing centralization (`RESOLVE_STACK`'s tail, `PLAY_LAND`, `createToken`,
+  `checkDeath`'s `checkControlGrants` tail, `tawnosCoffinReturn`'s shared
+  helper) plus explicit threads at Nether Shadow's graveyard recursion,
+  Ghazbán Ogre's `controlToHighestLife`, the `modalChoice` `RESOLVE_CHOICE`
+  re-entry, and Transmute Artifact's direct tutor-to-bf placement. Resolution
+  goes through a new `legendRuleChoice` `pendingChoice` kind (CR 704.5j gives
+  the controller the choice, unlike `checkDeath`'s automatic loss) --
+  `RESOLVE_CHOICE` moves every non-chosen same-named copy to its owner's
+  graveyard via `zMove` directly (a legend-rule loss, not a destroy). New
+  deterministic AI policy `chooseLegendRuleKeep` (`AI.js`, no `Math.random()`)
+  dispatched from `useDuelController.ts`, same shape as
+  `bandAttackerDamageOrder`/`discardToLibraryChoice`. No new UI component --
+  `ChoiceModal.tsx` already renders any `{id,label}[]` options array
+  generically. Tests: 10 Vitest
+  (`tests/scenarios/legend-rule-infrastructure.test.js`), 6 Playwright
+  (`tests/e2e/legend-rule.spec.js`, including the AI auto-resolving its own
+  choice with no modal shown to the human). See `docs/MECHANICS_INDEX.md` --
+  Legend Rule Infrastructure, `docs/SYSTEMS.md` Section 30,
+  `docs/ENGINE_CONTRACT_SPEC.md` Section 7.14.
+
 ## Completed (2026-07-16)
 - **Ring of Ma'ruf** -- "{5}, {T}, Exile this artifact: The next time you would
   draw a card this turn, instead put a card you own from outside the game into

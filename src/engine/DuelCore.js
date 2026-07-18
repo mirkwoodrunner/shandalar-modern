@@ -49,6 +49,13 @@ export const isSort   = c => c?.type === "Sorcery";
 export const isArt    = c => !!c?.type?.includes("Artifact");
 export const isEnch   = c => c?.type?.startsWith("Enchantment");
 export const isPerm   = c => isCre(c) || isArt(c) || isEnch(c) || isLand(c);
+// isLegendary: CR 205.4a -- Legendary is a supertype, printed as a prefix on
+// the type line ("Legendary Creature", "Legendary Artifact", ...). Same
+// typeEff-first fallback as isCre/isLand above so a future type-changing
+// effect that adds "Legendary" would be picked up immediately -- no such
+// effect exists in this pool yet. Backs checkLegendRule's CR 704.5j SBA
+// below; no card in cards.js sets this yet (infra-only, see CURRENT_SPRINT.md).
+export const isLegendary = c => !!(c?.typeEff ?? c?.type)?.includes("Legendary");
 // Maps a source card object to the coarse sourceType bucket used by hurt()'s
 // meta param (damageBySourceType tracking, damage shields, CoP-style effects).
 export function inferSourceType(card) {
@@ -142,7 +149,7 @@ for (let i = 0; i < count; i++) {
   const inst = { ...token, enterTs: ts, sourceIid: sourceIid ?? undefined };
   ns = { ...ns, layerClock: ts, [controller]: { ...ns[controller], bf: [...ns[controller].bf, inst] } };
 }
-return recomputeTypeEffects(ns);
+return checkLegendRule(recomputeTypeEffects(ns));
 }
 
 // --- MANA SYSTEM --------------------------------------------------------------
@@ -957,6 +964,12 @@ while (changed) {
   }
 }
 ns = checkControlGrants(ns);
+// CR 704.5j (legend rule): checked here so every one of checkDeath's ~15+
+// manual call sites gets it for free, same as checkControlGrants immediately
+// above -- both are "battlefield composition may have just changed" follow-up
+// checks that piggyback on checkDeath's own centralization rather than adding
+// a fresh manual call at each site individually.
+ns = checkLegendRule(ns);
 return ns;
 }
 
@@ -1000,6 +1013,66 @@ function checkControlGrants(state) {
     }
   }
   return ns;
+}
+
+// Builds a human-readable disambiguation label for a legendRuleChoice option.
+// Every option in the group shares the same card.name (that's what triggered
+// the rule), so the label has to surface whatever instance-specific state
+// actually differs. enterTs is NOT reliably populated -- RESOLVE_STACK's
+// default ETB push (the most common entry path, e.g. two normally-cast
+// Legendary creatures) never sets it, only zMove's tz:'bf' branch and a
+// handful of direct-placement effects do -- so it's tried but not relied on.
+// Falls back to a plain ordinal when nothing on the card distinguishes it.
+function legendRuleOptionLabel(c, index) {
+  const parts = [];
+  if (typeof c.enterTs === 'number') parts.push(`entered #${c.enterTs}`);
+  if (c.damage > 0) parts.push(`${c.damage} damage marked`);
+  const counterParts = Object.entries(c.counters || {}).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`);
+  if (counterParts.length) parts.push(counterParts.join(', '));
+  if (c.tapped) parts.push('tapped');
+  return parts.length ? `${c.name} (${parts.join(', ')})` : `${c.name} (Copy ${index + 1})`;
+}
+
+// checkLegendRule: CR 704.5j state-based action. "If a player controls two or
+// more legendary permanents with the same name, that player chooses one of
+// them, and the rest are put into their owners' graveyards." Checked
+// independently per player -- two different players each controlling a
+// same-named legendary permanent is legal and must not trigger anything.
+// Unlike checkDeath, the loser(s) here aren't picked automatically: CR
+// 704.5j hands the choice to the controller, so this creates a pendingChoice
+// (kind: 'legendRuleChoice') via the same createPendingChoice() factory used
+// by Blaze of Glory/Primal Clay/color choices, and RESOLVE_CHOICE performs
+// the actual graveyard move once an option is picked (see that case below).
+// ASSUMPTION B (collision degradation, same convention as Library of Leng's
+// discardToLibraryChoice above): pendingChoice is a single slot. If it's
+// already occupied, skip creating a new one for now -- the next SBA-
+// triggering event that calls checkLegendRule will re-detect the violation
+// once the slot frees up. If both players have a violation at once, only the
+// first found (p, then o) gets a pendingChoice here; RESOLVE_CHOICE's
+// 'legendRuleChoice' branch re-invokes checkLegendRule after resolving so the
+// second violation is re-detected and queued next, matching checkDeath's own
+// while(changed)-until-clean shape.
+export function checkLegendRule(state) {
+  if (state.pendingChoice) return state;
+  for (const w of ["p", "o"]) {
+    const legendaries = state[w].bf.filter(isLegendary);
+    const byName = new Map();
+    for (const c of legendaries) {
+      if (!byName.has(c.name)) byName.set(c.name, []);
+      byName.get(c.name).push(c);
+    }
+    for (const [name, group] of byName) {
+      if (group.length < 2) continue;
+      return createPendingChoice(state, {
+        sourceCardId: group[0].iid,
+        controller: w,
+        kind: 'legendRuleChoice',
+        legendName: name,
+        options: group.map((c, i) => ({ id: c.iid, label: legendRuleOptionLabel(c, i) })),
+      });
+    }
+  }
+  return state;
 }
 
 export function burnMana(s, who, ruleset) {
@@ -5634,6 +5707,10 @@ for (const w of ["p","o"]) {
     const onBf = { ...card, controller: w, tapped: false, summoningSick: !hasKw(card, KEYWORDS.HASTE.id), attacking: false, blocking: null, damage: 0, counters: {}, enterTs: ts };
     ns = { ...ns, layerClock: ts, [w]: { ...ns[w], gy: ns[w].gy.filter((_, i) => i !== idx), bf: [...ns[w].bf, onBf] } };
     ns = dlog(ns, "Nether Shadow returns to the battlefield.", "effect");
+    // CR 704.5j: this ETB doesn't route through zMove or RESOLVE_STACK (it
+    // places the card straight from gy to bf inline, upkeep-only), so it's
+    // not covered by either of those centralized checks -- thread explicitly.
+    ns = checkLegendRule(ns);
   }
 }
 if (ns.fogActive) ns = { ...ns, fogActive: false };
@@ -6151,7 +6228,12 @@ function tawnosCoffinReturn(state, sourceCard, opts = {}) {
       ) } };
     }
   }
-  return ns;
+  // CR 704.5j: single insertion point covering all 3 call sites that share
+  // this helper (UNTAP-phase untap detection, the 'tawnosCoffinReturn' and
+  // 'oubliettePhaseIn' resolveTriggeredEffect cases below) -- the returned/
+  // phased-in creature (and any returned Kudzu-style aura) could collide with
+  // a same-named legendary permanent played while it was away.
+  return checkLegendRule(ns);
 }
 
 function resolveTriggeredEffect(state, sourceCard, effect, payload) {
@@ -6239,7 +6321,10 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
       let s = { ...state, [origCtrl]: { ...state[origCtrl], bf: state[origCtrl].bf.filter(c => c.iid !== sourceCard.iid) } };
       const stolen = { ...current, controller: winner, summoningSick: true, tapped: false, attacking: false, blocking: null };
       s = { ...s, [winner]: { ...s[winner], bf: [...s[winner].bf, stolen] } };
-      return dlog(s, `${sourceCard.name}: control changes to ${winner} (most life).`, 'effect');
+      s = dlog(s, `${sourceCard.name}: control changes to ${winner} (most life).`, 'effect');
+      // CR 704.5j: this control-change is triggered-ability-driven, not routed
+      // through RESOLVE_STACK's post-resolveEff check -- thread explicitly.
+      return checkLegendRule(s);
     }
     // Onulet: gains its controller a fixed amount of life on death.
     // Adapted from Card-Forge/forge (o/onulet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
@@ -7373,6 +7458,7 @@ case "PLAY_LAND": {
     s = dlog(s, `Fastbond: ${w} takes 1 damage for playing an extra land.`, "damage");
   }
   s = recomputeTypeEffects(s);
+  s = checkLegendRule(s);
   return dlog(s, `${w} plays ${c.name}.`, "play");
 }
 
@@ -7627,6 +7713,15 @@ case "RESOLVE_STACK": {
   // Presence, via resolveEff's enchantLand case above) -- recompute for the
   // whole battlefield now that it's live.
   s = recomputeTypeEffects(s);
+  // CR 704.5j: single insertion point for every resolveEff() case that can
+  // place or change control of a permanent (normal ETB above, plus
+  // stealCreature/copyPermanentCharacteristics/vesuvanEtbCopy/aladdinsSteal/
+  // oldManSteal/enchantLand/enchantArtifact/oubliettePhaseOut/moldDemonETB/
+  // shapeshifterETB/jihadETB/lichETB/reanimate/reanimateOwn/controlCreature/
+  // fetchBasicToBf inside resolveEff -- every one of those is only ever
+  // reached via this case, so checking once here after recomputeTypeEffects
+  // covers all of them without threading each individually).
+  s = checkLegendRule(s);
   return s;
 }
 
@@ -8685,7 +8780,9 @@ case "CHOOSE_TUTOR_TRANSMUTE": {
     };
     ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
     ns = dlog(ns, `${chosen.name} enters the battlefield (no additional payment required).`, 'effect');
-    return ns;
+    // CR 704.5j: Transmute Artifact's direct tutor-to-bf push isn't routed
+    // through zMove or RESOLVE_STACK -- thread explicitly.
+    return checkLegendRule(ns);
   }
 
   ns = {
@@ -8734,7 +8831,9 @@ case "CONFIRM_TRANSMUTE_PAY": {
     manaTapSnapshot: null,
   };
   ns = dlog(ns, `${tutored.name} enters the battlefield. (${required} mana paid.)`, 'effect');
-  return ns;
+  // CR 704.5j: same direct tutor-to-bf push as CHOOSE_TUTOR_TRANSMUTE's
+  // diff<=0 branch above, just on the paid-the-difference path.
+  return checkLegendRule(ns);
 }
 
 case "DECLINE_TRANSMUTE_PAY": {
@@ -8840,12 +8939,17 @@ case "RESOLVE_CHOICE": {
     const ns = { ...s, pendingChoice: null };
     const mode = choice.options.find(m => m.id === action.optionId);
     if (!mode) return ns;
-    return resolveEff(ns, {
+    const resolved = resolveEff(ns, {
       card: { ...choice.card, effect: mode.effect },
       caster: choice.controller,
       targets: choice.tgt ? [choice.tgt] : [],
       xVal: choice.xVal,
     });
+    // CR 704.5j: this re-enters resolveEff() directly (not via RESOLVE_STACK,
+    // so its blanket post-resolveEff check doesn't cover this path) -- the
+    // chosen mode could in principle be one of resolveEff's bf-affecting
+    // cases (reanimate, controlCreature, ...), so thread explicitly.
+    return checkLegendRule(resolved);
   }
 
   // Phantasmal Terrain: "As this Aura enters, choose a basic land type.
@@ -8943,6 +9047,29 @@ case "RESOLVE_CHOICE": {
       ns = { ...ns, pendingChoice: null };
     }
     return ns;
+  }
+
+  // CR 704.5j (legend rule): the chosen permanent (action.optionId) stays;
+  // every other permanent this controller has sharing choice.legendName goes
+  // to its owner's graveyard. A legend-rule loss is a graveyard move, not a
+  // destroy (CR 704.5j says "put into their owners' graveyards"), so this
+  // uses zMove directly rather than checkDeath's destroy-and-log path.
+  if (choice.kind === 'legendRuleChoice') {
+    const controller = choice.controller;
+    const rivals = s[controller].bf.filter(c => c.name === choice.legendName && c.iid !== action.optionId);
+    let ns = { ...s, pendingChoice: null };
+    for (const c of rivals) {
+      ns = zMove(ns, c.iid, controller, controller, 'gy');
+    }
+    const kept = getBF(ns, action.optionId);
+    ns = dlog(ns, rivals.length
+      ? `Legend rule: ${controller} keeps ${kept?.name ?? choice.legendName} -- ${rivals.length} other cop${rivals.length === 1 ? 'y' : 'ies'} of ${choice.legendName} put into the graveyard.`
+      : `Legend rule: ${controller} keeps ${kept?.name ?? choice.legendName}.`, 'effect');
+    // Re-check: pendingChoice is now free, so if the OTHER player independently
+    // has their own same-name violation (simultaneous, e.g. both players cast
+    // the same legendary in quick succession), it gets queued here instead of
+    // waiting for some unrelated later SBA-triggering event to find it.
+    return checkLegendRule(ns);
   }
 
   // Default / 'triggered_ability_choice': resolve back through the triggered

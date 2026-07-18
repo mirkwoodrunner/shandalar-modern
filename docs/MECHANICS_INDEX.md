@@ -4768,4 +4768,29 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.36
+## Legend Rule Infrastructure (CR 704.5j) -- 2026-07-18
+
+**Infrastructure only -- unlocks 0 cards by itself.** No `cards.js` entry sets the `Legendary` supertype yet. Builds the state-based action that enforces "a player can't control two or more legendary permanents with the same name," same shape as how the Layer system (`docs/SYSTEMS.md` Section 18) shipped before the cards that needed it were batched in. The 61 Legends-set creatures this unlocks are a separate future batch -- see the A9 audit in `docs/ROADMAP.md`.
+
+**`isLegendary(c)`** (`DuelCore.js`) -- mirrors `isCre`/`isLand` exactly: same `typeEff ?? type` fallback, checks for the `"Legendary"` supertype prefix (CR 205.4a).
+
+**`checkLegendRule(state)`** (exported, `DuelCore.js`) -- groups each player's own battlefield by `isLegendary` permanents keyed by exact name; a group of 2+ under one controller creates a `pendingChoice` (`kind: 'legendRuleChoice'`) via the existing `createPendingChoice()` factory. Two different players controlling a same-named legendary is legal and never triggers anything. Threaded manually at every site that can change battlefield composition or control, matching `checkDeath`'s own ~15-site manual-call convention (not a single centralized wrapper): `RESOLVE_STACK`'s post-`resolveEff` tail (covers casting, control-change effects like `stealCreature`/`controlCreature`/`aladdinsSteal`/`oldManSteal`, and copy effects like `copyPermanentCharacteristics`/`vesuvanEtbCopy` in one shot, since all of those only run via that one case), `PLAY_LAND`, `createToken`, `checkDeath`'s `checkControlGrants` tail (covers `revertControlGrant`), `tawnosCoffinReturn`'s shared helper, Nether Shadow's graveyard-recursion return, Ghazbán Ogre's `controlToHighestLife`, the `modalChoice` `RESOLVE_CHOICE` re-entry into `resolveEff`, and Transmute Artifact's direct tutor-to-bf placement.
+
+**`RESOLVE_CHOICE`'s `'legendRuleChoice'` branch** -- keeps the chosen permanent (`action.optionId`); every other same-named copy that controller has goes to its owner's graveyard via `zMove` directly (a legend-rule loss is a graveyard move per CR 704.5j, not a destroy -- does not route through `checkDeath`'s destroy-and-log path). Re-invokes `checkLegendRule` after resolving so a simultaneous second violation (the other player independently duplicating a different legendary name) gets queued immediately. Single-slot `pendingChoice` collision convention matches Library of Leng's `discardToLibraryChoice`.
+
+**AI:** `chooseLegendRuleKeep(choice, state)` (`AI.js`) -- deterministic policy function (no `Math.random()`), keeps whichever copy has more invested value (counters, attached Auras, damage-adjusted toughness), falling back to the first option. Dispatched from `useDuelController.ts`'s `pendingChoice` `useEffect`, same branch shape as `bandAttackerDamageOrder`/`discardToLibraryChoice`.
+
+**UI:** none needed -- `ChoiceModal.tsx` already renders any `{id,label}[]` options array generically.
+
+**Tests:**
+- Vitest: `tests/scenarios/legend-rule-infrastructure.test.js` (10: LEGEND-01 through LEGEND-10, covering triggering/non-triggering scenarios, RESOLVE_CHOICE resolution, AI determinism, and the casting/land/control-change threading paths).
+- Playwright: `tests/e2e/legend-rule.spec.js` (6: LEGEND-E01 through LEGEND-E06, mirroring the core Vitest scenarios plus the AI auto-resolving its own `legendRuleChoice` via the full sandbox harness with no modal shown to the human).
+
+See `docs/ENGINE_CONTRACT_SPEC.md` Section 7.14 and `docs/SYSTEMS.md` Section 30.
+
+### Status
+COMPLETE (infrastructure only -- 0 cards unlocked; see A9 audit in `docs/ROADMAP.md`)
+
+---
+
+# End of MECHANICS INDEX v1.37
