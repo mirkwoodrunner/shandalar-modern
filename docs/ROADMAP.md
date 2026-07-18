@@ -6,28 +6,34 @@ _Last updated: 2026-06-25. This document changes at milestone boundaries, not pe
 
 ## Where the project stands
 
-The engine is mature: the layer system (`layers.js`) implements CR 613 continuous-effect ordering, `DuelCore.js` is the sole state mutator, combat, persistence, and the cast/activate flow are complete. The roguelike loop is built, not stubbed — `useOverworldController.js` already has quests, deliveries, dungeon traversal, world magic, and town conquest. The `gdd.md` Phases 1–7 are marked complete.
+The engine is mature: the layer system (`layers.js`) implements CR 613 continuous-effect ordering, `DuelCore.js` is the sole state mutator, combat, persistence, and the cast/activate flow are complete. The roguelike loop is built, not stubbed — `useOverworldController.js` already has quests, deliveries, dungeon traversal, world magic, and town conquest. The `gdd.md` Phases 1–7 are marked complete. `gdd.md` Phase 8 (stub elimination) is also now complete — see below.
 
-The remaining work is concentrated in **card content**, not architecture. Primary pool (`src/data/cards.js`): 617 cards, 245 stubbed (~60% implemented). Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented.
+**Update (2026-07-17):** the placeholder-stub backlog inside `src/data/cards.js` is fully cleared — every entry that exists in the file has a real effect implementation, zero `effect:"STUB"` remain (was 245, see the historical framing below). This closed the A1–A8 batch work as originally scoped. That is a narrower milestone than "the Alpha/Beta pool is complete," though: reconciling `cards.js` (616 entries) against the curated target list (`scryfall/Shandalar Cardpool.txt`, 901 names — the authoritative source; do not use `scryfall/shandalar-card-pool.json`, which has an unrelated contamination bug in its generation script, `scryfall/process-card-pool.js`) by normalized card name shows **299 cards have no entry at all in `cards.js`** — never stubbed, just absent (e.g. Mana Drain, Maze of Ith, Karakas, Nicol Bolas, Word of Command, The Tabernacle at Pendrell Vale, Worms of the Earth). This gap was never tracked by the stub-count metric quoted below, since that metric only counted placeholder rows that already existed. A fresh audit categorizing these 299 by mechanic/family — the same way the heat map below did for the old stub backlog — is needed before Milestone A can be called done.
 
-Stub heat map (primary pool, mechanics overlap so counts aren't mutually exclusive): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.
+Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
-Because the project follows an event/listener architecture, the right unit of planning is the **shared subsystem**, not the individual card — one listener often unlocks a dozen stubs at once.
+Stub heat map (historical — described the now-cleared 245-stub backlog specifically, not the 299-card entirely-missing gap): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.
+
+Because the project follows an event/listener architecture, the right unit of planning is the **shared subsystem**, not the individual card — one listener often unlocks a dozen stubs at once. That principle still applies to the 299-card gap; it just hasn't been re-run against it yet.
 
 ## Milestone A — Complete the Alpha/Beta card pool
 
 The spine of the roadmap. Each batch is Scryfall-verified before any handler is written, per `CLAUDE.md`. Sequenced by shared machinery, not card rarity. See `gdd.md` §3.2.5 (Effect Resolver), §3.2.6 (Keyword Registry), and §3.3 (Card Database) for the existing implementation this milestone extends.
 
-- **A1. Finish the layer system.** `layers.js` implements layers 4–7 (type, color, ability, P/T). Layers 1–3 (copy, control, text change) are explicit stubs that pass input through unchanged. Blocks Copy Artifact, Sleight of Mind, Magical Hack. Touches the characteristic-computation core — requires the engine-edit override phrase. High risk, foundational, do first.
-- **A2. Damage prevention / replacement effects.** One reusable "next time a source would deal damage" listener covers the six Circles of Protection, Reverse Damage, Forcefield, Conservator, Guardian Angel, Jade Monolith (~11–17 cards). Medium risk: modeling replacement effects cleanly under the event system rather than as special cases.
-- **A3. Upkeep-trigger enchantments.** Largest single family (~32). Stasis, Gloom, Conversion, Farmstead, Power Leak, Feedback, and "sacrifice unless you pay" cards. Needs a robust upkeep-trigger + optional-cost listener.
-- **A4. Cast-triggered optional abilities.** Sphere lifegain cycle (Crystal Rod, Iron Star, Ivory Cup, Wooden Sphere). Establishes a spell-cast trigger with an optional pay that other cards reuse. Low risk — good early-cadence batch.
-- **A5. Untap/tap manipulation.** ~20 cards, overlaps with Stasis-style effects (Icy/Winter pattern). Some depend on skip-step and "doesn't untap" hooks.
-- **A6. Pump / combat tricks.** ~30 cards, many auras or end-of-turn buffs that may already be partially supported by the existing layer 7c / eotBuff path — verify what's truly stubbed vs. partially wired before scoping.
-- **A7. Ante cards.** ~27, gated by the ante toggle and "remove from deck if not playing for ante" rule (Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird).
-- **A8. Walls, landwalk, remaining one-offs.** Cleaned up last, once shared machinery from A1–A7 exists.
+**Status note (2026-07-17):** A1–A8 below, as originally scoped against the 245-card stub backlog, are all complete (stub count: 0 as of 2026-07-16, see `gdd.md` Phase 8). Note that A7's four named ante cards (Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird) turned out to have never been entered into `cards.js` at all — they were absent, not stubbed, so "A7 complete" here means the *stub* backlog under that heading is empty, not that those four specific cards exist. They're part of A9 below. Kept below for historical batch-shape reference; **A9 is the actual open work now.**
 
-Estimated 6–8 sprints, front-loaded by A1 and A2.
+- ~~**A1. Finish the layer system.**~~ **DONE.** Layers 1–3 (copy, control, text change) implemented; Copy Artifact, Sleight of Mind, Magical Hack unblocked.
+- ~~**A2. Damage prevention / replacement effects.**~~ **DONE.** Circles of Protection, Forcefield, Jade Monolith, etc. implemented.
+- ~~**A3. Upkeep-trigger enchantments.**~~ **DONE.** Stasis and the upkeep-trigger family implemented.
+- ~~**A4. Cast-triggered optional abilities.**~~ **DONE.** Sphere lifegain cycle implemented.
+- ~~**A5. Untap/tap manipulation.**~~ **DONE.** Tap-centralization choke point (`tapPermanent()`) shipped, unlocked the Icy/Winter-pattern family.
+- ~~**A6. Pump / combat tricks.**~~ **DONE.**
+- ~~**A7. Ante cards.**~~ Stub backlog under this heading is empty. The four cards explicitly named here (Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird) are absent from `cards.js` entirely — see A9.
+- ~~**A8. Walls, landwalk, remaining one-offs.**~~ **DONE.**
+
+- **A9. Close the entirely-missing-card gap (NEW, 2026-07-17).** 299 cards from the curated target list (`scryfall/Shandalar Cardpool.txt`) have no `cards.js` entry at all — not stubbed, absent. This was never covered by A1–A8, which only tracked cards that already had a placeholder row. Needs its own fresh audit and heat map (by mechanic/family, same approach as the original stub heat map) before batching. Until that audit exists, treat this as unscoped — do not assume it's the same size or shape as the old 245-stub backlog.
+
+A1–A8 took roughly the originally-estimated 6–8 sprints. A9 is not yet estimated pending the fresh audit.
 
 ## Milestone B — Determinism backbone
 
@@ -96,12 +102,20 @@ Construction is done; this is feel and balance. Reward/difficulty curves vs. dis
 
 ## Suggested sequencing
 
-1. Seeded-RNG design spike + A4 (sphere cycle) as a low-risk cadence-starter while the spike is reviewed.
-2. Implement seeded RNG + overworld seed hook, then A1 (layer completion).
-3. A2 (damage prevention), A3 (upkeep triggers), A5 (untap) — overworld seed hook now unblocks their E2E.
-4. A6 (pumps), A8 (one-offs), Milestone C defender-block fix.
-5. A7 (ante), Milestone D loop polish.
-6. Premodern go/no-go.
+**Status note (2026-07-17):** steps 1–5 below describe the original A1–A8 sequencing plan.
+In practice, A1–A8 were completed first (2026-06-25 through 2026-07-16) without the seeded-RNG
+prerequisite step being done first, which the plan had explicitly flagged as a risk. That risk
+didn't materialize into a known regression, but Milestone B (seeded RNG) is still fully open —
+see below. Kept for historical reference; the real next-step decision is B vs. C vs. D vs. A9
+(the entirely-missing-card gap), not this list.
+
+1. ~~Seeded-RNG design spike + A4 (sphere cycle) as a low-risk cadence-starter while the spike is reviewed.~~
+2. ~~Implement seeded RNG + overworld seed hook, then A1 (layer completion).~~ (Seeded RNG was not done; A1 was.)
+3. ~~A2 (damage prevention), A3 (upkeep triggers), A5 (untap)~~ — all done.
+4. ~~A6 (pumps), A8 (one-offs)~~ — done. Milestone C defender-block fix — still open.
+5. A7 (ante) — stub backlog empty, but see A9. Milestone D loop polish — still open.
+6. Premodern go/no-go — audit done (see Milestone E), decision still open.
+7. **A9 (entirely-missing-card gap)** — newly discovered 2026-07-17, not yet sequenced against B/C/D.
 
 ## Graduation rule
 

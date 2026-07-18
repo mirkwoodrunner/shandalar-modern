@@ -1045,6 +1045,24 @@ feature set, identified via source code and gameplay documentation audit.
 
 ---
 
+### Phase 8 — Stub Elimination ✅ Complete (cards.js placeholder backlog)
+
+**Goal:** Close every `effect:"STUB"` placeholder entry that existed in `src/data/cards.js`.
+
+**Status:** Complete as of 2026-07-16. Stub count went from 245 (2026-05-08 baseline) to 0,
+across many batched sessions (see `docs/CURRENT_SPRINT.md`'s "Completed" log for the full
+per-card, per-batch history — layer system completion, damage-prevention/replacement
+infrastructure, upkeep-trigger family, tap/untap centralization, banding, the draw-replacement
+core, and the final two cards, Ring of Ma'rûf and Blaze of Glory).
+
+**Scope note (important):** this phase closed the *placeholder-stub* backlog only — cards
+that already had a row in `cards.js` with no real effect. It did **not** address cards with
+no row at all. A live audit on 2026-07-17 found 299 cards from the curated target list
+(`scryfall/Shandalar Cardpool.txt`) entirely absent from `cards.js`. That is separate,
+still-open work — see `docs/ROADMAP.md`, "Where the project stands," and Section 12 above.
+
+---
+
 ## 9. Design Decisions — Resolved
 
 | Question | Decision | Rationale |
@@ -1181,12 +1199,22 @@ Cards implemented with approximation — spirit preserved, complex edge cases dr
 
 ---
 
-### Tier 3 — Stub (in DB, text displayed, no mechanical effect)
+### Tier 3 — Historical (formerly stub, now implemented)
 
-Cards that are too complex, situational, or format-warping for this build.
-They appear in shops, booster packs, and binders but resolve as "no effect."
+**Update (2026-07-17):** every card previously listed in this tier — Stasis, Time Vault,
+Lich, Personal Incarnation, Bronze Tablet, Ring of Ma'rûf, Timetwister, Library of
+Alexandria, Moat, Island Sanctuary, Ivory Tower, Forcefield, Gauntlet of Might, Mana Crypt,
+Cyclopean Tomb, Gate to Phyrexia, Leviathan — now has a real mechanical implementation in
+`cards.js`. Zero `effect:"STUB"` entries remain in the file as of this update. See
+`docs/MECHANICS_INDEX.md` and `docs/CURRENT_SPRINT.md`'s completed-work log for individual
+card writeups.
 
-Stasis, Time Vault, Chaos Orb, Shahrazad, Contract from Below, Darkpact, Demonic Attorney, Lich, Personal Incarnation, Bronze Tablet, Jeweled Bird, Ring of Ma'rûf, Rebirth, Timetwister (simplified to Wheel of Fortune clone), Library of Alexandria (stub — too powerful as written), Moat (stub — prevents non-flyers attacking), Island Sanctuary, Ivory Tower, Forcefield, Gauntlet of Might, Mana Crypt (T: add CC, take 1 damage — similar to Mana Vault), Cyclopean Tomb, Gate to Phyrexia, Leviathan, Worms of the Earth
+Four names previously listed here (Darkpact, Demonic Attorney, Jeweled Bird, Rebirth) were
+never actually in `cards.js` at all — the old list was wrong, not merely outdated. `Chaos
+Orb`, `Shahrazad`, and `Contract from Below` were listed here *and* correctly in Tier 4
+below; removed from here since Tier 4 already covers them. `Worms of the Earth` was also
+listed here but has no entry in `cards.js`. These are now tracked as part of the 299-card
+entirely-missing gap — see `docs/ROADMAP.md`, "Where the project stands."
 
 ---
 
@@ -1204,8 +1232,8 @@ Nalathni Dragon (promo), all Kobold tokens (Crimson/Crookshank Kobolds — 0-man
 |---------|-------------|-------|
 | Session 1 | GDD update + Tier 1 batch 1 (~100 new cards) | Creatures, burn, removal, walls, Arabian Nights | ✅ Complete |
 | Session 2 | Tier 1 batch 2 (~80 more cards) + all effect handlers + 10 archetypes + upkeep system | Enchantments, artifacts, upkeep, Arabian Nights | ✅ Complete |
-| Session 3 | Tier 2 simplified + Tier 3 stubs + Phase 5 polish | Remaining complex cards |
-| Future | Tier 3 stubs + Phase 5 polish | Complete the pool |
+| Session 3 | Tier 2 simplified + Tier 3 stubs + Phase 5 polish | Remaining complex cards | ✅ Complete (Tier 3 stub-elimination finished 2026-07-16; see Phase 8 below) |
+| Future | Close the 299-card entirely-missing gap (see `docs/ROADMAP.md`) | Distinct from Tier 3 stub work — these cards have no `cards.js` entry at all, not just an inert one |
 
 ---
 
@@ -1215,31 +1243,37 @@ Nalathni Dragon (promo), all Kobold tokens (Crimson/Crookshank Kobolds — 0-man
 
 ## 12. Card Stub Audit (Auto-Generated)
 
-> Last generated: 2026-05-08T01:20:48.352Z
-> Source: `docs/audit/gap-report.txt`, `docs/audit/stub-status.txt`
-> Re-run: execute the four node scripts in `card-stub-audit.md` prompt file.
+> Last generated: 2026-07-17 (manual live audit, superseding the stale 2026-05-08 run below)
+> Source: direct comparison of `scryfall/Shandalar Cardpool.txt` (901 names, the curated
+> authoritative target list) against `src/data/cards.js` (616 top-level entries), by
+> normalized card name.
+> Caveat: do not use `scryfall/shandalar-card-pool.json` for this comparison — it is
+> currently contaminated by a face-matching bug in `scryfall/process-card-pool.js` that
+> pulls in unrelated modern double-faced cards. Flagged for a future standalone fix.
 
 ### Audit Summary
 
 ```
-Shandalar Card Stub Audit
-=========================
-Generated: 2026-05-08T01:20:02.828Z
+Shandalar Card Audit — 2026-07-17
+==================================
 
 SUMMARY
 -------
-Pool card count:           901
-cards.js entry count:      616
-Present in both:           573
-Missing from cards.js:     328
-In cards.js but not pool:  43
+Curated target list (Shandalar Cardpool.txt):  901
+cards.js entry count:                          616
+effect:"STUB" entries in cards.js:              0    (was 245 as of the 2026-05-08 audit — fully cleared 2026-07-16)
+Cards entirely missing from cards.js:           299  (never stubbed, no entry at all)
 ```
 
 ### Action Items
 
-- Cards missing from `cards.js` entirely → need at minimum a stub entry (`effect:"stub"`)
-- Cards in `cards.js` with `effect:"stub"` → need tier assignment in §11 and eventual implementation
-- Orphan IDs in `cards.js` not matching pool → verify slug mismatch or intentional exclusion
-- See `docs/audit/gap-report.txt` for full missing/present/orphan lists
-- See `docs/audit/stub-status.txt` for per-card effect status
+- **This is the real remaining scope of Milestone A.** 299 cards from the curated target
+  list have no `cards.js` entry of any kind. This is a different, larger problem than the
+  old stub backlog, which only tracked placeholder rows that already existed.
+- A fresh categorization of the 299 by mechanic/family (the same way the original stub heat
+  map in `docs/ROADMAP.md` worked) has not been done yet. Do this before batching
+  implementation work, so shared-subsystem leverage isn't lost the way it was found for the
+  A1–A8 stub batches.
+- Fix `scryfall/process-card-pool.js`'s face-matching contamination separately (not blocking,
+  low priority — only affects the generated JSON, not this audit).
 
