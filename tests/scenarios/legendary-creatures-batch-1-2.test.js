@@ -35,18 +35,30 @@ const VANILLA = [
   { id: 'torsten_von_ursus', name: 'Torsten Von Ursus', subtype: 'Human Soldier', cost: '3GGW', cmc: 6, power: 5, toughness: 5 },
 ];
 
+function expectVanillaStats(spec) {
+  const inst = makeCardInstance(spec.id, 'p');
+  expect(inst).not.toBeNull();
+  expect(inst.name).toBe(spec.name);
+  expect(inst.type).toBe('Legendary Creature');
+  expect(inst.subtype).toBe(spec.subtype);
+  expect(inst.cost).toBe(spec.cost);
+  expect(inst.cmc).toBe(spec.cmc);
+  expect(inst.power).toBe(spec.power);
+  expect(inst.toughness).toBe(spec.toughness);
+}
+
 describe('@engine Scenario: legendary-creatures-batch-1-2 -- vanilla creatures', () => {
-  it.each(VANILLA)('$name ($id) has correct type/subtype/cost/cmc/power/toughness', (spec) => {
-    const inst = makeCardInstance(spec.id, 'p');
-    expect(inst).not.toBeNull();
-    expect(inst.name).toBe(spec.name);
-    expect(inst.type).toBe('Legendary Creature');
-    expect(inst.subtype).toBe(spec.subtype);
-    expect(inst.cost).toBe(spec.cost);
-    expect(inst.cmc).toBe(spec.cmc);
-    expect(inst.power).toBe(spec.power);
-    expect(inst.toughness).toBe(spec.toughness);
-  });
+  it('Jedit Ojanen has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[0]); });
+  it('Tobias Andrion has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[1]); });
+  it('Barktooth Warbeard has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[2]); });
+  it('Lady Orca has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[3]); });
+  it('The Lady of the Mountain has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[4]); });
+  it('Sivitri Scarzam has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[5]); });
+  it('Kasimir the Lone Wolf has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[6]); });
+  it('Sir Shandlar of Eberyn has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[7]); });
+  it('Jasmine Boreal has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[8]); });
+  it('Jerrard of the Closed Fist has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[9]); });
+  it('Torsten Von Ursus has correct type/subtype/cost/cmc/power/toughness', () => { expectVanillaStats(VANILLA[10]); });
 
   it('none of the 11 vanilla creatures carry a leftover effect or activated field', () => {
     for (const spec of VANILLA) {
