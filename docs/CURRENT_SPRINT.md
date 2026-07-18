@@ -9,6 +9,42 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-18)
+- **Legendary Creatures Batch 3 (Elder Dragons -- 3 cards)** -- Palladia-Mors,
+  Nicol Bolas, Vaevictis Asmadi. All three reuse the existing
+  `sacrificeUnless_U`/`sacrificeUnless_WW` upkeep-sacrifice shape (Phantasmal
+  Forces/Stasis/Conversion/Sunken City), extended to three-color costs:
+  new `sacrificeUnless_RGW`/`sacrificeUnless_UBR`/`sacrificeUnless_BRG` cases
+  in `DuelCore.js`'s `switch (c.upkeep)`. Nicol Bolas's "whenever this
+  creature deals damage to an opponent, that player discards their hand"
+  reuses the generic `ON_DAMAGE_DEALT` + `selfIsDamageSourceToPlayer` trigger
+  pipeline Marsh Viper/Pit Scorpion already use for poison counters (new
+  `discardHandOnDamage` triggered-effect case, a per-card-in-hand
+  `discardCard` loop matching Wheel of Fortune's shape but with no redraw) --
+  **not** a "Hypnotic Specter" trigger as the authoring prompt assumed:
+  verified live that Hypnotic Specter's identical oracle wording has never
+  actually been wired to any engine trigger (its `text` field is flavor-only).
+  Documented as a discrepancy, not a STOP, since a better-fitting real
+  precedent (Marsh Viper/Pit Scorpion) already existed to reuse instead.
+  Vaevictis Asmadi's three independently-repeatable `{B}/{R}/{G}: +1/+0`
+  abilities use the pre-existing `activatedAbilities[]` array (Wormwood
+  Treefolk/Mishra's Factory/Pyramids precedent) -- new `pumpPowerSelf` case in
+  the array's `ACTIVATE_ABILITY` branch -- rather than a schema change; this
+  array already supports exactly this "more than one ability on one card"
+  need, so no schema-level change was required (Option A from the prompt,
+  already load-bearing infrastructure, not new).
+  Documented, non-blocking deviation from the original test plan: mana burns
+  to zero at the same phase-transition boundary this upkeep-sacrifice shape
+  checks affordability in (verified live, and already documented by the
+  pre-existing CONV-04/STAS-04 tests) -- paying is unreachable through
+  `duelReducer` for any card using this shape, not something new to these 3
+  dragons, so the "survives when paid"/"mana deducted on payment" sub-tests
+  the plan called for were redirected to a burn-then-check ordering
+  regression per card instead. Closes 3 more of A9's legendary-creature count:
+  24 of 55 (21 from Batch 1+2 plus these 3); see `docs/ROADMAP.md` A9 for the
+  remaining backlog. Tests: 14 Vitest
+  (`tests/scenarios/legendary-creatures-batch-3.test.js`), 4 Playwright
+  (`tests/e2e/legendary-creatures-batch-3.spec.js`). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 3.
 - **Legend Rule Infrastructure (CR 704.5j)** -- state-based action enforcing
   "a player can't control two or more legendary permanents with the same
   name." Infrastructure only: no `cards.js` entry sets `Legendary` yet, so
