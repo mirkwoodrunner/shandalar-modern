@@ -5371,6 +5371,27 @@ if ((mp.W || 0) >= 2) { mp.W -= 2; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; 
 else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
 break;
 }
+// Palladia-Mors: "sacrifice this creature unless you pay {R}{G}{W}."
+case "sacrificeUnless_RGW": {
+const mp = { ...ns[w].mana };
+if ((mp.R || 0) >= 1 && (mp.G || 0) >= 1 && (mp.W || 0) >= 1) { mp.R--; mp.G--; mp.W--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Nicol Bolas: "sacrifice this creature unless you pay {U}{B}{R}."
+case "sacrificeUnless_UBR": {
+const mp = { ...ns[w].mana };
+if ((mp.U || 0) >= 1 && (mp.B || 0) >= 1 && (mp.R || 0) >= 1) { mp.U--; mp.B--; mp.R--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Vaevictis Asmadi: "sacrifice this creature unless you pay {B}{R}{G}."
+case "sacrificeUnless_BRG": {
+const mp = { ...ns[w].mana };
+if ((mp.B || 0) >= 1 && (mp.R || 0) >= 1 && (mp.G || 0) >= 1) { mp.B--; mp.R--; mp.G--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
 case "blackVise": {
 const opp2 = w === "p" ? "o" : "p";
 if (ns.active !== opp2) break;
@@ -6626,6 +6647,18 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
         `${sourceCard.name} gives ${target} ${amount} poison counter(s).`,
         'effect'
       );
+    }
+    // Nicol Bolas: "Whenever this creature deals damage to an opponent, that
+    // player discards their hand." Same ON_DAMAGE_DEALT + selfIsDamageSourceToPlayer
+    // generic trigger pipeline as Marsh Viper/Pit Scorpion's grantPoisonCounters
+    // above; the discard-per-card loop mirrors Wheel of Fortune's (see
+    // case "wheelOfFortune" in resolveEff), just with no redraw.
+    case 'discardHandOnDamage': {
+      const target = payload.targetId;
+      if (target !== 'p' && target !== 'o') return state;
+      let s = state;
+      for (const hc of s[target].hand) { s = discardCard(s, target, hc.iid, { cause: 'effect', sourceName: sourceCard.name }); }
+      return dlog(s, `${sourceCard.name}: ${target} discards their hand.`, 'effect');
     }
     // Vesuvan Doppelganger's upkeep re-copy. payload.tgtC is attached by the
     // RESOLVE_TRIGGER_TARGET action (see below) once the controller picks a
@@ -8127,6 +8160,20 @@ case "ACTIVATE_ABILITY": {
       const ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, cost) } };
       const abItem = { id: makeId(), card: { ...card, effect: ab.effect }, caster: w, targets: [tgt], xVal: 1 };
       return resolveEff(ns, abItem);
+    }
+
+    // Vaevictis Asmadi: three independently repeatable "{B}/{R}/{G}: gets
+    // +1/+0 until end of turn" abilities on one card -- the first card in the
+    // codebase needing more than one activated pump ability, so it's modeled
+    // as three activatedAbilities[] entries (same array already used for
+    // Wormwood Treefolk's two walk abilities) rather than extending the
+    // single-object card.activated shape, which has no precedent for holding
+    // more than one ability.
+    if (ab.effect === "pumpPowerSelf") {
+      if (!canPay(s[w].mana, ab.mana)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+      let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, ab.mana) } };
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1 }] } : c) } };
+      return dlog(ns, `${card.name} gets +1/+0 until end of turn.`, "effect");
     }
 
     return s;

@@ -4793,6 +4793,31 @@ COMPLETE (infrastructure only -- 0 cards unlocked; see A9 audit in `docs/ROADMAP
 
 ---
 
+## Legendary Creatures Batch 3 (Elder Dragons) -- 2026-07-18
+
+**3 of 3 scoped cards shipped, no deferrals.** Palladia-Mors, Nicol Bolas, Vaevictis Asmadi -- all `{2}{X}{X}{Y}{Y}{Z}{Z}` (cmc 8), 7/7, flying, Legendary Creature -- Elder Dragon.
+
+**Palladia-Mors** (`Flying, trample. At the beginning of your upkeep, sacrifice Palladia-Mors unless you pay {R}{G}{W}.`) -- new `sacrificeUnless_RGW` case in `DuelCore.js`'s `switch (c.upkeep)`, same shape as the existing `sacrificeUnless_U`/`sacrificeUnless_WW` (Phantasmal Forces/Stasis/Conversion) but checking three color pips instead of one or two of the same color.
+
+**Nicol Bolas** (`Flying. ...sacrifice unless you pay {U}{B}{R}. Whenever Nicol Bolas deals damage to an opponent, that player discards their hand.`) -- new `sacrificeUnless_UBR` case, same shape as above. The discard-hand trigger is a new `discardHandOnDamage` case in `resolveTriggeredEffect`, wired via a `triggeredAbilities` entry keyed on `{event:"ON_DAMAGE_DEALT"}` + `condition:{type:"selfIsDamageSourceToPlayer"}` -- the exact same generic pipeline Marsh Viper/Pit Scorpion/Serpent Generator's token already use for poison counters (see Poison Counters entry). The effect body loops `discardCard` over the damaged player's whole hand, matching Wheel of Fortune's discard loop shape (`case "wheelOfFortune"`) but with no redraw. **Deviation from the authoring prompt:** the prompt asked to reuse "Hypnotic Specter's trigger wiring" for this -- verified live that Hypnotic Specter (identical "whenever this creature deals damage to an opponent, that player discards a card at random" oracle text) has no engine trigger wired at all; its `text` field is flavor-only with zero `triggeredAbilities`/`upkeep`/`effect` backing it. This is not a STOP condition here because a strictly better-fitting real precedent (Marsh Viper/Pit Scorpion's `ON_DAMAGE_DEALT`/`selfIsDamageSourceToPlayer` pipeline) already existed and was used instead; flagged for awareness in case a future batch is asked to actually wire Hypnotic Specter itself.
+
+**Vaevictis Asmadi** (`Flying. ...sacrifice unless you pay {B}{R}{G}. {B}/{R}/{G}: gets +1/+0 until end of turn.`) -- new `sacrificeUnless_BRG` case, same shape as above. The three independently-repeatable pump abilities are modeled as three `activatedAbilities[]` entries (`vaevictis_pump_b`/`_r`/`_g`, each `{cost, effect:"pumpPowerSelf", mana}`), reusing the pre-existing `activatedAbilities[]` array already load-bearing for Wormwood Treefolk's two walk abilities, Mishra's Factory, Desert, and Pyramids -- this is the first card in the array's history needing three same-shaped redundant abilities rather than two differently-shaped ones, but no schema change was needed (the "Option A" the authoring prompt asked to investigate turned out to already exist). New `pumpPowerSelf` case added to the array's branch in `ACTIVATE_ABILITY`, mirroring `grantWalkSelfDamage2`'s pay-then-mutate shape: pays `ab.mana`, applies a `{power:1}` `eotBuffs` entry (same shape `pumpPowerEOT` produces for the single-`activated`-object cards, e.g. Pavel Maliki/Shivan Dragon) directly, no stack push -- consistent with how the other `activatedAbilities[]` members already resolve (immediately, not via the stack). No UI change needed: `DuelScreen.tsx`/`DuelScreenMobile.tsx` already render a generic ability-menu for any card with `activatedAbilities`, proven by Mishra's Factory/Pyramids.
+
+**Documented, non-blocking test-plan deviation:** the authoring prompt expected "survives when paid"/"correct mana deducted on payment" sub-tests per card, matching `sacrificeUnless_U`'s shape exactly. Verified live (and already documented by this repo's own `stub-batch-rd-conv-stasis.test.js` CONV-04/STAS-04 tests): `burnMana` zeroes both players' mana pools at the *same* phase-transition boundary (`advPhase`, any transition into `PHASE.UPKEEP`) that the `switch (c.upkeep)` affordability check runs in, immediately after -- there is no `queueUpkeepChoice` deferral for this shape (unlike Force of Nature/Energy Flux/Magnetic Mountain, which defer to a separate `UPKEEP_CHOICE_RESOLVE` action specifically so the player can add mana in response first). Confirmed empirically against the pre-existing `phantasmal_forces` card, not just the 3 new ones: paying is unreachable through `duelReducer` for any card using this exact shape, a pre-existing engine limitation inherited faithfully (not introduced) by copying the shape as instructed. The 9 upkeep sub-tests (3 per card) were redirected to: fires-and-sacrifices (card data asserted inline), a burn-then-check ordering regression per card (protects against a future ordering fix silently changing behavior), and a "doesn't fire outside the upkeep transition" regression per card.
+
+Also verified (not fixed, logged per CLAUDE.md's protected-file rule): the `switch (c.upkeep)` block has no `w === ns.active` guard on any of its cases -- confirmed live that a pre-existing card (`phantasmal_forces`) fires its upkeep check on the *opponent's* upkeep transition too, not only its own controller's. Inherited by these 3 new cases via the same copied shape, not introduced here; worth awareness given these are 8-mana investments.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-batch-3.test.js` (14: 3 upkeep-mechanic tests per dragon [9], 2 Nicol Bolas discard-trigger tests, 2 Vaevictis pump-ability tests, 1 legend-rule integration test using two Nicol Bolases).
+- Playwright: `tests/e2e/legendary-creatures-batch-3.spec.js` (4: LGB3-E01 through LGB3-E04 -- cast-then-upkeep-sacrifice for each of the 3 dragons, one folding in the Vaevictis pump ability, plus Nicol Bolas's hand-discard trigger end to end).
+
+This closes 3 more of A9's legendary-creature count: 24 of 55 (21 from Batch 1+2 plus these 3); see `docs/ROADMAP.md` A9 for the remaining backlog.
+
+### Status
+COMPLETE -- 3 of 3 scoped cards shipped
+
+---
+
 ## Legendary Creatures Batch 1+2 -- 2026-07-18
 
 **21 of the originally-scoped 26 legendary creatures shipped; 5 deferred (STOP condition, see below).** First cards in `cards.js` to set the `Legendary` supertype, so this is what actually exercises the Legend Rule Infrastructure entry above against real data instead of synthetic fixtures.
@@ -4828,4 +4853,4 @@ PARTIAL -- 21 of 26 cards shipped; 5 deferred pending scope confirmation (see ab
 
 ---
 
-# End of MECHANICS INDEX v1.38
+# End of MECHANICS INDEX v1.39
