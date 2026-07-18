@@ -1487,7 +1487,11 @@ return { ...ns, pendingConditionalCounter: {
 }};
 }
 case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
-case "draw1":   ns = drawD(ns, caster, 1); break;
+// draw1Tgt (Xira Arien -- "target player draws a card") shares this body with draw1
+// (Library of Alexandria/Jayemdae Tome/Jandor's Ring/Book of Rass/Greed, none of which
+// pass a tgt), so the caster-only fallback below is unchanged for those cards.
+case "draw1Tgt":
+case "draw1":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 1); break;
 case "drawX":   ns = drawD(ns, caster, xVal); break;
 case "gainLife3": ns = hurt(ns, caster, -3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
 case "gainLifeX": ns = hurt(ns, caster, -xVal, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) }); break;
@@ -1743,12 +1747,17 @@ ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
 }
 break;
 }
+// discardOneTgt (Gwendlyn Di Corci -- "target player discards a card at random") shares
+// this body with discardOne (Rag Man/Disrupting Scepter, neither of which pass a tgt),
+// so the opp-only fallback below is unchanged for those cards.
+case "discardOneTgt":
 case "discardOne": {
-if (ns[opp].hand.length) {
-const idx = Math.floor(Math.random() * ns[opp].hand.length);
-const dc = ns[opp].hand[idx];
-ns = discardCard(ns, opp, dc.iid, { cause: 'effect', sourceName: card.name });
-ns = dlog(ns, `${opp} discards ${dc.name}.`, "effect");
+const discTgt = (tgt === "p" || tgt === "o") ? tgt : opp;
+if (ns[discTgt].hand.length) {
+const idx = Math.floor(Math.random() * ns[discTgt].hand.length);
+const dc = ns[discTgt].hand[idx];
+ns = discardCard(ns, discTgt, dc.iid, { cause: 'effect', sourceName: card.name });
+ns = dlog(ns, `${discTgt} discards ${dc.name}.`, "effect");
 }
 break;
 }
@@ -1793,7 +1802,9 @@ break;
 }
 case "regrowthCreature": {
 const myC = ns[caster].gy.filter(isCre);
-if (myC.length) { const top = myC[myC.length - 1]; ns = zMove(ns, top.iid, caster, caster, "hand"); ns = dlog(ns, `${card.name} returns ${top.name} to hand.`, "effect"); }
+const gyTgtC = tgt ? myC.find(c => c.iid === tgt) : null;
+const gyCardC = gyTgtC || (myC.length ? myC[myC.length - 1] : null);
+if (gyCardC) { ns = zMove(ns, gyCardC.iid, caster, caster, "hand"); ns = dlog(ns, `${card.name} returns ${gyCardC.name} to hand.`, "effect"); }
 break;
 }
 case "reanimate": {
@@ -2467,6 +2478,19 @@ if (tgt === 'p' || tgt === 'o') {
 }
 break;
 }
+// preventDamage2Creature (Kei Takahashi) is a new sibling rather than a parameterized
+// preventDamage1Creature -- Oasis relies on the fixed 1-damage amount above.
+case "preventDamage2Creature": {
+if (tgtC) {
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, damageShield: (c.damageShield || 0) + 2 } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} has 2 damage prevented.`, 'effect');
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- no legal creature target.`, 'effect');
+}
+break;
+}
 case "ebonyHorse": {
 if (tgtC) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
@@ -2619,6 +2643,31 @@ const isBlockingC = tgtC?.blocking != null;
 if (tgtC && (isAttackingC || isBlockingC)) {
   ns = hurtCreature(ns, tgtC.iid, 1, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
   ns = dlog(ns, `${card.name} deals 1 damage to ${tgtC.name}.`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- target is not attacking or blocking.`, "effect");
+}
+break;
+}
+// pingCombatant2/pingCombatant3 (Tor Wauki/Lady Caleria) are new sibling cases rather
+// than a parameterized pingCombatant -- D'Avenant Archer relies on the fixed 1-damage
+// amount above and is left untouched.
+case "pingCombatant2": {
+const isAttackingC2 = (ns.attackers || []).includes(tgtC?.iid);
+const isBlockingC2 = tgtC?.blocking != null;
+if (tgtC && (isAttackingC2 || isBlockingC2)) {
+  ns = hurtCreature(ns, tgtC.iid, 2, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+  ns = dlog(ns, `${card.name} deals 2 damage to ${tgtC.name}.`, "effect");
+} else {
+  ns = dlog(ns, `${card.name}'s ability fizzles -- target is not attacking or blocking.`, "effect");
+}
+break;
+}
+case "pingCombatant3": {
+const isAttackingC3 = (ns.attackers || []).includes(tgtC?.iid);
+const isBlockingC3 = tgtC?.blocking != null;
+if (tgtC && (isAttackingC3 || isBlockingC3)) {
+  ns = hurtCreature(ns, tgtC.iid, 3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+  ns = dlog(ns, `${card.name} deals 3 damage to ${tgtC.name}.`, "effect");
 } else {
   ns = dlog(ns, `${card.name}'s ability fizzles -- target is not attacking or blocking.`, "effect");
 }

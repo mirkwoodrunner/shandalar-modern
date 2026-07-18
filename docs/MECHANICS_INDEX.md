@@ -4793,6 +4793,110 @@ COMPLETE (infrastructure only -- 0 cards unlocked; see A9 audit in `docs/ROADMAP
 
 ---
 
+## Legendary Creatures Cleanup -- 2026-07-18
+
+**6 of 6 scoped cards shipped, no deferrals.** The 5 cards deferred from Batch 1+2
+(Xira Arien, Tor Wauki, Lady Caleria, Gwendlyn Di Corci, Adun Oakenshield) plus Kei
+Takahashi (left out of Batch 1+2's scope by an unrelated counting mistake). Each
+fix is a small, localized parameterization of a near-miss `DuelCore.js` case
+identified by tracing the actual live shape of each case, not by pattern-matching
+the card's oracle text against a guessed precedent (the mistake that caused the
+original deferral).
+
+**Xira Arien** (`{B}{R}{G}, {T}: Target player draws a card.`) -- `case "draw1"`
+gained the same `tgt === "p" || tgt === "o" ? tgt : caster` fallback `case "draw3"`
+already has, but via a new `case "draw1Tgt": case "draw1":` fallthrough rather than
+editing `draw1` alone: registering `draw1` itself in `useDuelController.ts`'s
+`ACTIVATE_TARGET_EFFECTS` would force an unwanted extra target-click onto every
+pre-existing `draw1` card (Library of Alexandria, Jayemdae Tome, Jandor's Ring,
+Book of Rass, Greed), none of which currently prompt for one. Xira Arien's card
+data uses the new `draw1Tgt` id, which is the only one registered in
+`ACTIVATE_TARGET_EFFECTS`/`PLAYER_ONLY_TARGET_EFFECTS`/
+`PLAYER_TARGETABLE_ABILITY_EFFECTS` -- the pre-existing cards' behavior is
+unchanged (they never pass a `tgt`, so the caster-only fallback still applies to
+them).
+
+**Tor Wauki** / **Lady Caleria** (2/3 damage to target attacking-or-blocking
+creature) -- new `pingCombatant2`/`pingCombatant3` sibling cases, same
+attacking-or-blocking validation and fizzle-log shape as `pingCombatant`
+(D'Avenant Archer), which keeps its own fixed 1-damage case untouched. Both new
+ids are registered in `ACTIVATE_TARGET_EFFECTS` and `CREATURE_ONLY_TARGET_EFFECTS`
+(a stricter registration than `pingCombatant` itself has -- see the note on
+D'Avenant Archer's own targeting gap below).
+
+**Gwendlyn Di Corci** (`{T}: Target player discards a card at random. Activate
+only during your turn.`) -- same in-place-vs-sibling tradeoff as Xira Arien:
+`case "discardOne"` gained a `tgt`-respecting fallback (`(tgt === "p" || tgt ===
+"o") ? tgt : opp`) shared via `case "discardOneTgt": case "discardOne":`, keeping
+the "at random" `Math.floor(Math.random() * ...)` selection logic exactly as-is
+(known, already-flagged debt -- see Mind Twist/Coral Helm -- not addressed here).
+Gwendlyn's card data uses the new `discardOneTgt` id, the only one registered for
+targeting; Rag Man and Disrupting Scepter (both `discardOne`, both never passing a
+`tgt`) are unaffected. The "Activate only during your turn" restriction in both
+Gwendlyn's and Rag Man's oracle text is **not enforced** by either card -- no
+`myTurnOnly`-style gate exists anywhere in the engine (only phase-scoped fields
+like `myUpkeepOnly` do). This is Rag Man's own pre-existing, already-shipped gap;
+Gwendlyn inherits it rather than introducing a new one, so it's logged here
+per CLAUDE.md's protected-file rule rather than fixed.
+
+**Adun Oakenshield** (`{B}{R}{G}, {T}: Return target creature card from your
+graveyard to your hand.`) -- `case "regrowthCreature"` merged in `case
+"regrowth"`'s `tgt ? ns[caster].gy.find(...) : null` lookup (filtered to `isCre`
+first, same as before), falling back to the most-recently-buried creature card
+when no `tgt` matches -- in place, safe because Raise Dead (the only other
+`regrowthCreature` user) never passes a `tgt` either. **Found, not fixed:** neither
+Adun Oakenshield nor Regrowth (`case "regrowth"`, unmodified) has any UI mechanism
+for a human player to actually pick a specific graveyard card -- `tgt` is never
+set from a real click for either effect (no graveyard-card-picker component
+exists); only the read-only AI (`AI.js`) passes an explicit iid, and that iid
+already equals the most-recent-card fallback, so this has been functionally
+invisible until now. Adun Oakenshield's `DuelCore.js` logic is correct and ready
+for a future graveyard-picker UI; until then it behaves identically to always
+grabbing the most recent creature card, exactly like Regrowth already does.
+
+**Kei Takahashi** (`{T}: Prevent the next 2 damage that would be dealt to target
+creature this turn.`) -- new `preventDamage2Creature` sibling case, same shape as
+`preventDamage1Creature`/`preventDamage1Any` (Oasis) but creature-only (matching
+Kei's oracle text, unlike Oasis/Amulet of Kroog's "any target") and with an added
+fizzle-log branch for consistency with the Tor Wauki/Lady Caleria pair. Oasis's
+own case is untouched.
+
+**Scope discrepancy found and resolved with Chris mid-prompt:** none of the above
+is reachable from the live UI without also registering the 5 new targeting-effect
+ids (`draw1Tgt`, `pingCombatant2`, `pingCombatant3`, `discardOneTgt`,
+`preventDamage2Creature`) in `useDuelController.ts` -- a protected file this
+prompt's `ENGINE FILE EDIT APPROVED` justification named only `cards.js`/
+`DuelCore.js` for. Confirmed live that without registration, `beginActivateFlow`
+activates the ability immediately with no target prompt, so the DuelCore.js case
+always fizzles for lack of a `tgtC`/valid `tgt` -- the same class of gap that
+caused Batch 1+2's original deferral, one layer deeper than the prompt's
+research had traced. Chris approved expanding scope to add these purely additive
+`Set` entries (no existing registration changed), the same registration pattern
+already used for Ramses Overdark/Bartel Runeaxe/Jade Monolith in prior batches.
+**Also found and logged while in this file (not fixed, out of scope):** Ramses
+Overdark's `destroyEnchantedCreature` (Batch 1+2) was added to
+`CREATURE_ONLY_TARGET_EFFECTS` but never to `ACTIVATE_TARGET_EFFECTS`, so its
+ability has been unreachable via the live UI since Batch 1+2 shipped -- a
+pre-existing gap unrelated to this batch's 6 cards, noted inline in
+`useDuelController.ts`.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-cleanup.test.js` (16: 2 tests per
+  card [12] plus 4 regression tests confirming Ancestral Recall, Rag Man,
+  Regrowth, and Oasis are all unchanged).
+- Playwright: `tests/e2e/legendary-creatures-cleanup.spec.js` (6: LGC-E01 through
+  LGC-E06, one per card, added to `playwright.config.js`'s `mobile-chrome`
+  `testMatch` allowlist so it runs against both viewport projects like the
+  chromium-only-by-default baseline every other spec gets).
+
+This closes 6 more of A9's legendary-creature count: 30 of 55 (24 from Batch 1+2 +
+Batch 3, plus these 6); see `docs/ROADMAP.md` A9 for the remaining backlog.
+
+### Status
+COMPLETE -- 6 of 6 scoped cards shipped
+
+---
+
 ## Legendary Creatures Batch 3 (Elder Dragons) -- 2026-07-18
 
 **3 of 3 scoped cards shipped, no deferrals.** Palladia-Mors, Nicol Bolas, Vaevictis Asmadi -- all `{2}{X}{X}{Y}{Y}{Z}{Z}` (cmc 8), 7/7, flying, Legendary Creature -- Elder Dragon.
@@ -4853,4 +4957,4 @@ PARTIAL -- 21 of 26 cards shipped; 5 deferred pending scope confirmation (see ab
 
 ---
 
-# End of MECHANICS INDEX v1.39
+# End of MECHANICS INDEX v1.40
