@@ -3425,4 +3425,101 @@ toggles it in/out of a local selection capped at `count`; the confirm button is
 disabled until exactly `count` cards are selected (no decline -- CR 514.1
 discard is mandatory). Dispatched via `useDuel.js`'s `resolveCleanupDiscard(iids)`.
 
+# Section 30 — Legend Rule (CR 704.5j) Infrastructure
+
+## Overview
+
+Infrastructure-only: the state-based action that enforces "a player can't
+control two or more legendary permanents with the same name." No card in
+`cards.js` sets the `Legendary` supertype yet -- this unlocks 0 cards by
+itself. The 61 Legends-set creatures that need this rule are a separate,
+future batch (see `docs/ROADMAP.md`'s A9 audit), same shape as how the Layer
+system (Section 18) shipped before the cards that needed it were batched in.
+
+## `isLegendary(c)`
+
+`DuelCore.js`, alongside `isCre`/`isLand`. Same `typeEff ?? type` fallback,
+checks for the `"Legendary"` supertype prefix on the type line (CR 205.4a --
+e.g. `"Legendary Creature"`, `"Legendary Land"`), matching how real Magic type
+lines are printed.
+
+## `checkLegendRule(state)` (exported)
+
+Checked independently per player: groups that player's own `bf` by
+`isLegendary(c)` permanents, keyed by exact `card.name`. A group of 2+ is a
+violation for that player only -- two different players each controlling a
+same-named legendary permanent is legal and never triggers anything. Unlike
+`checkDeath`, the loser(s) aren't picked automatically -- CR 704.5j hands the
+choice to the controller -- so a violation creates a `pendingChoice` via the
+existing `createPendingChoice()` factory (Section 27) rather than moving
+anything immediately:
+
+```
+pendingChoice: {
+  kind: 'legendRuleChoice',
+  controller: 'p' | 'o',
+  legendName: string,               // the shared card.name
+  options: [{ id: iid, label }, ...], // every same-named copy this controller has
+  ...
+}
+```
+
+`options[].label` disambiguates same-named copies via whatever instance state
+actually differs -- `enterTs` (when populated; RESOLVE_STACK's default ETB
+push does not set it), damage marked, non-zero counters, tapped status --
+falling back to a plain `"Copy N"` ordinal when nothing distinguishes them.
+
+**Collision convention (ASSUMPTION B, same as Library of Leng's
+`discardToLibraryChoice`, Section 27.1):** `pendingChoice` is a single slot.
+If already occupied, `checkLegendRule` is a no-op for now; the next
+SBA-triggering event that calls it will re-detect the violation once the slot
+frees. If both players have a violation simultaneously, only the first found
+(`p`, then `o`) gets a `pendingChoice`; resolving it re-invokes
+`checkLegendRule`, which then queues the second, matching `checkDeath`'s own
+loop-until-clean shape without needing a separate queuing mechanism.
+
+## Threading (manual, per-call-site -- matches `checkDeath`'s own convention)
+
+`checkLegendRule` is NOT centralized into a single dispatch wrapper. It is
+called manually everywhere battlefield composition or control could change,
+piggybacking on existing centralization points rather than adding a fresh
+call at every individual card effect:
+
+| Insertion point | Covers |
+|---|---|
+| `RESOLVE_STACK` (after its existing `recomputeTypeEffects` call) | Every `resolveEff()` case that places or changes control of a permanent -- normal ETB, `stealCreature`, `copyPermanentCharacteristics`, `vesuvanEtbCopy`, `aladdinsSteal`, `oldManSteal`, `enchantLand`/`enchantArtifact`'s Kudzu-style branches, `oubliettePhaseOut`, `moldDemonETB`, `shapeshifterETB`, `jihadETB`, `lichETB`, `reanimate`, `reanimateOwn`, `controlCreature`, `fetchBasicToBf` -- all of these are only ever reached via this one case. |
+| `PLAY_LAND` (after its own `recomputeTypeEffects` call) | Playing a land. |
+| `createToken()` (after its own `recomputeTypeEffects` call) | Token creation, including the delayed Rukh Egg (`pendingEndStepTokens`) path. |
+| `checkDeath`'s tail (right after `checkControlGrants`) | `revertControlGrant`'s control reversion, for every one of `checkDeath`'s ~15 call sites. |
+| `tawnosCoffinReturn()` helper (its one shared return path) | All 3 call sites: UNTAP-phase untap detection, and the `tawnosCoffinReturn`/`oubliettePhaseIn` `resolveTriggeredEffect` cases. |
+| Nether Shadow's graveyard-recursion return (upkeep block in `advPhase`) | Doesn't route through `zMove` or `RESOLVE_STACK`. |
+| `controlToHighestLife` (Ghazbán Ogre, `resolveTriggeredEffect`) | Triggered-ability-driven control change; not covered by `RESOLVE_STACK`'s tail. |
+| `modalChoice`'s `RESOLVE_CHOICE` branch | Re-enters `resolveEff()` directly, bypassing `RESOLVE_STACK`'s post-resolve check. |
+| `CHOOSE_TUTOR_TRANSMUTE` / `CONFIRM_TRANSMUTE_PAY` (Transmute Artifact) | Direct tutor-to-battlefield placement, not routed through `zMove`. |
+
+## `RESOLVE_CHOICE` — `'legendRuleChoice'` branch
+
+Finds the chosen permanent by `action.optionId`; every *other* permanent the
+same controller has sharing `choice.legendName` is moved to its owner's
+graveyard via `zMove` directly (CR 704.5j: a legend-rule loss is a graveyard
+move, not a destroy -- it does not route through `checkDeath`'s destroy path
+or log as "destroyed"). Clears `pendingChoice`, then re-invokes
+`checkLegendRule` to catch a simultaneous second violation (see collision
+convention above).
+
+## AI policy: `chooseLegendRuleKeep(choice, state)` (`AI.js`)
+
+Same deterministic-policy-function convention as `chooseMarufFetch`/
+`chooseDiscardToLibrary`. Keeps whichever same-named copy has more invested
+value (counters, attached Auras, damage-adjusted toughness), falling back to
+the first option when nothing distinguishes them. No `Math.random()`.
+Dispatched from `useDuelController.ts`'s `pendingChoice` `useEffect`, same
+branch shape as `bandAttackerDamageOrder`/`discardToLibraryChoice`.
+
+## UI
+
+No new component. `ChoiceModal.tsx` (Section 27.1) already renders any
+`{id,label}[]` options array generically; `legendRuleChoice` needed zero UI
+changes.
+
 # End of SYSTEMS v1.9
