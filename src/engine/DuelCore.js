@@ -2223,6 +2223,13 @@ case "destroyEnchantedCreature": {
 if (tgtC && tgtC.enchantments?.length) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
 break;
 }
+// Tetsuo Umezawa: "Destroy target tapped or blocking creature." Same shape as
+// destroyTapped/destroyEnchantedCreature above, predicate widened to tapped OR
+// currently blocking.
+case "destroyTappedOrBlocking": {
+if (tgtC && (tgtC.tapped || tgtC.blocking != null)) { ns = zMove(ns, tgtC.iid, tgtC.controller, tgtC.controller, "gy"); ns = dlog(ns, `${card.name} destroys ${tgtC.name}.`, "effect"); }
+break;
+}
 case "regenerate": {
 if (tgtC) { ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c => c.iid === tgtC.iid ? { ...c, regenerating: true } : c) } }; ns = dlog(ns, `${tgtC.name} will regenerate.`, "effect"); }
 break;
@@ -3947,6 +3954,22 @@ case "sewersOfEstark": {
     ns = dlog(ns, `${tgtC.name}: prevents combat damage this combat between it and what it's blocking.`, "effect");
   } else {
     ns = dlog(ns, `${card.name} fizzles -- ${tgtC.name} is neither attacking nor blocking.`, "effect");
+  }
+  break;
+}
+// Lady Evangela: "Prevent all combat damage that would be dealt by target creature
+// this turn." One-shot, unconditional version of the preventCombatDamageDealt flag
+// Sewers of Estark sets on blockers/attackers above -- same flag, same combat-damage
+// checkpoints, same CLEANUP expiry, just set directly on the chosen target instead
+// of derived from attacking/blocking state.
+case "preventCombatDamageDealtTarget": {
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, preventCombatDamageDealt: true } : c
+    ) } };
+    ns = dlog(ns, `${card.name}: prevents all combat damage ${tgtC.name} would deal this turn.`, "effect");
+  } else {
+    ns = dlog(ns, `${card.name} fizzles -- no valid creature target.`, "effect");
   }
   break;
 }
@@ -8369,6 +8392,12 @@ case "ACTIVATE_ABILITY": {
   // "Activate only during your turn."
   if (act.myTurnOnly && s.active !== w) {
     return dlog(s, `${card.name} can only be activated during your turn.`, "info");
+  }
+  // Angus Mackenzie: "Activate only before the combat damage step." Blocks once
+  // the current turn has reached (or passed) COMBAT_DAMAGE in PHASE_SEQUENCE;
+  // resets naturally next turn when the phase cycles back to UNTAP.
+  if (act.beforeCombatDamageOnly && PHASE_SEQUENCE.indexOf(s.phase) >= PHASE_SEQUENCE.indexOf(PHASE.COMBAT_DAMAGE)) {
+    return dlog(s, `${card.name} can only be activated before the combat damage step.`, "info");
   }
   // Gate to Phyrexia: "and only once each turn".
   if (act.onceEachTurn && (s.turnState.activatedOnceIids || []).includes(iid)) {

@@ -142,6 +142,9 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'pingCombatant2', // Tor Wauki -- "target attacking or blocking creature"
   'pingCombatant3', // Lady Caleria -- "target attacking or blocking creature"
   'preventDamage2Creature', // Kei Takahashi -- "target creature"
+  // Legendary Creatures batch 4:
+  'destroyTappedOrBlocking', // Tetsuo Umezawa -- "target tapped or blocking creature"
+  'preventCombatDamageDealtTarget', // Lady Evangela -- "target creature"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -337,6 +340,9 @@ export const ACTIVATE_TARGET_EFFECTS = new Set([
   // Legendary Creatures Cleanup batch:
   'draw1Tgt', 'pingCombatant2', 'pingCombatant3', 'discardOneTgt', 'preventDamage2Creature',
   'destroyEnchantedCreature', // Ramses Overdark -- "target enchanted creature"
+  // Legendary Creatures batch 4:
+  'destroyTappedOrBlocking', // Tetsuo Umezawa -- "target tapped or blocking creature"
+  'preventCombatDamageDealtTarget', // Lady Evangela -- "target creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).

@@ -9,6 +9,49 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-19)
+- **Legendary Creatures Batch 4 (4 cards)** -- Lady Evangela, Angus Mackenzie,
+  Dakkon Blackblade, Tetsuo Umezawa. Angus Mackenzie's "Prevent all combat damage
+  that would be dealt this turn" reuses the existing `fog` effect directly as an
+  activated ability (the same effect Fog/Holy Day/Darkness already use as a
+  spell) -- no new resolveEff case needed. Its "Activate only before the combat
+  damage step" restriction is a new `beforeCombatDamageOnly` field, checked in
+  `DuelCore.js` alongside `myUpkeepOnly`/`myTurnOnly` via
+  `PHASE_SEQUENCE.indexOf(s.phase) >= PHASE_SEQUENCE.indexOf(PHASE.COMBAT_DAMAGE)`
+  (resets naturally each turn when phase cycles back to `UNTAP`). Lady Evangela's
+  "Prevent all combat damage that would be dealt by target creature this turn" is
+  a one-shot, single-target sibling of Sewers of Estark's `preventCombatDamageDealt`
+  flag (new `preventCombatDamageDealtTarget` case) -- that flag is already checked
+  at all 6 attacker/blocker combat-damage checkpoints and cleared at CLEANUP, so no
+  new damage-prevention mechanism or state tracking was needed, just a new case
+  that sets it unconditionally on the chosen target instead of deriving it from
+  attacking/blocking state. Dakkon Blackblade's "power and toughness are each
+  equal to the number of lands you control" adds a new `landCount` evaluator to
+  `CDA_EVALUATORS` in `layers.js` (same shape as `swampCount`/`forestCount`,
+  counting all lands instead of a subtype), wired via `layerDef` with
+  `power:0,toughness:0` matching the Plague Rats/Nightmare/Keldon Warlord CDA
+  convention. Tetsuo Umezawa's "can't be the target of Aura spells" reuses Bartel
+  Runeaxe's `cantBeTargetOfAuraSpells` flag directly; its "Destroy target tapped
+  or blocking creature" is a new `destroyTappedOrBlocking` case (same shape as
+  `destroyTapped`/`destroyEnchantedCreature`, predicate widened to
+  `tgtC.tapped || tgtC.blocking != null`), registered in **both**
+  `CREATURE_ONLY_TARGET_EFFECTS` and `ACTIVATE_TARGET_EFFECTS` in
+  `useDuelController.ts` (along with `preventCombatDamageDealtTarget`) --
+  double-checked live against the exact split-registration gap Bug 1 from the
+  Bugfixes batch above already flagged once. No AI.js changes: consistent with
+  every other single-creature-sourced targeted activated ability added in prior
+  legendary-creature batches (`pingCombatant2`/`pingCombatant3`/
+  `destroyEnchantedCreature` are also absent from `AI.js`), these new effects are
+  not wired into AI decision-making -- a pre-existing, non-blocking pattern, not a
+  new gap. Closes 4 more of A9's legendary-creature count: 34 of 55 (30 from
+  Batch 1+2/Cleanup/Batch 3, plus these 4); see `docs/ROADMAP.md` A9 for the
+  remaining backlog. Tests: 14 Vitest
+  (`tests/scenarios/legendary-creatures-batch-4.test.js`), 6 Playwright
+  (`tests/e2e/legendary-creatures-batch-4.spec.js`, engine-only `page.evaluate`
+  cases, `chromium` project only -- matches the precedent set by
+  `legendary-creatures-batch-3.spec.js`/`legendary-creatures-cleanup.spec.js`
+  for cards with no UI-visible interaction beyond existing targeting/activation
+  flows; no `DuelScreen.tsx`/`DuelScreenMobile.tsx` changes were needed). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 4.
 - **Legendary Creatures Bugfixes (3 bugs)** -- fixes the three bugs surfaced (found,
   not fixed) by the Legendary Creatures Cleanup batch's completion report below.
   Bug 1: Ramses Overdark's `destroyEnchantedCreature` was registered in

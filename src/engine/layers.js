@@ -46,6 +46,8 @@ export const CDA_EVALUATORS = {
   forestBonus:    (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && subOf(x).includes('Forest')) ? 1 : 0),
   forestBonusTou: (card, state) => 1 + (state[card.controller]?.bf.some(x => isLand(x) && subOf(x).includes('Forest')) ? 2 : 1),
   keldonWarlord:  (card, state) => state[card.controller]?.bf.filter(x => isCre(x) && !x.subtype?.includes('Wall')).length ?? 0,
+  // Dakkon Blackblade: power and toughness are each equal to the number of lands you control.
+  landCount:      (card, state) => state[card.controller]?.bf.filter(x => isLand(x)).length ?? 0,
   forestCountLiege:   (card, state) => {
     if (card.attacking) {
       const opp = card.controller === 'p' ? 'o' : 'p';
