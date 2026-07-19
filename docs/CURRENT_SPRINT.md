@@ -9,6 +9,63 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-18)
+- **Legendary Creatures Cleanup (6 cards)** -- the 5 cards deferred from Batch 1+2
+  (Xira Arien, Tor Wauki, Lady Caleria, Gwendlyn Di Corci, Adun Oakenshield) plus
+  Kei Takahashi (left out of Batch 1+2's scope by an unrelated counting mistake).
+  Each fix is a small, localized parameterization of a near-miss `DuelCore.js`
+  case, not a new subsystem: `draw1` (Xira Arien) and `discardOne` (Gwendlyn Di
+  Corci) each gained a `tgt`-respecting fallback shared, in place, with the
+  pre-existing card that used them (Library of Alexandria/Jayemdae
+  Tome/Jandor's Ring/Book of Rass/Greed for `draw1`; Rag Man/Disrupting Scepter
+  for `discardOne`) -- safe because neither pre-existing card ever passes a
+  `tgt`, so the old caster-only/opp-only fallback is unchanged for them.
+  `regrowthCreature` (Adun Oakenshield) similarly gained `regrowth`'s
+  `tgt`-respecting graveyard lookup in place, safe for the same reason (Raise
+  Dead never passes a `tgt` either). `pingCombatant` (Tor Wauki/Lady Caleria)
+  and `preventDamage1Creature` (Kei Takahashi, reusing Oasis's shape) each got
+  new sibling cases (`pingCombatant2`/`pingCombatant3`, `preventDamage2Creature`)
+  instead of an in-place edit, since D'Avenant Archer and Oasis both depend on
+  their fixed 1-damage amount. **Scope discrepancy found and resolved with
+  Chris mid-prompt:** none of this is reachable from the actual UI without
+  also registering the new targeting-effect names in `useDuelController.ts`'s
+  `ACTIVATE_TARGET_EFFECTS`/`CREATURE_ONLY_TARGET_EFFECTS`/
+  `PLAYER_ONLY_TARGET_EFFECTS`/`PLAYER_TARGETABLE_ABILITY_EFFECTS` sets --
+  a protected file the prompt's engine-edit approval didn't name (only
+  `cards.js`/`DuelCore.js` were named). Confirmed live that without this,
+  clicking any of these 5 abilities in the real UI would activate immediately
+  with no target prompt and silently fizzle -- the same class of gap that
+  caused the original Batch 1+2 deferral, one layer deeper. Chris approved
+  expanding scope to add the new (purely additive) `Set` entries, mirroring
+  the same registration pattern already used for Ramses Overdark/Bartel
+  Runeaxe/Jade Monolith in prior batches; no existing registration was
+  changed. `draw1Tgt`/`discardOneTgt` are new sibling *effect names* (not
+  reused on the old cards) for the same in-place-unsafe-to-register reason --
+  registering `draw1`/`discardOne` themselves in `ACTIVATE_TARGET_EFFECTS`
+  would force an unwanted extra target-click onto Library of
+  Alexandria/Jayemdae Tome/Jandor's Ring/Book of Rass/Greed/Rag Man/Disrupting
+  Scepter, none of which currently prompt for one. Also found and logged
+  (not fixed, per CLAUDE.md's protected-file rule): Ramses Overdark's
+  `destroyEnchantedCreature` was never added to `ACTIVATE_TARGET_EFFECTS` in
+  Batch 1+2, so its ability has been unreachable via the live UI since it
+  shipped -- a pre-existing gap, unrelated to this batch's 6 cards, noted
+  inline in `useDuelController.ts`. Gwendlyn Di Corci's and Rag Man's shared
+  "Activate only during your turn" restriction is not enforced by either card
+  (no `myTurnOnly`-style gate exists anywhere in the engine, only
+  `myUpkeepOnly` and other phase-scoped fields) -- an inherited, pre-existing
+  gap, not a new regression, left undocumented-but-unfixed exactly as Rag
+  Man's copy of the same gap already was. Adun Oakenshield's `tgt`-respecting
+  graveyard lookup is real in `DuelCore.js` but currently has no matching
+  graveyard-card-picker UI (Regrowth has the identical, pre-existing gap --
+  the human player has never been able to choose a specific graveyard card
+  for either card; only the read-only AI passes an explicit `tgt`, which
+  happens to already equal the most-recent-card fallback). Closes 6 more of
+  A9's legendary-creature count: 30 of 55 (24 from Batch 1+2 + Batch 3, plus
+  these 6); see `docs/ROADMAP.md` A9 for the remaining backlog. Tests: 16
+  Vitest (`tests/scenarios/legendary-creatures-cleanup.test.js`, including
+  regression coverage for Ancestral Recall/Rag Man/Regrowth/Oasis), 6
+  Playwright (`tests/e2e/legendary-creatures-cleanup.spec.js`, both viewport
+  projects -- added to `playwright.config.js`'s `mobile-chrome` `testMatch`
+  allowlist). See `docs/MECHANICS_INDEX.md` -- Legendary Creatures Cleanup.
 - **Legendary Creatures Batch 3 (Elder Dragons -- 3 cards)** -- Palladia-Mors,
   Nicol Bolas, Vaevictis Asmadi. All three reuse the existing
   `sacrificeUnless_U`/`sacrificeUnless_WW` upkeep-sacrifice shape (Phantasmal

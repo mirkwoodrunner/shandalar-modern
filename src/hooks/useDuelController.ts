@@ -138,6 +138,16 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'oubliettePhaseOut', // Oubliette -- "target creature"
   'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
   'destroyEnchantedCreature', // Ramses Overdark -- "target enchanted creature"
+  // NOTE (found while wiring the Legendary Creatures Cleanup batch, not fixed here --
+  // out of scope): destroyEnchantedCreature is missing from ACTIVATE_TARGET_EFFECTS
+  // below, so beginActivateFlow never opens the targeting step for Ramses Overdark's
+  // ability -- clicking it currently activates immediately with no target, and its
+  // DuelCore.js case then fizzles for lack of a tgtC. This CREATURE_ONLY_TARGET_EFFECTS
+  // entry alone is unreachable in the live UI today.
+  // Legendary Creatures Cleanup batch:
+  'pingCombatant2', // Tor Wauki -- "target attacking or blocking creature"
+  'pingCombatant3', // Lady Caleria -- "target attacking or blocking creature"
+  'preventDamage2Creature', // Kei Takahashi -- "target creature"
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -165,6 +175,9 @@ export const PLAYER_ONLY_TARGET_EFFECTS = new Set([
   'restoreArtifactsFromGYToLibrary', // Drafna's Restoration -- "target player"
   'damageByWhiteCardsInHand',        // Inquisition -- "target player"
   'scryTop5Reveal',                  // Visions -- "target player"
+  // Legendary Creatures Cleanup batch:
+  'draw1Tgt',      // Xira Arien -- "target player draws a card"
+  'discardOneTgt', // Gwendlyn Di Corci -- "target player discards a card at random"
 ]);
 
 export function isPlayerOnlyTarget(card: any, abilityId?: string | null): boolean {
@@ -327,6 +340,8 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   // Land destruction centralization batch:
   'preventLandDestructionOnce', // Pyramids mode 2 -- "target land"
   'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
+  // Legendary Creatures Cleanup batch:
+  'draw1Tgt', 'pingCombatant2', 'pingCombatant3', 'discardOneTgt', 'preventDamage2Creature',
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -341,6 +356,9 @@ const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   'preventDamage1AnyReturnEnd', // Rakalite -- "prevent... damage to any target"
   // Complex-tier Forge batch C1 (see THIRD_PARTY_NOTICES.md):
   'bansheeDrain', // Banshee -- "any target"
+  // Legendary Creatures Cleanup batch:
+  'draw1Tgt',      // Xira Arien -- "target player draws a card"
+  'discardOneTgt', // Gwendlyn Di Corci -- "target player discards a card at random"
 ]);
 
 function scoreLibCard(card: any, _state: any): number {
