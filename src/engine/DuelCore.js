@@ -1793,18 +1793,44 @@ break;
 }
 case "regrowth": {
 const gyTgt = tgt ? ns[caster].gy.find(c => c.iid === tgt) : null;
-const gyCard = gyTgt || (ns[caster].gy.length ? ns[caster].gy[ns[caster].gy.length - 1] : null);
-if (gyCard) {
-ns = zMove(ns, gyCard.iid, caster, caster, "hand");
-ns = dlog(ns, `Regrowth returns ${gyCard.name}.`, "effect");
+if (gyTgt) {
+ns = applyRegrowthReturn(ns, gyTgt.iid, caster);
+} else if (ns[caster].gy.length > 1) {
+// Regrowth/Adun Oakenshield graveyard-card picker: 2+ eligible cards means a
+// real choice exists, so present it via the generic pendingChoice/ChoiceModal
+// mechanism (kind: 'gyCardChoice') instead of silently taking the most recent
+// card. RESOLVE_CHOICE below relocates to applyRegrowthReturn with the chosen iid.
+ns = createPendingChoice(ns, {
+sourceCardId: card.iid,
+controller: caster,
+kind: 'gyCardChoice',
+mode: 'regrowth',
+options: ns[caster].gy.map(c => ({ id: c.iid, label: c.name })),
+});
+} else if (ns[caster].gy.length === 1) {
+ns = applyRegrowthReturn(ns, ns[caster].gy[0].iid, caster);
 }
 break;
 }
 case "regrowthCreature": {
 const myC = ns[caster].gy.filter(isCre);
 const gyTgtC = tgt ? myC.find(c => c.iid === tgt) : null;
-const gyCardC = gyTgtC || (myC.length ? myC[myC.length - 1] : null);
-if (gyCardC) { ns = zMove(ns, gyCardC.iid, caster, caster, "hand"); ns = dlog(ns, `${card.name} returns ${gyCardC.name} to hand.`, "effect"); }
+if (gyTgtC) {
+ns = applyRegrowthCreatureReturn(ns, gyTgtC.iid, caster, card.name);
+} else if (myC.length > 1) {
+// Same gyCardChoice mechanism as "regrowth" above, restricted to the
+// creature-only eligible set.
+ns = createPendingChoice(ns, {
+sourceCardId: card.iid,
+controller: caster,
+kind: 'gyCardChoice',
+mode: 'regrowthCreature',
+cardName: card.name,
+options: myC.map(c => ({ id: c.iid, label: c.name })),
+});
+} else if (myC.length === 1) {
+ns = applyRegrowthCreatureReturn(ns, myC[0].iid, caster, card.name);
+}
 break;
 }
 case "reanimate": {
@@ -6870,6 +6896,25 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
   }
 }
 
+// applyRegrowthReturn/applyRegrowthCreatureReturn: the actual "move this
+// graveyard card to hand" effect shared by Regrowth's (and Adun Oakenshield's)
+// two arrival paths for the chosen card -- a directly-passed tgt (case
+// "regrowth"/"regrowthCreature" above) or a resolved gyCardChoice pendingChoice
+// (RESOLVE_CHOICE below). Extracted so neither path duplicates the zMove/dlog call.
+function applyRegrowthReturn(ns, iid, caster) {
+  const gyCard = ns[caster].gy.find(c => c.iid === iid);
+  if (!gyCard) return ns;
+  ns = zMove(ns, gyCard.iid, caster, caster, "hand");
+  return dlog(ns, `Regrowth returns ${gyCard.name}.`, "effect");
+}
+
+function applyRegrowthCreatureReturn(ns, iid, caster, cardName) {
+  const gyCard = ns[caster].gy.find(c => c.iid === iid && isCre(c));
+  if (!gyCard) return ns;
+  ns = zMove(ns, gyCard.iid, caster, caster, "hand");
+  return dlog(ns, `${cardName} returns ${gyCard.name} to hand.`, "effect");
+}
+
 // createPendingChoice: the single place that sets state.pendingChoice. Callable
 // from resolveTrigger() (triggered abilities) or directly from resolveEff()
 // (e.g. Alchor's Tomb's color choice, which has no triggered ability at all).
@@ -8321,6 +8366,10 @@ case "ACTIVATE_ABILITY": {
   if (act.myUpkeepOnly && (s.phase !== PHASE.UPKEEP || s.active !== w)) {
     return dlog(s, `${card.name} can only be activated during your upkeep.`, "info");
   }
+  // "Activate only during your turn."
+  if (act.myTurnOnly && s.active !== w) {
+    return dlog(s, `${card.name} can only be activated during your turn.`, "info");
+  }
   // Gate to Phyrexia: "and only once each turn".
   if (act.onceEachTurn && (s.turnState.activatedOnceIids || []).includes(iid)) {
     return dlog(s, `${card.name} has already been activated this turn.`, "info");
@@ -8978,6 +9027,19 @@ case "USE_CHANNEL": {
 case "RESOLVE_CHOICE": {
   if (!s.pendingChoice) return s;
   const choice = s.pendingChoice;
+
+  // Regrowth/Adun Oakenshield graveyard-card picker (kind: 'gyCardChoice'),
+  // created directly from resolveEff (case "regrowth"/"regrowthCreature")
+  // when 2+ eligible cards exist. Relocates to the same
+  // applyRegrowthReturn/applyRegrowthCreatureReturn call the directly-passed-tgt
+  // path already uses -- see those functions above createPendingChoice.
+  if (choice.kind === 'gyCardChoice') {
+    let ns = { ...s, pendingChoice: null };
+    if (choice.mode === 'regrowthCreature') {
+      return applyRegrowthCreatureReturn(ns, action.optionId, choice.controller, choice.cardName);
+    }
+    return applyRegrowthReturn(ns, action.optionId, choice.controller);
+  }
 
   // CR 702.22j/k: banding damage-division order choices, created directly by
   // resolveCombat (getNextBandingChoice) rather than from a triggered ability.

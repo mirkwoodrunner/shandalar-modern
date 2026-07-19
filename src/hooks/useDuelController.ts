@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useDuel } from './useDuel.js';
-import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, chooseLegendRuleKeep, planGuardianAngelTempAbilities, chooseLampPick, chooseMarufFetch, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
+import AIModule, { chooseBandingDamageOrder, chooseDiscardToLibrary, chooseLegendRuleKeep, chooseGYCardReturn, planGuardianAngelTempAbilities, chooseLampPick, chooseMarufFetch, chooseRiverDivide, chooseRiverSides } from '../engine/AI.js';
 const { aiDecide, AI_PROFILES } = AIModule;
 import { isLand, isCre, isArt, canPay, parseMana, applyCostTax } from '../engine/DuelCore.js';
 import { usePhaseAdvance } from './usePhaseAdvance';
@@ -138,12 +138,6 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'oubliettePhaseOut', // Oubliette -- "target creature"
   'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
   'destroyEnchantedCreature', // Ramses Overdark -- "target enchanted creature"
-  // NOTE (found while wiring the Legendary Creatures Cleanup batch, not fixed here --
-  // out of scope): destroyEnchantedCreature is missing from ACTIVATE_TARGET_EFFECTS
-  // below, so beginActivateFlow never opens the targeting step for Ramses Overdark's
-  // ability -- clicking it currently activates immediately with no target, and its
-  // DuelCore.js case then fizzles for lack of a tgtC. This CREATURE_ONLY_TARGET_EFFECTS
-  // entry alone is unreachable in the live UI today.
   // Legendary Creatures Cleanup batch:
   'pingCombatant2', // Tor Wauki -- "target attacking or blocking creature"
   'pingCombatant3', // Lady Caleria -- "target attacking or blocking creature"
@@ -304,7 +298,7 @@ export function getSpellBlastLegalX(stack: any[]): number[] {
 }
 
 // Effects for activated abilities that require selecting a target.
-const ACTIVATE_TARGET_EFFECTS = new Set([
+export const ACTIVATE_TARGET_EFFECTS = new Set([
   'ping', 'triskelionPing', 'destroyTapped', 'pumpCreature', 'gainFlying',
   'pumpPower', 'damage1', 'damage2', 'damage3', 'untapLand', 'tapTarget',
   'destroyWall', 'destroyArtifactSac', 'pingCombatant', 'cuombajjWitches',
@@ -342,6 +336,7 @@ const ACTIVATE_TARGET_EFFECTS = new Set([
   'tawnosCoffinExile', // Tawnos's Coffin -- "target creature"
   // Legendary Creatures Cleanup batch:
   'draw1Tgt', 'pingCombatant2', 'pingCombatant3', 'discardOneTgt', 'preventDamage2Creature',
+  'destroyEnchantedCreature', // Ramses Overdark -- "target enchanted creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -770,6 +765,15 @@ export function useDuelController(
       // the two branches above -- ahead of the pay_gggg-specific fallback.
       if (choice.kind === 'legendRuleChoice') {
         resolveChoice(chooseLegendRuleKeep(choice, s));
+        return;
+      }
+
+      // Regrowth/Adun Oakenshield graveyard-card picker. Decision logic lives
+      // in AI.js (chooseGYCardReturn); this just dispatches it. Same
+      // positioning as the choice-kind branches above -- ahead of the
+      // pay_gggg-specific fallback.
+      if (choice.kind === 'gyCardChoice') {
+        resolveChoice(chooseGYCardReturn(choice, s));
         return;
       }
 
