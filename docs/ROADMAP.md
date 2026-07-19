@@ -8,7 +8,50 @@ _Last updated: 2026-06-25. This document changes at milestone boundaries, not pe
 
 The engine is mature: the layer system (`layers.js`) implements CR 613 continuous-effect ordering, `DuelCore.js` is the sole state mutator, combat, persistence, and the cast/activate flow are complete. The roguelike loop is built, not stubbed — `useOverworldController.js` already has quests, deliveries, dungeon traversal, world magic, and town conquest. The `gdd.md` Phases 1–7 are marked complete. `gdd.md` Phase 8 (stub elimination) is also now complete — see below.
 
-**Update (2026-07-17):** the placeholder-stub backlog inside `src/data/cards.js` is fully cleared — every entry that exists in the file has a real effect implementation, zero `effect:"STUB"` remain (was 245, see the historical framing below). This closed the A1–A8 batch work as originally scoped. That is a narrower milestone than "the Alpha/Beta pool is complete," though: reconciling `cards.js` (616 entries) against the curated target list (`scryfall/Shandalar Cardpool.txt`, 901 names — the authoritative source; do not use `scryfall/shandalar-card-pool.json`, which has an unrelated contamination bug in its generation script, `scryfall/process-card-pool.js`) by normalized card name shows **299 cards have no entry at all in `cards.js`** — never stubbed, just absent (e.g. Mana Drain, Maze of Ith, Karakas, Nicol Bolas, Word of Command, The Tabernacle at Pendrell Vale, Worms of the Earth). This gap was never tracked by the stub-count metric quoted below, since that metric only counted placeholder rows that already existed. A fresh audit categorizing these 299 by mechanic/family — the same way the heat map below did for the old stub backlog — is needed before Milestone A can be called done.
+**Update (2026-07-17):** the placeholder-stub backlog inside `src/data/cards.js` is fully cleared — every entry that exists in the file has a real effect implementation, zero `effect:"STUB"` remain (was 245, see the historical framing below). This closed the A1–A8 batch work as originally scoped. That is a narrower milestone than "the Alpha/Beta pool is complete," though: reconciling `cards.js` against the curated target list (`scryfall/Shandalar Cardpool.txt`, 901 names — the authoritative source; do not use `scryfall/shandalar-card-pool.json`, which has an unrelated contamination bug in its generation script, `scryfall/process-card-pool.js`) by normalized card name showed 299 cards absent as of 2026-07-17 — never stubbed, just missing.
+
+**Update (2026-07-19) — A9 audit complete.** Re-ran the reconciliation: `cards.js`'s `CARD_DB` is 650 real card entries (not 616, not 617 — both numbers floating around were stale/wrong; a 703-count from an earlier pass was also wrong, caused by counting nested trigger/effect sub-objects that carry their own `id` field alongside the real top-level cards). Against the 901-card curated list, **258 cards are absent** — down from 299, because the intervening legendary-creature batches (Batch 1+2/3/4/Cleanup/Bugfixes) closed ~41 of them without anyone tracking it against A9.
+
+Categorized all 258 by Forge-script ability pattern (`Card-Forge/forge`'s `forge-gui/res/cardsfolder/`, GPL-3.0, same source as prior Milestone A adaptations):
+
+| Mechanic bucket | Cards | Engine infra status |
+|---|---|---|
+| Upkeep trigger | 21 | existing choke point (`switch (c.upkeep)`) |
+| Damage prevention/redirect | 20 | existing (`turnState.damageShields`) |
+| P/T pump / anthem | 16 | existing (`layers.js`) |
+| Counters (misc types) | 13 | existing (free-form `c.counters[TYPE]`) |
+| Walls / can't-attack restriction | 12 | existing |
+| Destruction (single-target) | 11 | existing |
+| Untap/Tap manipulation | 11 | existing (`tapPermanent()`) |
+| Banding | 9 | existing (banding core, phases 1–3) |
+| Mass destroy/sacrifice-all | 9 | existing |
+| Tutor/zone-change (search, reanimate, bounce, mill) | 8 | existing (`zMove`) |
+| Rampage | 7 | **not built** — needs a new trigger point, same gap flagged in the Premodern Milestone-E table |
+| Type/color/text change | 7 | existing (layers.js Layer 3/4) |
+| Mana ability/ritual | 7 | existing |
+| Lifegain/loss | 5 | existing |
+| Discard | 4 | existing (`discardCard()`) |
+| Counter-magic/stack interaction | 4 | existing |
+| Landwalk | 4 | existing |
+| Protection/shroud | 3 | existing |
+| Control-change/steal | 2 | existing (control-grant system) |
+| Token creation | 1 | existing (`TOKEN_DB`/`createToken`) |
+| Face-down (Illusionary Mask, sole pre-Morph oddity) | 1 | bespoke one-off, not worth general infra for 1 card |
+| Uncategorized / bespoke one-offs | 83 | no shared infra either way — old Legends/Antiquities design is dense with unique one-shot text |
+
+**Bottom line:** unlike a brand-new-subsystem backlog, almost all of A9 is per-card data
+work against choke points that already exist — same conclusion the Milestone E
+Premodern audit reached for that pool. The one real infrastructure gap is **Rampage
+(7 cards)**, which needs a new combat trigger point regardless of which pool it's
+scoped against. The 83 "uncategorized" cards are bespoke one-offs (typical for this
+card era), not a hidden shared-mechanism opportunity.
+
+Two minor footnotes: 7 cards in `cards.js` (Phantom Warrior, Glacial Wall, Stromgald
+Cabal, Fyndhorn Elves, Dark Banishing, Consume Spirit, Lava Axe) aren't on the curated
+901-card list at all — extras, not part of the target pool, not a bug. The full
+per-card mechanic breakdown (which 258 cards fall in which bucket) is not persisted to
+a file in the repo — re-derive via a fresh Forge cross-reference if needed for a
+specific batch.
 
 Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
@@ -31,9 +74,9 @@ The spine of the roadmap. Each batch is Scryfall-verified before any handler is 
 - ~~**A7. Ante cards.**~~ Stub backlog under this heading is empty. The four cards explicitly named here (Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird) are absent from `cards.js` entirely — see A9.
 - ~~**A8. Walls, landwalk, remaining one-offs.**~~ **DONE.**
 
-- **A9. Close the entirely-missing-card gap (NEW, 2026-07-17).** 299 cards from the curated target list (`scryfall/Shandalar Cardpool.txt`) have no `cards.js` entry at all — not stubbed, absent. This was never covered by A1–A8, which only tracked cards that already had a placeholder row. Needs its own fresh audit and heat map (by mechanic/family, same approach as the original stub heat map) before batching. Until that audit exists, treat this as unscoped — do not assume it's the same size or shape as the old 245-stub backlog.
+- **A9. Close the entirely-missing-card gap.** 258 cards from the curated target list (`scryfall/Shandalar Cardpool.txt`) have no `cards.js` entry at all — not stubbed, absent (was 299 as of 2026-07-17; legendary-creature batches since then closed ~41 without tracking against this heading). Audit complete as of 2026-07-19 — see the mechanic heat map above. Batching is now in progress; the upkeep-trigger bucket (21 cards) is the first sub-batch scoped.
 
-A1–A8 took roughly the originally-estimated 6–8 sprints. A9 is not yet estimated pending the fresh audit.
+A1–A8 took roughly the originally-estimated 6–8 sprints. A9's audit is done (see above); its total size is now known (258 cards, 21 shared-mechanic buckets, one genuine infra gap in Rampage) but it is not yet sequenced into sprints.
 
 ## Milestone B — Determinism backbone
 
@@ -115,7 +158,7 @@ see below. Kept for historical reference; the real next-step decision is B vs. C
 4. ~~A6 (pumps), A8 (one-offs)~~ — done. Milestone C defender-block fix — still open.
 5. A7 (ante) — stub backlog empty, but see A9. Milestone D loop polish — still open.
 6. Premodern go/no-go — audit done (see Milestone E), decision still open.
-7. **A9 (entirely-missing-card gap)** — newly discovered 2026-07-17, not yet sequenced against B/C/D.
+7. **A9 (entirely-missing-card gap)** — audited 2026-07-19 (258 cards, heat map above); batching now underway starting with the upkeep-trigger bucket. Still not sequenced against B/C/D as a milestone-level priority call.
 
 ## Graduation rule
 
