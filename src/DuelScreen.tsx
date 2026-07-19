@@ -328,11 +328,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       return;
     }
 
-    // Sacrifice-as-additional-cost step: bf clicks pick the creature to
-    // sacrifice. Restricted to the caster's own creatures; anything else
-    // (opponent's board, noncreature permanents) is a no-op.
+    // Sacrifice-as-additional-cost step: bf clicks pick the permanent to
+    // sacrifice. Restricted to the caster's own creatures (or, for
+    // sacrificeLand cards like Mana Vortex, lands); anything else (opponent's
+    // board, ineligible permanents) is a no-op.
     if (castFlow?.mode === 'additionalCost' && (zone === 'pBf' || zone === 'oBf')) {
-      if (zone === 'pBf' && isCre(card)) selectAdditionalCost(card.iid);
+      const acCastingCard = (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+      const acWantsLand = acCastingCard?.additionalCost?.type === 'sacrificeLand';
+      if (zone === 'pBf' && (acWantsLand ? isLand(card) : isCre(card))) selectAdditionalCost(card.iid);
       return;
     }
 

@@ -5,10 +5,29 @@
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
-- Roadmap Milestone A remaining: A2, A3, A5+ batches.
+- Roadmap Milestone A remaining: A9 only (A1-A8 complete). A9 audit (2026-07-19):
+  258 cards absent from `cards.js` across 21 shared-mechanic buckets; the
+  upkeep-trigger bucket (21 cards) is in progress -- 13 closed by the A9
+  Upkeep-Trigger Batch below, 8 remaining. See `docs/ROADMAP.md` -- Milestone A.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-19)
+- **A9 Upkeep-Trigger Batch (13 cards)** -- Serendib Efreet, Cursed Land, Copper
+  Tablet, Storm World, Junún Efreet, Curse Artifact, The Fallen, Serendib Djinn,
+  Dance of Many, Forethought Amulet, Hazezon Tamar, Rohgahh of Kher Keep, Mana
+  Vortex. Adds `anthemNamed` (name-matched static anthem in `layers.js`),
+  `pendingUpkeepTokens` (Hazezon Tamar's delayed upkeep tokens, parallel to Rukh
+  Egg's `pendingEndStepTokens`), a narrowly-scoped damage-reduction replacement
+  effect in `hurt()` (Forethought Amulet), and a `sacrificeLand` sibling to the
+  existing `sacrificeCreature` additionalCost gate at 4 sites (2 more than
+  originally scoped -- `selectAdditionalCost`'s click-eligibility filter and the
+  `DuelScreen.tsx`/`DuelScreenMobile.tsx` click-routing gates one level up both
+  also hardcoded `isCre`). Three new upkeep-choice modals
+  (`CurseArtifactUpkeepModal`, `RohgahhUpkeepModal`, `LandPickerUpkeepModal`).
+  Tests: 29 Vitest (`tests/scenarios/upkeep-damage-batch-a9.test.js`,
+  `upkeep-sacrifice-batch-a9.test.js`, `upkeep-delayed-and-control-a9.test.js`),
+  6 Playwright (`tests/e2e/upkeep-batch-a9.spec.js`, 3 cases x 2 viewports). See
+  `docs/MECHANICS_INDEX.md` -- A9 Upkeep-Trigger Batch (13 cards).
 - **Legend Rule / Legendary Creatures Mobile Spec Gap** -- `legend-rule.spec.js`
   (LEGEND-E06) and `legendary-creatures-batch-1-2.spec.js` (LGB-E08) both render
   the real `ChoiceModal` via the sandbox harness but were never in

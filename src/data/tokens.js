@@ -68,4 +68,17 @@ export const TOKEN_DB = [
     color: "",
     keywords: [KEYWORDS.FLYING.id],
   },
+  // Hazezon Tamar: "create X 1/1 red, green, and white Sand Warrior creature
+  // tokens at the beginning of your next upkeep."
+  // Adapted from Card-Forge/forge (h/hazezon_tamar.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  {
+    tokenId: "sand_warrior",
+    name: "Sand Warrior",
+    type: "Creature",
+    subtype: "Warrior",
+    power: 1,
+    toughness: 1,
+    color: "RGW",
+    keywords: [],
+  },
 ];

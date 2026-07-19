@@ -1106,15 +1106,21 @@ export function useDuelController(
 
   // Sacrifice-as-additional-cost picker: single selection, auto-advances
   // (mirrors confirmCastTargets's update-and-advance shape via `_advance`).
-  // Ineligible clicks (not a creature the caster controls) are a no-op.
+  // Ineligible clicks (not a creature the caster controls, or -- for
+  // sacrificeLand cards like Mana Vortex -- not a land the caster controls)
+  // are a no-op. The eligible type is read from the card actually being
+  // cast (flow.sourceIid), not hardcoded to creatures.
   const selectAdditionalCost = useCallback((iid: string) => {
     setCastFlow(prev => {
       if (!prev || prev.mode !== 'additionalCost') return prev;
+      const castingCard = (s.p.hand as any[]).find((c: any) => c.iid === prev.sourceIid);
+      const wantsLand = castingCard?.additionalCost?.type === 'sacrificeLand';
       const card = (s.p.bf as any[]).find((c: any) => c.iid === iid);
-      if (!card || !isCre(card)) return prev;
+      if (!card) return prev;
+      if (wantsLand ? !isLand(card) : !isCre(card)) return prev;
       return { ...prev, additionalCostSelection: iid, _advance: true } as any;
     });
-  }, [s.p.bf]);
+  }, [s.p.bf, s.p.hand]);
 
   const deselectCastTarget = useCallback((iid: string) => {
     setCastFlow(prev => {
@@ -1141,7 +1147,7 @@ export function useDuelController(
       if (!card) { setCastFlow(null); return; }
       // A card with additionalCost must always stop at the additionalCost step
       // before mana/dispatch, even if it also had a target step before this.
-      if (card.additionalCost?.type === 'sacrificeCreature' && flow.additionalCostSelection == null) {
+      if ((card.additionalCost?.type === 'sacrificeCreature' || card.additionalCost?.type === 'sacrificeLand') && flow.additionalCostSelection == null) {
         setCastFlow({ ...flow, mode: 'additionalCost', additionalCostSelection: null });
         return;
       }
@@ -1277,6 +1283,14 @@ export function useDuelController(
       const creatureCount = (s.p.bf as any[]).filter(isCre).length;
       if (creatureCount === 0) { selectCard(null); return; }
     }
+    // Mana Vortex: "counter it unless you sacrifice a land" -- same legality
+    // gate as sacrificeCreature above, but for zero lands. This is the
+    // SIMPLIFICATION of "cast then get countered" into "can't legally start
+    // the cast" mentioned in the CAST_SPELL additionalCost comment.
+    if (card.additionalCost?.type === 'sacrificeLand') {
+      const landCount = (s.p.bf as any[]).filter(isLand).length;
+      if (landCount === 0) { selectCard(null); return; }
+    }
 
     const hasX = /X/i.test(card.cost || '') && card.id !== 'power_sink';
 
@@ -1336,7 +1350,7 @@ export function useDuelController(
     // A card with additionalCost can never take the instant-cast shortcut
     // below, even when targetless and mana is already affordable -- it must
     // always stop at the additionalCost step first.
-    if (card.additionalCost?.type === 'sacrificeCreature') {
+    if (card.additionalCost?.type === 'sacrificeCreature' || card.additionalCost?.type === 'sacrificeLand') {
       setCastFlow({
         kind: 'spell',
         sourceIid: card.iid,

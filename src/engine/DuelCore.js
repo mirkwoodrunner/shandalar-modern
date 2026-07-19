@@ -565,6 +565,26 @@ export function hurt(s, who, amt, src = "", meta = null) {
 if (amt < 0 && s[who].lichActive) {
   return drawD(dlog(s, `${who}'s Lich: draws ${-amt} card(s) instead of gaining life.`, "effect"), who, -amt);
 }
+// Forethought Amulet: "If an instant or sorcery source would deal 3 or more
+// damage to you, it deals 2 damage to you instead." A replacement effect
+// (reduces the amount), not prevention -- turnState.damageShields is built
+// for full prevention keyed by a specific chosen source (CoP-style, checked
+// just below), not this "any qualifying source, always active" reduction, so
+// it doesn't fit that shape. Narrowly scoped: only checked when a
+// Forethought Amulet with a damageReplacement field is actually in play, so
+// it can't affect any other card's damage math.
+// Adapted from Card-Forge/forge (f/forethought_amulet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (amt > 0 && meta?.sourceType) {
+  const amulet = s[who].bf.find(c => c.name === 'Forethought Amulet' && c.damageReplacement);
+  if (amulet) {
+    const dr = amulet.damageReplacement;
+    if (dr.sourceTypes.includes(meta.sourceType) && amt >= dr.minAmount) {
+      const before = amt;
+      amt = dr.replaceWith;
+      s = dlog(s, `${amulet.name} reduces ${before} damage to ${who} down to ${amt}.`, 'effect');
+    }
+  }
+}
 if (amt > 0 && meta?.sourceIid) {
   // Circle of Protection / Eye for an Eye / Greater Realm of Preservation:
   // "the next time [a source of your choice] would deal damage to you this
@@ -1377,6 +1397,28 @@ const VESUVAN_RECOPY_ABILITY = {
   trigger: { event: 'ON_UPKEEP_START', scope: 'controller' },
   requiresTarget: true,
   effect: { type: 'vesuvanRecopy' },
+};
+
+// Dance of Many's token-side "when the token leaves the battlefield,
+// sacrifice Dance of Many" trigger. Attached to the token itself for
+// symmetry with the enchantment-side ability below, but see
+// danceOfManySacrificeSource's comment: tokens vanish on leaving the
+// battlefield (CR 111.7) rather than landing in gy/exile, so
+// findLeftBattlefieldCard can never locate this token afterward and this
+// scope:'self' trigger is not reachable in practice -- the actual detection
+// is the dance_of_many orphan-check in the PHASE.UPKEEP block instead.
+const DANCE_OF_MANY_TOKEN_LEAVES_ABILITY = {
+  id: 'dance_of_many_token_leaves',
+  trigger: { event: 'ON_PERMANENT_LEAVES_BF', scope: 'self' },
+  effect: { type: 'danceOfManySacrificeSource' },
+};
+// Dance of Many's own "when Dance of Many leaves the battlefield, exile the
+// token" trigger. Dance of Many is never a token itself, so its own
+// leaves-bf event is found normally via findLeftBattlefieldCard.
+const DANCE_OF_MANY_ITSELF_LEAVES_ABILITY = {
+  id: 'dance_of_many_itself_leaves',
+  trigger: { event: 'ON_PERMANENT_LEAVES_BF', scope: 'self' },
+  effect: { type: 'danceOfManyExileToken' },
 };
 
 export function resolveEff(s, item) {
@@ -2890,6 +2932,58 @@ case "vesuvanEtbCopy": {
   };
   ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, newPerm] } };
   ns = dlog(ns, `${card.name} enters as a copy of ${copied.name}.`, 'effect');
+  break;
+}
+// Dance of Many: "When Dance of Many enters, create a token that's a copy of
+// target nontoken creature." Uses the same ETB-copy call shape as Copy
+// Artifact/Vesuvan Doppelganger above (applyPermanentCopy with a
+// not-yet-on-any-battlefield sourceCardIid), but the token is a SEPARATE
+// permanent from Dance of Many itself (Dance of Many stays on the
+// battlefield as its own Enchantment, unlike Copy Artifact which becomes the
+// copy). Wires the bidirectional link (linkedTokenIid on Dance of Many,
+// sourceIid on the token) so each side's leaves-the-battlefield trigger can
+// find the other -- see danceOfManyExileToken/the dance_of_many
+// orphan-check in the PHASE.UPKEEP block.
+// Adapted from Card-Forge/forge (d/dance_of_many.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "danceOfManyCopy": {
+  if (!tgtC || !isCre(tgtC) || tgtC.isToken) { ns = dlog(ns, `${card.name}: no legal nontoken creature target -- fizzles.`, "effect"); break; }
+  const tokenIid = makeId();
+  const { copied } = applyPermanentCopy(ns, tokenIid, tgtC, {});
+  const newToken = {
+    ...copied, iid: tokenIid, controller: caster, enterTs: ns.layerClock ?? 0,
+    tapped: false, summoningSick: true, attacking: false, blocking: null,
+    damage: 0, counters: {}, eotBuffs: [], enchantments: [], tokens: [], exerted: false,
+    isToken: true, sourceIid: card.iid,
+    triggeredAbilities: [DANCE_OF_MANY_TOKEN_LEAVES_ABILITY],
+  };
+  // Dance of Many resolves before RESOLVE_STACK's own ETB push runs (see its
+  // alreadyOnBf guard), so its own bf entry -- carrying linkedTokenIid and
+  // the leaves-bf trigger -- must be pushed here directly, same as Copy
+  // Artifact/Oubliette above, rather than relying on a .map() over an entry
+  // that doesn't exist on the battlefield yet.
+  const domPerm = {
+    ...card, controller: caster, enterTs: ns.layerClock ?? 0,
+    tapped: false, summoningSick: true, attacking: false, blocking: null,
+    damage: 0, counters: {}, eotBuffs: [], enchantments: [], tokens: [], exerted: false,
+    linkedTokenIid: tokenIid,
+    triggeredAbilities: [DANCE_OF_MANY_ITSELF_LEAVES_ABILITY],
+  };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, newToken, domPerm] } };
+  ns = dlog(ns, `${card.name} creates a token copy of ${tgtC.name}.`, "effect");
+  break;
+}
+// Hazezon Tamar: "create X Sand Warrior tokens at the beginning of your next
+// upkeep, where X is the number of lands you control at that time." Lands
+// are counted NOW (at ETB resolution) per the printed wording ("at that
+// time" refers to the moment of counting, i.e. resolution, not the later
+// upkeep) and queued via pendingUpkeepTokens -- same delayed-token shape as
+// Rukh Egg's pendingEndStepTokens, drained in the PHASE.UPKEEP block instead
+// of PHASE.END.
+// Adapted from Card-Forge/forge (h/hazezon_tamar.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "hazezonTamarEtb": {
+  const landCount = ns[caster].bf.filter(isLand).length;
+  ns = { ...ns, pendingUpkeepTokens: [...(ns.pendingUpkeepTokens || []), { tokenId: 'sand_warrior', count: landCount, controller: caster, sourceIid: card.iid }] };
+  ns = dlog(ns, `${card.name}: will create ${landCount} Sand Warrior token(s) at the beginning of your next upkeep.`, "effect");
   break;
 }
 case "aladdinsSteal": {
@@ -5298,6 +5392,18 @@ if (!ns.dungeonMod || ns.dungeonMod !== 'SILENCE') {
   ns = emitEvent(ns, { type: 'ON_UPKEEP_START', payload: { activePlayer: ns.active } });
   ns = processTriggerQueue(ns);
 }
+// Hazezon Tamar: "create X Sand Warrior tokens at the beginning of your next
+// upkeep." Drained here (filtered to the entering player's own upkeep, not
+// every upkeep) rather than PHASE.END like Rukh Egg's pendingEndStepTokens,
+// since Hazezon's delayed trigger is upkeep-scoped, not end-step-scoped.
+const hazezonPending = (ns.pendingUpkeepTokens || []).filter(p => p.controller === ns.active);
+if (hazezonPending.length) {
+  for (const pending of hazezonPending) {
+    ns = createToken(ns, pending.tokenId, pending.count, pending.controller, pending.sourceIid);
+    ns = dlog(ns, `Creates ${pending.count}x Sand Warrior token(s) (Hazezon Tamar, delayed trigger).`, 'effect');
+  }
+  ns = { ...ns, pendingUpkeepTokens: (ns.pendingUpkeepTokens || []).filter(p => p.controller !== ns.active) };
+}
 for (const w of ["p","o"]) {
 for (const c of [...ns[w].bf]) {
 if (!c.controller || c.controller !== w) continue;
@@ -5340,10 +5446,12 @@ if (w === ns.active && isLand(c) && farmsteadAura) {
 // idiom as Farmstead above -- these enchant enchantments/creatures/artifacts
 // rather than lands, and deal a fixed (non-optional) 1 damage, so no upkeep
 // choice is needed.
+// Cursed Land joins this same array (Legends, A9 batch) -- identical "1 fixed
+// damage to enchanted permanent's controller" shape, enchanting a land.
 // Adapted from Card-Forge/forge (f/feedback.txt, w/wanderlust.txt,
-// w/warp_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+// w/warp_artifact.txt, c/cursed_land.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 if (w === ns.active) {
-  const curseAura = c.enchantments?.find(e => ["Feedback", "Wanderlust", "Warp Artifact"].includes(e.name));
+  const curseAura = c.enchantments?.find(e => ["Feedback", "Wanderlust", "Warp Artifact", "Cursed Land"].includes(e.name));
   if (curseAura) ns = hurt(ns, w, 1, curseAura.name, { sourceIid: curseAura.iid, sourceType: 'enchantment' });
 }
 // Power Leak: "that player may pay any amount of mana. This Aura deals 2
@@ -5378,6 +5486,83 @@ if (w === ns.active && isLand(c) && erosionAura) {
   } else {
     ns = queueUpkeepChoice(ns, { cardName: "Erosion", handlerKey: "erosionUpkeep", iid: c.iid });
   }
+}
+// Curse Artifact: "Enchant artifact. At the beginning of the upkeep of
+// enchanted artifact's controller, Curse Artifact deals 2 damage to that
+// player unless they sacrifice that artifact." Same "checked via attached
+// aura name" idiom as Farmstead/Power Leak/Erosion above.
+// Adapted from Card-Forge/forge (c/curse_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const curseArtifactAura = c.enchantments?.find(e => e.name === "Curse Artifact");
+if (w === ns.active && isArt(c) && curseArtifactAura) {
+  if (w === "o") {
+    // AI auto-sacrifices the enchanted artifact -- guaranteed-safe line over
+    // a 2-damage cost, same "AI takes the safe line" convention as Erosion's
+    // own AI branch above (which prefers paying {1}/1 life over losing the land).
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, `${c.name} sacrificed (Curse Artifact).`, "death");
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Curse Artifact", handlerKey: "curseArtifactUpkeep", iid: c.iid });
+  }
+}
+// Copper Tablet: "At the beginning of each player's upkeep, Copper Tablet
+// deals 1 damage to that player." Not gated by controller the way
+// blackVise/rackUpkeep are (which fire only on a specific OTHER player's
+// upkeep) -- this fires on whoever's upkeep is currently active regardless
+// of who controls the permanent, so no `w === ns.active` guard on the
+// permanent's controller is used; the target is always ns.active, not w.
+// Adapted from Card-Forge/forge (c/copper_tablet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (c.name === "Copper Tablet") {
+  ns = hurt(ns, ns.active, 1, "Copper Tablet", { sourceIid: c.iid, sourceType: inferSourceType(c) });
+}
+// Storm World: "At the beginning of each player's upkeep, Storm World deals
+// X damage to that player, where X is 4 minus the number of cards in their
+// hand." Same "each player's upkeep, target is always ns.active" shape as
+// Copper Tablet above.
+// Adapted from Card-Forge/forge (s/storm_world.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (c.name === "Storm World") {
+  const handSize = ns[ns.active].hand.length;
+  const dmg = Math.max(0, 4 - handSize);
+  if (dmg > 0) ns = hurt(ns, ns.active, dmg, "Storm World", { sourceIid: c.iid, sourceType: inferSourceType(c) });
+}
+// Mana Vortex: "At the beginning of each player's upkeep, that player
+// sacrifices a land." Same "each player's upkeep" shape as Copper Tablet/
+// Storm World above. Distinct in scope from Serendib Djinn's "you control no
+// lands" (single-player, sacrificeIfNoLands) check below -- this is a
+// mandatory sacrifice that fires every upkeep regardless of land count.
+// Adapted from Card-Forge/forge (m/mana_vortex.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+if (c.name === "Mana Vortex") {
+  const mvLands = ns[ns.active].bf.filter(isLand);
+  if (mvLands.length) {
+    if (ns.active === "o") {
+      const mvBasics = mvLands.filter(l => l.subtype?.includes("Basic"));
+      const mvChosen = mvBasics[0] || mvLands[0];
+      ns = zMove(ns, mvChosen.iid, ns.active, ns.active, "gy");
+      ns = dlog(ns, `Mana Vortex: ${ns.active} sacrifices ${mvChosen.name}.`, "effect");
+    } else {
+      ns = queueUpkeepChoice(ns, { cardName: "Mana Vortex", handlerKey: "manaVortexUpkeep", iid: c.iid });
+    }
+  }
+  // "When there are no lands on the battlefield, sacrifice Mana Vortex" --
+  // a GLOBAL check across both players' battlefields combined, distinct from
+  // the single-player checks above.
+  if (![...ns.p.bf, ...ns.o.bf].some(isLand)) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, "Mana Vortex: no lands remain on the battlefield -- sacrificed.", "effect");
+  }
+}
+// Dance of Many: "When the token leaves the battlefield, sacrifice Dance of
+// Many." Tokens cease to exist when they leave the battlefield (CR 111.7 --
+// see zMove's tokenVanishes handling) so there is no zone the token can be
+// found in afterward for a standard leaves-the-battlefield trigger to key
+// off of -- checked here as a periodic orphan-check instead, same idiom as
+// kudzuStyleLandOrphanCheck/kudzuStyleArtifactOrphanCheck below. `continue`
+// skips the rest of this card's per-upkeep checks (including the
+// sacrificeUnless_UU switch case below) once it's already been sacrificed
+// this way, so that case can't also fire a stale double-sacrifice/mana-pay.
+if (w === ns.active && c.id === "dance_of_many" && c.linkedTokenIid && !ns[w].bf.some(x => x.iid === c.linkedTokenIid)) {
+  ns = zMove(ns, c.iid, w, w, "gy");
+  ns = dlog(ns, "Dance of Many: linked token is gone -- sacrificed.", "effect");
+  continue;
 }
 // Shapeshifter: "At the beginning of your upkeep, you may choose a number
 // between 0 and 7." SIMPLIFICATION: only re-prompts the human player -- the
@@ -5467,6 +5652,86 @@ case "sacrificeUnless_WW": {
 const mp = { ...ns[w].mana };
 if ((mp.W || 0) >= 2) { mp.W -= 2; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
 else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Junún Efreet: "sacrifice this creature unless you pay {B}{B}."
+// Adapted from Card-Forge/forge (j/junun_efreet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "sacrificeUnless_BB": {
+const mp = { ...ns[w].mana };
+if ((mp.B || 0) >= 2) { mp.B -= 2; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Dance of Many: "sacrifice this enchantment unless you pay {U}{U}."
+case "sacrificeUnless_UU": {
+const mp = { ...ns[w].mana };
+if ((mp.U || 0) >= 2) { mp.U -= 2; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Forethought Amulet: "sacrifice this artifact unless you pay {3}." Generic
+// mana, no color check -- reuses canPay/payMana the same way "3BBB" already
+// does for Cosmic Horror above (mixed generic+colored parsing).
+case "sacrificeUnless_3": {
+if (canPay(ns[w].mana, "3")) { ns = { ...ns, [w]: { ...ns[w], mana: payMana(ns[w].mana, "3") } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// The Fallen: "deals 1 damage to each opponent it has dealt damage to this
+// game." hasDamagedPlayers is recorded by the theFallenRecordDamage
+// triggered-ability effect (ON_PLAYER_DAMAGED). This engine has no
+// planeswalker card type, so the oracle's "or planeswalker" clause is a
+// permanent no-op here -- omitted from the implementation, kept in the
+// printed text for accuracy.
+case "theFallenUpkeep": {
+if (w !== ns.active) break;
+const tfOpp = w === "p" ? "o" : "p";
+if (c.hasDamagedPlayers?.[tfOpp]) {
+  ns = hurt(ns, tfOpp, 1, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
+}
+break;
+}
+// Serendib Djinn: "sacrifice a land. If you sacrifice an Island this way,
+// Serendib Djinn deals 3 damage to you." Human picks via queueUpkeepChoice
+// (a genuine land-picker, unlike Elder Spawn's auto-picked-first-Island
+// shape above, since this card has no non-Island lands to fall back to
+// unconditionally); AI auto-picks a non-Island land if one exists, to avoid
+// the 3-damage clause.
+case "serendibDjinnUpkeep": {
+if (w !== ns.active) break;
+if (w === "o") {
+  const sdLands = ns.o.bf.filter(isLand);
+  if (!sdLands.length) break; // sacrificeIfNoLands loop handles this creature separately
+  const sdNonIsland = sdLands.find(l => !l.subtype?.includes("Island"));
+  const sdChosen = sdNonIsland || sdLands[0];
+  ns = zMove(ns, sdChosen.iid, w, w, "gy");
+  ns = dlog(ns, `${c.name}: opponent sacrifices ${sdChosen.name}.`, "effect");
+  if (sdChosen.subtype?.includes("Island")) {
+    ns = hurt(ns, "o", 3, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) });
+  }
+} else {
+  const humanLands = ns.p.bf.filter(isLand);
+  if (!humanLands.length) break;
+  ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "serendibDjinnUpkeep", iid: c.iid });
+}
+break;
+}
+// Rohgahh of Kher Keep: "you may pay {R}{R}{R}. If you don't, tap Rohgahh
+// and all Kobolds of Kher Keep, then an opponent gains control of them."
+// AI auto-pays if affordable (demonicHordesUpkeep-style "pay if you can"
+// convention above), else calls rohgahhTapAndTransfer.
+case "rohgahhUpkeep": {
+if (w !== ns.active) break;
+if (w === "o") {
+  if (canPay(ns.o.mana, "RRR")) {
+    ns = { ...ns, o: { ...ns.o, mana: payMana(ns.o.mana, "RRR") } };
+    ns = dlog(ns, `${c.name}: opponent pays RRR upkeep.`, "mana");
+  } else {
+    ns = rohgahhTapAndTransfer(ns, w, c.iid);
+  }
+} else {
+  ns = queueUpkeepChoice(ns, { cardName: c.name, handlerKey: "rohgahhUpkeep", iid: c.iid });
+}
 break;
 }
 // Palladia-Mors: "sacrifice this creature unless you pay {R}{G}{W}."
@@ -6028,6 +6293,21 @@ for (const w of ["p","o"]) {
     }
   }
 }
+// Serendib Djinn: "When you control no lands, sacrifice this creature."
+// Parallel to the Merchant Ship/Island Fish Jasconius/Leviathan
+// sacrificeIfNoIslands loop above (same SIMPLIFICATION -- checked once per
+// end step), but keyed on lands generally instead of Islands specifically --
+// a separate flag (sacrificeIfNoLands) rather than overloading
+// sacrificeIfNoIslands for two different conditions.
+// Adapted from Card-Forge/forge (s/serendib_djinn.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+for (const w of ["p","o"]) {
+  for (const c of [...ns[w].bf].filter(x => x.sacrificeIfNoLands)) {
+    if (!ns[w].bf.some(isLand)) {
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = dlog(ns, `${c.name}: sacrificed (controls no lands).`, "effect");
+    }
+  }
+}
 // Jihad: "When the chosen player controls no nontoken permanents of the chosen
 // color, sacrifice this enchantment." No token tracking exists in this engine
 // (every permanent is treated as nontoken, matching the existing Beasts of
@@ -6077,6 +6357,12 @@ function evaluateCondition(state, card, condition, payload) {
   // creature. Marsh Viper, Pit Scorpion, Serpent Generator's Snake token.
   if (condition.type === 'selfIsDamageSourceToPlayer') {
     return payload.sourceId === card.iid && (payload.targetId === 'p' || payload.targetId === 'o');
+  }
+  // ON_PLAYER_DAMAGED: restricts a "whenever this deals damage to a player"
+  // ability to firing only for the permanent that was itself the damage
+  // source (meta.sourceIid on hurt()'s emitted payload). The Fallen.
+  if (condition.type === 'selfIsPlayerDamageSource') {
+    return payload.sourceIid === card.iid;
   }
   // ON_PERMANENT_LEAVES_BF: "put into a graveyard" -- Dingus Egg.
   if (condition.type === 'permanentWasLand') {
@@ -6699,6 +6985,60 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     case 'queueEndStepToken': {
       return { ...state, pendingEndStepTokens: [...(state.pendingEndStepTokens || []), { tokenId: effect.tokenId, count: effect.count, controller: sourceCard.controller }] };
     }
+    // The Fallen: "deals 1 damage to each opponent it has dealt damage to
+    // this game." Records the damaged player onto the card instance
+    // (merged, never overwritten) so theFallenUpkeep can read it back later.
+    // Adapted from Card-Forge/forge (t/the_fallen.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'theFallenRecordDamage': {
+      const who = sourceCard.controller;
+      const target = payload.who;
+      if (target !== 'p' && target !== 'o') return state;
+      return { ...state, [who]: { ...state[who], bf: state[who].bf.map(c =>
+        c.iid === sourceCard.iid ? { ...c, hasDamagedPlayers: { ...c.hasDamagedPlayers, [target]: true } } : c
+      ) } };
+    }
+    // Dance of Many: "When the token leaves the battlefield, sacrifice Dance
+    // of Many." sourceCard here is the just-departed token (a token that
+    // vanishes rather than being placed in gy/exile per CR 111.7, so this
+    // path is only reachable while the token is still findable -- see the
+    // dance_of_many orphan-check in the PHASE.UPKEEP block for the actual
+    // detection of a vanished token, since a scope:'self' trigger on a
+    // vanished token can never fire via findLeftBattlefieldCard). Kept here
+    // only for symmetry with danceOfManyExileToken below; not currently
+    // reachable given the token-vanishing limitation.
+    case 'danceOfManySacrificeSource': {
+      const doManyIid = sourceCard.sourceIid;
+      if (!doManyIid) return state;
+      const doMany = getBF(state, doManyIid);
+      if (!doMany) return state;
+      const who = doMany.controller;
+      return zMove(state, doManyIid, who, who, 'gy');
+    }
+    // Dance of Many: "When Dance of Many leaves the battlefield, exile the
+    // token." sourceCard here is the just-departed Dance of Many, found via
+    // findLeftBattlefieldCard (a normal, non-token permanent, so this path
+    // works correctly), still carrying its linkedTokenIid.
+    // Adapted from Card-Forge/forge (d/dance_of_many.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'danceOfManyExileToken': {
+      const tokenIid = sourceCard.linkedTokenIid;
+      if (!tokenIid) return state;
+      const token = getBF(state, tokenIid);
+      if (!token) return state;
+      const who = token.controller;
+      return zMove(state, tokenIid, who, who, 'exile');
+    }
+    // Hazezon Tamar: "When Hazezon Tamar leaves the battlefield, exile all
+    // Sand Warriors." sourceCard here is the just-departed Hazezon Tamar,
+    // found via findLeftBattlefieldCard (a normal, non-token permanent).
+    // Adapted from Card-Forge/forge (h/hazezon_tamar.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    case 'hazezonTamarExileSandWarriors': {
+      const who = sourceCard.controller;
+      const warriors = state[who].bf.filter(x => x.isToken && x.sourceIid === sourceCard.iid);
+      let s = state;
+      for (const t of warriors) s = zMove(s, t.iid, who, who, 'exile');
+      if (warriors.length) s = dlog(s, `${sourceCard.name} leaves the battlefield -- exiles all its Sand Warrior tokens.`, 'effect');
+      return s;
+    }
     // Raging River: "Whenever one or more creatures you control attack, each
     // defending player divides all creatures without flying they control into
     // 'left' and 'right' piles. Then, for each attacking creature you control,
@@ -7227,6 +7567,64 @@ const UPKEEP_CHOICE_HANDLERS = {
       return hurt(ns, owner, 6, choice.cardName, esSrc ? { sourceIid: esSrc.iid, sourceType: inferSourceType(esSrc) } : null);
     },
   },
+  // Curse Artifact: "deals 2 damage to that player unless they sacrifice that
+  // artifact." choice.iid is the enchanted artifact.
+  // Adapted from Card-Forge/forge (c/curse_artifact.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  curseArtifactUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "SACRIFICE") {
+        return dlog(zMove(s, choice.iid, owner, owner, "gy"), `${choice.cardName} sacrificed (Curse Artifact).`, "death");
+      }
+      const caSrc = getBF(s, choice.iid)?.enchantments?.find(e => e.name === "Curse Artifact");
+      return hurt(s, owner, 2, "Curse Artifact", caSrc ? { sourceIid: caSrc.iid, sourceType: 'enchantment' } : null);
+    },
+  },
+  // Serendib Djinn: "sacrifice a land. If you sacrifice an Island this way,
+  // Serendib Djinn deals 3 damage to you." choice.iid is the creature;
+  // action.choice carries the chosen land's iid directly (a genuine
+  // land-picker, not a fixed enum -- see the SerendibDjinnUpkeepModal UI).
+  // Adapted from Card-Forge/forge (s/serendib_djinn.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  serendibDjinnUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      const land = getBF(s, action.choice);
+      if (!land || !isLand(land)) return s;
+      const wasIsland = land.subtype?.includes("Island");
+      let ns = zMove(s, land.iid, owner, owner, "gy");
+      ns = dlog(ns, `${choice.cardName}: sacrifices ${land.name}.`, "effect");
+      if (wasIsland) {
+        const djSrc = getBF(ns, choice.iid);
+        ns = hurt(ns, owner, 3, choice.cardName, djSrc ? { sourceIid: djSrc.iid, sourceType: inferSourceType(djSrc) } : null);
+      }
+      return ns;
+    },
+  },
+  // Rohgahh of Kher Keep: "you may pay {R}{R}{R}. If you don't, tap Rohgahh
+  // and all Kobolds of Kher Keep, then an opponent gains control of them."
+  // choice.iid is Rohgahh itself.
+  // Adapted from Card-Forge/forge (r/rohgahh_of_kher_keep.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  rohgahhUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "PAY" && canPay(s[owner].mana, "RRR")) {
+        return { ...s, [owner]: { ...s[owner], mana: payMana(s[owner].mana, "RRR") } };
+      }
+      return rohgahhTapAndTransfer(s, owner, choice.iid);
+    },
+  },
+  // Mana Vortex: "that player sacrifices a land." choice.iid is Mana Vortex
+  // itself; action.choice carries the chosen land's iid directly, same
+  // land-picker shape as serendibDjinnUpkeep above.
+  // Adapted from Card-Forge/forge (m/mana_vortex.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  manaVortexUpkeep: {
+    resolve(s, choice, action) {
+      const land = getBF(s, action.choice);
+      if (!land || !isLand(land)) return s;
+      const owner = land.controller;
+      return dlog(zMove(s, land.iid, owner, owner, "gy"), `Mana Vortex: ${owner} sacrifices ${land.name}.`, "effect");
+    },
+  },
   // Magnetic Mountain: computes the eligible/affordable count at resolve time
   // (not when the pendingUpkeepChoice was queued) since mana burns at the
   // UPKEEP transition itself -- the player only has real mana to spend once
@@ -7388,6 +7786,32 @@ const NUMBER_CHOICE_HANDLERS = {
   },
 };
 
+// Rohgahh of Kher Keep: taps Rohgahh and every creature the same controller
+// controls named "Kobolds of Kher Keep", then transfers control of all of
+// them to the opponent. No shared control-transfer helper function exists in
+// this file to extend -- aladdinsSteal/oldManSteal (see resolveEff) both
+// inline the same remove-from-controller/add-to-caster steps directly in
+// their own case blocks rather than calling a shared helper -- so this
+// mirrors that same inline pattern, just looped over multiple iids instead
+// of one. Unlike those two, there is no controlGrant/reversion condition:
+// this is a one-time, non-reverting transfer, matching the printed text.
+// Adapted from Card-Forge/forge (r/rohgahh_of_kher_keep.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+function rohgahhTapAndTransfer(state, owner, rohgahhIid) {
+  const opp = owner === 'p' ? 'o' : 'p';
+  const targets = state[owner].bf.filter(c => c.iid === rohgahhIid || c.name === "Kobolds of Kher Keep");
+  if (!targets.length) return state;
+  let s = state;
+  for (const t of targets) s = tapPermanent(s, owner, t.iid);
+  for (const t of targets) {
+    const current = getBF(s, t.iid);
+    if (!current) continue;
+    s = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.filter(c => c.iid !== current.iid) } };
+    const transferred = { ...current, controller: opp, summoningSick: true, attacking: false, blocking: null };
+    s = { ...s, [opp]: { ...s[opp], bf: [...s[opp].bf, transferred] } };
+  }
+  return dlog(s, `Rohgahh of Kher Keep: taps and transfers control of ${targets.length} permanent(s) to ${opp}.`, "effect");
+}
+
 // Appends an upkeep choice to the queue: sets pendingUpkeepChoice directly if
 // the front slot is empty, else appends to pendingUpkeepChoiceQueue. Existing
 // `if (s.pendingUpkeepChoice) ...` null checks (ADVANCE_PHASE gate, UI render
@@ -7478,6 +7902,13 @@ pendingUpkeepChoiceQueue: [],
 // Rukh Egg: "create a token at the beginning of the next end step." Drained
 // in the PHASE.END block alongside returnToHandNextEnd/revertAnimateAtEnd.
 pendingEndStepTokens: [],
+// Hazezon Tamar: "create X Sand Warrior tokens at the beginning of your next
+// upkeep." Same delayed-token shape as pendingEndStepTokens above, but keyed
+// to upkeep and filtered by controller (see PHASE.UPKEEP) since -- unlike
+// Rukh Egg's single-END-phase-per-turn-cycle assumption -- both players
+// eventually get their own upkeep and this must only fire once, on the
+// entering player's own next upkeep.
+pendingUpkeepTokens: [],
 // Darkpact: { caster, cards } where cards are the caster's own ante
 // contributions (anteP/anteExtraP or anteO/anteExtraO). Resolved via
 // RESOLVE_ANTE_EXCHANGE / DECLINE_ANTE_EXCHANGE. Distinct from the unused
@@ -7581,6 +8012,19 @@ case "UNDO_ADDITIONAL_COST": {
   const snap = s.additionalCostSnapshot;
   if (!snap) return s;
   if (snap.type === 'sacrificeCreature') {
+    const w = snap.card.controller ?? 'p';
+    const bf = [...s[w].bf];
+    let idx = snap.bfIndex;
+    if (idx < 0 || idx > bf.length) {
+      console.warn(`[DuelCore] UNDO_ADDITIONAL_COST: bfIndex ${snap.bfIndex} out of range, clamping`);
+      idx = Math.max(0, Math.min(idx, bf.length));
+    }
+    bf.splice(idx, 0, snap.card);
+    const gy = s[w].gy.filter(x => x.iid !== snap.card.iid);
+    const ns = { ...s, [w]: { ...s[w], bf, gy }, additionalCostSnapshot: null };
+    return dlog(ns, "Sacrifice undone.", "effect");
+  }
+  if (snap.type === 'sacrificeLand') {
     const w = snap.card.controller ?? 'p';
     const bf = [...s[w].bf];
     let idx = snap.bfIndex;
@@ -7751,6 +8195,26 @@ case "CAST_SPELL": {
     s = zMove(s, sacCard.iid, w, w, "gy");
     s = dlog(s, `${w} sacrifices ${sacCard.name} as an additional cost.`, "effect");
     additionalCostPaid = { type: 'sacrificeCreature', card: { ...sacCard } };
+  }
+  // Mana Vortex: "When you cast this spell, counter it unless you sacrifice a
+  // land." SIMPLIFICATION -- this is technically a cast trigger with its own
+  // counter effect, not a hard additional cost, but folding it into the same
+  // additionalCost gate as sacrificeCreature above (atomic, pre-mana-payment)
+  // produces the same practical result ("you cannot finish casting this
+  // spell without giving up a land") with no new mechanism. The zero-lands
+  // legality gate (see beginCastFlow in useDuelController.ts) prevents even
+  // starting the cast rather than casting-then-countering.
+  if (c.additionalCost?.type === 'sacrificeLand') {
+    const sacIdx = s[w].bf.findIndex(x => x.iid === action.additionalCostIid);
+    const sacCard = sacIdx >= 0 ? s[w].bf[sacIdx] : null;
+    if (!sacCard || !isLand(sacCard)) {
+      console.warn(`[DuelCore] CAST_SPELL blocked: ${c.name} additional cost requires a land the caster controls`);
+      return s;
+    }
+    s = { ...s, additionalCostSnapshot: { type: 'sacrificeLand', card: { ...sacCard }, bfIndex: sacIdx } };
+    s = zMove(s, sacCard.iid, w, w, "gy");
+    s = dlog(s, `${w} sacrifices ${sacCard.name} as an additional cost.`, "effect");
+    additionalCostPaid = { type: 'sacrificeLand', card: { ...sacCard } };
   }
   s = { ...s, manaTapSnapshot: null };
   let manaAfterPay = payMana(s[w].mana, taxedCastCost);
