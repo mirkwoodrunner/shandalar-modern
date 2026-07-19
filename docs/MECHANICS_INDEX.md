@@ -5141,4 +5141,44 @@ COMPLETE -- 4 of 4 cards shipped
 
 ---
 
+## Legend Rule / Legendary Creatures Mobile Spec Gap -- 2026-07-19
+
+`tests/e2e/legend-rule.spec.js` (LEGEND-E06) and
+`tests/e2e/legendary-creatures-batch-1-2.spec.js` (LGB-E08) both render the
+real `ChoiceModal` via the sandbox harness -- LEGEND-E06 to verify the AI
+auto-resolves its own `legendRuleChoice` with no modal shown to the human
+player, LGB-E08 to verify the modal renders correctly for a real shipped
+legendary creature (Sivitri Scarzam) -- but neither file was ever listed in
+`playwright.config.js`'s `mobile-chrome` project `testMatch` allowlist. Since
+that allowlist is the only thing that runs a spec under the 390x844 mobile
+viewport (every other spec, regardless of what its own header comment
+claims, only ever runs under the default `chromium` desktop project),
+neither test had actually been verified against mobile despite
+`legendary-creatures-batch-1-2.spec.js`'s header comment explicitly (and
+incorrectly) claiming "no viewport split beyond the project matrix already
+running every spec against both `chromium` and `mobile-chrome`."
+
+**Fix:** added both files to `playwright.config.js`'s `mobile-chrome`
+`testMatch` array (alphabetically ordered, immediately before the existing
+`legendary-creatures-bugfixes.spec.js` entry). No test-code changes -- both
+files use `data-testid` selectors exclusively (`duel-screen`,
+`mulligan-keep`, `choice-modal`, `choice-option-{iid}`) with no
+coordinate-based clicks, hover-only interactions, or desktop-only
+assumptions, the same pattern already proven safe on mobile by
+`copy-and-modal-choice.spec.ts`/`tutor-modal.spec.ts`.
+
+**Found, not fixed (out of scope):** other spec files across the suite may
+carry the same "runs on both viewports by default" assumption in their
+header comments without actually being in the allowlist -- this fix only
+touched the two files flagged.
+
+**Tests:** 0 Vitest. 2 Playwright files (`legend-rule.spec.js`,
+`legendary-creatures-batch-1-2.spec.js`, 14 cases) now also verified passing
+under `mobile-chrome` (28 total executions across both projects).
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.41

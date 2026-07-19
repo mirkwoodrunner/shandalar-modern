@@ -9,6 +9,19 @@
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-19)
+- **Legend Rule / Legendary Creatures Mobile Spec Gap** -- `legend-rule.spec.js`
+  (LEGEND-E06) and `legendary-creatures-batch-1-2.spec.js` (LGB-E08) both render
+  the real `ChoiceModal` via the sandbox harness but were never in
+  `playwright.config.js`'s `mobile-chrome` `testMatch` allowlist, so neither had
+  ever actually been verified against the mobile viewport despite
+  `legendary-creatures-batch-1-2.spec.js`'s header comment claiming otherwise.
+  Fix: added both files to the allowlist, no test-code changes. Other spec
+  files across the suite may carry the same unverified assumption in their
+  header comments -- out of scope for this fix, which only touched the two
+  files flagged. Tests: 0 Vitest, 2 Playwright files (14 cases) now also
+  verified passing under `mobile-chrome` (28 total executions across both
+  projects). See `docs/MECHANICS_INDEX.md` -- Legend Rule / Legendary
+  Creatures Mobile Spec Gap.
 - **Legendary Creatures Batch 4 (4 cards)** -- Lady Evangela, Angus Mackenzie,
   Dakkon Blackblade, Tetsuo Umezawa. Angus Mackenzie's "Prevent all combat damage
   that would be dealt this turn" reuses the existing `fog` effect directly as an
