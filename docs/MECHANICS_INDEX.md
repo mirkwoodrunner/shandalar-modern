@@ -5034,4 +5034,111 @@ PARTIAL -- 21 of 26 cards shipped; 5 deferred pending scope confirmation (see ab
 
 ---
 
-# End of MECHANICS INDEX v1.40
+## Legendary Creatures Batch 4 -- 2026-07-19
+
+**4 of 4 scoped cards shipped, no deferrals.** Lady Evangela ({W}{U}{B}, Human
+Cleric, 1/2), Angus Mackenzie ({G}{W}{U}, Human Cleric, 2/2), Dakkon Blackblade
+({2}{W}{U}{U}{B}, Human Warrior, `*`/`*`), Tetsuo Umezawa ({U}{B}{R}, Human
+Archer, 3/3). All four reuse an existing mechanism rather than introducing a new
+one, matching the precisely-scoped precedent this batch was written against.
+
+**Angus Mackenzie -- `{G}{W}{U}, {T}: Prevent all combat damage that would be
+dealt this turn. Activate only before the combat damage step.`** The prevention
+half reuses the `fog` effect directly (`cards.js`'s `activated:{cost:"GWU,T",
+effect:"fog", beforeCombatDamageOnly:true}`) -- the exact same effect Fog/Holy
+Day/Darkness already use as instants; no new `resolveEff` case needed, since
+activated abilities resolve through the same stack/`resolveEff` path as spells.
+The timing restriction is a new `act.beforeCombatDamageOnly` check in
+`DuelCore.js`'s `ACTIVATE_ABILITY` handler, immediately alongside the existing
+`myUpkeepOnly`/`myTurnOnly` checks, same early-return-with-info-log shape:
+`PHASE_SEQUENCE.indexOf(s.phase) >= PHASE_SEQUENCE.indexOf(PHASE.COMBAT_DAMAGE)`.
+This blocks activation from `COMBAT_DAMAGE` onward for the rest of the current
+turn's phase sequence and resets automatically once the phase cycles back to
+`UNTAP` next turn -- no per-turn flag needed. (`COMBAT_ATTACKERS`/
+`COMBAT_BLOCKERS` are already blocked for every activated ability by the
+pre-existing `DECLARE_ONLY_PHASES` guard, so in practice the card's live window
+is `COMBAT_BEGIN`/`COMBAT_AFTER_ATTACKERS`/`COMBAT_AFTER_BLOCKERS` plus any
+phase before combat begins.)
+
+**Lady Evangela -- `{W}{B}, {T}: Prevent all combat damage that would be dealt
+by target creature this turn.`** A one-shot, single-target sibling of Sewers of
+Estark's `preventCombatDamageDealt` flag (see Legendary Creatures Batch 1+2),
+which is already read at all 6 attacker/blocker combat-damage checkpoints in
+`resolveCombat` and cleared unconditionally at CLEANUP alongside `damageShield`.
+New `preventCombatDamageDealtTarget` case in `DuelCore.js` just sets the flag on
+the chosen target unconditionally, instead of Sewers of Estark's
+attacking-or-blocking-conditional derivation -- no new damage-prevention
+mechanism, no new state tracking, and the "until end of turn" duration is free
+(same CLEANUP line already clears it). Investigated Gaseous Form's
+`mod:{gaseousForm:true}` (prevents damage to *and* from an enchanted creature) as
+a possible base per the original prompt's suggestion, but it's a permanent
+aura-attached continuous effect, not a one-shot until-end-of-turn effect on a
+target -- `preventCombatDamageDealt` was the correct, narrower precedent to
+extend instead.
+
+**Dakkon Blackblade -- `Dakkon Blackblade's power and toughness are each equal
+to the number of lands you control.`** New `landCount` evaluator added to
+`CDA_EVALUATORS` in `layers.js`, same shape as `swampCount`/`forestCount` but
+counting all lands regardless of subtype: `(card, state) =>
+state[card.controller]?.bf.filter(x => isLand(x)).length ?? 0`. Card data uses
+`power:0,toughness:0` with `layerDef:{layer:"7a",powerFn:"landCount",
+toughnessFn:"landCount"}` -- confirmed live this is the dominant convention for
+"P/T equal to a count" CDA creatures (Plague Rats/Nightmare/Keldon Warlord all
+use `0,0`; Gaea's Liege's `"*","*"` is the outlier, used only because that card
+also has a non-CDA activated ability referencing its base P/T). No `DuelCore.js`
+or `useDuelController.ts` changes needed -- `layerDef` on a card's own top-level
+fields (as opposed to a `mod.layerDef` on an aura/effect) was already generically
+folded into Layer 7a by `collectEffects`.
+
+**Tetsuo Umezawa -- `Tetsuo Umezawa can't be the target of Aura spells. {U}{B}
+{R}, {T}: Destroy target tapped or blocking creature.`** The anti-Aura half
+reuses Bartel Runeaxe's `cantBeTargetOfAuraSpells` flag directly (`cards.js`
+data only) -- the generic `enchantCreature` guard in `DuelCore.js` already
+checks `tgtC.cantBeTargetOfAuraSpells` before attaching any Aura, no new code.
+The destroy half is a new `destroyTappedOrBlocking` case in `DuelCore.js`, same
+shape as `destroyTapped` (Royal Assassin/Merfolk Assassin) and
+`destroyEnchantedCreature` (Ramses Overdark) but with the predicate widened to
+`tgtC.tapped || tgtC.blocking != null`.
+
+**UI (both new targeted effects):** `destroyTappedOrBlocking` and
+`preventCombatDamageDealtTarget` were each registered in **both**
+`CREATURE_ONLY_TARGET_EFFECTS` and `ACTIVATE_TARGET_EFFECTS` in
+`useDuelController.ts` in the same edit -- double-checked live against the exact
+split-registration gap the Legendary Creatures Bugfixes batch's Bug 1
+(Ramses Overdark) already surfaced once, per this prompt's explicit instruction
+not to repeat it. No `DuelScreen.tsx`/`DuelScreenMobile.tsx` changes: all four
+cards reuse the existing single-target activation/targeting flow already shared
+by both screens via `useDuelController.ts`.
+
+**AI:** none of the four new activated-ability effect names
+(`fog` reuse aside, which the AI already knows how to evaluate as a spell effect
+but not as an activated ability) were added to `AI.js`. Consistent with every
+other single-creature-sourced targeted activated ability shipped in prior
+legendary-creature batches -- `pingCombatant2`/`pingCombatant3`
+(Tor Wauki/Lady Caleria) and `destroyEnchantedCreature` (Ramses Overdark) are
+likewise absent from `AI.js`. A pre-existing, non-blocking pattern (the AI
+simply never activates these abilities), not a new gap introduced by this batch;
+`AI.js` was correctly left untouched per its protected-file status and the
+prompt's engine-edit approval, which did not name it.
+
+Closes 4 more of A9's legendary-creature count: 34 of 55 (21 from Batch 1+2, 6
+from Cleanup, 3 from Batch 3, plus these 4); see `docs/ROADMAP.md` A9 for the
+remaining backlog.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-batch-4.test.js` (14: 2 Angus
+  Mackenzie, 3 Lady Evangela, 3 Dakkon Blackblade, 4 Tetsuo Umezawa, 2 card-data
+  + dual-registration coverage).
+- Playwright: `tests/e2e/legendary-creatures-batch-4.spec.js` (6: LGB4-E01
+  through LGB4-E06 -- engine-only `page.evaluate` cases, same convention as
+  `legendary-creatures-batch-3.spec.js`/`legendary-creatures-cleanup.spec.js`;
+  `chromium` project only, since none of the four cards need a new UI component
+  or viewport-dependent interaction beyond the existing targeting/activation flow
+  already covered by that shared infrastructure's own test suite).
+
+### Status
+COMPLETE -- 4 of 4 cards shipped
+
+---
+
+# End of MECHANICS INDEX v1.41
