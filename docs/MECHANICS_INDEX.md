@@ -4897,6 +4897,83 @@ COMPLETE -- 6 of 6 scoped cards shipped
 
 ---
 
+## Legendary Creatures Bugfixes -- 2026-07-19
+
+Three bugs surfaced (found, not fixed) by the Legendary Creatures Cleanup batch's
+completion report above. Fixes all three.
+
+**Bug 1 -- Ramses Overdark's `destroyEnchantedCreature` unreachable in the live
+UI:** it was registered in `CREATURE_ONLY_TARGET_EFFECTS` but missing from the
+sibling `ACTIVATE_TARGET_EFFECTS` set, so `beginActivateFlow` never opened the
+targeting step -- clicking the ability activated immediately with no target and
+fizzled. Fix: added `destroyEnchantedCreature` to `ACTIVATE_TARGET_EFFECTS`
+(`useDuelController.ts`), same registration pattern as the Cleanup batch's own 5
+entries. Removed the now-stale "found while wiring the Legendary Creatures Cleanup
+batch" comment block that documented this gap.
+
+**Bug 2 -- "Activate only during your turn" unenforced:** no `myTurnOnly`-style
+gate existed anywhere in the engine (only `myUpkeepOnly` and other phase-scoped
+fields did). Fix: new `act.myTurnOnly` check in `DuelCore.js`'s `ACTIVATE_ABILITY`
+handler, immediately alongside the existing `myUpkeepOnly` check, same
+early-return-with-info-log shape. `myTurnOnly:true` added to both Gwendlyn Di
+Corci's and Rag Man's `activated` ability data in `cards.js`. Rag Man is a
+pre-existing, already-shipped card -- Chris explicitly approved fixing the
+inherited copy of this gap alongside the new Gwendlyn Di Corci instance, rather
+than leaving Rag Man's copy undocumented-but-unfixed as the Cleanup batch did.
+
+**Bug 3 -- no graveyard-card-picker UI for Regrowth/Adun Oakenshield:** neither
+card let a human player choose which graveyard card comes back; both silently
+took the most-recently-buried card via the `tgt ? find(tgt) : mostRecent`
+fallback. Fix: when `regrowth`/`regrowthCreature` resolves and the caster's
+graveyard has 2+ eligible cards (any card for `regrowth`, creature-only for
+`regrowthCreature`), `DuelCore.js` now creates a `pendingChoice` (new `kind:
+'gyCardChoice'`, `mode: 'regrowth' | 'regrowthCreature'`) via the existing
+`createPendingChoice()` factory -- same mechanism as `legendRuleChoice`/
+`blazeOfGloryDamageOrder`/`primalClayChoice`. Renders automatically through the
+already-generic `ChoiceModal.tsx` -- confirmed live it needed no changes. With
+exactly 1 eligible card, the original auto-select behavior is preserved (no
+prompt for a single-option choice), so pre-existing Regrowth/Adun Oakenshield test
+coverage is unaffected except for one pre-existing regression test
+(`tests/scenarios/legendary-creatures-cleanup.test.js`'s "Regrowth (regrowth)
+still falls back to the most recent graveyard card") whose fixture happened to
+have 2 eligible cards (a land plus a creature) -- updated to resolve through
+`RESOLVE_CHOICE` since 2+ eligible cards is now a real choice, not a silent
+fallback; its asserted outcome (which card ends up in hand) is unchanged. The
+actual "move this card to hand" effect is factored into
+`applyRegrowthReturn`/`applyRegrowthCreatureReturn` (`DuelCore.js`, just above
+`createPendingChoice`), shared by both the directly-passed-`tgt` path and the new
+`RESOLVE_CHOICE` `gyCardChoice` branch so neither duplicates the `zMove`/`dlog`
+call.
+
+**AI:** `chooseGYCardReturn(choice, state)` (`AI.js`) -- deterministic policy
+function (no `Math.random()`), prefers the highest-value creature via the
+existing `evaluateCreatureValue`; a non-creature candidate (only possible in
+Regrowth's any-card case) falls back to `cmc * 15` so a high-impact noncreature
+can still outscore a weak creature. Dispatched from `useDuelController.ts`'s
+`pendingChoice` `useEffect`, same branch shape as `legendRuleChoice`/
+`chooseLegendRuleKeep`.
+
+**UI:** none needed beyond exporting `ACTIVATE_TARGET_EFFECTS` (previously
+module-private, now exported for direct test coverage of Bug 1's fix, matching
+its already-exported sibling sets `CREATURE_ONLY_TARGET_EFFECTS`/
+`PLAYER_ONLY_TARGET_EFFECTS`/etc.) -- `ChoiceModal.tsx` already renders any
+`{id,label}[]` options array generically.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-bugfixes.test.js` (12: 2 for Bug 1,
+  4 for Bug 2, 6 for Bug 3).
+- Playwright: `tests/e2e/legendary-creatures-bugfixes.spec.js` (5: LGCBF-E01
+  through LGCBF-E05 -- Ramses Overdark's targeting registration and
+  destroy/fizzle behavior, Gwendlyn Di Corci's turn-gating, and Regrowth's
+  `gyCardChoice` modal appearing and resolving via the sandbox harness), added to
+  `playwright.config.js`'s `mobile-chrome` `testMatch` allowlist so it runs
+  against both viewport projects, same as `legendary-creatures-cleanup.spec.js`.
+
+### Status
+COMPLETE -- 3 of 3 bugs fixed
+
+---
+
 ## Legendary Creatures Batch 3 (Elder Dragons) -- 2026-07-18
 
 **3 of 3 scoped cards shipped, no deferrals.** Palladia-Mors, Nicol Bolas, Vaevictis Asmadi -- all `{2}{X}{X}{Y}{Y}{Z}{Z}` (cmc 8), 7/7, flying, Legendary Creature -- Elder Dragon.

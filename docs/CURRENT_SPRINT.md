@@ -8,6 +8,30 @@
 - Roadmap Milestone A remaining: A2, A3, A5+ batches.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-19)
+- **Legendary Creatures Bugfixes (3 bugs)** -- fixes the three bugs surfaced (found,
+  not fixed) by the Legendary Creatures Cleanup batch's completion report below.
+  Bug 1: Ramses Overdark's `destroyEnchantedCreature` was registered in
+  `CREATURE_ONLY_TARGET_EFFECTS` but missing from `ACTIVATE_TARGET_EFFECTS`, so
+  `beginActivateFlow` never opened its targeting step -- added the missing
+  registration and removed the now-stale comment documenting the gap. Bug 2: no
+  `myTurnOnly`-style gate existed for "Activate only during your turn." abilities
+  -- added the check in `DuelCore.js` alongside `myUpkeepOnly`, and `myTurnOnly:
+  true` to both Gwendlyn Di Corci's (new) and Rag Man's (pre-existing,
+  already-shipped) `activated` ability data; Chris explicitly approved fixing the
+  inherited Rag Man gap alongside Gwendlyn's. Bug 3: Regrowth/Adun Oakenshield had
+  no graveyard-card-picker UI, silently taking the most-recent card -- added a new
+  `gyCardChoice` `pendingChoice` (2+ eligible cards) reusing the existing
+  `createPendingChoice()`/`ChoiceModal.tsx` mechanism, with a new deterministic AI
+  policy `chooseGYCardReturn` (`AI.js`). Exactly-1-eligible auto-select behavior is
+  preserved, so existing Regrowth/Adun Oakenshield coverage is unaffected except
+  one pre-existing regression test whose fixture had 2 eligible cards, updated to
+  resolve through `RESOLVE_CHOICE` (same asserted outcome). Tests: 12 Vitest
+  (`tests/scenarios/legendary-creatures-bugfixes.test.js`), 5 Playwright
+  (`tests/e2e/legendary-creatures-bugfixes.spec.js`, added to
+  `playwright.config.js`'s `mobile-chrome` `testMatch` allowlist). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Bugfixes.
+
 ## Completed (2026-07-18)
 - **Legendary Creatures Cleanup (6 cards)** -- the 5 cards deferred from Batch 1+2
   (Xira Arien, Tor Wauki, Lady Caleria, Gwendlyn Di Corci, Adun Oakenshield) plus

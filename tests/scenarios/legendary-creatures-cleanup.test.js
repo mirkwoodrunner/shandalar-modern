@@ -193,7 +193,12 @@ describe('@engine Scenario: legendary-creatures-cleanup -- regression coverage',
     expect(s2.o.gy.some(c => c.iid === 'rm-1')).toBe(true);
   });
 
-  it('Regrowth (regrowth) still falls back to the most recent graveyard card with no tgt available to it', () => {
+  it('Regrowth (regrowth) still ends up with the same chosen card in hand when no tgt is available to it', () => {
+    // Bug 3 (legendary-creatures-bugfixes): with 2+ eligible graveyard cards,
+    // Regrowth now opens a gyCardChoice pendingChoice instead of silently
+    // taking the most recent card -- see tests/scenarios/legendary-creatures-bugfixes.test.js
+    // for the choice mechanism itself. This test just confirms the surrounding
+    // CAST_SPELL/RESOLVE_STACK flow still reaches that choice and resolves cleanly.
     const spell = { iid: 'rg-1', id: 'regrowth', name: 'Regrowth', type: 'Sorcery', color: 'G', cmc: 2, cost: '1G', effect: 'regrowth' };
     const older = { iid: 'gy-a', id: 'forest', name: 'Forest', type: 'Land' };
     const newer = { iid: 'gy-b', id: 'grizzly_bears', name: 'Grizzly Bears', type: 'Creature' };
@@ -201,8 +206,10 @@ describe('@engine Scenario: legendary-creatures-cleanup -- regression coverage',
     const funded = { ...base, p: { ...base.p, mana: { ...base.p.mana, G: 1, C: 1 }, gy: [older, newer] } };
     const s1 = duelReducer(funded, { type: 'CAST_SPELL', who: 'p', iid: 'rg-1' });
     const s2 = duelReducer(s1, { type: 'RESOLVE_STACK' });
-    expect(s2.p.hand.some(c => c.iid === 'gy-b')).toBe(true);
-    expect(s2.p.gy.some(c => c.iid === 'gy-a')).toBe(true);
+    expect(s2.pendingChoice?.kind).toBe('gyCardChoice');
+    const s3 = duelReducer(s2, { type: 'RESOLVE_CHOICE', optionId: 'gy-b' });
+    expect(s3.p.hand.some(c => c.iid === 'gy-b')).toBe(true);
+    expect(s3.p.gy.some(c => c.iid === 'gy-a')).toBe(true);
   });
 
   it('Oasis (preventDamage1Creature) still adds exactly a 1-point damage shield', () => {

@@ -46,6 +46,7 @@ export default defineConfig({
         'tests/e2e/generalized-choice-mechanisms.spec.ts',
         'tests/e2e/henchman-visibility.spec.ts',
         'tests/e2e/hooded-figure-sprites.spec.ts',
+        'tests/e2e/legendary-creatures-bugfixes.spec.js',
         'tests/e2e/legendary-creatures-cleanup.spec.js',
         'tests/e2e/lotus-cancel-undo.spec.js',
         'tests/e2e/mobile-targeting.spec.ts',

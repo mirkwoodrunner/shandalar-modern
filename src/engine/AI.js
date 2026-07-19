@@ -1039,6 +1039,25 @@ export function chooseMarufFetch(binderIds, state) {
   return nonLands.reduce((a, b) => ((b.cmc || 0) < (a.cmc || 0) ? b : a)).id;
 }
 
+// chooseGYCardReturn: answers Regrowth/Adun Oakenshield's gyCardChoice. Prefers
+// the highest-value creature by evaluateCreatureValue (the richest heuristic
+// available); for Regrowth's any-card case a candidate that isn't a creature
+// falls back to cmc-based scoring, scaled to roughly the same range as
+// evaluateCreatureValue's output so a high-impact noncreature can still beat a
+// weak creature. Fully DETERMINISTIC -- same inputs, same pick; no RNG (same
+// policy-function convention as chooseLegendRuleKeep/chooseMarufFetch above).
+export function chooseGYCardReturn(choice, state) {
+  const options = choice?.options || [];
+  if (!options.length) return null;
+  const controller = choice.controller;
+  const scoreOf = (iid) => {
+    const c = state[controller]?.gy.find(g => g.iid === iid);
+    if (!c) return -Infinity;
+    return isCre(c) ? evaluateCreatureValue(c, state) : (c.cmc || 0) * 15;
+  };
+  return options.reduce((best, o) => (scoreOf(o.id) > scoreOf(best.id) ? o : best), options[0]).id;
+}
+
 function planAttack(state, profile) {
   const candidates = state.o.bf.filter(c => isCre(c) && !c.tapped && !c.summoningSick);
   if (!candidates.length) return passPlan(PHASE.COMBAT_ATTACKERS);
