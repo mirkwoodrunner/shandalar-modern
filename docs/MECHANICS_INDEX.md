@@ -5449,4 +5449,195 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.43
+## A9 Upkeep-Trigger Batch 2 (11 cards) -- 2026-07-20
+
+Fasting, Primordial Ooze, Psychic Allergy, Safe Haven, Takklemaggot, The
+Abyss, Venarian Gold, Voodoo Doll, Cocoon, Season of the Witch, Worms of the
+Earth. Second sub-batch closing the A9 upkeep-trigger bucket (first 13 landed
+in PR #354, see `A9 Upkeep-Trigger Batch (13 cards)` above). `CARD_DB`: 686 ->
+697.
+
+### Implementation
+
+```
+src/data/cards.js              -- 11 new card entries
+src/engine/DuelCore.js         -- upkeep cases, each-player-upkeep name checks,
+                                   enchantments-idiom upkeep checks, ETB hooks
+                                   in the "enchantCreature" case, activatedAbilities
+                                   cases, END/CLEANUP-phase checks, performDraws
+                                   hook, PLAY_LAND + zMove land-lock guards,
+                                   a new pendingChoice kind + RESOLVE_CHOICE case
+src/ui/duel/SafeHavenUpkeepModal.tsx
+src/ui/duel/WormsOfTheEarthUpkeepModal.tsx
+src/ui/duel/SeasonOfTheWitchUpkeepModal.tsx
+src/ui/duel/PsychicAllergyUpkeepModal.tsx
+src/ui/duel/upkeepChoiceRegistry.tsx  -- 4 new handlerKey entries
+```
+
+### Per-card notes
+
+- **Fasting** -- three independent pieces: `upkeep:"fastingUpkeep"` (hunger
+  counter + destroy-at-5, `c.upkeep` switch case); the draw-skip-for-2-life
+  replacement is a sibling `else if` branch next to Island Sanctuary's own
+  "always skips when in play" SIMPLIFICATION in the DRAW phase block; "when
+  you draw a card, destroy this enchantment" is a single insertion point in
+  `performDraws` (the actual choke point for every draw this engine performs
+  -- Ancestral Recall's `cardHandlers.js` path is a pre-existing exception
+  that bypasses `performDraws` entirely and was NOT routed through this hook;
+  flagged as an observation, not fixed, per `CLAUDE.md`).
+- **Primordial Ooze** -- static half reuses `KEYWORDS.MUST_ATTACK.id`
+  verbatim (already-implemented `mustAttackEligible` handling, no new work).
+  Upkeep half's `{X}` isn't freely chosen -- it's the counter count at the
+  moment the choice is queued, so the human branch stores it on the queued
+  choice (`payCost`, same idiom as `payToUntapSelf`'s `untapCost`) instead of
+  a `numberChoice` sub-flow.
+- **Psychic Allergy** -- ETB reuses the existing `jihadColorChoice`
+  `pendingChoice` kind verbatim (it already generically "sets `chosenColor`
+  on the source card"; the unused `chosenPlayer` field is harmless). Two
+  independent upkeep effects: the opponent's-upkeep damage is a `c.name`
+  check (blackVise/rackUpkeep's "fires only on a specific OTHER player's
+  upkeep" shape); the controller's-own-upkeep sacrifice-unless-2-Islands is a
+  bespoke `c.upkeep` switch case, same "auto-slice the first N" shape as
+  Leviathan's `sacIslandsToUntapSelf`.
+- **Safe Haven** -- `{2},{T}: exile target creature you control` is a new
+  `activatedAbilities` case (`safeHavenExile`) that tracks every exiled iid
+  on an `exiledIids` array (plural, unlike Tawnos's Coffin's singular
+  `exiledCreatureIid`, since Safe Haven can exile several creatures across
+  multiple activations before it's finally sacrificed). The upkeep choice
+  returns all of them via a new `safeHavenUpkeep` `UPKEEP_CHOICE_HANDLERS`
+  entry.
+- **Takklemaggot** -- highest-complexity card in the batch. The -0/-1 counter
+  on the enchanted creature's controller's upkeep uses the existing
+  `c.enchantments?.find(e => e.name === "Takklemaggot")` idiom (Farmstead/
+  Erosion/Curse Artifact), but directly mutates `toughness` (Wall of
+  Tombstones' "change base toughness directly" idiom) rather than the
+  P1P1/M1M1 pair `computeCharacteristics` reads, since -0/-1 only touches
+  toughness; `counters.M0M1` is tracked alongside purely for display/tests.
+  The death-triggered reattach-or-become-a-pinger sequence is the real new
+  primitive: `zMove`'s existing generic aura-fall-off cascade (every Aura
+  already falls into its controller's graveyard when its host leaves the
+  battlefield) is extended with a Takklemaggot-specific hook
+  (`takklemaggotDeathTrigger`, fires only when the host actually died --
+  `tz === "gy"` -- not on bounce/exile) that opens a **new pendingChoice kind**
+  (`takklemaggotReattachChoice`), created directly rather than via a
+  triggered ability (same convention as Alchor's Tomb's `colorChoice` --
+  Takklemaggot as an embedded `enchantments[]` record has no
+  `triggeredAbilities` slot the `emitEvent`/`resolveTrigger` scan would ever
+  find, since that scan only walks top-level battlefield permanents). The
+  `RESOLVE_CHOICE` branch either reattaches it (a fresh `auraRecord` under
+  the *original* controller, on the *chosen* creature's battlefield --
+  control-transfer-on-return, same shape `rohgahhTapAndTransfer` already
+  uses for `bf -> bf` control changes) or places it back on the battlefield
+  as a plain permanent with `upkeep: "takklemaggotPingerUpkeep"` and a fixed
+  `pingerVictim` field, read by that new `c.upkeep` switch case (unconditional
+  on the permanent's own controller `w`, target is always `pingerVictim` --
+  same "each player's upkeep, target != controller" shape as
+  blackVise/rackUpkeep). The AI's answer to `takklemaggotReattachChoice`
+  falls through to `useDuelController.ts`'s existing generic
+  `pendingChoice` `options[0]` fallback (no new AI wiring needed, and
+  `useDuelController.ts` is a protected file this batch didn't touch) -- the
+  options array puts `'NONE'` (decline) first, so the AI always declines,
+  matching the "AI never opts in" convention used elsewhere in this file.
+- **The Abyss** -- "each player's upkeep, target is always `ns.active`" idiom
+  (Copper Tablet/Storm World/Mana Vortex), no `w === ns.active` guard on the
+  enchantment's own controller. "Of their choice" is auto-picked
+  deterministically (least power, ties broken by battlefield order -- same
+  convention as Drop of Honey's own "you choose" clause); "can't be
+  regenerated" is a direct `zMove` (bypasses any regeneration shield, same
+  idiom Drop of Honey/Elder Spawn already use for that exact clause).
+- **Venarian Gold** -- ETB (tap + put X sleep counters on the *creature*) is
+  a new branch inside the existing generic `"enchantCreature"` resolveEff
+  case, same "mutate the just-attached record" idiom as Earthbind's
+  post-attach hook just above it. The doesn't-untap-while-it-has-a-counter
+  check extends the existing static `c.doesNotUntapNormally` flag check in
+  the untap-step map with an `(c.counters?.SLEEP || 0) > 0` condition -- a
+  new, reusable counter-gated variant of that idiom.
+- **Voodoo Doll** -- upkeep pin-counter accumulation is a plain `c.upkeep`
+  switch case; the end-step self-destruct-if-untapped check is a new small
+  block in the `PHASE.END` transition. The `{X}{X},{T}` ability's X isn't
+  freely player-chosen -- it's derived from the pin-counter count -- so
+  rather than needing a new generalized counter-derived-X cost-parsing
+  primitive (flagged as a possible STOP condition going in), it's
+  implemented as one bespoke `activatedAbilities` case
+  (`voodooDollPing`) that computes the generic cost inline from
+  `card.counters.PIN` before the existing `canPay`/`payMana` calls -- same
+  "compute a bespoke cost inline" idiom Pyramids' `destroyLandAura`/
+  `preventLandDestructionOnce` case already uses.
+- **Cocoon** -- ETB (tap + put three pupa counters on the *Aura itself*, not
+  the creature) is a sibling branch to Venarian Gold's in the same
+  `"enchantCreature"` case. `mod.enchantOwnOnly` is a new guard (parallel to
+  the existing `mod.enchantWallOnly`) enforcing "enchant creature you
+  control." The doesn't-untap check extends the same counter-gated idiom
+  Venarian Gold introduced, but keyed off the *attached Aura's own* counter
+  (`c.enchantments?.some(e => e.name === "Cocoon" && (e.counters?.PUPA || 0) > 0)`)
+  instead of the creature's own counter -- the second half of that new
+  reusable idiom. The upkeep effect (remove a pupa counter, or sacrifice +
+  buff if it can't) reuses the same `c.enchantments?.find` idiom as
+  Takklemaggot/Farmstead for the "remove a counter" branch; the sacrifice
+  branch can't use `zMove` (Cocoon is an embedded `enchantments[]` record,
+  not a top-level battlefield card zMove can find by iid) -- it strips the
+  record from the host's `enchantments` array and pushes its `cardData` to
+  graveyard directly, the same two-step the generic aura-fall-off cascade in
+  `zMove` itself already performs.
+- **Season of the Witch** -- upkeep sacrifice-unless-pay-2-life is a
+  `sacrificeUnless_X`-shaped `c.upkeep` case substituting `hurt()`'s existing
+  "pay life" idiom (Erosion's `PAY_1_LIFE` branch) for a mana cost. The
+  end-step "destroy all untapped creatures that didn't attack" sweep is
+  placed in `PHASE.CLEANUP` alongside Siren's Call's existing sweep of the
+  identical shape (this engine settles combat-derived state like
+  `turnState.attackedThisCombat` by the time CLEANUP runs, which is why
+  Siren's Call's own sweep already lives there instead of in `PHASE.END`).
+  SIMPLIFICATION: "couldn't attack" is limited to summoning sickness and
+  Wall subtype, not every possible static "can't attack" effect.
+- **Worms of the Earth** -- the land-lock static ("players can't play lands.
+  Lands can't enter the battlefield") is two small guards: one in the
+  `PLAY_LAND` reducer case (mirroring the existing gate-chain style there),
+  and one at the very top of `zMove` (checked before the card is removed
+  from its origin zone, so a blocked land simply stays put) -- `zMove` is
+  confirmed to be the single choke point for every other zone-change path a
+  land could reach the battlefield through in this engine (no fetch-a-land-
+  to-battlefield effect exists yet), so these two sites are the complete
+  surface area. The each-upkeep sacrifice-2-lands-or-take-5-damage-or-decline
+  choice follows The Abyss's "each player's upkeep, target is always
+  `ns.active`" idiom (SIMPLIFICATION: the oracle's "any player" narrows to
+  "the player whose upkeep it is," matching this file's existing precedent
+  for that exact wording elsewhere); AI never opts in (same convention as
+  Magnetic Mountain/Tetravus).
+
+### STOP conditions (all resolved without stopping)
+
+- Takklemaggot's death-triggered reattachment: resolved via a new
+  `pendingChoice` kind (see above) -- no generic-choice-system gap found.
+- Voodoo Doll's counter-derived `{X}{X}` cost: resolved via an inline
+  bespoke-cost `activatedAbilities` case (see above) -- no cost-parser gap
+  found.
+- Land-lock surface area: exactly 2 call sites (`PLAY_LAND` + `zMove`) --
+  within the 1-2 site budget.
+- Oracle-text-vs-Forge drift: none found: all 11 cards' Scryfall oracle text
+  (verified against the local `scryfall/shandalar-card-pool.json` pool)
+  matched the prompt's Forge-derived descriptions closely enough that no
+  wording correction was needed.
+
+### Tests
+
+**Vitest (31):** `tests/scenarios/upkeep-counter-batch-a9-2.test.js` (10 --
+Fasting, Primordial Ooze, Cocoon, Voodoo Doll: self-referential counter
+accumulation), `upkeep-aura-and-eachplayer-batch-a9-2.test.js` (12 --
+Takklemaggot, Venarian Gold, The Abyss, Worms of the Earth: aura-tied-to-
+controller and each-player shapes, including 4 Takklemaggot sub-cases:
+attach+upkeep, death-triggers-choice, decline-becomes-pinger-and-pings,
+reattach-to-chosen-creature), `upkeep-choice-batch-a9-2.test.js` (9 -- Safe
+Haven, Season of the Witch, Psychic Allergy: optional/mandatory choice
+shapes).
+
+**Playwright (1 file x 2 viewports, 4 cases):**
+`tests/e2e/upkeep-batch-a9-2.spec.js` -- Safe Haven's optional-sacrifice
+modal and Worms of the Earth's sacrifice-or-damage-or-decline modal, at
+desktop and mobile viewports.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.44

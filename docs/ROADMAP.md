@@ -53,6 +53,27 @@ per-card mechanic breakdown (which 258 cards fall in which bucket) is not persis
 a file in the repo — re-derive via a fresh Forge cross-reference if needed for a
 specific batch.
 
+**Update (2026-07-20) — upkeep-trigger bucket, batch 2 of 2 (so far).** The 258
+figure above was never decremented when PR #354 (the first upkeep-trigger batch,
+13 cards) merged. Combined with A9 Upkeep-Trigger Batch 2 (11 more cards, this
+batch — see `docs/CURRENT_SPRINT.md` / `docs/MECHANICS_INDEX.md`), the running
+absent-card count is now **234** (258 − 13 − 11), i.e. 213 non-legendary-adjacent
+plus whatever fraction of the separately-tracked legendary-creature count still
+overlaps this heat map — the two tracks were never fully reconciled against each
+other, so treat 234 as the entirely-missing-card total, not a clean split.
+
+The "Upkeep trigger | 21" heat-map row above also undercounted: batch 2's own
+22-card candidate list surfaced 7 cards that don't actually belong in this bucket
+(6 phase-restricted "activate only during upkeep" cards — a different mechanic,
+phase-gated activation, not an upkeep *trigger* — plus Rapid Fire, which belongs
+with the still-unbuilt Rampage bucket) and 3 that are genuine upkeep triggers but
+blocked on infra this batch didn't build (Divine Intervention's "game is a draw"
+end condition, All Hallow's Eve's exile-zone trigger, Glyph of Delusion's
+dynamically-granted-ability system). Corrected count: 13 (batch 1) + 11 (batch 2)
+= 24 landed, + 3 deferred = **27 true upkeep-trigger members**, not 21. The 7
+reclassified cards remain in the 234 total, just under different (not yet
+separately re-bucketed) mechanic headings.
+
 Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
 Stub heat map (historical — described the now-cleared 245-stub backlog specifically, not the 299-card entirely-missing gap): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.

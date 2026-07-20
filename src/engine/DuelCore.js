@@ -803,6 +803,18 @@ function performDraws(s, who, n, followUps = []) {
     }
     const [top, ...rest] = ns[who].lib;
     ns = { ...ns, [who]: { ...ns[who], lib: rest, hand: [...ns[who].hand, top] } };
+    // Fasting: "When you draw a card, destroy this enchantment." performDraws
+    // is the single choke point for every draw this engine performs (draw
+    // step, Ancestral Recall, Sylvan Library, Howling Mine, ...), so this one
+    // insertion point covers all of them. Scoped to `who` (Fasting's own
+    // controller) -- doesn't fire when a different player draws. The
+    // draw-step skip-instead replacement (DRAW phase block above) bypasses
+    // this function entirely, so it correctly never fires there either.
+    const fastingCard = ns[who].bf.find(c => c.name === "Fasting");
+    if (fastingCard) {
+      ns = zMove(ns, fastingCard.iid, who, who, "gy");
+      ns = dlog(ns, "Fasting is destroyed -- a card was drawn.", "effect");
+    }
   }
   return runDrawFollowUps(ns, who, followUps);
 }
@@ -812,6 +824,18 @@ export function drawD(s, who, n = 1) {
 }
 
 export function zMove(s, iid, fw, tw, tz, opts = {}) {
+// Worms of the Earth: "Lands can't enter the battlefield." zMove is the
+// single choke point for every zone move, so this one check (alongside the
+// PLAY_LAND gate in the reducer, which blocks the *other* half of the
+// card's text -- "players can't play lands") covers every current path a
+// land could reach the battlefield. Bails out before removing the card from
+// its origin zone, so the land simply stays put.
+if (tz === "bf") {
+  const preCard = ["hand","bf","gy","exile","lib"].map(z => s[fw]?.[z]?.find(c => c.iid === iid)).find(Boolean);
+  if (preCard && isLand(preCard) && [...s.p.bf, ...s.o.bf].some(x => x.name === "Worms of the Earth")) {
+    return dlog(s, "Worms of the Earth: lands can't enter the battlefield.", "rule");
+  }
+}
 let card = null;
 let fromZone = null;
 let ns = { ...s };
@@ -833,6 +857,15 @@ for (const aura of card.enchantments) {
 const auraOwner = aura.controller || fw;
 ns = dlog(ns, `${aura.name} falls off ${card.name}.`, "effect");
 ns = { ...ns, [auraOwner]: { ...ns[auraOwner], gy: [...ns[auraOwner].gy, { ...aura.cardData }] } };
+// Takklemaggot: "When enchanted creature dies, that creature's controller
+// chooses a creature this card could enchant..." -- the generic fall-off
+// above already dropped it into auraOwner's graveyard (the baseline every
+// aura gets); this extends that with Takklemaggot's own death trigger,
+// specifically scoped to the host actually dying (tz === "gy"), not just
+// leaving the battlefield some other way (bounce/exile).
+if (aura.name === "Takklemaggot" && isCre(card) && tz === "gy") {
+  ns = takklemaggotDeathTrigger(ns, fw, aura);
+}
 }
 }
 
@@ -1931,6 +1964,11 @@ if (tgtC && card.mod) {
   if (card.mod.enchantWallOnly && !tgtC.subtype?.includes('Wall')) {
     return dlog(s, `${card.name} can only enchant Walls.`, 'info');
   }
+  // Cocoon: "Enchant creature you control" -- reject an opponent's creature
+  // before attaching.
+  if (card.mod.enchantOwnOnly && tgtC.controller !== caster) {
+    return dlog(s, `${card.name} can only enchant a creature you control.`, 'info');
+  }
   // Guardian Beast: noncreature artifacts you control can't be enchanted (new auras only --
   // existing auras already attached are unaffected per card text).
   if (isArt(tgtC) && !isCre(tgtC) && ns[tgtC.controller].bf.some(c => c.id === 'guardian_beast' && !c.tapped)) {
@@ -1986,6 +2024,35 @@ if (tgtC && card.mod) {
     }};
     ns = dlog(ns, `${tgtC.name} loses flying.`, 'effect');
     ns = checkDeath(ns);
+  }
+  // Cocoon: "When this Aura enters, tap enchanted creature and put three pupa
+  // counters on this Aura." Counters live on the aura record itself (not the
+  // creature) -- the doesNotUntapNormally-idiom check in the untap step reads
+  // them via enchantments?.find(e => e.name === "Cocoon").
+  if (card.name === "Cocoon") {
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller],
+      bf: ns[tgtC.controller].bf.map(c => {
+        if (c.iid !== tgtC.iid) return c;
+        const encs = [...c.enchantments];
+        const idx = encs.length - 1;
+        encs[idx] = { ...encs[idx], counters: { PUPA: 3 } };
+        return { ...c, enchantments: encs };
+      })
+    }};
+    ns = dlog(ns, `Cocoon taps ${tgtC.name} and puts three pupa counters on itself.`, 'effect');
+  }
+  // Venarian Gold: "When this Aura enters, tap enchanted creature and put X
+  // sleep counters on it." Counters live on the CREATURE (not the Aura,
+  // unlike Cocoon above) -- the doesNotUntapNormally-idiom check reads
+  // c.counters?.SLEEP directly.
+  if (card.name === "Venarian Gold") {
+    ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
+    const vgX = Math.max(0, xVal || 0);
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid ? { ...c, counters: { ...c.counters, SLEEP: (c.counters?.SLEEP || 0) + vgX } } : c
+    ) } };
+    ns = dlog(ns, `Venarian Gold taps ${tgtC.name} and puts ${vgX} sleep counter(s) on it.`, 'effect');
   }
   // Return early -- aura stays attached to the permanent, NOT sent to graveyard.
   // The caller's post-resolution GY logic uses isPerm() which returns true for
@@ -4485,6 +4552,31 @@ case "jihadETB": {
   });
   break;
 }
+// Psychic Allergy: "As this enchantment enters, choose a color." Reuses the
+// jihadColorChoice pendingChoice kind (sets chosenColor on this card, plus
+// an unused chosenPlayer field) rather than a new one-off kind -- Jihad's
+// kind is already generic enough ("set chosenColor on the source card") to
+// cover this without any new plumbing. The AI falls through to
+// useDuelController.ts's generic pendingChoice options[0] fallback (same as
+// Jihad already does), so it always picks White.
+case "psychicAllergyETB": {
+  const pArr = { ...card, controller: caster, tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {} };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, pArr] } };
+  ns = { ...ns, skipEtbPush: true };
+  ns = createPendingChoice(ns, {
+    sourceCardId: pArr.iid,
+    controller: caster,
+    kind: 'jihadColorChoice',
+    options: [
+      { id: 'W', label: 'White' },
+      { id: 'U', label: 'Blue' },
+      { id: 'B', label: 'Black' },
+      { id: 'R', label: 'Red' },
+      { id: 'G', label: 'Green' },
+    ],
+  });
+  break;
+}
 // Lich: "As this enchantment enters, you lose life equal to your life
 // total." Sets lichActive on the controller, read by hurt()'s overrides.
 case "lichETB": {
@@ -5222,6 +5314,15 @@ if (next === PHASE.END) {
   // separate end step per player). Khabál Ghoul.
   ns = emitEvent(ns, { type: 'ON_END_STEP', payload: { activePlayer: ns.active } });
   ns = processTriggerQueue(ns);
+  // Voodoo Doll: "At the beginning of your end step, if this artifact is
+  // untapped, destroy this artifact and it deals damage to you equal to the
+  // number of pin counters on it."
+  for (const c of [...ns[ns.active].bf].filter(x => x.name === "Voodoo Doll" && !x.tapped)) {
+    const pin = c.counters?.PIN || 0;
+    ns = zMove(ns, c.iid, ns.active, ns.active, "gy");
+    ns = dlog(ns, "Voodoo Doll is destroyed (untapped at end step).", "death");
+    if (pin > 0) ns = hurt(ns, ns.active, pin, "Voodoo Doll", { sourceIid: c.iid, sourceType: 'artifact' });
+  }
 }
 
 if (next === PHASE.COMBAT_DAMAGE) {
@@ -5333,7 +5434,12 @@ const base = { ...c, summoningSick:false, damage:0 };
 // upkeep case, or Time Vault's extra-turn ability), never automatically here.
 // Adapted from Card-Forge/forge (i/island_fish_jasconius.txt, l/leviathan.txt,
 // t/time_vault.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
-if (c.doesNotUntapNormally) return base;
+// Venarian Gold / Cocoon: same "doesn't untap normally" shape, but gated by a
+// counter instead of a static flag -- Venarian Gold checks the creature's own
+// SLEEP counter, Cocoon checks its attached Aura's own PUPA counter (counters
+// on the Aura record itself, not the creature -- see the Cocoon ETB block in
+// the "enchantCreature" case above).
+if (c.doesNotUntapNormally || (c.counters?.SLEEP || 0) > 0 || c.enchantments?.some(e => e.name === "Cocoon" && (e.counters?.PUPA || 0) > 0)) return base;
 if (isLand(c)) {
 if (winterOrbOut && landsUntapped >= 1) return base;
 landsUntapped++;
@@ -5504,6 +5610,66 @@ if (w === ns.active && isArt(c) && curseArtifactAura) {
     ns = queueUpkeepChoice(ns, { cardName: "Curse Artifact", handlerKey: "curseArtifactUpkeep", iid: c.iid });
   }
 }
+// Takklemaggot: "At the beginning of the upkeep of enchanted creature's
+// controller, put a -0/-1 counter on that creature." Same "checked via
+// attached aura name" idiom as Farmstead/Power Leak/Erosion/Curse Artifact
+// above. Directly mutates toughness (same "change base toughness directly"
+// idiom as Wall of Tombstones) rather than routing through the P1P1/M1M1
+// counter pair computeCharacteristics reads, since -0/-1 only touches
+// toughness -- counters.M0M1 is tracked alongside purely for display/tests.
+const takklemaggotAura = c.enchantments?.find(e => e.name === "Takklemaggot");
+if (w === ns.active && isCre(c) && takklemaggotAura) {
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid
+    ? { ...x, toughness: (x.toughness || 0) - 1, counters: { ...x.counters, M0M1: (x.counters?.M0M1 || 0) + 1 } }
+    : x) } };
+  ns = dlog(ns, `Takklemaggot puts a -0/-1 counter on ${c.name}.`, "effect");
+  ns = checkDeath(ns);
+}
+// Venarian Gold: "At the beginning of the upkeep of enchanted creature's
+// controller, remove a sleep counter from that creature." Counters live on
+// the creature itself (see the Venarian Gold ETB block in the
+// "enchantCreature" case), so this reads c.counters?.SLEEP directly rather
+// than a counter on the aura record -- still gated on the aura's presence
+// (same "checked via attached aura name" idiom) for correctness.
+const venarianGoldAura = c.enchantments?.find(e => e.name === "Venarian Gold");
+if (w === ns.active && venarianGoldAura && (c.counters?.SLEEP || 0) > 0) {
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid
+    ? { ...x, counters: { ...x.counters, SLEEP: x.counters.SLEEP - 1 } }
+    : x) } };
+  ns = dlog(ns, `Venarian Gold removes a sleep counter from ${c.name}.`, "effect");
+}
+// Cocoon: "At the beginning of your upkeep, remove a pupa counter from this
+// Aura. If you can't, sacrifice it, put a +1/+1 counter on enchanted
+// creature, and that creature gains flying." "Your" is Cocoon's own
+// controller (matches Kudzu/Living Artifact's "own controller's upkeep"
+// shape, not Farmstead/Venarian Gold/Takklemaggot's "enchanted permanent's
+// controller" shape) -- since Cocoon can only enchant a creature its own
+// controller controls (mod.enchantOwnOnly), the two are always the same
+// player in practice, so `w === ns.active` covers both readings identically.
+// Counters live on the Aura record itself (see the Cocoon ETB block).
+const cocoonAura = c.enchantments?.find(e => e.name === "Cocoon");
+if (w === ns.active && cocoonAura) {
+  if ((cocoonAura.counters?.PUPA || 0) > 0) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => {
+      if (x.iid !== c.iid) return x;
+      const encs = x.enchantments.map(e => e.iid === cocoonAura.iid ? { ...e, counters: { PUPA: e.counters.PUPA - 1 } } : e);
+      return { ...x, enchantments: encs };
+    }) } };
+    ns = dlog(ns, `Cocoon removes a pupa counter from itself.`, "effect");
+  } else {
+    // Cocoon is an embedded enchantments[] record, not a top-level
+    // battlefield card -- zMove can't find it by iid (it only searches
+    // hand/bf/gy/exile/lib arrays), so it's removed from the host's
+    // enchantments array and its cardData pushed to graveyard directly, same
+    // as the generic aura-falls-off cascade in zMove itself.
+    const cocoonOwner = cocoonAura.controller || w;
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid
+      ? { ...x, counters: { ...x.counters, P1P1: (x.counters?.P1P1 || 0) + 1 }, keywords: x.keywords.includes(KEYWORDS.FLYING.id) ? x.keywords : [...x.keywords, KEYWORDS.FLYING.id], enchantments: x.enchantments.filter(e => e.iid !== cocoonAura.iid) }
+      : x) } };
+    ns = { ...ns, [cocoonOwner]: { ...ns[cocoonOwner], gy: [...ns[cocoonOwner].gy, { ...cocoonAura.cardData }] } };
+    ns = dlog(ns, `Cocoon is sacrificed -- ${c.name} gets a +1/+1 counter and gains flying.`, "effect");
+  }
+}
 // Copper Tablet: "At the beginning of each player's upkeep, Copper Tablet
 // deals 1 damage to that player." Not gated by controller the way
 // blackVise/rackUpkeep are (which fire only on a specific OTHER player's
@@ -5548,6 +5714,51 @@ if (c.name === "Mana Vortex") {
   if (![...ns.p.bf, ...ns.o.bf].some(isLand)) {
     ns = zMove(ns, c.iid, w, w, "gy");
     ns = dlog(ns, "Mana Vortex: no lands remain on the battlefield -- sacrificed.", "effect");
+  }
+}
+// The Abyss: "At the beginning of each player's upkeep, destroy target
+// nonartifact creature that player controls of their choice. It can't be
+// regenerated." Same "each player's upkeep, target is always ns.active"
+// shape as Copper Tablet/Storm World/Mana Vortex above -- no `w === ns.active`
+// guard on the enchantment's own controller. SIMPLIFICATION: "of their
+// choice" is auto-picked deterministically (least power, ties broken by
+// battlefield order) -- same convention as Drop of Honey's own "you choose"
+// clause elsewhere in this file. Direct zMove (not a regen-aware destroy
+// path) matches Drop of Honey/Elder Spawn's existing "can't be regenerated"
+// idiom of simply bypassing any regeneration shield.
+if (c.name === "The Abyss") {
+  const abyssTargets = ns[ns.active].bf.filter(x => isCre(x) && !isArt(x));
+  if (abyssTargets.length) {
+    const minPow = Math.min(...abyssTargets.map(x => getPow(x, ns)));
+    const abyssChosen = abyssTargets.find(x => getPow(x, ns) === minPow);
+    ns = zMove(ns, abyssChosen.iid, ns.active, ns.active, "gy");
+    ns = dlog(ns, `The Abyss destroys ${abyssChosen.name} (can't be regenerated).`, "death");
+  }
+}
+// Worms of the Earth: "At the beginning of each upkeep, any player may
+// sacrifice two lands of their choice or have this enchantment deal 5
+// damage to that player. If a player does either, destroy this
+// enchantment." SIMPLIFICATION: "any player" narrows to "the player whose
+// upkeep it is" -- same "each player's upkeep, target is always ns.active"
+// shape as The Abyss/Copper Tablet/Storm World/Mana Vortex above. AI never
+// opts in (same "AI never opts in" convention as Magnetic Mountain/Tetravus
+// elsewhere in this file) -- declining costs the AI nothing since the land
+// lock is symmetric for both players.
+if (c.name === "Worms of the Earth" && ns.active === "p") {
+  ns = queueUpkeepChoice(ns, { cardName: "Worms of the Earth", handlerKey: "wormsOfTheEarthUpkeep", iid: c.iid });
+}
+// Psychic Allergy: "At the beginning of each opponent's upkeep, this
+// enchantment deals X damage to that player, where X is the number of
+// nontoken permanents of the chosen color they control." Same "fires only on
+// a specific OTHER player's upkeep" shape as blackVise/rackUpkeep (switch
+// case below) -- checked here (not via c.upkeep) since Psychic Allergy also
+// carries a *second*, independent upkeep effect on its own controller's
+// upkeep (see psychicAllergyUpkeep in the switch below).
+if (c.name === "Psychic Allergy" && c.chosenColor) {
+  const paOpp = w === "p" ? "o" : "p";
+  if (ns.active === paOpp) {
+    const paCount = ns[paOpp].bf.filter(x => !x.isToken && x.color === c.chosenColor).length;
+    if (paCount > 0) ns = hurt(ns, paOpp, paCount, "Psychic Allergy", { sourceIid: c.iid, sourceType: inferSourceType(c) });
   }
 }
 // Dance of Many: "When the token leaves the battlefield, sacrifice Dance of
@@ -6079,6 +6290,125 @@ case "mishrasWarMachineUpkeep": {
   }
   break;
 }
+// Fasting: "put a hunger counter on this enchantment. Then destroy this
+// enchantment if it has five or more hunger counters on it." The draw-step
+// skip-and-gain-2-life replacement lives in the DRAW phase block (same
+// "if ns[ns.active].bf.some(name)" shape as Island Sanctuary); the "when you
+// draw a card, destroy this enchantment" trigger lives in performDraws
+// (the single choke point for every draw).
+case "fastingUpkeep": {
+  if (w !== ns.active) break;
+  const hunger = (c.counters?.HUNGER || 0) + 1;
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, counters: { ...x.counters, HUNGER: hunger } } : x) } };
+  ns = dlog(ns, `Fasting puts a hunger counter on itself (${hunger}).`, "effect");
+  if (hunger >= 5) {
+    ns = zMove(ns, c.iid, w, w, "gy");
+    ns = dlog(ns, "Fasting has five or more hunger counters -- destroyed.", "death");
+  }
+  break;
+}
+// Primordial Ooze: "put a +1/+1 counter on this creature. Then you may pay
+// {X}, where X is the number of +1/+1 counters on it. If you don't, tap this
+// creature and it deals X damage to you." X is fixed by the counter count at
+// queue time (not freely chosen), so the human branch stores it on the
+// queued choice (payCost) same as payToUntapSelf's untapCost field --
+// no numberChoice sub-flow needed since there's nothing left to compute at
+// resolve time.
+case "primordialOozeUpkeep": {
+  if (w !== ns.active) break;
+  const newCount = (c.counters?.P1P1 || 0) + 1;
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, counters: { ...x.counters, P1P1: newCount } } : x) } };
+  ns = dlog(ns, `Primordial Ooze puts a +1/+1 counter on itself (${newCount}).`, "effect");
+  if (w === "o") {
+    if (canPay(ns.o.mana, String(newCount))) {
+      ns = { ...ns, o: { ...ns.o, mana: payMana(ns.o.mana, String(newCount)) } };
+      ns = dlog(ns, `Primordial Ooze: opponent pays {${newCount}}.`, "mana");
+    } else {
+      ns = tapPermanent(ns, "o", c.iid);
+      ns = hurt(ns, "o", newCount, "Primordial Ooze", { sourceIid: c.iid, sourceType: inferSourceType(c) });
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Primordial Ooze", handlerKey: "primordialOozeUpkeep", iid: c.iid, payCost: String(newCount) });
+  }
+  break;
+}
+// Psychic Allergy: "At the beginning of your upkeep, destroy this
+// enchantment unless you sacrifice two Islands." Its OTHER upkeep effect
+// ("each opponent's upkeep, deal damage") is checked earlier in this loop
+// (name-based, each-player idiom) since it isn't scoped to this card's own
+// controller. Same "auto-slice first N" shape as Leviathan's
+// sacIslandsToUntapSelf, substituting "sacrifice Psychic Allergy" for
+// "leave the creature tapped" as the failure consequence.
+case "psychicAllergyUpkeep": {
+  if (w !== ns.active) break;
+  const paIslands = ns[w].bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+  if (w === "o") {
+    if (paIslands.length >= 2) {
+      for (const isl of paIslands.slice(0, 2)) ns = zMove(ns, isl.iid, w, w, "gy");
+      ns = dlog(ns, "Psychic Allergy: opponent sacrifices two Islands.", "effect");
+    } else {
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = dlog(ns, "Psychic Allergy sacrificed -- could not sacrifice two Islands.", "death");
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Psychic Allergy", handlerKey: "psychicAllergyUpkeep", iid: c.iid });
+  }
+  break;
+}
+// Safe Haven: "you may sacrifice this land. If you do, return each card
+// exiled with this land to the battlefield under its owner's control."
+// AI never opts in (same convention as Magnetic Mountain/Tetravus/Worms of
+// the Earth above) -- sacrificing only returns creatures it chose to exile
+// via its own {2},{T} ability, so there's no forced-upside case to automate.
+case "safeHavenUpkeep": {
+  if (w !== ns.active) break;
+  if (w === "p") {
+    ns = queueUpkeepChoice(ns, { cardName: "Safe Haven", handlerKey: "safeHavenUpkeep", iid: c.iid });
+  }
+  break;
+}
+// Voodoo Doll: "put a pin counter on this artifact." The end-step
+// destroy-if-untapped check lives in the END phase block; the {X}{X},{T}
+// activated ability lives in ACTIVATE_ABILITY's activatedAbilities dispatch.
+case "voodooDollUpkeep": {
+  if (w !== ns.active) break;
+  const pin = (c.counters?.PIN || 0) + 1;
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, counters: { ...x.counters, PIN: pin } } : x) } };
+  ns = dlog(ns, `Voodoo Doll puts a pin counter on itself (${pin}).`, "effect");
+  break;
+}
+// Season of the Witch: "sacrifice this enchantment unless you pay 2 life."
+// Same "unless you pay" shape as sacrificeUnless_X above, substituting life
+// for mana (hurt() with a positive amount is this codebase's existing
+// "pay life" idiom -- see Erosion's PAY_1_LIFE branch). The end-step
+// creature sweep lives in the END phase block.
+case "seasonOfTheWitchUpkeep": {
+  if (w !== ns.active) break;
+  if (w === "o") {
+    if (ns.o.life > 2) {
+      ns = hurt(ns, "o", 2, "Season of the Witch", { sourceIid: c.iid, sourceType: inferSourceType(c) });
+      ns = dlog(ns, "Season of the Witch: opponent pays 2 life.", "effect");
+    } else {
+      ns = zMove(ns, c.iid, w, w, "gy");
+      ns = dlog(ns, "Season of the Witch sacrificed -- could not pay 2 life.", "death");
+    }
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Season of the Witch", handlerKey: "seasonOfTheWitchUpkeep", iid: c.iid });
+  }
+  break;
+}
+// Takklemaggot (post-death pinger form): "At the beginning of that player's
+// upkeep, this enchantment deals 1 damage to that player." "That player"
+// (c.pingerVictim) is fixed at the moment Takklemaggot's controller declined
+// to reattach it (see the takklemaggotReattachChoice RESOLVE_CHOICE branch)
+// and need not match this permanent's current controller w -- same
+// unconditional-on-w, target-is-fixed shape as Copper Tablet/blackVise above.
+case "takklemaggotPingerUpkeep": {
+  if (ns.active === c.pingerVictim) {
+    ns = hurt(ns, c.pingerVictim, 1, "Takklemaggot", { sourceIid: c.iid, sourceType: 'enchantment' });
+  }
+  break;
+}
 default: break;
 }
 }
@@ -6137,6 +6467,15 @@ if (!(ns.turn === 1 && !ns.ruleset.drawOnFirstTurn && ns.active === "p")) {
   if (ns[ns.active].bf.some(c => c.name === "Island Sanctuary")) {
     ns = { ...ns, [ns.active]: { ...ns[ns.active], islandSanctuaryProtected: true } };
     ns = dlog(ns, `${ns.active} skips their draw (Island Sanctuary) -- protected until their next turn.`, "effect");
+  } else if (ns[ns.active].bf.some(c => c.name === "Fasting")) {
+    // Fasting: "If you would begin your draw step, you may skip that step
+    // instead. If you do, you gain 2 life." Same "always skips when in play"
+    // SIMPLIFICATION as Island Sanctuary above -- skipping a draw to gain 2
+    // life is virtually always at least as good as drawing while Fasting is
+    // out. Skipping the draw entirely means the "when you draw a card,
+    // destroy this enchantment" trigger (see performDraws) never fires here.
+    ns = hurt(ns, ns.active, -2, "Fasting");
+    ns = dlog(ns, `${ns.active} skips their draw (Fasting) -- gains 2 life.`, "effect");
   } else {
     ns = drawD(ns, ns.active);
     // SBE: check deck-out
@@ -6250,6 +6589,22 @@ if (ns.pendingSirenSweep) {
   for (const c of toDestroy) ns = zMove(ns, c.iid, activePlayer, activePlayer, "gy");
   if (toDestroy.length) ns = dlog(ns, `Siren's Call: destroys ${toDestroy.length} creature(s) that didn't attack.`, "effect");
   ns = { ...ns, pendingSirenSweep: null };
+}
+// Season of the Witch: "At the beginning of the end step, destroy all
+// untapped creatures that didn't attack this turn, except for creatures that
+// couldn't attack." Same placement/shape as Siren's Call's sweep above (this
+// engine settles combat-derived state like turnState.attackedThisCombat by
+// the time CLEANUP runs). SIMPLIFICATION: "couldn't attack" is limited to
+// summoning sickness and Wall subtype (the two most common real causes), not
+// every possible static "can't attack" effect (Moat, Brainwash, ...).
+if ([...ns.p.bf, ...ns.o.bf].some(x => x.name === "Season of the Witch")) {
+  for (const w2 of ['p', 'o']) {
+    const toDestroySotw = ns[w2].bf.filter(c =>
+      isCre(c) && !c.tapped && !c.summoningSick && !c.subtype?.includes("Wall") && !ns.turnState.attackedThisCombat.includes(c.iid)
+    );
+    for (const c of toDestroySotw) ns = zMove(ns, c.iid, w2, w2, "gy");
+    if (toDestroySotw.length) ns = dlog(ns, `Season of the Witch destroys ${toDestroySotw.length} creature(s) that didn't attack.`, "effect");
+  }
 }
 // Pestilence: at the beginning of the end step, if no creatures are on the
 // battlefield (either side, any color), its controller sacrifices it.
@@ -6583,6 +6938,39 @@ function snapshotAndExileCreature(state, tgtC, { suppressLeaveEvent = false } = 
     exiledCreatureCounters: counters,
     exiledAuraRecords: auraRecords,
   } };
+}
+
+// Takklemaggot: "When enchanted creature dies, that creature's controller
+// chooses a creature that this card could enchant. If the player does,
+// return this card to the battlefield under your control attached to that
+// creature. If they don't, return this card to the battlefield under your
+// control as a non-Aura enchantment..." Called from zMove's aura-cascade once
+// the generic "falls off into its controller's graveyard" step has already
+// run. Presents a pendingChoice (kind: 'takklemaggotReattachChoice') to the
+// dying creature's controller, same "created directly, not a triggered
+// ability" convention as Alchor's Tomb's colorChoice -- Takklemaggot itself
+// has no triggeredAbilities entry to hang this off of, since as an embedded
+// enchantments[] record it isn't a top-level battlefield permanent the
+// emitEvent/triggeredAbilities scan would ever find.
+// deadCreatureController: fw from the zMove call -- the player who controlled
+// the creature that just died (makes the choice, and is the eventual pinger
+// target if they decline). auraRecord: the embedded enchantments[] record
+// (name/mod/controller/cardData) captured before it fell off.
+function takklemaggotDeathTrigger(state, deadCreatureController, auraRecord) {
+  const eligible = [...state.p.bf, ...state.o.bf].filter(isCre);
+  const options = [
+    { id: 'NONE', label: "Don't reattach (Takklemaggot becomes a pinger)" },
+    ...eligible.map(c => ({ id: c.iid, label: c.name })),
+  ];
+  return createPendingChoice(state, {
+    sourceCardId: auraRecord.iid,
+    controller: deadCreatureController,
+    kind: 'takklemaggotReattachChoice',
+    options,
+    originalController: auraRecord.controller,
+    cardData: auraRecord.cardData,
+    victimController: deadCreatureController,
+  });
 }
 
 // Tawnos's Coffin: shared exile-return resolver. Called from three sites --
@@ -7696,6 +8084,93 @@ const UPKEEP_CHOICE_HANDLERS = {
       });
     },
   },
+  // Primordial Ooze: "may pay {X}" (X fixed to the current +1/+1 counter
+  // count -- see choice.payCost, set when the choice was queued). choice.iid
+  // is the creature.
+  primordialOozeUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "PAY" && canPay(s[owner].mana, choice.payCost)) {
+        return { ...s, [owner]: { ...s[owner], mana: payMana(s[owner].mana, choice.payCost) } };
+      }
+      const ns = tapPermanent(s, owner, choice.iid);
+      const pooSrc = getBF(ns, choice.iid);
+      return hurt(ns, owner, Number(choice.payCost), choice.cardName, pooSrc ? { sourceIid: pooSrc.iid, sourceType: inferSourceType(pooSrc) } : null);
+    },
+  },
+  // Safe Haven: "you may sacrifice this land. If you do, return each card
+  // exiled with this land to the battlefield under its owner's control."
+  // choice.iid is Safe Haven itself; exiledIids is populated by the
+  // safeHavenExile ACTIVATE_ABILITY case.
+  safeHavenUpkeep: {
+    resolve(s, choice, action) {
+      if (action.choice !== "SACRIFICE") return dlog(s, "Safe Haven remains on the battlefield.", "info");
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      const src = getBF(s, choice.iid);
+      const exiledIids = src?.exiledIids || [];
+      let ns = zMove(s, choice.iid, owner, owner, "gy");
+      let returned = 0;
+      for (const iid of exiledIids) {
+        if (ns[owner].exile.some(c => c.iid === iid)) { ns = zMove(ns, iid, owner, owner, "bf"); returned++; }
+      }
+      return dlog(ns, `Safe Haven is sacrificed -- returns ${returned} exiled card(s) to the battlefield.`, "effect");
+    },
+  },
+  // Psychic Allergy: "sacrifice this enchantment unless you sacrifice two
+  // Islands." Same auto-slice shape as sacIslandsToUntapSelf above. choice.iid
+  // is Psychic Allergy itself.
+  psychicAllergyUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "SACRIFICE_ISLANDS") {
+        const islands = s[owner].bf.filter(x => isLand(x) && x.subtype?.includes("Island"));
+        if (islands.length < 2) return s;
+        let ns = s;
+        for (const isl of islands.slice(0, 2)) ns = zMove(ns, isl.iid, owner, owner, "gy");
+        return dlog(ns, "Psychic Allergy: sacrifices two Islands.", "effect");
+      }
+      return dlog(zMove(s, choice.iid, owner, owner, "gy"), "Psychic Allergy sacrificed.", "death");
+    },
+  },
+  // Season of the Witch: "sacrifice this enchantment unless you pay 2 life."
+  // choice.iid is the enchantment itself.
+  seasonOfTheWitchUpkeep: {
+    resolve(s, choice, action) {
+      const owner = s.p.bf.some(c => c.iid === choice.iid) ? 'p' : 'o';
+      if (action.choice === "PAY_LIFE" && s[owner].life > 2) {
+        const swSrc = getBF(s, choice.iid);
+        return hurt(s, owner, 2, choice.cardName, swSrc ? { sourceIid: swSrc.iid, sourceType: 'enchantment' } : null);
+      }
+      return dlog(zMove(s, choice.iid, owner, owner, "gy"), "Season of the Witch sacrificed.", "death");
+    },
+  },
+  // Worms of the Earth: "any player may sacrifice two lands of their choice
+  // or have this enchantment deal 5 damage to that player. If a player does
+  // either, destroy this enchantment." Only ever queued for 'p' (this
+  // choice's controller is always the acting player, ns.active at queue
+  // time -- NOT necessarily Worms of the Earth's own controller, since this
+  // is an each-upkeep effect like The Abyss, not a self-controller-scoped
+  // one), so `owner` is hardcoded rather than derived from the card's
+  // controller.
+  wormsOfTheEarthUpkeep: {
+    resolve(s, choice, action) {
+      const owner = 'p';
+      if (action.choice === "SAC_LANDS") {
+        const lands = s[owner].bf.filter(isLand);
+        if (lands.length < 2) return s;
+        let ns = s;
+        for (const l of lands.slice(0, 2)) ns = zMove(ns, l.iid, owner, owner, "gy");
+        ns = dlog(ns, "Worms of the Earth: sacrifices two lands.", "effect");
+        return zMove(ns, choice.iid, getBF(ns, choice.iid)?.controller ?? owner, getBF(ns, choice.iid)?.controller ?? owner, "gy");
+      }
+      if (action.choice === "TAKE_DAMAGE") {
+        const wSrc = getBF(s, choice.iid);
+        let ns = hurt(s, owner, 5, choice.cardName, wSrc ? { sourceIid: wSrc.iid, sourceType: 'enchantment' } : null);
+        return zMove(ns, choice.iid, wSrc?.controller ?? owner, wSrc?.controller ?? owner, "gy");
+      }
+      return dlog(s, "Worms of the Earth remains on the battlefield.", "info");
+    },
+  },
 };
 
 // Registry for kind:'numberChoice' pendingChoice resolution, mirroring
@@ -8046,6 +8521,12 @@ case "PLAY_LAND": {
   const fastbondCard = s[w].bf.find(x => x.id === "fastbond");
   const fastbondActive = !!fastbondCard;
   if (s.stack?.length > 0) return dlog(s, 'Cannot play a land while spells are on the stack.', 'rule');
+  // Worms of the Earth: "Players can't play lands." (The other half of its
+  // text -- "Lands can't enter the battlefield" -- is covered by the
+  // matching guard at the top of zMove.)
+  if ([...s.p.bf, ...s.o.bf].some(x => x.name === "Worms of the Earth")) {
+    return dlog(s, "Worms of the Earth: players can't play lands.", "rule");
+  }
   if (!c || !isLand(c) || s.active !== w || (s.phase !== PHASE.MAIN_1 && s.phase !== PHASE.MAIN_2) || (s.landsPlayed >= 1 && !fastbondActive)) return s;
   const prevLandsPlayed = s.landsPlayed;
   // Kismet: "Artifacts, creatures, and lands your opponents control enter tapped."
@@ -8755,6 +9236,49 @@ case "ACTIVATE_ABILITY": {
       let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, ab.mana) } };
       ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 1 }] } : c) } };
       return dlog(ns, `${card.name} gets +1/+0 until end of turn.`, "effect");
+    }
+
+    // Safe Haven: "{2}, {T}: Exile target creature you control." Tracks the
+    // exiled iid in exiledIids (an array, unlike Tawnos's Coffin's single
+    // exiledCreatureIid, since Safe Haven can exile several creatures across
+    // multiple activations before it's finally sacrificed) so
+    // safeHavenUpkeep can return them all.
+    if (ab.effect === "safeHavenExile") {
+      const cost = String(ab.cost?.generic ?? 0);
+      if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+      if (!canPay(s[w].mana, cost)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+      if (!tgt) return dlog(s, `No target selected for ${card.name}.`, "info");
+      const tgtC = s[w].bf.find(c => c.iid === tgt && isCre(c));
+      if (!tgtC || tgtC.controller !== w) return dlog(s, `${card.name} can only exile a creature you control.`, "info");
+      let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, cost) } };
+      ns = tapPermanent(ns, w, iid);
+      ns = zMove(ns, tgt, w, w, "exile");
+      ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.iid === iid ? { ...c, exiledIids: [...(c.exiledIids || []), tgt] } : c) } };
+      return dlog(ns, `${card.name} exiles ${tgtC.name}.`, "effect");
+    }
+
+    // Voodoo Doll: "{X}{X}, {T}: deals damage equal to the number of pin
+    // counters on it to any target. X is the number of pin counters on this
+    // artifact." X isn't freely player-chosen -- it's derived from the
+    // counter count, so the generic cost is computed inline from
+    // card.counters.PIN rather than through the normal player-chosen-X cost
+    // path (same "compute a bespoke generic cost inline" idiom as Pyramids'
+    // destroyLandAura/preventLandDestructionOnce case above).
+    if (ab.effect === "voodooDollPing") {
+      const pin = card.counters?.PIN || 0;
+      if (card.tapped) return dlog(s, `${card.name} is already tapped.`, "info");
+      if (pin <= 0) return dlog(s, `${card.name} has no pin counters.`, "info");
+      const cost = String(pin * 2);
+      if (!canPay(s[w].mana, cost)) return dlog(s, `Not enough mana to activate ${card.name}.`, "info");
+      if (!tgt) return dlog(s, `No target selected for ${card.name}.`, "info");
+      let ns = { ...s, [w]: { ...s[w], mana: payMana(s[w].mana, cost) } };
+      ns = tapPermanent(ns, w, iid);
+      if (tgt === "p" || tgt === "o") {
+        ns = hurt(ns, tgt, pin, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+      } else {
+        ns = hurtCreature(ns, tgt, pin, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
+      }
+      return dlog(ns, `${card.name} deals ${pin} damage.`, "effect");
     }
 
     return s;
@@ -9647,6 +10171,48 @@ case "RESOLVE_CHOICE": {
       ? { ...c, chosenColor: action.optionId, chosenPlayer: opp }
       : c) } };
     return dlog(ns, `Jihad: chooses ${action.optionId} and targets the opponent.`, "effect");
+  }
+
+  // Takklemaggot: resolves the death-triggered choice created by
+  // takklemaggotDeathTrigger() from zMove's aura-cascade -- created directly,
+  // same convention as jihadColorChoice above (not a triggered ability, since
+  // an embedded enchantments[] record has nowhere to hang a triggeredAbilities
+  // entry the emitEvent scan would find). action.optionId is either a chosen
+  // creature's iid or 'NONE' (decline -- becomes a pinger).
+  if (choice.kind === 'takklemaggotReattachChoice') {
+    let ns = { ...s, pendingChoice: null };
+    const originalController = choice.originalController;
+    const removeFromGy = (state) => ({ ...state, [originalController]: { ...state[originalController], gy: state[originalController].gy.filter(c => c.iid !== choice.sourceCardId) } });
+
+    if (action.optionId !== 'NONE') {
+      const targetIid = action.optionId;
+      const tgtOwner = ns.p.bf.some(c => c.iid === targetIid) ? 'p' : ns.o.bf.some(c => c.iid === targetIid) ? 'o' : null;
+      if (tgtOwner) {
+        ns = removeFromGy(ns);
+        const auraRecord = {
+          iid: choice.sourceCardId, name: "Takklemaggot", mod: {},
+          controller: originalController, cardData: choice.cardData,
+          enterTs: (ns.layerClock ?? 0) + 1,
+        };
+        ns = { ...ns, layerClock: auraRecord.enterTs, [tgtOwner]: { ...ns[tgtOwner], bf: ns[tgtOwner].bf.map(c =>
+          c.iid === targetIid ? { ...c, enchantments: [...(c.enchantments || []), auraRecord] } : c
+        ) } };
+        return dlog(ns, `Takklemaggot reattaches to ${getBF(ns, targetIid)?.name ?? 'the chosen creature'}.`, "effect");
+      }
+      return dlog(ns, "Takklemaggot: the chosen creature is no longer on the battlefield -- stays in the graveyard.", "effect");
+    }
+
+    ns = removeFromGy(ns);
+    const ts = (ns.layerClock ?? 0) + 1;
+    const pinger = {
+      ...choice.cardData,
+      iid: choice.sourceCardId, controller: originalController, type: "Enchantment", subtype: undefined,
+      tapped: false, summoningSick: false, attacking: false, blocking: null, damage: 0, counters: {},
+      eotBuffs: [], enchantments: [], enterTs: ts,
+      upkeep: "takklemaggotPingerUpkeep", pingerVictim: choice.victimController,
+    };
+    ns = { ...ns, layerClock: ts, [originalController]: { ...ns[originalController], bf: [...ns[originalController].bf, pinger] } };
+    return dlog(ns, "Takklemaggot returns to the battlefield as a non-Aura enchantment.", "effect");
   }
 
   // Numeric choices ("choose a number between 0 and N"): Mind Bomb chains this
