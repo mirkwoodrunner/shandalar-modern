@@ -5181,4 +5181,150 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.41
+## A9 Upkeep-Trigger Batch (13 cards) -- 2026-07-19
+
+Serendib Efreet, Cursed Land, Copper Tablet, Storm World, Junún Efreet, Curse
+Artifact, The Fallen, Serendib Djinn, Dance of Many, Forethought Amulet,
+Hazezon Tamar, Rohgahh of Kher Keep, Mana Vortex.
+
+### Implementation
+
+```
+src/data/cards.js              -- 13 new card entries (Legends set)
+src/data/tokens.js             -- sand_warrior token (Hazezon Tamar)
+src/engine/DuelCore.js         -- upkeep cases, hurt() replacement effect, resolveEff/
+                                   resolveTriggeredEffect cases, additionalCost sacrificeLand
+src/engine/layers.js           -- anthemNamed static-check block (Rohgahh)
+src/hooks/useDuelController.ts -- sacrificeLand sibling at 4 sites (see below)
+src/DuelScreen.tsx / src/ui/Mobile/DuelScreenMobile.tsx -- additionalCost click-routing gate
+src/ui/duel/CurseArtifactUpkeepModal.tsx
+src/ui/duel/RohgahhUpkeepModal.tsx
+src/ui/duel/LandPickerUpkeepModal.tsx  -- shared by Serendib Djinn and Mana Vortex
+src/ui/duel/upkeepChoiceRegistry.tsx   -- 4 new handlerKey entries
+```
+
+### Per-card notes
+
+- **Serendib Efreet** -- `upkeep:"selfDamage1"`, reuses the existing case verbatim.
+- **Cursed Land** -- added to the existing Feedback/Wanderlust/Warp Artifact
+  curse-aura array in `DuelCore.js` (one-line change).
+- **Copper Tablet / Storm World** -- checked via `c.name`, not `c.upkeep`,
+  inside the existing per-card upkeep loop; target is always `ns.active`
+  regardless of the permanent's own controller (same idiom as Energy Flux).
+- **Junún Efreet** -- `sacrificeUnless_BB`, a direct copy of
+  `sacrificeUnless_WW`'s shape. Like that shape and its siblings
+  (`_RGW`/`_UBR`/`_BRG`), this is unconditionally sacrificed regardless of
+  mana pre-loaded before the transition, since `burnMana` clears the mana
+  pool at the very same phase boundary before the switch runs -- documented,
+  pre-existing engine behavior (see `legendary-creatures-batch-3.test.js`),
+  not something this batch introduced or fixed.
+- **Curse Artifact** -- checked via attached-aura name like Erosion;
+  human queues `curseArtifactUpkeep` (new modal), AI auto-sacrifices.
+- **The Fallen** -- new `condition:{type:'selfIsPlayerDamageSource'}` on
+  `ON_PLAYER_DAMAGED` (parallel to the existing `selfIsDamageSource`/
+  `selfIsDamageSourceToPlayer` conditions for `ON_DAMAGE_DEALT`) records
+  `hasDamagedPlayers` on the card instance; `theFallenUpkeep` reads it back.
+  No planeswalker card type exists in this engine, so that clause of the
+  oracle text is a permanent no-op (kept in `text` for accuracy, omitted from
+  the implementation).
+- **Serendib Djinn** -- new `sacrificeIfNoLands` flag, a parallel loop to the
+  existing `sacrificeIfNoIslands` loop (not an overload of that flag).
+  Human upkeep choice is a genuine land-picker (`LandPickerUpkeepModal`),
+  since the printed ability has no "or take damage" opt-out the way Elder
+  Spawn does -- unlike Elder Spawn's binary-with-auto-picked-card shape, the
+  only real choice here is which specific land to sacrifice.
+- **Dance of Many** -- `danceOfManyCopy` builds the token AND Dance of Many's
+  own battlefield entry directly (both pushed in the same call), since
+  `RESOLVE_STACK` calls `resolveEff` before the printed permanent is placed
+  on the battlefield (its `alreadyOnBf` guard only skips the auto-push if the
+  effect already added a same-iid entry itself -- same pattern as Copy
+  Artifact/Oubliette). **Deviation:** the "when the token leaves, sacrifice
+  Dance of Many" direction is NOT implemented as a token-side
+  `ON_PERMANENT_LEAVES_BF` trigger as originally sketched, because tokens
+  cease to exist on leaving the battlefield (CR 111.7) rather than landing in
+  a graveyard/exile zone, so `findLeftBattlefieldCard` can never locate it
+  and a `scope:'self'` trigger on a token can never fire. Implemented instead
+  as a `dance_of_many`-id-checked orphan-check in the `PHASE.UPKEEP` block
+  (same idiom as `kudzuStyleLandOrphanCheck`/`kudzuStyleArtifactOrphanCheck`),
+  gated to the controller's own upkeep, with a `continue` that pre-empts the
+  `sacrificeUnless_UU` switch case for the same card in the same pass. The
+  "Dance of Many leaves -> exile the token" direction works as a normal
+  `scope:'self'` trigger, since Dance of Many itself is never a token.
+- **Forethought Amulet** -- `sacrificeUnless_3` is generic-mana `canPay`/
+  `payMana("3")`, same unconditional-sacrifice caveat as Junún Efreet above.
+  The damage-reduction replacement is a narrowly-scoped check in `hurt()`
+  (gated on a `damageReplacement` field being present on an in-play card,
+  matching `meta.sourceType` and `amt >= minAmount`) rather than an extension
+  of `turnState.damageShields`, which is built for full prevention keyed to
+  one already-chosen source, not this "any qualifying source, always active"
+  reduction. `damageReplacement.sourceTypes` uses the engine's existing
+  `inferSourceType()` bucket (`'spell'`, covering both Instant and Sorcery --
+  the engine has no finer-grained distinction between the two anywhere else),
+  not the oracle text's literal "Instant"/"Sorcery" strings.
+- **Hazezon Tamar** -- new `pendingUpkeepTokens` array (parallel to Rukh
+  Egg's `pendingEndStepTokens`), drained in `PHASE.UPKEEP` filtered to
+  `controller === ns.active` so it fires once, on the entering player's own
+  next upkeep. Land count is captured at ETB resolution, not recomputed at
+  drain time. Leaves-battlefield exile-all-Sand-Warriors is a normal
+  `scope:'self'` trigger (Hazezon itself is never a token).
+- **Rohgahh of Kher Keep** -- `anthemNamed:{cardName,power,toughness}` extends
+  `layers.js`'s `collectEffects` with a new name-matching block (step 13a),
+  alongside the existing name-based checks (Castle/Fortified Area/Weakstone/
+  Orcish Oriflamme) rather than the subtype/color-matching `lordEffect` path.
+  Control transfer (`rohgahhTapAndTransfer`) is a new small helper, not an
+  extension of a pre-existing shared function -- `aladdinsSteal`/`oldManSteal`
+  each inline the same remove-from-controller/add-to-caster steps directly in
+  their own `case` blocks (no shared function exists to extend), so this
+  mirrors that inline pattern, looped over multiple iids. No `controlGrant`
+  reversion condition -- unlike Aladdin/Old Man of the Sea, this is a
+  one-time, non-reverting transfer per the printed text.
+- **Mana Vortex** -- `additionalCost:{type:'sacrificeLand'}` is a
+  SIMPLIFICATION of "counter this spell unless you sacrifice a land" (a
+  triggered counter) into an additional-cost gate, consistent with this
+  file's existing SIMPLIFICATION convention. Required a `sacrificeLand`
+  sibling at 4 sites, not the 2 originally scoped: `useDuelController.ts`'s
+  `beginCastFlow` legality gate and instant-cast-shortcut guard (2 sites),
+  plus a 3rd site discovered during implementation -- `selectAdditionalCost`
+  (the battlefield-click handler) hardcoded `isCre(card)`, which would have
+  silently rejected every land click; and a 4th class of site discovered
+  after that -- the click-routing gate one level up in `DuelScreen.tsx`
+  (`handleCardClick`) and `DuelScreenMobile.tsx` (`handleBfCardClick`), which
+  also hardcoded `isCre` before ever calling `selectAdditionalCost`. All four
+  (plus their two DuelCore.js counterparts: the `CAST_SPELL` payment branch
+  and `UNDO_ADDITIONAL_COST`'s snapshot-consumption branch) now branch on the
+  casting card's `additionalCost.type`. The "each player's upkeep sacrifices
+  a land" case is checked via `c.name`, same idiom as Copper Tablet/Storm
+  World; the "no lands anywhere" check is a global
+  `[...ns.p.bf, ...ns.o.bf]` scan, distinct from Serendib Djinn's
+  single-player `sacrificeIfNoLands` check above.
+
+### UI
+
+Three new upkeep-choice modals (`CurseArtifactUpkeepModal`,
+`RohgahhUpkeepModal`, `LandPickerUpkeepModal` -- the last shared by Serendib
+Djinn and Mana Vortex), registered in `upkeepChoiceRegistry.tsx` alongside
+the existing `ForceOfNatureUpkeepModal`/`OptionalUntapModal` entries. Note:
+most other existing `pendingUpkeepChoice`-producing cards (Erosion, Elder
+Spawn, Energy Flux, Farmstead, Cosmic Horror, Living Artifact, Sunken City,
+etc.) have no registry entry at all -- a pre-existing UI gap found, not
+fixed, during this batch (flagged, out of scope).
+
+### Tests
+
+**Vitest (29):** `tests/scenarios/upkeep-damage-batch-a9.test.js` (10),
+`tests/scenarios/upkeep-sacrifice-batch-a9.test.js` (13),
+`tests/scenarios/upkeep-delayed-and-control-a9.test.js` (6).
+
+**Playwright (6, 1 file x 2 viewports x 3 cases):**
+`tests/e2e/upkeep-batch-a9.spec.js` -- Curse Artifact's sacrifice-or-damage
+choice, Serendib Djinn's land pick, and Rohgahh's pay-or-not choice
+(including the control-transfer visual when declined) all render through the
+real modal components and resolve via real DOM clicks, at both desktop
+(1280x800) and mobile (390x844) viewports.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.42

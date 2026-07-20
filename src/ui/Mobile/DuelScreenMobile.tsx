@@ -182,10 +182,13 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       return;
     }
 
-    // Sacrifice-as-additional-cost step: bf clicks pick the creature to
-    // sacrifice. Restricted to the caster's own creatures; anything else is a no-op.
+    // Sacrifice-as-additional-cost step: bf clicks pick the permanent to
+    // sacrifice. Restricted to the caster's own creatures (or, for
+    // sacrificeLand cards like Mana Vortex, lands); anything else is a no-op.
     if (castFlow?.mode === 'additionalCost') {
-      if (c.controller === 'p' && isCre(c)) selectAdditionalCost(card.iid);
+      const acCastingCard = (s_state.p.hand as any[]).find((cc: any) => cc.iid === castFlow.sourceIid);
+      const acWantsLand = acCastingCard?.additionalCost?.type === 'sacrificeLand';
+      if (c.controller === 'p' && (acWantsLand ? isLand(c) : isCre(c))) selectAdditionalCost(card.iid);
       return;
     }
 

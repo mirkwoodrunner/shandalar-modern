@@ -317,6 +317,26 @@ function collectEffects(card, state) {
     effects.push({ layer: '7c', power: 1, enterTs: 0 });
   }
 
+  // 13a. Rohgahh of Kher Keep: "Creatures you control named Kobolds of Kher
+  //      Keep get +2/+2." Name-based anthem restricted to the same
+  //      controller -- extends the existing name-based static-check idiom
+  //      (Castle/Fortified Area/Weakstone/Orcish Oriflamme above) with a
+  //      literal card-name match instead of subtype/color, since the
+  //      lordEffect path above only matches by subtype or color.
+  //      Adapted from Card-Forge/forge (r/rohgahh_of_kher_keep.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (isCre(card) && card.controller) {
+    for (const src of allBf) {
+      if (src.anthemNamed && card.name === src.anthemNamed.cardName && src.controller === card.controller) {
+        effects.push({
+          layer: '7c',
+          power: src.anthemNamed.power ?? 0,
+          toughness: src.anthemNamed.toughness ?? 0,
+          enterTs: src.enterTs ?? 0,
+        });
+      }
+    }
+  }
+
   // 14. Global type/color/P-T-changing static effects (Living Lands, Kormus Bell,
   //     Blood Moon): unlike lordEffect/globalPump above (which target creatures by
   //     subtype/color and only ever modify Layer 6/7c), these target LANDS by a

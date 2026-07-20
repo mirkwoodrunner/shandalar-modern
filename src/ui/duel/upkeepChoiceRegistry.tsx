@@ -7,6 +7,10 @@
 
 import { ForceOfNatureUpkeepModal } from './ForceOfNatureUpkeepModal';
 import { OptionalUntapModal } from './OptionalUntapModal';
+import { CurseArtifactUpkeepModal } from './CurseArtifactUpkeepModal';
+import { RohgahhUpkeepModal } from './RohgahhUpkeepModal';
+import { LandPickerUpkeepModal } from './LandPickerUpkeepModal';
+import { isLand } from '../../engine/DuelCore.js';
 
 export const UPKEEP_CHOICE_MODALS: Record<string, {
   component: (props: any) => JSX.Element;
@@ -23,6 +27,42 @@ export const UPKEEP_CHOICE_MODALS: Record<string, {
     component: OptionalUntapModal,
     getProps: (_s, choice, resolveUpkeepChoice) => ({
       cardName: choice.cardName,
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  curseArtifactUpkeep: {
+    component: CurseArtifactUpkeepModal,
+    getProps: (s, choice, resolveUpkeepChoice) => ({
+      artifactName: (s.p.bf as any[]).find((c: any) => c.iid === choice.iid)?.name ?? 'the artifact',
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  rohgahhUpkeep: {
+    component: RohgahhUpkeepModal,
+    getProps: (s, _choice, resolveUpkeepChoice) => ({
+      redMana: s.p.mana?.R ?? 0,
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  serendibDjinnUpkeep: {
+    component: LandPickerUpkeepModal,
+    getProps: (s, _choice, resolveUpkeepChoice) => ({
+      title: 'Serendib Djinn',
+      description: "Sacrifice a land. Sacrificing an Island deals 3 damage to you.",
+      lands: (s.p.bf as any[]).filter(isLand).map((c: any) => ({
+        iid: c.iid, name: c.name, isIsland: !!c.subtype?.includes('Island'),
+      })),
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  manaVortexUpkeep: {
+    component: LandPickerUpkeepModal,
+    getProps: (s, _choice, resolveUpkeepChoice) => ({
+      title: 'Mana Vortex',
+      description: 'Sacrifice a land.',
+      lands: (s.p.bf as any[]).filter(isLand).map((c: any) => ({
+        iid: c.iid, name: c.name, isIsland: !!c.subtype?.includes('Island'),
+      })),
       onResolve: resolveUpkeepChoice,
     }),
   },
