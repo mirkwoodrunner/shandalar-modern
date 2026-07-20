@@ -11,6 +11,34 @@
   Upkeep-Trigger Batch below, 8 remaining. See `docs/ROADMAP.md` -- Milestone A.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-20)
+- **Enemy Deck Audit: false-positive fixes + 23 missing cards** -- fixed 3 bug
+  categories in `tools/enemy-deck-audit/analyze.mjs` (from not-yet-merged PR
+  #355) that caused 15 of ~39 reported "missing" cards to be false positives:
+  a Unicode-diacritics bug in `slugify()` (6 cards -- Dandân, Juzám Djinn,
+  El-Hajjâj, Ghazbán Ogre, Khabál Ghoul, Junún Efreet), 9 spacing/typo/old-
+  possessive-form `ALIASES` entries, and old Shandalar-manual naming in the
+  `original` pack for 2 cards whose real Scryfall names differ ("Necropolis
+  of Azaar" -> Necropolis of Azar; "Knights of the Rainbow Vale" -> Rainbow
+  Knights, neither of which exists under the longer/double-a name -- verified
+  during research, not part of the original false-positive list). A 16th
+  false positive turned up mid-batch: "Mons Goblin Raiders" (both packs) was
+  already in `CARD_DB` as "Mons's Goblin Raiders", just missing an alias for
+  the apostrophe-dropped deck-file spelling.
+  Added 23 genuinely-missing cards to `CARD_DB` (19 from
+  `scryfall/shandalar-card-pool.json`, 4 live-fetched from Scryfall), all
+  `effect:"STUB"` with full oracle text -- see `docs/MECHANICS_INDEX.md` --
+  Batch: Enemy Deck Audit -- Missing Cards for the full id list, naming-
+  correction detail, and the `nafs_asp`/`Naf's Asp` data-quality flag.
+  Coverage: original 95.7% -> 97.4% (Part 1) -> 99.7% (Part 2);
+  spells-of-the-ancients 96.1% -> 98.4% -> 99.8%. Remaining gaps (Ragman,
+  Zephyr Falcons, Whimsy, 4 non-white Mana Batteries, V. Enchantress, Deep
+  Water, Abu Jafar) are out of this batch's scope, deferred.
+  Tests: 8 Vitest (`tests/scenarios/enemy-deck-audit-missing-cards.test.js`),
+  1 Playwright spec x 2 projects (`tests/e2e/enemy-deck-audit-missing-cards.spec.ts`,
+  added to the `mobile-chrome` project's `testMatch` list in
+  `playwright.config.js`).
+
 ## Completed (2026-07-19)
 - **A9 Upkeep-Trigger Batch (13 cards)** -- Serendib Efreet, Cursed Land, Copper
   Tablet, Storm World, Junún Efreet, Curse Artifact, The Fallen, Serendib Djinn,
