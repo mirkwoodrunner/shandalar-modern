@@ -1,0 +1,4906 @@
+{
+  "generatedAt": "2026-07-20T01:13:34.231Z",
+  "cardDbSize": 663,
+  "rollups": {
+    "original": {
+      "deckCount": 55,
+      "totalCards": 3302,
+      "matchedCards": 3159,
+      "coveragePct": 95.7,
+      "fullyCoveredDecks": 25,
+      "missingCardFrequency": [
+        {
+          "name": "Gem Bazaar",
+          "deckCopies": 22
+        },
+        {
+          "name": "Manaflare",
+          "deckCopies": 12
+        },
+        {
+          "name": "El-Hajjaj",
+          "deckCopies": 9
+        },
+        {
+          "name": "Mons Goblin Raiders",
+          "deckCopies": 8
+        },
+        {
+          "name": "Knights of the Rainbow Vale",
+          "deckCopies": 7
+        },
+        {
+          "name": "Apprentice Wizard",
+          "deckCopies": 7
+        },
+        {
+          "name": "Tawnos' Weaponry",
+          "deckCopies": 6
+        },
+        {
+          "name": "Naf's Asp",
+          "deckCopies": 6
+        },
+        {
+          "name": "Junun Efreet",
+          "deckCopies": 6
+        },
+        {
+          "name": "White Mana Battery",
+          "deckCopies": 5
+        },
+        {
+          "name": "Necropolis of Azaar",
+          "deckCopies": 4
+        },
+        {
+          "name": "Circle of Protection from Artifacts",
+          "deckCopies": 4
+        },
+        {
+          "name": "Tawnos' Wand",
+          "deckCopies": 4
+        },
+        {
+          "name": "Dwarven Warriors",
+          "deckCopies": 4
+        },
+        {
+          "name": "Goblin Polka Band",
+          "deckCopies": 4
+        },
+        {
+          "name": "Celestial Prism",
+          "deckCopies": 4
+        },
+        {
+          "name": "Aswan Jaguar",
+          "deckCopies": 4
+        },
+        {
+          "name": "Armageddon Clock",
+          "deckCopies": 3
+        },
+        {
+          "name": "Bottle of Suleiman",
+          "deckCopies": 3
+        },
+        {
+          "name": "Faerie Dragon",
+          "deckCopies": 2
+        },
+        {
+          "name": "Prismatic Dragon",
+          "deckCopies": 2
+        },
+        {
+          "name": "Stripmine",
+          "deckCopies": 2
+        },
+        {
+          "name": "Power Struggle",
+          "deckCopies": 2
+        },
+        {
+          "name": "Call from the Grave",
+          "deckCopies": 2
+        },
+        {
+          "name": "Clockwork Avian",
+          "deckCopies": 2
+        },
+        {
+          "name": "Ragman",
+          "deckCopies": 2
+        },
+        {
+          "name": "Zephyr Falcons",
+          "deckCopies": 2
+        },
+        {
+          "name": "Whimsy",
+          "deckCopies": 1
+        },
+        {
+          "name": "Black Mana Battery",
+          "deckCopies": 1
+        },
+        {
+          "name": "Blue Mana Battery",
+          "deckCopies": 1
+        },
+        {
+          "name": "Green Mana Battery",
+          "deckCopies": 1
+        },
+        {
+          "name": "Red Mana Battery",
+          "deckCopies": 1
+        }
+      ],
+      "filesWithIdCollisions": []
+    },
+    "spells-of-the-ancients": {
+      "deckCount": 55,
+      "totalCards": 3327,
+      "matchedCards": 3198,
+      "coveragePct": 96.1,
+      "fullyCoveredDecks": 25,
+      "missingCardFrequency": [
+        {
+          "name": "Juzam Djinn",
+          "deckCopies": 11
+        },
+        {
+          "name": "Khabal Ghoul",
+          "deckCopies": 9
+        },
+        {
+          "name": "Bloodlust",
+          "deckCopies": 8
+        },
+        {
+          "name": "Mons Goblin Raiders",
+          "deckCopies": 8
+        },
+        {
+          "name": "Manaflare",
+          "deckCopies": 8
+        },
+        {
+          "name": "Ghazban Ogre",
+          "deckCopies": 6
+        },
+        {
+          "name": "Vesuvan Doppleganger",
+          "deckCopies": 6
+        },
+        {
+          "name": "Dwarven Warriors",
+          "deckCopies": 5
+        },
+        {
+          "name": "Rainbow Knights",
+          "deckCopies": 4
+        },
+        {
+          "name": "Birds of Paridise",
+          "deckCopies": 4
+        },
+        {
+          "name": "El-Hajjaj",
+          "deckCopies": 4
+        },
+        {
+          "name": "Golbin Polka Band",
+          "deckCopies": 4
+        },
+        {
+          "name": "Argothian Pixies",
+          "deckCopies": 4
+        },
+        {
+          "name": "Naf's Asp",
+          "deckCopies": 4
+        },
+        {
+          "name": "Aswan Jaguar",
+          "deckCopies": 4
+        },
+        {
+          "name": "Bottle of Suleiman",
+          "deckCopies": 4
+        },
+        {
+          "name": "Elephant Graveyard",
+          "deckCopies": 4
+        },
+        {
+          "name": "Junun Efreet",
+          "deckCopies": 4
+        },
+        {
+          "name": "Ifh Biff Efreet",
+          "deckCopies": 4
+        },
+        {
+          "name": "Mijae Djinn",
+          "deckCopies": 4
+        },
+        {
+          "name": "Dandan",
+          "deckCopies": 3
+        },
+        {
+          "name": "Necropolis of Azar",
+          "deckCopies": 2
+        },
+        {
+          "name": "King Suleiman",
+          "deckCopies": 2
+        },
+        {
+          "name": "Cyclone",
+          "deckCopies": 2
+        },
+        {
+          "name": "Dwarven Demolition Team",
+          "deckCopies": 2
+        },
+        {
+          "name": "V. Enchantress",
+          "deckCopies": 2
+        },
+        {
+          "name": "Deep Water",
+          "deckCopies": 2
+        },
+        {
+          "name": "Abu Jafar",
+          "deckCopies": 2
+        },
+        {
+          "name": "Clockwork Avian",
+          "deckCopies": 2
+        },
+        {
+          "name": "Whimsy",
+          "deckCopies": 1
+        }
+      ],
+      "filesWithIdCollisions": [
+        {
+          "file": "0030.dck",
+          "idCollisions": [
+            {
+              "internalId": "14",
+              "names": [
+                "Birds of Paridise",
+                "Berserk"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "crossPack": [
+    {
+      "fileId": "0010",
+      "titleOriginal": "Lord of Fate (Bl/Wh, 4th Edition)",
+      "titleSpells": "Lord of Fate (Bl/Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.5,
+      "coverageSpells": 92.2,
+      "betterSource": "original",
+      "contentOverlapPct": 86.7,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0016",
+      "titleOriginal": "Undead Knight (Bl, 4th Edition)",
+      "titleSpells": "Undead Knight (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 94.7,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 70.6,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0021",
+      "titleOriginal": "Sainted One (Wh, 4th Edition)",
+      "titleSpells": "Sainted One (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 73.7,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 42.1,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0030",
+      "titleOriginal": "Summoner (G/W, 4th)",
+      "titleSpells": "Summoner (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 90.3,
+      "betterSource": "original",
+      "contentOverlapPct": 47.1,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0049",
+      "titleOriginal": "Forest Dragon (G, 4th)",
+      "titleSpells": "Forest Dragon (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 78.6,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0055",
+      "titleOriginal": "Warlock (B, 4th)",
+      "titleSpells": "Warlock (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 86,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 63.6,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0056",
+      "titleOriginal": "Witch (Bl, 4th)",
+      "titleSpells": "Witch (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 96.7,
+      "betterSource": "original",
+      "contentOverlapPct": 56.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0069",
+      "titleOriginal": "Seer (Ub, 4th)",
+      "titleSpells": "Seer (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 52.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0074",
+      "titleOriginal": "Sorceress (R, 4th)",
+      "titleSpells": "Sorceress (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93,
+      "coverageSpells": 84.7,
+      "betterSource": "original",
+      "contentOverlapPct": 69.2,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0076",
+      "titleOriginal": "Elvish Magi (G, 4th)",
+      "titleSpells": "Elvish Magi (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 57.1,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0094",
+      "titleOriginal": "Fungus Master (G/U, 4th)",
+      "titleSpells": "Fungus Master (Gr/Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 27.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0095",
+      "titleOriginal": "Great Druid (G, 4th)",
+      "titleSpells": "Great Druid (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 35,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0102",
+      "titleOriginal": "Goblin Warlord (Re, 4th)",
+      "titleSpells": "Goblin Warlord (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 82.5,
+      "coverageSpells": 86.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 58.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0127",
+      "titleOriginal": "Winged Stallion (U/W, 4th)",
+      "titleSpells": "Winged Stallion (Ub/Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 45.5,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0135",
+      "titleOriginal": "Kzzy'n - The Dragon Lord (R, 4th)",
+      "titleSpells": "Kzzy'n - The Dragon Lord (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 81.3,
+      "coverageSpells": 93.1,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 23.8,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0139",
+      "titleOriginal": "Druid (G, 4th)",
+      "titleSpells": "Druid (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.6,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 38.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0141",
+      "titleOriginal": "Azaar - Lichlord (B, 4th)",
+      "titleSpells": "Azaar - Lichlord (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 95.2,
+      "betterSource": "original",
+      "contentOverlapPct": 40.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0150",
+      "titleOriginal": "Merfolk Shaman (U, 4th)",
+      "titleSpells": "Merfolk Shaman (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 91.7,
+      "betterSource": "original",
+      "contentOverlapPct": 53.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0151",
+      "titleOriginal": "Nether Fiend (B, 4th)",
+      "titleSpells": "Nether Fiend (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.6,
+      "coverageSpells": 96.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 62.5,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0170",
+      "titleOriginal": "Beast Master (G, 4th)",
+      "titleSpells": "Beast Master (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 86,
+      "coverageSpells": 86.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 33.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0175",
+      "titleOriginal": "Paladin (W, 4th)",
+      "titleSpells": "Paladin (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 38.1,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0179",
+      "titleOriginal": "Centaur Shaman (Bl/Gr, 4th Edition)",
+      "titleSpells": "Centaur Shaman (Bl/Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 50,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0192",
+      "titleOriginal": "Sorcerer (R, 4th)",
+      "titleSpells": "Sorcerer (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 61.5,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0203",
+      "titleOriginal": "High Priest (W, 4th)",
+      "titleSpells": "High Priest (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.7,
+      "coverageSpells": 96.7,
+      "betterSource": "tie",
+      "contentOverlapPct": 60,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0204",
+      "titleOriginal": "Priestess (W, 4th)",
+      "titleSpells": "Priestess (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 38.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0207",
+      "titleOriginal": "Crag Hydra (R, 4th)",
+      "titleSpells": "Great Hydra (Re, Type 1)",
+      "titleMismatch": true,
+      "coverageOriginal": 93,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 40,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0211",
+      "titleOriginal": "Cleric (W, 4th)",
+      "titleSpells": "Cleric (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 56.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0218",
+      "titleOriginal": "Sea Drake (U, 4th)",
+      "titleSpells": "Sea Drake (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 53.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0219",
+      "titleOriginal": "Sedge Beast (R/B, 4th)",
+      "titleSpells": "Sedge Beast (Re/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 30,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0220",
+      "titleOriginal": "Vampire Lord (B, 4th)",
+      "titleSpells": "Vampire Lord (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 96.8,
+      "betterSource": "original",
+      "contentOverlapPct": 64.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0221",
+      "titleOriginal": "Arch Angel (Wh, 4th)",
+      "titleSpells": "Arch Angel (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 31.6,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0229",
+      "titleOriginal": "War Mage (Re, 4th)",
+      "titleSpells": "War Mage (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 46.7,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0232",
+      "titleOriginal": "Thought Invoker (Ub, 4th)",
+      "titleSpells": "Thought Invoker (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 27.8,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0245",
+      "titleOriginal": "Astral Visionary (Ub)",
+      "titleSpells": "Astral Visionary (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 72.2,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0260",
+      "titleOriginal": "Conjurer (Ub, 4th)",
+      "titleSpells": "Conjurer (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 66.7,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0261",
+      "titleOriginal": "Troll Shaman (Re, 4th)",
+      "titleSpells": "Troll Shaman (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.5,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 38.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0262",
+      "titleOriginal": "Enchantress (Gr, 4th)",
+      "titleSpells": "Enchantress (Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 50,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0263",
+      "titleOriginal": "Shapeshifter (U, 4th)",
+      "titleSpells": "Shapeshifter (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 91.9,
+      "coverageSpells": 96.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 18.2,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0283",
+      "titleOriginal": "Crusader (Wh, 4th)",
+      "titleSpells": "Crusader (Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93.2,
+      "coverageSpells": 96.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 41.2,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0289",
+      "titleOriginal": "Mind Stealer (U/B, 4th)",
+      "titleSpells": "Mind Stealer (Ub/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93.2,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 42.9,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0291",
+      "titleOriginal": "Necromancer (Bl, 4th)",
+      "titleSpells": "Necromancer (Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.5,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 73.3,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0399",
+      "titleOriginal": "Elementalist (Re/Ub, 4th)",
+      "titleSpells": "Elementalist (Re/Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.5,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 50,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0414",
+      "titleOriginal": "Guardian of the Tusk (Wh/Gr, 4th)",
+      "titleSpells": "Guardian of the Tusk (Wh/Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 86.7,
+      "betterSource": "original",
+      "contentOverlapPct": 21.7,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0426",
+      "titleOriginal": "Alt-A-Kesh (G/U/B, 4th)",
+      "titleSpells": "Alt-A-Kesh (Gr/Ub/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 90.3,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 9.1,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0434",
+      "titleOriginal": "Aga Galneer (B/G/W, 4th)",
+      "titleSpells": "Aga Galneer (Bl/Gr/Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93.4,
+      "coverageSpells": 80,
+      "betterSource": "original",
+      "contentOverlapPct": 15.6,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0437",
+      "titleOriginal": "Ape Lord (R/G, 4th)",
+      "titleSpells": "---Ape Lord (Green/Red 16 point Creature)",
+      "titleMismatch": true,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 30.4,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0442",
+      "titleOriginal": "Queltosh (U/W/R, 4th)",
+      "titleSpells": "Queltosh (Re/Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 98.2,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 6.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0456",
+      "titleOriginal": "Saltrem Tor (U/G/R, 4th)",
+      "titleSpells": "Saltrem Tor (Ub/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 6.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0897",
+      "titleOriginal": "Centaur Warchief (Re/Wh, 4th)",
+      "titleSpells": "---Centaur Warchief (Red/White 16 point Creature)",
+      "titleMismatch": true,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 29.2,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0990",
+      "titleOriginal": "Mandurang (R/U/B, 4th)",
+      "titleSpells": "Mandurang (R/U/B, Type 1, M.B.)",
+      "titleMismatch": false,
+      "coverageOriginal": 96.5,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 41.7,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0991",
+      "titleOriginal": "Whim (Ub/Bl/Wh, 4th)",
+      "titleSpells": "Whim (U/B/W, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 98.4,
+      "coverageSpells": 98.4,
+      "betterSource": "tie",
+      "contentOverlapPct": 36.7,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0992",
+      "titleOriginal": "Prismat (R/G/W,  4th)",
+      "titleSpells": "Prismat (R/G/W,  Type 1, B.R.)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 96.7,
+      "betterSource": "original",
+      "contentOverlapPct": 15.4,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0993",
+      "titleOriginal": "Dracur (R/G/B, 4th)",
+      "titleSpells": "Dracur (R/G/B, Type 1, D.K.)",
+      "titleMismatch": false,
+      "coverageOriginal": 88.1,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 40.6,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0994",
+      "titleOriginal": "Kiska-Ra (W/G/U, 4th)",
+      "titleSpells": "Kiska Ra (W/G/U, Type 1)",
+      "titleMismatch": true,
+      "coverageOriginal": 92.4,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 74.2,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0999",
+      "titleOriginal": "Arzakon",
+      "titleSpells": "Climatic Battle",
+      "titleMismatch": true,
+      "coverageOriginal": 92.8,
+      "coverageSpells": 97,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 10.5,
+      "contentMismatchFlag": true
+    }
+  ],
+  "contentMismatches": [
+    {
+      "fileId": "0094",
+      "titleOriginal": "Fungus Master (G/U, 4th)",
+      "titleSpells": "Fungus Master (Gr/Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 27.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0135",
+      "titleOriginal": "Kzzy'n - The Dragon Lord (R, 4th)",
+      "titleSpells": "Kzzy'n - The Dragon Lord (Re, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 81.3,
+      "coverageSpells": 93.1,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 23.8,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0207",
+      "titleOriginal": "Crag Hydra (R, 4th)",
+      "titleSpells": "Great Hydra (Re, Type 1)",
+      "titleMismatch": true,
+      "coverageOriginal": 93,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 40,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0232",
+      "titleOriginal": "Thought Invoker (Ub, 4th)",
+      "titleSpells": "Thought Invoker (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 27.8,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0263",
+      "titleOriginal": "Shapeshifter (U, 4th)",
+      "titleSpells": "Shapeshifter (Ub, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 91.9,
+      "coverageSpells": 96.7,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 18.2,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0414",
+      "titleOriginal": "Guardian of the Tusk (Wh/Gr, 4th)",
+      "titleSpells": "Guardian of the Tusk (Wh/Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 86.7,
+      "betterSource": "original",
+      "contentOverlapPct": 21.7,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0426",
+      "titleOriginal": "Alt-A-Kesh (G/U/B, 4th)",
+      "titleSpells": "Alt-A-Kesh (Gr/Ub/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 90.3,
+      "coverageSpells": 93.3,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 9.1,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0434",
+      "titleOriginal": "Aga Galneer (B/G/W, 4th)",
+      "titleSpells": "Aga Galneer (Bl/Gr/Wh, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 93.4,
+      "coverageSpells": 80,
+      "betterSource": "original",
+      "contentOverlapPct": 15.6,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0437",
+      "titleOriginal": "Ape Lord (R/G, 4th)",
+      "titleSpells": "---Ape Lord (Green/Red 16 point Creature)",
+      "titleMismatch": true,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 30.4,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0442",
+      "titleOriginal": "Queltosh (U/W/R, 4th)",
+      "titleSpells": "Queltosh (Re/Gr, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 98.2,
+      "coverageSpells": 93.3,
+      "betterSource": "original",
+      "contentOverlapPct": 6.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0456",
+      "titleOriginal": "Saltrem Tor (U/G/R, 4th)",
+      "titleSpells": "Saltrem Tor (Ub/Bl, Type 1)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 6.3,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0897",
+      "titleOriginal": "Centaur Warchief (Re/Wh, 4th)",
+      "titleSpells": "---Centaur Warchief (Red/White 16 point Creature)",
+      "titleMismatch": true,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 29.2,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0992",
+      "titleOriginal": "Prismat (R/G/W,  4th)",
+      "titleSpells": "Prismat (R/G/W,  Type 1, B.R.)",
+      "titleMismatch": false,
+      "coverageOriginal": 100,
+      "coverageSpells": 96.7,
+      "betterSource": "original",
+      "contentOverlapPct": 15.4,
+      "contentMismatchFlag": true
+    },
+    {
+      "fileId": "0994",
+      "titleOriginal": "Kiska-Ra (W/G/U, 4th)",
+      "titleSpells": "Kiska Ra (W/G/U, Type 1)",
+      "titleMismatch": true,
+      "coverageOriginal": 92.4,
+      "coverageSpells": 100,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 74.2,
+      "contentMismatchFlag": false
+    },
+    {
+      "fileId": "0999",
+      "titleOriginal": "Arzakon",
+      "titleSpells": "Climatic Battle",
+      "titleMismatch": true,
+      "coverageOriginal": 92.8,
+      "coverageSpells": 97,
+      "betterSource": "spells-of-the-ancients",
+      "contentOverlapPct": 10.5,
+      "contentMismatchFlag": true
+    }
+  ],
+  "deckResults": {
+    "original": {
+      "0010": {
+        "file": "0010.DCK",
+        "title": "Lord of Fate (Bl/Wh, 4th Edition)",
+        "totalCards": 57,
+        "matchedCards": 55,
+        "unmatchedCards": 2,
+        "coveragePct": 96.5,
+        "unmatchedNames": [
+          {
+            "name": "Necropolis of Azaar",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "swamp",
+          "dark_ritual",
+          "castle",
+          "healing_salve",
+          "holy_strength",
+          "unholy_strength",
+          "yotian_soldier",
+          "serra_angel",
+          "osai_vultures",
+          "pestilence",
+          "drudge_skeletons",
+          "divine_transformation"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0016": {
+        "file": "0016.DCK",
+        "title": "Undead Knight (Bl, 4th Edition)",
+        "totalCards": 57,
+        "matchedCards": 54,
+        "unmatchedCards": 3,
+        "coveragePct": 94.7,
+        "unmatchedNames": [
+          {
+            "name": "El-Hajjaj",
+            "qty": 3
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "howl_from_beyond",
+          "unholy_strength",
+          "bad_moon",
+          "flying_carpet",
+          "black_knight",
+          "drudge_skeletons",
+          "scathe_zombies",
+          "frozen_shade",
+          "fear",
+          "spirit_shackle",
+          "lost_soul",
+          "marsh_gas",
+          "nightmare"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0021": {
+        "file": "0021.DCK",
+        "title": "Sainted One (Wh, 4th Edition)",
+        "totalCards": 57,
+        "matchedCards": 42,
+        "unmatchedCards": 15,
+        "coveragePct": 73.7,
+        "unmatchedNames": [
+          {
+            "name": "Circle of Protection from Artifacts",
+            "qty": 4
+          },
+          {
+            "name": "Knights of the Rainbow Vale",
+            "qty": 3
+          },
+          {
+            "name": "Armageddon Clock",
+            "qty": 3
+          },
+          {
+            "name": "Bottle of Suleiman",
+            "qty": 3
+          },
+          {
+            "name": "White Mana Battery",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "mox_pearl",
+          "sol_ring",
+          "black_lotus",
+          "mishrass_workshop",
+          "serra_angel",
+          "personal_incarnation",
+          "white_knight",
+          "blessing",
+          "balance",
+          "dingus_egg",
+          "armageddon"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0030": {
+        "file": "0030.DCK",
+        "title": "Summoner (G/W, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "plains",
+          "colossus_of_sardia",
+          "birds_of_paradise",
+          "lifelace",
+          "channel",
+          "circle_of_protection_green",
+          "hurricane",
+          "war_mammoth",
+          "force_of_nature",
+          "disenchant",
+          "healing_salve",
+          "radjan_spirit"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0049": {
+        "file": "0049.DCK",
+        "title": "Forest Dragon (G, 4th)",
+        "totalCards": 58,
+        "matchedCards": 58,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "craw_wurm",
+          "cockatrice",
+          "thicket_basilisk",
+          "desert_twister",
+          "stream_of_life",
+          "lure",
+          "regeneration",
+          "untamed_wilds",
+          "llanowar_elves",
+          "living_lands",
+          "sandstorm"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0055": {
+        "file": "0055.DCK",
+        "title": "Warlock (B, 4th)",
+        "totalCards": 57,
+        "matchedCards": 49,
+        "unmatchedCards": 8,
+        "coveragePct": 86,
+        "unmatchedNames": [
+          {
+            "name": "El-Hajjaj",
+            "qty": 4
+          },
+          {
+            "name": "Tawnos' Wand",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "drain_life",
+          "howl_from_beyond",
+          "hypnotic_specter",
+          "pit_scorpion",
+          "frozen_shade",
+          "murk_dwellers"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0056": {
+        "file": "0056.DCK",
+        "title": "Witch (Bl, 4th)",
+        "totalCards": 59,
+        "matchedCards": 59,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "throne_of_bone",
+          "nevinyrral_disk",
+          "wall_of_bone",
+          "drudge_skeletons",
+          "will_o_the_wisp",
+          "greed",
+          "clay_statue",
+          "diabolic_machine",
+          "unholy_strength",
+          "dark_ritual",
+          "scavenging_ghoul",
+          "drain_life"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0069": {
+        "file": "0069.DCK",
+        "title": "Seer (Ub, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "drain_power",
+          "crystal_rod",
+          "counterspell",
+          "unsummon",
+          "zephyr_falcon",
+          "ghost_ship",
+          "unstable_mutation",
+          "time_elemental",
+          "tetravus",
+          "triskelion",
+          "hurkyls_recall",
+          "ornithopter"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0074": {
+        "file": "0074.DCK",
+        "title": "Sorceress (R, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Dwarven Warriors",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "iron_star",
+          "firebreathing",
+          "hurr_jackal",
+          "bird_maiden",
+          "hurloon_minotaur",
+          "dragon_whelp",
+          "blood_lust",
+          "ball_lightning",
+          "meekstone",
+          "the_brute"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0076": {
+        "file": "0076.DCK",
+        "title": "Elvish Magi (G, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "elvish_archers",
+          "giant_spider",
+          "elven_riders",
+          "llanowar_elves",
+          "jayemdae_tome",
+          "war_mammoth",
+          "winter_blast",
+          "hurricane",
+          "stream_of_life",
+          "untamed_wilds"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0094": {
+        "file": "0094.DCK",
+        "title": "Fungus Master (G/U, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "island",
+          "prodigal_sorcerer",
+          "fungusaur",
+          "ironroot_treefolk",
+          "wall_of_brambles",
+          "rod_of_ruin",
+          "carnivorous_plant",
+          "untamed_wilds",
+          "wild_growth",
+          "wall_of_wood",
+          "oasis",
+          "regeneration",
+          "unsummon"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0095": {
+        "file": "0095.DCK",
+        "title": "Great Druid (G, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "llanowar_elves",
+          "gaea_liege",
+          "birds_of_paradise",
+          "aspect_of_wolf",
+          "instill_energy",
+          "living_lands",
+          "stream_of_life",
+          "untamed_wilds",
+          "killer_bees",
+          "jayemdae_tome",
+          "living_artifact",
+          "verduran_enchantress"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0102": {
+        "file": "0102.DCK",
+        "title": "Goblin Warlord (Re, 4th)",
+        "totalCards": 57,
+        "matchedCards": 47,
+        "unmatchedCards": 10,
+        "coveragePct": 82.5,
+        "unmatchedNames": [
+          {
+            "name": "Mons Goblin Raiders",
+            "qty": 4
+          },
+          {
+            "name": "Goblin Polka Band",
+            "qty": 4
+          },
+          {
+            "name": "Tawnos' Weaponry",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "orcish_oriflamme",
+          "helm_of_chatzuk",
+          "goblin_king",
+          "goblin_balloon_brigade",
+          "keldon_warlord",
+          "immolation",
+          "giant_strength"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0127": {
+        "file": "0127.DCK",
+        "title": "Winged Stallion (U/W, 4th)",
+        "totalCards": 61,
+        "matchedCards": 61,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "island",
+          "howling_mine",
+          "island_sanctuary",
+          "mesa_pegasus",
+          "phantasmal_forces",
+          "serra_angel",
+          "dancing_scimitar",
+          "magical_hack",
+          "karma",
+          "lifetap",
+          "psionic_entity",
+          "holy_armor",
+          "holy_strength",
+          "segovian_leviathan",
+          "disenchant"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0135": {
+        "file": "0135.DCK",
+        "title": "Kzzy'n - The Dragon Lord (R, 4th)",
+        "totalCards": 64,
+        "matchedCards": 52,
+        "unmatchedCards": 12,
+        "coveragePct": 81.3,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 4
+          },
+          {
+            "name": "Manaflare",
+            "qty": 2
+          },
+          {
+            "name": "Faerie Dragon",
+            "qty": 2
+          },
+          {
+            "name": "Prismatic Dragon",
+            "qty": 2
+          },
+          {
+            "name": "Celestial Prism",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "forest",
+          "plains",
+          "birds_of_paradise",
+          "fellwar_stone",
+          "disenchant",
+          "lightning_bolt",
+          "shivan_dragon",
+          "dragon_whelp",
+          "dragon_engine",
+          "craw_wurm",
+          "elder_land_wurm",
+          "ivory_tower",
+          "winds_of_change"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0139": {
+        "file": "0139.DCK",
+        "title": "Druid (G, 4th)",
+        "totalCards": 59,
+        "matchedCards": 57,
+        "unmatchedCards": 2,
+        "coveragePct": 96.6,
+        "unmatchedNames": [
+          {
+            "name": "Naf's Asp",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "mishrass_factory",
+          "ley_druid",
+          "llanowar_elves",
+          "oasis",
+          "wooden_sphere",
+          "giant_growth",
+          "wanderlust",
+          "wall_of_wood",
+          "giant_spider",
+          "craw_wurm",
+          "ironroot_treefolk",
+          "instill_energy",
+          "killer_bees",
+          "durkwood_boars"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0141": {
+        "file": "0141.DCK",
+        "title": "Azaar - Lichlord (B, 4th)",
+        "totalCards": 61,
+        "matchedCards": 61,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "sol_ring",
+          "mox_jet",
+          "black_lotus",
+          "black_vise",
+          "mind_twist",
+          "drain_life",
+          "hypnotic_specter",
+          "sengir_vampire",
+          "tetravus",
+          "lord_of_the_pit",
+          "greed",
+          "will_o_the_wisp",
+          "gloom",
+          "bog_imp",
+          "howl_from_beyond"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0150": {
+        "file": "0150.DCK",
+        "title": "Merfolk Shaman (U, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "merfolk_of_the_pearl_trident",
+          "lord_of_atlantis",
+          "segovian_leviathan",
+          "unstable_mutation",
+          "phantasmal_terrain",
+          "pirate_ship",
+          "sea_serpent",
+          "island_fish_jasconius",
+          "magical_hack",
+          "lifetap",
+          "unsummon"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0151": {
+        "file": "0151.DCK",
+        "title": "Nether Fiend (B, 4th)",
+        "totalCards": 58,
+        "matchedCards": 56,
+        "unmatchedCards": 2,
+        "coveragePct": 96.6,
+        "unmatchedNames": [
+          {
+            "name": "Junun Efreet",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "soul_net",
+          "the_hive",
+          "animate_dead",
+          "nether_shadow",
+          "lord_of_the_pit",
+          "erg_raiders",
+          "black_knight",
+          "frozen_shade",
+          "mishrass_factory",
+          "kormus_bell",
+          "xenic_poltergeist"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0170": {
+        "file": "0170.DCK",
+        "title": "Beast Master (G, 4th)",
+        "totalCards": 57,
+        "matchedCards": 49,
+        "unmatchedCards": 8,
+        "coveragePct": 86,
+        "unmatchedNames": [
+          {
+            "name": "Naf's Asp",
+            "qty": 4
+          },
+          {
+            "name": "Aswan Jaguar",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "birds_of_paradise",
+          "timber_wolves",
+          "grizzly_bears",
+          "stream_of_life",
+          "aspect_of_wolf",
+          "durkwood_boars",
+          "giant_growth",
+          "web",
+          "untamed_wilds",
+          "giant_spider"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0175": {
+        "file": "0175.DCK",
+        "title": "Paladin (W, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "island",
+          "northern_paladin",
+          "white_knight",
+          "benalish_hero",
+          "holy_strength",
+          "disenchant",
+          "red_ward",
+          "angry_mob",
+          "sleight_of_mind",
+          "magical_hack",
+          "karma",
+          "circle_of_protection_black",
+          "swords_to_plowshares",
+          "segovian_leviathan"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0179": {
+        "file": "0179.DCK",
+        "title": "Centaur Shaman (Bl/Gr, 4th Edition)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "swamp",
+          "paralyze",
+          "wanderlust",
+          "warp_artifact",
+          "stream_of_life",
+          "cursed_land",
+          "birds_of_paradise",
+          "cockatrice",
+          "onulet",
+          "dark_ritual",
+          "carrion_ants",
+          "pestilence",
+          "whirling_dervish"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0192": {
+        "file": "0192.DCK",
+        "title": "Sorcerer (R, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Mons Goblin Raiders",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "manabarbs",
+          "goblin_balloon_brigade",
+          "brass_man",
+          "ali_baba",
+          "hurr_jackal",
+          "sisters_of_the_flame",
+          "winds_of_change",
+          "lightning_bolt",
+          "giant_strength"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0203": {
+        "file": "0203.DCK",
+        "title": "High Priest (W, 4th)",
+        "totalCards": 61,
+        "matchedCards": 59,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "White Mana Battery",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "armageddon",
+          "dingus_egg",
+          "healing_salve",
+          "mesa_pegasus",
+          "savannah_lions",
+          "fellwar_stone",
+          "holy_strength",
+          "balance",
+          "white_knight",
+          "tundra_wolves",
+          "disenchant",
+          "righteousness"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0204": {
+        "file": "0204.DCK",
+        "title": "Priestess (W, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "animate_wall",
+          "reverse_damage",
+          "healing_salve",
+          "ivory_cup",
+          "wall_of_swords",
+          "wall_of_spears",
+          "spirit_link",
+          "pikemen",
+          "fortified_area",
+          "benalish_hero",
+          "blessing",
+          "mesa_pegasus",
+          "castle",
+          "elder_land_wurm"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0207": {
+        "file": "0207.DCK",
+        "title": "Crag Hydra (R, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Manaflare",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "power_surge",
+          "fireball",
+          "lightning_bolt",
+          "inferno",
+          "onulet",
+          "wall_of_fire",
+          "disintegrate",
+          "detonate",
+          "soul_net",
+          "shivan_dragon"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0211": {
+        "file": "0211.DCK",
+        "title": "Cleric (W, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Tawnos' Weaponry",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "swords_to_plowshares",
+          "disenchant",
+          "holy_strength",
+          "holy_armor",
+          "meekstone",
+          "benalish_hero",
+          "mesa_pegasus",
+          "samite_healer",
+          "savannah_lions",
+          "amrou_kithkin",
+          "pikemen"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0218": {
+        "file": "0218.DCK",
+        "title": "Sea Drake (U, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "island_fish_jasconius",
+          "water_elemental",
+          "sea_serpent",
+          "sirenss_call",
+          "creature_bond",
+          "mana_vault",
+          "jump",
+          "phantasmal_terrain",
+          "segovian_leviathan",
+          "giant_tortoise",
+          "leviathan"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0219": {
+        "file": "0219.DCK",
+        "title": "Sedge Beast (R/B, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "swamp",
+          "strip_mine",
+          "dancing_scimitar",
+          "uthden_troll",
+          "stone_rain",
+          "blight",
+          "fissure",
+          "erg_raiders",
+          "ironclaw_orcs",
+          "cyclopean_mummy",
+          "diabolic_machine",
+          "immolation"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0220": {
+        "file": "0220.DCK",
+        "title": "Vampire Lord (B, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "mana_vault",
+          "animate_dead",
+          "weakness",
+          "sengir_vampire",
+          "sorceress_queen",
+          "carrion_ants",
+          "vampire_bats",
+          "uncle_istvan",
+          "terror"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0221": {
+        "file": "0221.DCK",
+        "title": "Arch Angel (Wh, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "mana_vault",
+          "wrath_of_god",
+          "soul_net",
+          "mishrass_factory",
+          "the_hive",
+          "serra_angel",
+          "onulet",
+          "osai_vultures",
+          "tetravus",
+          "swords_to_plowshares"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0229": {
+        "file": "0229.DCK",
+        "title": "War Mage (Re, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Manaflare",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "mana_vault",
+          "fellwar_stone",
+          "lightning_bolt",
+          "fireball",
+          "earthquake",
+          "smoke",
+          "ball_lightning",
+          "disintegrate",
+          "aladdinss_ring"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0232": {
+        "file": "0232.DCK",
+        "title": "Thought Invoker (Ub, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "giant_tortoise",
+          "psychic_venom",
+          "mana_short",
+          "drain_power",
+          "control_magic",
+          "power_sink",
+          "power_leak",
+          "ghost_ship",
+          "energy_flux",
+          "phantom_monster",
+          "time_elemental",
+          "mahamoti_djinn"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0245": {
+        "file": "0245.DCK",
+        "title": "Astral Visionary (Ub)",
+        "totalCards": 59,
+        "matchedCards": 59,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "counterspell",
+          "ancestral_recall",
+          "time_walk",
+          "timetwister",
+          "copy_artifact",
+          "leviathan",
+          "stasis",
+          "mox_sapphire",
+          "black_lotus",
+          "twiddle",
+          "yotian_soldier",
+          "howling_mine",
+          "zephyr_falcon",
+          "unstable_mutation"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0260": {
+        "file": "0260.DCK",
+        "title": "Conjurer (Ub, 4th)",
+        "totalCards": 57,
+        "matchedCards": 53,
+        "unmatchedCards": 4,
+        "coveragePct": 93,
+        "unmatchedNames": [
+          {
+            "name": "Apprentice Wizard",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "fellwar_stone",
+          "prodigal_sorcerer",
+          "pirate_ship",
+          "wall_of_water",
+          "wall_of_air",
+          "counterspell",
+          "steal_artifact",
+          "animate_artifact",
+          "unsummon",
+          "rod_of_ruin",
+          "aladdinss_ring",
+          "jayemdae_tome"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0261": {
+        "file": "0261.DCK",
+        "title": "Troll Shaman (Re, 4th)",
+        "totalCards": 57,
+        "matchedCards": 55,
+        "unmatchedCards": 2,
+        "coveragePct": 96.5,
+        "unmatchedNames": [
+          {
+            "name": "Stripmine",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "lightning_bolt",
+          "conservator",
+          "fireball",
+          "stone_giant",
+          "hill_giant",
+          "gray_ogre",
+          "uthden_troll",
+          "the_brute",
+          "eternal_warrior",
+          "hurloon_minotaur",
+          "oasis",
+          "dancing_scimitar"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0262": {
+        "file": "0262.DCK",
+        "title": "Enchantress (Gr, 4th)",
+        "totalCards": 59,
+        "matchedCards": 59,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "llanowar_elves",
+          "verduran_enchantress",
+          "cockatrice",
+          "thicket_basilisk",
+          "durkwood_boars",
+          "ivory_tower",
+          "lure",
+          "web",
+          "regeneration",
+          "living_artifact",
+          "aspect_of_wolf",
+          "wild_growth",
+          "coral_helm",
+          "instill_energy"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0263": {
+        "file": "0263.DCK",
+        "title": "Shapeshifter (U, 4th)",
+        "totalCards": 62,
+        "matchedCards": 57,
+        "unmatchedCards": 5,
+        "coveragePct": 91.9,
+        "unmatchedNames": [
+          {
+            "name": "Apprentice Wizard",
+            "qty": 3
+          },
+          {
+            "name": "Power Struggle",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "mishrass_factory",
+          "unsummon",
+          "hurkyls_recall",
+          "shapeshifter",
+          "primal_clay",
+          "mana_vault",
+          "fellwar_stone",
+          "backfire",
+          "ivory_tower",
+          "unstable_mutation",
+          "urzass_avenger",
+          "triskelion"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0283": {
+        "file": "0283.DCK",
+        "title": "Crusader (Wh, 4th)",
+        "totalCards": 59,
+        "matchedCards": 55,
+        "unmatchedCards": 4,
+        "coveragePct": 93.2,
+        "unmatchedNames": [
+          {
+            "name": "Knights of the Rainbow Vale",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "crusade",
+          "castle",
+          "disenchant",
+          "white_knight",
+          "eye_for_an_eye",
+          "morale",
+          "pikemen",
+          "battering_ram",
+          "dancing_scimitar",
+          "benalish_hero",
+          "swords_to_plowshares"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0289": {
+        "file": "0289.DCK",
+        "title": "Mind Stealer (U/B, 4th)",
+        "totalCards": 59,
+        "matchedCards": 55,
+        "unmatchedCards": 4,
+        "coveragePct": 93.2,
+        "unmatchedNames": [
+          {
+            "name": "Junun Efreet",
+            "qty": 2
+          },
+          {
+            "name": "Call from the Grave",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "island",
+          "hypnotic_specter",
+          "sengir_vampire",
+          "will_o_the_wisp",
+          "control_magic",
+          "steal_artifact",
+          "unholy_strength",
+          "sirenss_call",
+          "mind_twist",
+          "phantasmal_forces",
+          "phantom_monster",
+          "drain_power",
+          "fellwar_stone",
+          "animate_dead"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0291": {
+        "file": "0291.DCK",
+        "title": "Necromancer (Bl, 4th)",
+        "totalCards": 57,
+        "matchedCards": 55,
+        "unmatchedCards": 2,
+        "coveragePct": 96.5,
+        "unmatchedNames": [
+          {
+            "name": "Necropolis of Azaar",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "evil_presence",
+          "unholy_strength",
+          "drain_life",
+          "scathe_zombies",
+          "zombie_master",
+          "bog_wraith",
+          "wall_of_bone",
+          "lost_soul",
+          "bad_moon",
+          "raise_dead",
+          "animate_dead",
+          "cosmic_horror"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0399": {
+        "file": "0399.DCK",
+        "title": "Elementalist (Re/Ub, 4th)",
+        "totalCards": 57,
+        "matchedCards": 55,
+        "unmatchedCards": 2,
+        "coveragePct": 96.5,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "island",
+          "mana_vault",
+          "air_elemental",
+          "earth_elemental",
+          "fire_elemental",
+          "water_elemental",
+          "wall_of_air",
+          "wall_of_water",
+          "wall_of_fire",
+          "wall_of_stone",
+          "earthquake",
+          "fireball",
+          "drain_power",
+          "lightning_bolt",
+          "unstable_mutation",
+          "energy_flux"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0414": {
+        "file": "0414.DCK",
+        "title": "Guardian of the Tusk (Wh/Gr, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "plains",
+          "birds_of_paradise",
+          "giant_growth",
+          "holy_strength",
+          "desert_twister",
+          "war_mammoth",
+          "savannah_lions",
+          "elder_land_wurm",
+          "tundra_wolves",
+          "timber_wolves",
+          "force_of_nature",
+          "divine_transformation",
+          "colossus_of_sardia",
+          "berserk"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0426": {
+        "file": "0426.DCK",
+        "title": "Alt-A-Kesh (G/U/B, 4th)",
+        "totalCards": 62,
+        "matchedCards": 56,
+        "unmatchedCards": 6,
+        "coveragePct": 90.3,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 4
+          },
+          {
+            "name": "Junun Efreet",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "swamp",
+          "island",
+          "untamed_wilds",
+          "wall_of_ice",
+          "wall_of_bone",
+          "wall_of_air",
+          "birds_of_paradise",
+          "bog_imp",
+          "cockatrice",
+          "mahamoti_djinn",
+          "phantasmal_forces",
+          "scryb_sprites",
+          "vampire_bats",
+          "zephyr_falcon",
+          "phantom_monster",
+          "lord_of_the_pit",
+          "energy_flux",
+          "stream_of_life",
+          "ancestral_recall",
+          "time_walk",
+          "timetwister"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0434": {
+        "file": "0434.DCK",
+        "title": "Aga Galneer (B/G/W, 4th)",
+        "totalCards": 61,
+        "matchedCards": 57,
+        "unmatchedCards": 4,
+        "coveragePct": 93.4,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 2
+          },
+          {
+            "name": "El-Hajjaj",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "forest",
+          "plains",
+          "sol_ring",
+          "unholy_strength",
+          "erg_raiders",
+          "healing_salve",
+          "stream_of_life",
+          "onulet",
+          "greed",
+          "ashes_to_ashes",
+          "jade_monolith",
+          "spirit_link",
+          "serra_angel",
+          "sengir_vampire",
+          "giant_growth",
+          "giant_spider",
+          "fungusaur",
+          "savannah_lions",
+          "hurricane"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0437": {
+        "file": "0437.DCK",
+        "title": "Ape Lord (R/G, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "mountain",
+          "mana_vault",
+          "birds_of_paradise",
+          "llanowar_elves",
+          "detonate",
+          "winter_blast",
+          "killer_bees",
+          "shivan_dragon",
+          "craw_wurm",
+          "dragon_engine",
+          "stream_of_life",
+          "fireball",
+          "disintegrate",
+          "firebreathing"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0442": {
+        "file": "0442.DCK",
+        "title": "Queltosh (U/W/R, 4th)",
+        "totalCards": 57,
+        "matchedCards": 56,
+        "unmatchedCards": 1,
+        "coveragePct": 98.2,
+        "unmatchedNames": [
+          {
+            "name": "Clockwork Avian",
+            "qty": 1
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "plains",
+          "mountain",
+          "eye_for_an_eye",
+          "pikemen",
+          "mesa_pegasus",
+          "serra_angel",
+          "spirit_link",
+          "white_knight",
+          "ancestral_recall",
+          "control_magic",
+          "giant_tortoise",
+          "mahamoti_djinn",
+          "prodigal_sorcerer",
+          "time_elemental",
+          "unstable_mutation",
+          "black_vise",
+          "candelabra_of_tawnos",
+          "urzass_avenger",
+          "wall_of_dust",
+          "feedback",
+          "fireball",
+          "land_tax",
+          "lightning_bolt",
+          "disenchant",
+          "zephyr_falcon",
+          "counterspell",
+          "power_sink",
+          "spell_blast",
+          "brass_man",
+          "wall_of_air",
+          "phantasmal_forces",
+          "fire_elemental",
+          "phantom_monster",
+          "the_hive"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0456": {
+        "file": "0456.DCK",
+        "title": "Saltrem Tor (U/G/R, 4th)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "island",
+          "forest",
+          "birds_of_paradise",
+          "giant_strength",
+          "web",
+          "unstable_mutation",
+          "regeneration",
+          "eternal_warrior",
+          "giant_tortoise",
+          "prodigal_sorcerer",
+          "crimson_manticore",
+          "fungusaur",
+          "timber_wolves",
+          "verduran_enchantress",
+          "whirling_dervish",
+          "sirenss_call",
+          "control_magic",
+          "fireball"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0897": {
+        "file": "0897.DCK",
+        "title": "Centaur Warchief (Re/Wh, 4th)",
+        "totalCards": 57,
+        "matchedCards": 57,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "mountain",
+          "serra_angel",
+          "yotian_soldier",
+          "wall_of_swords",
+          "smoke",
+          "eternal_warrior",
+          "lightning_bolt",
+          "healing_salve",
+          "kismet",
+          "colossus_of_sardia",
+          "cave_people",
+          "ali_baba",
+          "dragon_whelp",
+          "savannah_lions",
+          "land_tax"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0990": {
+        "file": "0990.DCK",
+        "title": "Mandurang (R/U/B, 4th)",
+        "totalCards": 57,
+        "matchedCards": 55,
+        "unmatchedCards": 2,
+        "coveragePct": 96.5,
+        "unmatchedNames": [
+          {
+            "name": "Celestial Prism",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "carrion_ants",
+          "zephyr_falcon",
+          "will_o_the_wisp",
+          "dancing_scimitar",
+          "ornithopter",
+          "mountain",
+          "swamp",
+          "island",
+          "mox_ruby",
+          "mox_jet",
+          "mox_sapphire",
+          "jayemdae_tome",
+          "giant_strength",
+          "unstable_mutation",
+          "unholy_strength",
+          "braingeyser",
+          "blood_lust"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0991": {
+        "file": "0991.DCK",
+        "title": "Whim (Ub/Bl/Wh, 4th)",
+        "totalCards": 62,
+        "matchedCards": 61,
+        "unmatchedCards": 1,
+        "coveragePct": 98.4,
+        "unmatchedNames": [
+          {
+            "name": "Whimsy",
+            "qty": 1
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "plains",
+          "swamp",
+          "mox_jet",
+          "mox_pearl",
+          "mox_sapphire",
+          "black_lotus",
+          "psychic_venom",
+          "drain_power",
+          "twiddle",
+          "power_sink",
+          "royal_assassin",
+          "sirenss_call",
+          "word_of_binding",
+          "meekstone",
+          "yotian_soldier",
+          "serra_angel",
+          "shapeshifter",
+          "alabaster_potion",
+          "colossus_of_sardia",
+          "carrion_ants",
+          "kismet",
+          "kormus_bell"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0992": {
+        "file": "0992.DCK",
+        "title": "Prismat (R/G/W,  4th)",
+        "totalCards": 62,
+        "matchedCards": 62,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "plains",
+          "forest",
+          "mox_emerald",
+          "mox_pearl",
+          "mox_ruby",
+          "fellwar_stone",
+          "black_lotus",
+          "sol_ring",
+          "wrath_of_god",
+          "hurricane",
+          "earthquake",
+          "inferno",
+          "healing_salve",
+          "stream_of_life",
+          "disenchant",
+          "detonate",
+          "living_artifact",
+          "reverse_damage",
+          "onulet",
+          "ivory_tower"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0993": {
+        "file": "0993.DCK",
+        "title": "Dracur (R/G/B, 4th)",
+        "totalCards": 59,
+        "matchedCards": 52,
+        "unmatchedCards": 7,
+        "coveragePct": 88.1,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 3
+          },
+          {
+            "name": "Manaflare",
+            "qty": 2
+          },
+          {
+            "name": "Ragman",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "swamp",
+          "forest",
+          "mox_emerald",
+          "mox_jet",
+          "mox_ruby",
+          "black_lotus",
+          "strip_mine",
+          "fellwar_stone",
+          "stone_rain",
+          "dingus_egg",
+          "fireball",
+          "disintegrate",
+          "lightning_bolt",
+          "blight",
+          "desert_twister",
+          "fissure",
+          "mind_twist",
+          "hypnotic_specter",
+          "disrupting_scepter",
+          "wall_of_dust"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      },
+      "0994": {
+        "file": "0994.DCK",
+        "title": "Kiska-Ra (W/G/U, 4th)",
+        "totalCards": 66,
+        "matchedCards": 61,
+        "unmatchedCards": 5,
+        "coveragePct": 92.4,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 3
+          },
+          {
+            "name": "Zephyr Falcons",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "island",
+          "forest",
+          "mox_emerald",
+          "mox_pearl",
+          "mox_sapphire",
+          "savannah_lions",
+          "giant_tortoise",
+          "elvish_archers",
+          "scryb_sprites",
+          "tundra_wolves",
+          "timber_wolves",
+          "samite_healer",
+          "birds_of_paradise",
+          "pikemen",
+          "unstable_mutation",
+          "giant_growth",
+          "holy_strength",
+          "tawnosss_weaponry",
+          "control_magic",
+          "desert_twister",
+          "ancestral_recall",
+          "time_walk",
+          "timetwister",
+          "braingeyser",
+          "regrowth"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0999": {
+        "file": "0999.DCK",
+        "title": "Arzakon",
+        "totalCards": 138,
+        "matchedCards": 128,
+        "unmatchedCards": 10,
+        "coveragePct": 92.8,
+        "unmatchedNames": [
+          {
+            "name": "Gem Bazaar",
+            "qty": 4
+          },
+          {
+            "name": "Black Mana Battery",
+            "qty": 1
+          },
+          {
+            "name": "Blue Mana Battery",
+            "qty": 1
+          },
+          {
+            "name": "Clockwork Avian",
+            "qty": 1
+          },
+          {
+            "name": "Green Mana Battery",
+            "qty": 1
+          },
+          {
+            "name": "White Mana Battery",
+            "qty": 1
+          },
+          {
+            "name": "Red Mana Battery",
+            "qty": 1
+          }
+        ],
+        "matchedCardIds": [
+          "hurr_jackal",
+          "forest",
+          "mountain",
+          "mox_emerald",
+          "mox_jet",
+          "mox_pearl",
+          "mox_ruby",
+          "mox_sapphire",
+          "swamp",
+          "plains",
+          "island",
+          "elvish_archers",
+          "erg_raiders",
+          "grizzly_bears",
+          "mesa_pegasus",
+          "pikemen",
+          "samite_healer",
+          "savannah_lions",
+          "will_o_the_wisp",
+          "zephyr_falcon",
+          "wall_of_dust",
+          "ancestral_recall",
+          "berserk",
+          "regrowth",
+          "time_walk",
+          "timetwister",
+          "wheel_of_fortune",
+          "sol_ring",
+          "braingeyser",
+          "animate_dead",
+          "blood_lust",
+          "circle_of_protection_artifacts",
+          "circle_of_protection_black",
+          "circle_of_protection_blue",
+          "circle_of_protection_green",
+          "circle_of_protection_red",
+          "circle_of_protection_white",
+          "desert_twister",
+          "disintegrate",
+          "fog",
+          "giant_growth",
+          "giant_strength",
+          "howl_from_beyond",
+          "immolation",
+          "lightning_bolt",
+          "mind_twist",
+          "paralyze",
+          "power_sink",
+          "pyrotechnics",
+          "raise_dead",
+          "sirenss_call",
+          "spirit_link",
+          "mishrass_factory",
+          "aladdinss_ring",
+          "brass_man",
+          "clockwork_beast",
+          "colossus_of_sardia",
+          "dancing_scimitar",
+          "diabolic_machine",
+          "fellwar_stone",
+          "grapeshot_catapult",
+          "obsianus_golem",
+          "shapeshifter",
+          "tetravus",
+          "the_hive",
+          "triskelion",
+          "urzass_avenger",
+          "mishrass_workshop"
+        ],
+        "sideboardColors": [
+          "None",
+          "Black",
+          "Blue",
+          "Green",
+          "Red",
+          "White"
+        ],
+        "idCollisions": []
+      }
+    },
+    "spells-of-the-ancients": {
+      "0010": {
+        "file": "0010.dck",
+        "title": "Lord of Fate (Bl/Wh, Type 1)",
+        "totalCards": 64,
+        "matchedCards": 59,
+        "unmatchedCards": 5,
+        "coveragePct": 92.2,
+        "unmatchedNames": [
+          {
+            "name": "Khabal Ghoul",
+            "qty": 3
+          },
+          {
+            "name": "Necropolis of Azar",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "swamp",
+          "scrubland",
+          "dark_ritual",
+          "pestilence",
+          "castle",
+          "healing_salve",
+          "holy_strength",
+          "unholy_strength",
+          "divine_transformation",
+          "yotian_soldier",
+          "serra_angel",
+          "ornithopter",
+          "osai_vultures",
+          "drudge_skeletons"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0016": {
+        "file": "0016.dck",
+        "title": "Undead Knight (Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "black_knight",
+          "howl_from_beyond",
+          "unholy_strength",
+          "bad_moon",
+          "oubliette",
+          "drudge_skeletons",
+          "scathe_zombies",
+          "frozen_shade",
+          "lost_soul",
+          "nightmare",
+          "bog_wraith",
+          "animate_dead",
+          "marsh_gas",
+          "fear"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0021": {
+        "file": "0021.dck",
+        "title": "Sainted One (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "King Suleiman",
+            "qty": 2
+          },
+          {
+            "name": "Rainbow Knights",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "sol_ring",
+          "mox_pearl",
+          "black_lotus",
+          "serra_angel",
+          "personal_incarnation",
+          "repentant_blacksmith",
+          "white_knight",
+          "veteran_bodyguard",
+          "blessing",
+          "piety",
+          "eye_for_an_eye",
+          "reverse_damage",
+          "swords_to_plowshares",
+          "martyrs_of_korlis"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0030": {
+        "file": "0030.dck",
+        "title": "Summoner (Gr, Type 1)",
+        "totalCards": 62,
+        "matchedCards": 56,
+        "unmatchedCards": 6,
+        "coveragePct": 90.3,
+        "unmatchedNames": [
+          {
+            "name": "Birds of Paridise",
+            "qty": 4
+          },
+          {
+            "name": "Cyclone",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "savannah",
+          "force_of_nature",
+          "war_mammoth",
+          "hurricane",
+          "circle_of_protection_green",
+          "berserk",
+          "wild_growth",
+          "lifelace",
+          "radjan_spirit",
+          "colossus_of_sardia",
+          "giant_growth"
+        ],
+        "sideboardColors": [],
+        "idCollisions": [
+          {
+            "internalId": "14",
+            "names": [
+              "Birds of Paridise",
+              "Berserk"
+            ]
+          }
+        ]
+      },
+      "0049": {
+        "file": "0049.dck",
+        "title": "Forest Dragon (Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "llanowar_elves",
+          "craw_wurm",
+          "cockatrice",
+          "thicket_basilisk",
+          "kudzu",
+          "ice_storm",
+          "desert_twister",
+          "stream_of_life",
+          "untamed_wilds",
+          "living_lands",
+          "lure",
+          "regeneration"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0055": {
+        "file": "0055.dck",
+        "title": "Warlock (Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "El-Hajjaj",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "drain_life",
+          "fear",
+          "howl_from_beyond",
+          "hypnotic_specter",
+          "erg_raiders",
+          "murk_dwellers",
+          "pit_scorpion",
+          "tawnosss_wand"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0056": {
+        "file": "0056.dck",
+        "title": "Witch (Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Khabal Ghoul",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "throne_of_bone",
+          "nevinyrral_disk",
+          "wall_of_bone",
+          "drudge_skeletons",
+          "will_o_the_wisp",
+          "clay_statue",
+          "diabolic_machine",
+          "scavenging_ghoul",
+          "mightstone",
+          "mox_jet",
+          "fellwar_stone"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0069": {
+        "file": "0069.dck",
+        "title": "Seer (Ub, Type 1)",
+        "totalCards": 62,
+        "matchedCards": 62,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "unsummon",
+          "fellwar_stone",
+          "mana_vault",
+          "tetravus",
+          "triskelion",
+          "transmute_artifact",
+          "time_elemental",
+          "hurkyls_recall",
+          "mightstone",
+          "ornithopter",
+          "zephyr_falcon",
+          "unstable_mutation"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0074": {
+        "file": "0074.dck",
+        "title": "Sorceress (Re, Type 1)",
+        "totalCards": 59,
+        "matchedCards": 50,
+        "unmatchedCards": 9,
+        "coveragePct": 84.7,
+        "unmatchedNames": [
+          {
+            "name": "Bloodlust",
+            "qty": 4
+          },
+          {
+            "name": "Dwarven Warriors",
+            "qty": 3
+          },
+          {
+            "name": "Dwarven Demolition Team",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "desert",
+          "iron_star",
+          "firebreathing",
+          "hurr_jackal",
+          "bird_maiden",
+          "hurloon_minotaur",
+          "dragon_whelp",
+          "meekstone",
+          "ball_lightning",
+          "granite_gargoyle"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0076": {
+        "file": "0076.dck",
+        "title": "Elvish Magi (Gr, Type 1)",
+        "totalCards": 56,
+        "matchedCards": 56,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "llanowar_elves",
+          "elvish_archers",
+          "elven_riders",
+          "tranquility",
+          "giant_growth",
+          "stream_of_life",
+          "hurricane",
+          "winter_blast",
+          "untamed_wilds",
+          "singing_tree"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0094": {
+        "file": "0094.dck",
+        "title": "Fungus Master (Gr/Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "island",
+          "tropical_island",
+          "prodigal_sorcerer",
+          "fungusaur",
+          "birds_of_paradise",
+          "wall_of_brambles",
+          "clone",
+          "giant_growth",
+          "rod_of_ruin",
+          "kudzu",
+          "psionic_entity",
+          "web",
+          "psionic_blast"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0095": {
+        "file": "0095.dck",
+        "title": "Great Druid (Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Ghazban Ogre",
+            "qty": 2
+          },
+          {
+            "name": "V. Enchantress",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "mox_emerald",
+          "sol_ring",
+          "black_lotus",
+          "gaea_liege",
+          "singing_tree",
+          "aspect_of_wolf",
+          "instill_energy",
+          "fastbond",
+          "living_lands",
+          "stream_of_life",
+          "untamed_wilds",
+          "erhnam_djinn",
+          "citanul_druid"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0102": {
+        "file": "0102.dck",
+        "title": "Goblin Warlord (Re, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 52,
+        "unmatchedCards": 8,
+        "coveragePct": 86.7,
+        "unmatchedNames": [
+          {
+            "name": "Mons Goblin Raiders",
+            "qty": 4
+          },
+          {
+            "name": "Golbin Polka Band",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "wheel_of_fortune",
+          "orcish_oriflamme",
+          "helm_of_chatzuk",
+          "iron_star",
+          "goblin_king",
+          "goblin_balloon_brigade",
+          "keldon_warlord",
+          "goblin_artisans",
+          "fireball",
+          "giant_strength"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0127": {
+        "file": "0127.dck",
+        "title": "Winged Stallion (Ub/Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "island",
+          "tundra",
+          "sol_ring",
+          "mesa_pegasus",
+          "phantasmal_forces",
+          "serra_angel",
+          "flying_men",
+          "air_elemental",
+          "dancing_scimitar",
+          "magical_hack",
+          "karma",
+          "lifetap",
+          "angry_mob",
+          "segovian_leviathan",
+          "cyclopean_tomb"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0135": {
+        "file": "0135.dck",
+        "title": "Kzzy'n - The Dragon Lord (Re, Type 1)",
+        "totalCards": 58,
+        "matchedCards": 54,
+        "unmatchedCards": 4,
+        "coveragePct": 93.1,
+        "unmatchedNames": [
+          {
+            "name": "Manaflare",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "gauntlet_of_might",
+          "lightning_bolt",
+          "sol_ring",
+          "mox_ruby",
+          "black_lotus",
+          "wheel_of_fortune",
+          "shivan_dragon",
+          "dragon_whelp",
+          "dragon_engine",
+          "nalathni_dragon",
+          "aladdin"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0139": {
+        "file": "0139.dck",
+        "title": "Druid (Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Argothian Pixies",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "wooden_sphere",
+          "giant_growth",
+          "llanowar_elves",
+          "giant_spider",
+          "ironroot_treefolk",
+          "tranquility",
+          "killer_bees",
+          "argothian_treefolk",
+          "citanul_druid"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0141": {
+        "file": "0141.dck",
+        "title": "Azaar - Lichlord (Bl, Type 1)",
+        "totalCards": 62,
+        "matchedCards": 59,
+        "unmatchedCards": 3,
+        "coveragePct": 95.2,
+        "unmatchedNames": [
+          {
+            "name": "Juzam Djinn",
+            "qty": 3
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "mox_jet",
+          "black_lotus",
+          "dark_ritual",
+          "lich",
+          "drain_life",
+          "mind_twist",
+          "contract_from_below",
+          "hypnotic_specter",
+          "demonic_hordes",
+          "sol_ring",
+          "blight",
+          "sinkhole",
+          "sengir_vampire"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0150": {
+        "file": "0150.dck",
+        "title": "Merfolk Shaman (Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 55,
+        "unmatchedCards": 5,
+        "coveragePct": 91.7,
+        "unmatchedNames": [
+          {
+            "name": "Dandan",
+            "qty": 3
+          },
+          {
+            "name": "Deep Water",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "merfolk_of_the_pearl_trident",
+          "lord_of_atlantis",
+          "merchant_ship",
+          "island_fish_jasconius",
+          "unstable_mutation",
+          "sandals_of_abdallah",
+          "power_sink",
+          "phantasmal_terrain",
+          "sea_serpent",
+          "pirate_ship"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0151": {
+        "file": "0151.dck",
+        "title": "Nether Fiend (Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Khabal Ghoul",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "mox_jet",
+          "the_hive",
+          "demonic_tutor",
+          "animate_dead",
+          "nether_shadow",
+          "lord_of_the_pit",
+          "erg_raiders",
+          "black_knight",
+          "frozen_shade",
+          "mishrass_factory",
+          "terror",
+          "bazaar_of_baghdad",
+          "kormus_bell"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0170": {
+        "file": "0170.dck",
+        "title": "Beast Master (Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 52,
+        "unmatchedCards": 8,
+        "coveragePct": 86.7,
+        "unmatchedNames": [
+          {
+            "name": "Naf's Asp",
+            "qty": 4
+          },
+          {
+            "name": "Aswan Jaguar",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "forest",
+          "birds_of_paradise",
+          "timber_wolves",
+          "wyluli_wolf",
+          "giant_badger",
+          "grizzly_bears",
+          "durkwood_boars",
+          "mightstone",
+          "tawnosss_weaponry"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0175": {
+        "file": "0175.dck",
+        "title": "Paladin (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "northern_paladin",
+          "white_knight",
+          "benalish_hero",
+          "juggernaut",
+          "disenchant",
+          "righteousness",
+          "city_of_brass",
+          "tundra",
+          "repentant_blacksmith",
+          "circle_of_protection_black",
+          "circle_of_protection_red",
+          "sleight_of_mind",
+          "swords_to_plowshares"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0179": {
+        "file": "0179.dck",
+        "title": "Centaur Shaman (Bl/Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "swamp",
+          "bayou",
+          "paralyze",
+          "wanderlust",
+          "warp_artifact",
+          "copper_tablet",
+          "cursed_land",
+          "birds_of_paradise",
+          "cockatrice",
+          "onulet",
+          "untamed_wilds",
+          "living_artifact"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0192": {
+        "file": "0192.dck",
+        "title": "Sorcerer (Re, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Mons Goblin Raiders",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "taiga",
+          "manabarbs",
+          "goblin_balloon_brigade",
+          "ali_baba",
+          "hurr_jackal",
+          "kird_ape",
+          "lightning_bolt",
+          "sisters_of_the_flame",
+          "giant_strength",
+          "immolation"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0203": {
+        "file": "0203.dck",
+        "title": "High Priest (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Abu Jafar",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "armageddon",
+          "dingus_egg",
+          "holy_strength",
+          "healing_salve",
+          "consecrate_land",
+          "mesa_pegasus",
+          "savannah_lions",
+          "mishrass_factory",
+          "white_knight",
+          "tundra_wolves"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0204": {
+        "file": "0204.dck",
+        "title": "Priestess (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Bottle of Suleiman",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "animate_wall",
+          "healing_salve",
+          "copper_tablet",
+          "wall_of_swords",
+          "wall_of_spears",
+          "fortified_area",
+          "living_wall",
+          "martyrs_of_korlis",
+          "spirit_link"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0207": {
+        "file": "0207.dck",
+        "title": "Great Hydra (Re, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Manaflare",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "power_surge",
+          "fireball",
+          "disintegrate",
+          "lightning_bolt",
+          "aladdinss_ring",
+          "granite_gargoyle",
+          "rock_hydra",
+          "wall_of_fire",
+          "fellwar_stone"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0211": {
+        "file": "0211.dck",
+        "title": "Cleric (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "disenchant",
+          "holy_armor",
+          "meekstone",
+          "benalish_hero",
+          "samite_healer",
+          "savannah_lions",
+          "repentant_blacksmith",
+          "icy_manipulator",
+          "kismet",
+          "pikemen",
+          "tawnosss_weaponry",
+          "amrou_kithkin"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0218": {
+        "file": "0218.dck",
+        "title": "Sea Drake (Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "water_elemental",
+          "sea_serpent",
+          "sirenss_call",
+          "creature_bond",
+          "jump",
+          "invisibility",
+          "giant_tortoise",
+          "leviathan",
+          "psionic_blast",
+          "juggernaut"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0219": {
+        "file": "0219.dck",
+        "title": "Sedge Beast (Re/Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "swamp",
+          "badlands",
+          "sedge_troll",
+          "uthden_troll",
+          "disintegrate",
+          "sinkhole",
+          "stone_rain",
+          "fissure",
+          "demonic_hordes",
+          "will_o_the_wisp",
+          "unholy_strength",
+          "immolation"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0220": {
+        "file": "0220.dck",
+        "title": "Vampire Lord (Bl, Type 1)",
+        "totalCards": 62,
+        "matchedCards": 60,
+        "unmatchedCards": 2,
+        "coveragePct": 96.8,
+        "unmatchedNames": [
+          {
+            "name": "Khabal Ghoul",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "mana_vault",
+          "drain_life",
+          "animate_dead",
+          "weakness",
+          "sengir_vampire",
+          "nettling_imp",
+          "sorceress_queen",
+          "will_o_the_wisp",
+          "vampire_bats",
+          "carrion_ants"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0221": {
+        "file": "0221.dck",
+        "title": "Arch Angel (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "sol_ring",
+          "mox_pearl",
+          "wrath_of_god",
+          "resurrection",
+          "mesa_pegasus",
+          "moorish_cavalry",
+          "swords_to_plowshares",
+          "disenchant",
+          "onulet",
+          "mishrass_factory",
+          "guardian_angel",
+          "the_hive",
+          "howling_mine"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0229": {
+        "file": "0229.dck",
+        "title": "War Mage (Re, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "mana_vault",
+          "lightning_bolt",
+          "disenchant",
+          "fireball",
+          "earthquake",
+          "plateau",
+          "gauntlet_of_might",
+          "circle_of_protection_red",
+          "ball_lightning",
+          "disintegrate",
+          "inferno"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0232": {
+        "file": "0232.dck",
+        "title": "Thought Invoker (Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Vesuvan Doppleganger",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "giant_tortoise",
+          "psychic_venom",
+          "twiddle",
+          "icy_manipulator",
+          "power_sink",
+          "counterspell",
+          "spell_blast",
+          "mahamoti_djinn",
+          "air_elemental"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0245": {
+        "file": "0245.dck",
+        "title": "Astral Visionary (Ub, Type 1)",
+        "totalCards": 58,
+        "matchedCards": 58,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "old_man_of_the_sea",
+          "mox_sapphire",
+          "ancestral_recall",
+          "time_walk",
+          "timetwister",
+          "black_lotus",
+          "braingeyser",
+          "psionic_blast",
+          "unstable_mutation",
+          "yotian_soldier",
+          "zephyr_falcon",
+          "stasis",
+          "copy_artifact",
+          "howling_mine",
+          "leviathan"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0260": {
+        "file": "0260.dck",
+        "title": "Conjurer (Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "prodigal_sorcerer",
+          "pirate_ship",
+          "wall_of_air",
+          "counterspell",
+          "steal_artifact",
+          "copy_artifact",
+          "unsummon",
+          "rod_of_ruin",
+          "aladdinss_ring",
+          "weakstone",
+          "fellwar_stone"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0261": {
+        "file": "0261.dck",
+        "title": "Troll Shaman (Re, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "conservator",
+          "stone_giant",
+          "hill_giant",
+          "gray_ogre",
+          "two_headed_giant_of_foriys",
+          "sedge_troll",
+          "badlands",
+          "the_brute",
+          "giant_strength",
+          "immolation",
+          "fireball"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0262": {
+        "file": "0262.dck",
+        "title": "Enchantress (Gr, Type 1)",
+        "totalCards": 66,
+        "matchedCards": 66,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "mox_emerald",
+          "sol_ring",
+          "llanowar_elves",
+          "verduran_enchantress",
+          "cockatrice",
+          "thicket_basilisk",
+          "brass_man",
+          "scryb_sprites",
+          "jayemdae_tome",
+          "library_of_leng",
+          "ivory_tower",
+          "jade_statue",
+          "lure",
+          "web",
+          "regeneration",
+          "drop_of_honey",
+          "living_artifact",
+          "aspect_of_wolf",
+          "wild_growth",
+          "fastbond"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0263": {
+        "file": "0263.dck",
+        "title": "Shapeshifter (Ub, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Vesuvan Doppleganger",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "phantom_monster",
+          "phantasmal_forces",
+          "clone",
+          "old_man_of_the_sea",
+          "counterspell",
+          "mox_sapphire",
+          "spell_blast",
+          "shapeshifter",
+          "primal_clay",
+          "sage_of_lat_nam",
+          "mana_crypt",
+          "mana_vault"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0283": {
+        "file": "0283.dck",
+        "title": "Crusader (Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Rainbow Knights",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "plains",
+          "crusade",
+          "army_of_allah",
+          "jihad",
+          "disenchant",
+          "white_knight",
+          "moorish_cavalry",
+          "war_elephant",
+          "repentant_blacksmith",
+          "swords_to_plowshares",
+          "pikemen",
+          "benalish_hero"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0289": {
+        "file": "0289.dck",
+        "title": "Mind Stealer (Ub/Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "island",
+          "underground_sea",
+          "city_of_brass",
+          "old_man_of_the_sea",
+          "hypnotic_specter",
+          "sengir_vampire",
+          "will_o_the_wisp",
+          "control_magic",
+          "steal_artifact",
+          "unholy_strength",
+          "mind_twist",
+          "demonic_tutor",
+          "mana_crypt",
+          "unstable_mutation"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0291": {
+        "file": "0291.dck",
+        "title": "Necromancer (Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "swamp",
+          "dark_ritual",
+          "evil_presence",
+          "unholy_strength",
+          "drain_life",
+          "scathe_zombies",
+          "zombie_master",
+          "bog_wraith",
+          "cyclopean_tomb",
+          "lost_soul",
+          "bad_moon",
+          "cosmic_horror"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0399": {
+        "file": "0399.dck",
+        "title": "Elementalist (Re/Ub, Type 1)",
+        "totalCards": 68,
+        "matchedCards": 68,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "island",
+          "volcanic_island",
+          "mana_vault",
+          "sol_ring",
+          "mox_ruby",
+          "mox_sapphire",
+          "air_elemental",
+          "earth_elemental",
+          "fire_elemental",
+          "water_elemental",
+          "wall_of_air",
+          "wall_of_water",
+          "twiddle",
+          "earthquake",
+          "fireball",
+          "braingeyser",
+          "ancestral_recall",
+          "drain_power"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0414": {
+        "file": "0414.dck",
+        "title": "Guardian of the Tusk (Wh/Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 52,
+        "unmatchedCards": 8,
+        "coveragePct": 86.7,
+        "unmatchedNames": [
+          {
+            "name": "Elephant Graveyard",
+            "qty": 4
+          },
+          {
+            "name": "Ghazban Ogre",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "savannah",
+          "savannah_lions",
+          "army_of_allah",
+          "war_elephant",
+          "war_mammoth",
+          "fellwar_stone",
+          "plains",
+          "forest",
+          "spirit_link",
+          "birds_of_paradise",
+          "healing_salve",
+          "mightstone",
+          "singing_tree"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0426": {
+        "file": "0426.dck",
+        "title": "Alt-A-Kesh (Gr/Ub/Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Juzam Djinn",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "erhnam_djinn",
+          "city_of_brass",
+          "tropical_island",
+          "forest",
+          "bayou",
+          "underground_sea",
+          "birds_of_paradise",
+          "serendib_efreet",
+          "unstable_mutation",
+          "unholy_strength",
+          "giant_growth",
+          "mana_crypt",
+          "stream_of_life",
+          "desert_twister"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0434": {
+        "file": "0434.dck",
+        "title": "Aga Galneer (Bl/Gr/Wh, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 48,
+        "unmatchedCards": 12,
+        "coveragePct": 80,
+        "unmatchedNames": [
+          {
+            "name": "Junun Efreet",
+            "qty": 4
+          },
+          {
+            "name": "Juzam Djinn",
+            "qty": 4
+          },
+          {
+            "name": "Ifh Biff Efreet",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "swamp",
+          "city_of_brass",
+          "mox_jet",
+          "bayou",
+          "scrubland",
+          "drain_life",
+          "savannah",
+          "circle_of_protection_black",
+          "circle_of_protection_green",
+          "mox_emerald",
+          "mox_pearl",
+          "ashes_to_ashes",
+          "spirit_link",
+          "greed",
+          "pestilence",
+          "sengir_vampire",
+          "terror"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0437": {
+        "file": "0437.dck",
+        "title": "---Ape Lord (Green/Red 16 point Creature)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "forest",
+          "mountain",
+          "taiga",
+          "lightning_bolt",
+          "stream_of_life",
+          "fireball",
+          "disintegrate",
+          "kird_ape",
+          "llanowar_elves",
+          "birds_of_paradise",
+          "rock_hydra",
+          "roc_of_kher_ridges",
+          "giant_growth",
+          "giant_strength",
+          "desert_twister"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0442": {
+        "file": "0442.dck",
+        "title": "Queltosh (Re/Gr, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Mijae Djinn",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "mountain",
+          "earthquake",
+          "tundra",
+          "city_of_brass",
+          "ball_lightning",
+          "volcanic_island",
+          "plateau",
+          "serendib_djinn",
+          "resurrection",
+          "unsummon",
+          "circle_of_protection_blue",
+          "circle_of_protection_red",
+          "orcish_artillery",
+          "psionic_blast",
+          "mahamoti_djinn",
+          "spirit_link"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0456": {
+        "file": "0456.dck",
+        "title": "Saltrem Tor (Ub/Bl, Type 1)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "island",
+          "city_of_brass",
+          "serendib_djinn",
+          "serendib_efreet",
+          "mahamoti_djinn",
+          "old_man_of_the_sea",
+          "counterspell",
+          "taiga",
+          "tropical_island",
+          "volcanic_island",
+          "aladdin",
+          "ice_storm",
+          "stone_rain",
+          "lightning_bolt",
+          "birds_of_paradise"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0897": {
+        "file": "0897.dck",
+        "title": "---Centaur Warchief (Red/White 16 point Creature)",
+        "totalCards": 60,
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "plains",
+          "mountain",
+          "plateau",
+          "windseeker_centaur",
+          "serra_angel",
+          "yotian_soldier",
+          "smoke",
+          "icy_manipulator",
+          "swords_to_plowshares",
+          "ali_baba",
+          "kismet",
+          "damping_field",
+          "divine_transformation",
+          "giant_strength",
+          "ornithopter"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0990": {
+        "file": "0990.dck",
+        "title": "Mandurang (R/U/B, Type 1, M.B.)",
+        "totalCards": 60,
+        "matchedCards": 56,
+        "unmatchedCards": 4,
+        "coveragePct": 93.3,
+        "unmatchedNames": [
+          {
+            "name": "Bloodlust",
+            "qty": 4
+          }
+        ],
+        "matchedCardIds": [
+          "unholy_strength",
+          "city_of_brass",
+          "volcanic_island",
+          "underground_sea",
+          "badlands",
+          "mox_ruby",
+          "mox_jet",
+          "mox_sapphire",
+          "unstable_mutation",
+          "giant_strength",
+          "ornithopter",
+          "will_o_the_wisp",
+          "zephyr_falcon",
+          "flying_men",
+          "immolation",
+          "dancing_scimitar",
+          "phantom_monster"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0991": {
+        "file": "0991.dck",
+        "title": "Whim (U/B/W, Type 1)",
+        "totalCards": 61,
+        "matchedCards": 60,
+        "unmatchedCards": 1,
+        "coveragePct": 98.4,
+        "unmatchedNames": [
+          {
+            "name": "Whimsy",
+            "qty": 1
+          }
+        ],
+        "matchedCardIds": [
+          "island",
+          "twiddle",
+          "icy_manipulator",
+          "power_sink",
+          "plains",
+          "swamp",
+          "city_of_brass",
+          "tundra",
+          "scrubland",
+          "underground_sea",
+          "royal_assassin",
+          "psychic_venom",
+          "haunting_wind",
+          "yotian_soldier",
+          "serra_angel",
+          "clone",
+          "meekstone",
+          "kismet"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0992": {
+        "file": "0992.dck",
+        "title": "Prismat (R/G/W,  Type 1, B.R.)",
+        "totalCards": 60,
+        "matchedCards": 58,
+        "unmatchedCards": 2,
+        "coveragePct": 96.7,
+        "unmatchedNames": [
+          {
+            "name": "Dwarven Warriors",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "black_lotus",
+          "mox_ruby",
+          "mox_emerald",
+          "mox_pearl",
+          "city_of_brass",
+          "taiga",
+          "plateau",
+          "savannah",
+          "mountain",
+          "atog",
+          "ornithopter",
+          "black_vise",
+          "howling_mine",
+          "wheel_of_fortune",
+          "berserk",
+          "disenchant",
+          "fireball",
+          "instill_energy",
+          "tetravus",
+          "gauntlet_of_might",
+          "swords_to_plowshares",
+          "giant_growth",
+          "orcish_oriflamme",
+          "mana_crypt"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0993": {
+        "file": "0993.dck",
+        "title": "Dracur (R/G/B, Type 1, D.K.)",
+        "totalCards": 62,
+        "matchedCards": 62,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mountain",
+          "badlands",
+          "taiga",
+          "swamp",
+          "bayou",
+          "forest",
+          "strip_mine",
+          "mox_emerald",
+          "black_lotus",
+          "mox_jet",
+          "mox_ruby",
+          "sol_ring",
+          "stone_rain",
+          "ice_storm",
+          "sinkhole",
+          "kird_ape",
+          "craw_wurm",
+          "shivan_dragon",
+          "dingus_egg",
+          "fireball",
+          "disintegrate",
+          "demonic_tutor",
+          "lightning_bolt",
+          "tranquility"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0994": {
+        "file": "0994.dck",
+        "title": "Kiska Ra (W/G/U, Type 1)",
+        "totalCards": 61,
+        "matchedCards": 61,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
+        "matchedCardIds": [
+          "mox_pearl",
+          "holy_strength",
+          "savannah_lions",
+          "mox_emerald",
+          "mox_sapphire",
+          "giant_tortoise",
+          "elvish_archers",
+          "scryb_sprites",
+          "zephyr_falcon",
+          "tundra_wolves",
+          "timber_wolves",
+          "samite_healer",
+          "birds_of_paradise",
+          "pikemen",
+          "unstable_mutation",
+          "giant_growth",
+          "tawnosss_weaponry",
+          "control_magic",
+          "desert_twister",
+          "ancestral_recall",
+          "time_walk",
+          "timetwister",
+          "braingeyser",
+          "regrowth",
+          "tundra",
+          "savannah",
+          "tropical_island",
+          "city_of_brass"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      },
+      "0999": {
+        "file": "0999.dck",
+        "title": "Climatic Battle",
+        "totalCards": 66,
+        "matchedCards": 64,
+        "unmatchedCards": 2,
+        "coveragePct": 97,
+        "unmatchedNames": [
+          {
+            "name": "Clockwork Avian",
+            "qty": 2
+          }
+        ],
+        "matchedCardIds": [
+          "taiga",
+          "tropical_island",
+          "volcanic_island",
+          "city_of_brass",
+          "urzass_mine",
+          "urzass_power_plant",
+          "urzass_tower",
+          "circle_of_protection_red",
+          "stream_of_life",
+          "fireball",
+          "disintegrate",
+          "rock_hydra",
+          "hurricane",
+          "earthquake",
+          "timetwister",
+          "wheel_of_fortune",
+          "braingeyser",
+          "black_lotus",
+          "clockwork_beast",
+          "triskelion",
+          "juggernaut",
+          "dancing_scimitar",
+          "yotian_soldier",
+          "clay_statue",
+          "colossus_of_sardia",
+          "rocket_launcher",
+          "howling_mine"
+        ],
+        "sideboardColors": [],
+        "idCollisions": []
+      }
+    }
+  }
+}
