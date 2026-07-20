@@ -27,7 +27,8 @@
   arbitrary creature at cast time -- no generic granted-ability system
   exists); **Dwarven Weaponsmith, Giant Slug, Hell's Caretaker, Life Matrix,
   Mirror Universe, Tolaria** (6 cards -- these are "activate only during
-  upkeep" activated abilities, a different mechanic than an upkeep trigger);
+  upkeep" activated abilities, a different mechanic than an upkeep trigger;
+  Giant Slug closed 2026-07-20, see below -- the other 5 remain deferred);
   **Rapid Fire** (a Rampage-granting combat trick, not upkeep-related --
   belongs with the deferred Rampage infra work). See `docs/ROADMAP.md` --
   Milestone A for the corrected upkeep-trigger bucket accounting.
@@ -75,6 +76,31 @@
   1 Playwright spec x 2 projects (`tests/e2e/enemy-deck-audit-missing-cards.spec.ts`,
   added to the `mobile-chrome` project's `testMatch` list in
   `playwright.config.js`).
+- **Giant Slug (1 card)** -- `CARD_DB`: 697 -> 698. **Record correction:**
+  this card was excluded from A9 Upkeep-Trigger Batch 2 above as an
+  "activate only during upkeep" activated ability, distinct from an upkeep
+  trigger -- accurate as far as it went, but a separate later claim (that
+  implementing it would require net-new delayed/scheduled-effect
+  infrastructure for a "next upkeep" one-shot) was wrong: Hazezon Tamar's
+  `pendingUpkeepTokens` array (same batch, above) already covers exactly
+  this shape. Implemented as `pendingUpkeepLandwalk`, a sibling array to
+  `pendingUpkeepTokens` -- both are now named as one general pattern
+  ("delayed one-shot effect at a specific player's next upkeep") in
+  `docs/MECHANICS_INDEX.md` so the next card needing it doesn't require
+  re-discovering the shape. The land-type choice reuses Phantasmal Terrain's
+  `basicLandTypeChoice` `pendingChoice` kind verbatim (new `grantsLandwalkEOT`
+  flag distinguishes it from that card's land-recolor use); the landwalk
+  grant reuses Jump/Stone Giant's `grantFlyingEOT` `eotBuffs` shape so it
+  expires naturally at `CLEANUP`. **Data correction:** the prompt's
+  Forge-derived card data (`4G`, 4/4, green) did not match Scryfall --
+  implemented against the actual printing per the local pool cache
+  (`{1}{B}`, 1/1, black, Chronicles, rarity C). No new AI heuristic needed
+  (existing generic `pendingChoice` fallback already answers it) and no
+  interaction issue with Holy Ground's landwalk suppression (already
+  keyword-source-agnostic in `layers.js`) -- both were pre-flight STOP
+  conditions on this prompt, checked and cleared without stopping.
+  Tests: 5 Vitest (`tests/scenarios/giant-slug.test.js`). No Playwright (no
+  new modal shape). See `docs/MECHANICS_INDEX.md` -- Giant Slug.
 
 ## Completed (2026-07-19)
 - **A9 Upkeep-Trigger Batch (13 cards)** -- Serendib Efreet, Cursed Land, Copper

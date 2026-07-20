@@ -3053,6 +3053,17 @@ case "hazezonTamarEtb": {
   ns = dlog(ns, `${card.name}: will create ${landCount} Sand Warrior token(s) at the beginning of your next upkeep.`, "effect");
   break;
 }
+// Giant Slug: "{5}: At the beginning of your next upkeep, choose a basic land
+// type. This creature gains landwalk of the chosen type until the end of
+// that turn." Queued via pendingUpkeepLandwalk -- same delayed-effect shape
+// as Hazezon Tamar's pendingUpkeepTokens above, drained in the PHASE.UPKEEP
+// block instead of resolving anything here.
+// Adapted from Card-Forge/forge (g/giant_slug.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "giantSlugScheduleLandwalk": {
+  ns = { ...ns, pendingUpkeepLandwalk: [...(ns.pendingUpkeepLandwalk || []), { controller: caster, sourceIid: card.iid }] };
+  ns = dlog(ns, `${card.name}: will choose a basic land type at the beginning of your next upkeep.`, "effect");
+  break;
+}
 case "aladdinsSteal": {
   // Layer 2: Aladdin activated ability. Control change conditional on Aladdin staying in play.
   // Guardian Beast prevents control of noncreature artifacts.
@@ -5509,6 +5520,35 @@ if (hazezonPending.length) {
     ns = dlog(ns, `Creates ${pending.count}x Sand Warrior token(s) (Hazezon Tamar, delayed trigger).`, 'effect');
   }
   ns = { ...ns, pendingUpkeepTokens: (ns.pendingUpkeepTokens || []).filter(p => p.controller !== ns.active) };
+}
+// Giant Slug: "choose a basic land type. This creature gains landwalk of the
+// chosen type until the end of that turn." Drained here like Hazezon Tamar's
+// pendingUpkeepTokens above -- filtered to the correct player's own upkeep.
+// Presents a basicLandTypeChoice (same request shape as Phantasmal Terrain)
+// rather than auto-picking, since the choice is the player's; RESOLVE_CHOICE's
+// grantsLandwalkEOT branch applies the eotBuffs keyword grant once answered.
+// Adapted from Card-Forge/forge (g/giant_slug.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+const giantSlugPending = (ns.pendingUpkeepLandwalk || []).filter(p => p.controller === ns.active);
+if (giantSlugPending.length) {
+  for (const pending of giantSlugPending) {
+    const slug = ns[pending.controller].bf.find(c => c.iid === pending.sourceIid);
+    if (!slug) continue;
+    ns = createPendingChoice(ns, {
+      sourceCardId: pending.sourceIid,
+      controller: pending.controller,
+      kind: 'basicLandTypeChoice',
+      targetIid: pending.sourceIid,
+      grantsLandwalkEOT: true,
+      options: [
+        { id: 'Plains', label: 'Plains' },
+        { id: 'Island', label: 'Island' },
+        { id: 'Swamp', label: 'Swamp' },
+        { id: 'Mountain', label: 'Mountain' },
+        { id: 'Forest', label: 'Forest' },
+      ],
+    });
+  }
+  ns = { ...ns, pendingUpkeepLandwalk: (ns.pendingUpkeepLandwalk || []).filter(p => p.controller !== ns.active) };
 }
 for (const w of ["p","o"]) {
 for (const c of [...ns[w].bf]) {
@@ -8384,6 +8424,13 @@ pendingEndStepTokens: [],
 // eventually get their own upkeep and this must only fire once, on the
 // entering player's own next upkeep.
 pendingUpkeepTokens: [],
+// Giant Slug: "{5}: At the beginning of your next upkeep, choose a basic
+// land type. This creature gains landwalk of the chosen type until the end
+// of that turn." Sibling to pendingUpkeepTokens above -- same delayed
+// one-shot-at-your-next-upkeep pattern, filtered by controller in
+// PHASE.UPKEEP, but presents a basicLandTypeChoice instead of auto-creating
+// tokens since the land type is the player's choice.
+pendingUpkeepLandwalk: [],
 // Darkpact: { caster, cards } where cards are the caster's own ante
 // contributions (anteP/anteExtraP or anteO/anteExtraO). Resolved via
 // RESOLVE_ANTE_EXCHANGE / DECLINE_ANTE_EXCHANGE. Distinct from the unused
@@ -10147,6 +10194,27 @@ case "RESOLVE_CHOICE": {
     const owner = ns.p.bf.some(c => c.iid === targetIid) ? 'p'
                 : ns.o.bf.some(c => c.iid === targetIid) ? 'o'
                 : null;
+    // Giant Slug: "gains landwalk of the chosen type until the end of that
+    // turn." Same basicLandTypeChoice request shape as Phantasmal Terrain
+    // below, distinguished by the grantsLandwalkEOT flag set when the choice
+    // was created (PHASE.UPKEEP drain of pendingUpkeepLandwalk) -- grants
+    // itself the *WALK keyword via eotBuffs (same shape as grantFlyingEOT)
+    // instead of recoloring an enchanted land.
+    // Adapted from Card-Forge/forge (g/giant_slug.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+    if (choice.grantsLandwalkEOT) {
+      if (!owner) return dlog(ns, "Giant Slug fizzles -- it's no longer on the battlefield.", "effect");
+      const WALK_KW = {
+        Plains: KEYWORDS.PLAINSWALK.id, Island: KEYWORDS.ISLANDWALK.id,
+        Swamp: KEYWORDS.SWAMPWALK.id, Mountain: KEYWORDS.MOUNTAINWALK.id,
+        Forest: KEYWORDS.FORESTWALK.id,
+      };
+      const kwId = WALK_KW[action.optionId];
+      const slugName = ns[owner].bf.find(c => c.iid === targetIid)?.name || 'Giant Slug';
+      ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid
+        ? { ...c, eotBuffs: [...(c.eotBuffs || []), { keywords: [kwId] }] }
+        : c) } };
+      return dlog(ns, `${slugName} gains ${action.optionId}walk until end of turn.`, "effect");
+    }
     if (!owner) return dlog(ns, "Phantasmal Terrain fizzles -- target no longer exists.", "effect");
     ns = { ...ns, [owner]: { ...ns[owner], bf: ns[owner].bf.map(c => c.iid === targetIid ? {
       ...c, enchantments: (c.enchantments || []).map(e => e.iid === choice.sourceCardId
