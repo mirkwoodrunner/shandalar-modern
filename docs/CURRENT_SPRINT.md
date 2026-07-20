@@ -7,11 +7,48 @@
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.
 - Roadmap Milestone A remaining: A9 only (A1-A8 complete). A9 audit (2026-07-19):
   258 cards absent from `cards.js` across 21 shared-mechanic buckets; the
-  upkeep-trigger bucket (21 cards) is in progress -- 13 closed by the A9
-  Upkeep-Trigger Batch below, 8 remaining. See `docs/ROADMAP.md` -- Milestone A.
+  upkeep-trigger bucket is in progress -- 13 closed by the A9 Upkeep-Trigger
+  Batch, 11 more closed by A9 Upkeep-Trigger Batch 2 (24 landed total; see
+  `docs/ROADMAP.md` -- Milestone A for the corrected 27-member bucket count
+  and the running 234-card absent total). Remaining upkeep-trigger members are
+  blocked on infra this track hasn't built yet (Divine Intervention, All
+  Hallow's Eve, Glyph of Delusion -- see the Batch 2 entry below for why).
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-20)
+- **A9 Upkeep-Trigger Batch 2 (11 cards)** -- Fasting, Primordial Ooze, Psychic
+  Allergy, Safe Haven, Takklemaggot, The Abyss, Venarian Gold, Voodoo Doll,
+  Cocoon, Season of the Witch, Worms of the Earth. `CARD_DB`: 686 -> 697.
+  Excluded from this batch (with reasons, so they don't get re-scoped by
+  accident): **Divine Intervention** (its "game is a draw" end condition has
+  no engine precedent -- `ns.over` only ever sets a binary winner); **All
+  Hallow's Eve** (triggers from the exile zone, which the upkeep loop doesn't
+  scan); **Glyph of Delusion** (dynamically grants a new upkeep effect onto an
+  arbitrary creature at cast time -- no generic granted-ability system
+  exists); **Dwarven Weaponsmith, Giant Slug, Hell's Caretaker, Life Matrix,
+  Mirror Universe, Tolaria** (6 cards -- these are "activate only during
+  upkeep" activated abilities, a different mechanic than an upkeep trigger);
+  **Rapid Fire** (a Rampage-granting combat trick, not upkeep-related --
+  belongs with the deferred Rampage infra work). See `docs/ROADMAP.md` --
+  Milestone A for the corrected upkeep-trigger bucket accounting.
+  New primitives, reusable by future cards: a land-lock check (`Worms of the
+  Earth`, gated at the `PLAY_LAND` reducer case and at the top of `zMove`),
+  and a counter-gated "doesn't untap normally" idiom (`Venarian Gold`'s own
+  SLEEP counter, `Cocoon`'s attached Aura's own PUPA counter) extending the
+  existing static-flag version. Takklemaggot's death-triggered
+  reattach-or-become-a-pinger sequence uses a new `pendingChoice` kind
+  (`takklemaggotReattachChoice`, created directly from `zMove`'s aura-cascade,
+  same "not a triggered ability" convention as Alchor's Tomb's `colorChoice`)
+  since an embedded `enchantments[]` record has no `triggeredAbilities` slot
+  the `emitEvent` scan would find.
+  Four new upkeep-choice modals (`SafeHavenUpkeepModal`,
+  `WormsOfTheEarthUpkeepModal`, `SeasonOfTheWitchUpkeepModal`,
+  `PsychicAllergyUpkeepModal`), registered in `upkeepChoiceRegistry.tsx`.
+  Tests: 31 Vitest (`tests/scenarios/upkeep-counter-batch-a9-2.test.js` x10,
+  `upkeep-aura-and-eachplayer-batch-a9-2.test.js` x12,
+  `upkeep-choice-batch-a9-2.test.js` x9), 4 Playwright
+  (`tests/e2e/upkeep-batch-a9-2.spec.js`, 2 cases x 2 viewports). See
+  `docs/MECHANICS_INDEX.md` -- A9 Upkeep-Trigger Batch 2 (11 cards).
 - **Enemy Deck Audit: false-positive fixes + 23 missing cards** -- fixed 3 bug
   categories in `tools/enemy-deck-audit/analyze.mjs` (from not-yet-merged PR
   #355) that caused 15 of ~39 reported "missing" cards to be false positives:

@@ -10,6 +10,10 @@ import { OptionalUntapModal } from './OptionalUntapModal';
 import { CurseArtifactUpkeepModal } from './CurseArtifactUpkeepModal';
 import { RohgahhUpkeepModal } from './RohgahhUpkeepModal';
 import { LandPickerUpkeepModal } from './LandPickerUpkeepModal';
+import { SafeHavenUpkeepModal } from './SafeHavenUpkeepModal';
+import { WormsOfTheEarthUpkeepModal } from './WormsOfTheEarthUpkeepModal';
+import { SeasonOfTheWitchUpkeepModal } from './SeasonOfTheWitchUpkeepModal';
+import { PsychicAllergyUpkeepModal } from './PsychicAllergyUpkeepModal';
 import { isLand } from '../../engine/DuelCore.js';
 
 export const UPKEEP_CHOICE_MODALS: Record<string, {
@@ -63,6 +67,31 @@ export const UPKEEP_CHOICE_MODALS: Record<string, {
       lands: (s.p.bf as any[]).filter(isLand).map((c: any) => ({
         iid: c.iid, name: c.name, isIsland: !!c.subtype?.includes('Island'),
       })),
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  safeHavenUpkeep: {
+    component: SafeHavenUpkeepModal,
+    getProps: (s, choice, resolveUpkeepChoice) => ({
+      exiledCount: ((s.p.bf as any[]).find((c: any) => c.iid === choice.iid)?.exiledIids ?? []).length,
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  wormsOfTheEarthUpkeep: {
+    component: WormsOfTheEarthUpkeepModal,
+    getProps: (_s, _choice, resolveUpkeepChoice) => ({
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  seasonOfTheWitchUpkeep: {
+    component: SeasonOfTheWitchUpkeepModal,
+    getProps: (_s, _choice, resolveUpkeepChoice) => ({
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  psychicAllergyUpkeep: {
+    component: PsychicAllergyUpkeepModal,
+    getProps: (_s, _choice, resolveUpkeepChoice) => ({
       onResolve: resolveUpkeepChoice,
     }),
   },
