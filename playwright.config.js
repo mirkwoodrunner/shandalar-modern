@@ -39,6 +39,7 @@ export default defineConfig({
         'tests/e2e/deferral-sweep-2-typechange.spec.ts',
         'tests/e2e/duel-controller.spec.ts',
         'tests/e2e/dungeon-tileset.spec.ts',
+        'tests/e2e/enemy-deck-audit-missing-cards.spec.ts',
         'tests/e2e/end-turn-with-activated-permanent.spec.ts',
         'tests/e2e/exile-zone.spec.ts',
         'tests/e2e/first-strike-combat.spec.ts',

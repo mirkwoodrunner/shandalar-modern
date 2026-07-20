@@ -5327,4 +5327,126 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.42
+## Batch: Enemy Deck Audit -- Missing Cards -- 2026-07-20
+
+`tools/enemy-deck-audit/analyze.mjs` (from PR #355, not yet merged at the time
+of this batch) audits `public/enemy-decks/{original,spells-of-the-ancients}/`
+coverage against `CARD_DB`. Manual review found 15 of ~39 reported "missing"
+cards were tool false positives (3 bug categories in the matcher itself), not
+real content gaps. This batch fixes the matcher and adds the cards that were
+genuinely absent.
+
+### Audit tool fixes (`tools/enemy-deck-audit/analyze.mjs`)
+
+- **Diacritics**: `slugify()` didn't Unicode-normalize before stripping to
+  ASCII, so accented Oracle names (`Dandân`, `Juzám Djinn`, `El-Hajjâj`,
+  `Ghazbán Ogre`, `Khabál Ghoul`, `Junún Efreet`) never matched the
+  plain-ASCII `CARD_DB` ids these 6 cards already had. Fixed with
+  `.normalize('NFD').replace(/[\u0300-\u036f]/g, '')` ahead of the existing
+  lowercase/apostrophe/non-alnum steps.
+- **Spacing/possessive/typo variants**: 9 `ALIASES` entries for deck-file
+  strings that are cosmetic variants of existing `CARD_DB` names (`Manaflare`
+  -> Mana Flare, `Stripmine` -> Strip Mine, `Birds of Paridise` -> Birds of
+  Paradise, `Vesuvan Doppleganger` -> Vesuvan Doppelganger, `Bloodlust` ->
+  Blood Lust, `Circle of Protection from Artifacts` -> Circle of Protection:
+  Artifacts, and the old possessive forms `Tawnos' Weaponry`/`Tawnos' Wand`
+  -> `Tawnos's Weaponry`/`Tawnos's Wand`). Alias keys are `looseKey()`-derived
+  (lowercase, whitespace-collapsed) and preserve apostrophes where the raw
+  deck string has one -- the task's draft key list dropped apostrophes
+  entirely for the two Tawnos' entries and for `naf's asp`; corrected to
+  match what `looseKey()` actually produces.
+- **Old Shandalar-manual naming**: the `original` pack uses the 1997 game
+  manual's spellings for two cards ("Necropolis of Azaar", "Knights of the
+  Rainbow Vale") where the real Scryfall/Astral-Cards names are "Necropolis
+  of Azar" and "Rainbow Knights" (single 'a'; no "Vale" card exists at all --
+  see Naming corrections below). `spells-of-the-ancients` already uses the
+  real names verbatim. Aliased the manual spellings to the real names.
+- **`Mons Goblin Raiders` (both packs)**: the deck files drop the
+  apostrophe-s from the real name "Mons's Goblin Raiders" -- a 16th false
+  positive of the same shape as the 15 above, found during Part 2 research
+  (the card already exists in `CARD_DB` as `monss_goblin_raiders`). Fixed
+  with an alias; no new `CARD_DB` entry needed.
+
+### Naming corrections (pre-flight STOP conditions)
+
+Two of the task's 5 "not in local pool, fetch live" card names don't resolve
+to real Scryfall cards:
+
+- **"Knights of the Rainbow Vale"** does not exist. The real card is
+  **Rainbow Knights** (Astral Cards / PAST #9).
+- **"Necropolis of Azaar"** does not exist. The real card is **Necropolis of
+  Azar** (Astral Cards / PAST #5, single 'a' -- the double-a spelling is only
+  used for the in-game wizard character/manual flavor text, never the card
+  name).
+
+Both are added under their real names; the task's given names survive only
+as `ALIASES` keys for the `original` pack's manual-spelling deck strings (see
+above). Verified via multiple independent Scryfall-page search hits per
+name, not fabricated. Also discovered during this same research pass: "Mons
+Goblin Raiders" (see above) was never actually missing.
+
+### New `CARD_DB` entries (23, not 24 -- see Naming corrections)
+
+All classified `effect:"STUB"` -- each has a real, unimplemented mechanic
+(random selection, coin flips, or ability shapes this engine has no generic
+handler for). Full oracle text populated; no handler logic added, per this
+batch's data-only scope.
+
+19 sourced directly from `scryfall/shandalar-card-pool.json` (exact-name
+match, no re-fetch): `gem_bazaar`, `apprentice_wizard`, `white_mana_battery`,
+`dwarven_warriors`, `goblin_polka_band`, `celestial_prism`,
+`armageddon_clock`, `bottle_of_suleiman`, `faerie_dragon`, `prismatic_dragon`,
+`power_struggle`, `call_from_the_grave`, `clockwork_avian`,
+`argothian_pixies`, `elephant_graveyard`, `mijae_djinn`, `king_suleiman`,
+`cyclone`, `dwarven_demolition_team`.
+
+4 live-fetched from Scryfall (also present in the local pool JSON, just under
+their real names rather than the task's given names -- see Naming
+corrections): `rainbow_knights`, `necropolis_of_azar`, `aswan_jaguar`,
+`ifh_biff_efreet`.
+
+`ifh_biff_efreet`'s real name is "Ifh-Bíff Efreet" (accented í, Arabian
+Nights). Kept the accented `name` field, matching the pre-existing precedent
+of 6 other accented-name cards already in `CARD_DB` (Dandân, Juzám Djinn,
+El-Hajjâj, Ghazbán Ogre, Khabál Ghoul, Junún Efreet); the `id` stays clean
+ASCII (`ifh_biff_efreet`), which is why it -- like those 6 -- shows up as a
+`validateCardIds()` warning. No vanilla or simple-keyword-only cards in this
+batch: every card's text goes beyond a single already-implemented keyword
+(several are `Flying` + an additional unimplemented ability), so all 23 are
+`STUB`.
+
+### Coverage (this batch's audit run, `report.json`/`report.md`)
+
+| Stage | original | spells-of-the-ancients |
+|---|---|---|
+| Before (PR #355 baseline) | 95.7% | 96.1% |
+| After Part 1 (matcher fixes only) | 97.4% | 98.4% |
+| After Part 2 (+23 cards) | 99.7% | 99.8% |
+
+Remaining gaps (Ragman, Zephyr Falcons, Whimsy, the 4 non-white Mana
+Batteries, V. Enchantress, Deep Water, Abu Jafar) are out of this batch's
+scope -- not in the task's given 24-card list, deferred to a future pass.
+
+### Data-quality note (flagged, not fixed)
+
+`CARD_DB`'s existing `nafs_asp` entry is named "Nafs Asp" (no apostrophe);
+the real Oracle name is "Naf's Asp". Out of scope for this batch (would
+change an existing entry, not add one); flagged for a future fix.
+
+### Tests
+
+**Vitest (8):** `tests/scenarios/enemy-deck-audit-missing-cards.test.js` --
+id/name/duplicate/field-shape checks against the 23 new `CARD_DB` entries.
+
+**Playwright (1 file x 2 projects):**
+`tests/e2e/enemy-deck-audit-missing-cards.spec.ts` -- sandbox boot smoke
+(no `EngineErrorOverlay`, valid `window.__duelState()`) on `chromium` and
+`mobile-chrome`, confirming the 23 new entries didn't break duel init on
+either screen.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.43
