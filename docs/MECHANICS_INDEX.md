@@ -5640,4 +5640,92 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.44
+## Giant Slug (1 card) -- 2026-07-20
+
+`CARD_DB`: 697 -> 698.
+
+**Oracle-text-vs-prompt drift:** the prompt's Forge-derived description
+("Creature, `4G`, 4/4, subtype Slug") did not match Scryfall. The local pool
+cache (`scryfall/shandalar-card-pool.json`) has the real printing: `{1}{B}`,
+CMC 2, 1/1, black, Creature -- Slug, rarity C, from Chronicles. Implemented
+against the pool-cache data per this project's oracle-text authority rule
+(`CLAUDE.md` / License & Third-Party Provenance Policy) -- Forge is a pattern
+reference only, never a stats authority.
+
+**Pattern note:** this card establishes a named pattern worth reusing --
+**delayed one-shot effect at a specific player's next upkeep**. Hazezon
+Tamar's `pendingUpkeepTokens` was the first instance (create X tokens at
+your next upkeep); Giant Slug's `pendingUpkeepLandwalk` is the second
+(present a choice at your next upkeep). Both share the same shape: an array
+of `{controller, sourceIid, ...}` entries queued at activation/ETB time,
+drained in the `PHASE.UPKEEP` block filtered to `p.controller === ns.active`
+so the effect fires exactly once, on the entering player's own next upkeep
+-- not every upkeep, and not the opponent's. The next card needing "at the
+beginning of your next upkeep, <do something>" should add a third sibling
+array to this pair rather than re-deriving the shape from scratch.
+
+### Implementation
+
+```
+src/data/cards.js      -- 1 new card entry (giant_slug), inserted
+                           alphabetically between giant_badger/giant_turtle
+src/engine/DuelCore.js -- pendingUpkeepLandwalk array (initial state, sibling
+                           to pendingUpkeepTokens); giantSlugScheduleLandwalk
+                           resolveEff case (sibling to hazezonTamarEtb);
+                           PHASE.UPKEEP drain block (sibling to the Hazezon
+                           Tamar block) that presents a basicLandTypeChoice;
+                           RESOLVE_CHOICE's basicLandTypeChoice handler
+                           extended with a grantsLandwalkEOT branch
+```
+
+### Notes
+
+- **Scheduling** -- `{5}: <activated ability>` with no `T`/target/phase
+  restriction, following the existing generic non-mana-activated-ability
+  path (pay cost -> push to stack -> priority window -> `resolveEff`). No
+  engine changes needed there; only a new `case` in the existing switch.
+- **Choice presentation** -- reuses Phantasmal Terrain's `basicLandTypeChoice`
+  `pendingChoice` kind and its generic `ChoiceModal` UI verbatim (zero new
+  choice-UI machinery, per the prompt's constraint). Distinguished from
+  Phantasmal Terrain's land-recolor use of the same `kind` by a
+  `grantsLandwalkEOT` flag set only when Giant Slug's `PHASE.UPKEEP` drain
+  creates the choice; `targetIid` points at Giant Slug itself (the creature
+  gaining the keyword), not an enchanted land.
+- **Landwalk grant** -- `eotBuffs: [...,{keywords:[kwId]}]`, the same shape
+  Jump/Stone Giant's `grantFlyingEOT` already uses, so it expires naturally
+  at `CLEANUP` alongside every other EOT keyword grant -- no bespoke
+  expiry-tracking needed.
+- **AI** -- no new heuristic added. `basicLandTypeChoice` already has no
+  AI.js-specific branch; `useDuelController.ts`'s generic pendingChoice
+  fallback (`choice.options[0].id`) already answers it when the AI opponent
+  activates Giant Slug, same as it already does for Phantasmal Terrain. This
+  matched a pre-flight STOP condition in the prompt -- checked, no gap found.
+- **Holy Ground interaction** -- checked: `layers.js`'s Holy Ground
+  suppression (`WALK_KW_IDS` removed in Layer 6 at `MAX_SAFE_INTEGER`
+  timestamp) applies to every landwalk keyword regardless of source
+  (static, `eotBuffs`, or otherwise), so the eotBuffs-granted keyword is
+  suppressed correctly with zero special-casing. This matched the prompt's
+  other pre-flight STOP condition -- checked, no gap found.
+- **Set-aside claim corrected** -- this card was previously deferred from an
+  earlier batch on the claim that no delayed/scheduled-upkeep infrastructure
+  existed for it. That claim was incorrect (`pendingUpkeepTokens` already
+  covered the shape); see `docs/CURRENT_SPRINT.md` for the corrected record.
+
+### Tests
+
+**Vitest (5):** `tests/scenarios/giant-slug.test.js` -- activation schedules
+`pendingUpkeepLandwalk` with no immediate effect; a `basicLandTypeChoice` is
+requested at the activating player's next upkeep; resolving it grants the
+correct landwalk keyword via `eotBuffs`; the grant expires by the next
+turn's upkeep; the pending entry does not resolve on the opponent's upkeep
+(confirms the `p.controller === ns.active` filter).
+
+**Playwright:** none -- no new modal shape (reuses `basicLandTypeChoice`'s
+existing `ChoiceModal`).
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.45
