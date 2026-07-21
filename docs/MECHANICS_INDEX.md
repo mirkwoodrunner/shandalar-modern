@@ -5728,4 +5728,153 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.45
+## A9 Upkeep-Restricted Activated-Ability Batch (5 cards) -- 2026-07-21
+
+`CARD_DB`: 698 -> 703.
+
+Closes the A9 non-legendary gap for "activate only during your upkeep"
+**activated abilities** -- distinct from the upkeep **triggers** covered by
+the A9 Upkeep-Trigger batches (`docs/MECHANICS_INDEX.md`, batches 1 and 2)
+and Giant Slug's delayed-choice activation above. Cards: Dwarven Weaponsmith,
+Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria.
+
+### Two reusable patterns from this batch
+
+- **`anyUpkeepOnly` gate flag** (`src/engine/DuelCore.js`, sibling to the
+  existing `myUpkeepOnly` gate) -- "Activate only during any upkeep step"
+  (Tolaria), as opposed to `myUpkeepOnly`'s "Activate only during your
+  upkeep" (Dwarven Weaponsmith, Hell's Caretaker, Life Matrix, Mirror
+  Universe). `anyUpkeepOnly` checks only `s.phase !== PHASE.UPKEEP`, with no
+  `s.active` constraint -- the same each-player-upkeep idiom already used by
+  Copper Tablet/Storm World/Mana Vortex's triggered abilities, applied here
+  to an *activation* gate for the first time.
+- **Life Matrix's granted-ability combination** -- not a new idiom on its
+  own, but the first card to combine two existing ones in a single effect:
+  the Regeneration Aura's `c.activated || {...}` grant-if-none-present
+  convention (only grants the ability if the target has no `activated`
+  field yet; does not overwrite an existing one) with the counter-cost regen
+  idiom (`Scavenging Ghoul`'s `CORPSE` counter / Triskelion's convention),
+  here using a `MATRIX` counter. Two `resolveEff` cases: `grantMatrixCounterRegen`
+  (Life Matrix's own ability, grants the counter + the ability) and
+  `matrixRegen` (the granted ability itself, resolved against whichever
+  creature bears it).
+
+### Implementation
+
+```
+src/engine/DuelCore.js         -- anyUpkeepOnly gate (sibling to myUpkeepOnly);
+                                   6 new resolveEff cases: dwarvenWeaponsmithCounter,
+                                   hellsCaretakerReanimate, grantMatrixCounterRegen,
+                                   matrixRegen, exchangeLifeTotals, removeBandingEOT;
+                                   applyHellsCaretakerReturn helper (sibling to
+                                   applyRegrowthCreatureReturn, returns to "bf" not
+                                   "hand"); RESOLVE_CHOICE gyCardChoice dispatcher
+                                   extended with a hellsCaretakerReanimate mode branch
+src/hooks/useDuelController.ts -- ACTIVATE_TARGET_EFFECTS extended with
+                                   dwarvenWeaponsmithCounter, grantMatrixCounterRegen,
+                                   exchangeLifeTotals, removeBandingEOT;
+                                   PLAYER_TARGETABLE_ABILITY_EFFECTS extended with
+                                   exchangeLifeTotals (Mirror Universe -- "target opponent")
+src/data/cards.js              -- 5 new card entries appended in a batch block
+                                   at the end of CARD_DB (dwarven_weaponsmith,
+                                   hells_caretaker, life_matrix, mirror_universe, tolaria)
+```
+
+### Notes
+
+- **Dwarven Weaponsmith** -- `{T}, Sacrifice an artifact: Put a +1/+1
+  counter on target creature.` Cost `T,sacArt` and the `dwarvenWeaponsmithCounter`
+  effect reuse existing idioms verbatim (Ashnod's Transmogrant's cost shape,
+  a plain `P1P1` counter bump like the Scavenging Ghoul family).
+- **Hell's Caretaker** -- `{T}, Sacrifice a creature: Return target creature
+  card from your graveyard to the battlefield.` Reuses the `regrowthCreature`
+  /`gyCardChoice` mechanism (Adun Oakenshield), redirected to "bf" instead of
+  "hand" via a new `applyHellsCaretakerReturn` helper. RULING (2018-03-16):
+  Hell's Caretaker can be the creature sacrificed to pay its own cost, but
+  can never target itself -- its own `iid` is excluded from eligible targets
+  unconditionally in the `hellsCaretakerReanimate` case, independent of
+  whether it happened to be the sacrificed creature. Because targets for a
+  costed ability are chosen on resolution (after the sacrifice cost is
+  already paid), a creature sacrificed to activate Hell's Caretaker is
+  itself a legal target of its own resolution -- this is correct CR-706-era
+  targeting order, not a bug, and is covered explicitly by a test.
+- **Life Matrix** -- see "Two reusable patterns" above.
+- **Mirror Universe** -- `{T}, Sacrifice Mirror Universe: Exchange life
+  totals with target opponent.` New `exchangeLifeTotals` effect; no prior
+  life-exchange effect existed, but both halves are precedented (the
+  `jovialEvil`/`revealHand` `tgt === 'p' || tgt === 'o' ? tgt : opp` player-target
+  resolution idiom, and the `T,sac` self-sacrifice cost shape from Strip
+  Mine/Black Lotus). No "can't lose life" prevention system exists anywhere
+  in this engine yet, so none was added for this card.
+- **Tolaria** -- `{T}: Add {U}.` / `{T}: Target creature loses banding and
+  all "bands with other" abilities until end of turn. Activate only during
+  any upkeep step.` Dual-ability land, same shape as Strip Mine (`produces`
+  for the mana half, a single `activated` field for the second ability) --
+  `isLegendary`/`isLand` both key off the generic `type` string, so
+  `"Legendary Land"` needed no engine changes. `removeBandingEOT` is an
+  exact mirror of the pre-existing `removeFlying` case, targeting `BANDING`
+  instead of `FLYING` (this engine implements banding as the single combined
+  `BANDING` keyword per CR 702.22; no card in this pool grants "bands with
+  other" separately, so stripping `BANDING` is the complete implementation
+  at this engine's granularity).
+- **OBSERVATION, not fixed in this batch** -- while implementing
+  `removeBandingEOT`, found that `layers.js`'s Layer 6 pass filters with
+  `e.layer === 6` (number), but both `removeBandingEOT` and the pre-existing
+  `removeFlying` case set `layerDef.layer` to the *string* `'6'`, so the
+  pushed `removeKeywords` effect never matches that filter and is silently
+  dropped by `computeCharacteristics`. This means the keyword-removal these
+  two cases log as happening does not currently take effect when queried
+  through `hasKw(card, kw, state)`. `removeFlying`'s only consumer (Radjan
+  Spirit) has no prior test asserting the keyword is actually gone, so this
+  predates this batch. `layers.js` is a protected file and out of scope for
+  this prompt -- logged in comments at both case sites in `DuelCore.js`
+  rather than fixed; the Vitest coverage below asserts the `eotBuffs` shape
+  produced (matching the established, if currently inert, idiom) rather than
+  the buggy `hasKw` outcome.
+- **UI click-routing gap for dual-ability lands (Tolaria, and pre-existing
+  Strip Mine)** -- also found, also not fixed (`DuelScreen.tsx`/
+  `DuelScreenMobile.tsx` click routing was not in this prompt's scope):
+  clicking an untapped land with both `produces` and a singular non-mana
+  `activated` ability always taps it for mana on both desktop
+  (`isLand(card) && !card.tapped` short-circuits before `card.activated` is
+  ever checked) and mobile (`LandPip`'s `handleLandTap` has the same
+  mana-first shortcut). There is currently no click path to a dual-ability
+  land's second ability on either screen. The Playwright coverage below
+  exercises Tolaria's mana ability via a real click and its banding-removal
+  ability via the sandbox's documented `__duelDispatch` escape hatch.
+
+### Tests
+
+**Vitest (17):**
+
+`tests/scenarios/a9-upkeep-activated-batch.test.js` (13) -- Dwarven
+Weaponsmith (activates during upkeep/sacrifices an artifact/puts a counter;
+`myUpkeepOnly` gate rejection outside upkeep; generic `sacArt` pre-flight
+rejection with no artifact available); Hell's Caretaker (2+ eligible
+`gyCardChoice` targets including the just-sacrificed creature;
+auto-resolves with exactly 1 eligible target; cannot target itself even when
+it was the sacrificed creature; `myUpkeepOnly` gate rejection); Mirror
+Universe (sacrifices itself and exchanges life; defaults target to opponent
+with no explicit target; `myUpkeepOnly` gate rejection); Tolaria (`{T}: Add
+{U}` works at any time; banding-removal works during the opponent's upkeep,
+confirming `anyUpkeepOnly` differs from `myUpkeepOnly`; banding-removal
+rejected outside any upkeep step).
+
+`tests/scenarios/life-matrix.test.js` (4) -- grants the counter + ability to
+a creature with none; does not overwrite an existing activated ability;
+activating the granted `matrixRegen` ability removes a counter and sets
+`regenerating:true`; Life Matrix's own ability is gated to `myUpkeepOnly`.
+
+**Playwright (1 file x 2 viewports, 4 cases):**
+`tests/e2e/a9-upkeep-activated-batch.spec.js` -- Dwarven Weaponsmith's
+real click-driven activate/target UI flow (select the creature, click the
+target, confirm, resolve, counter applied); Tolaria's mana-tap path via a
+real click plus its banding-removal path via `__duelDispatch` (see the UI
+click-routing gap note above), at desktop and mobile viewports.
+
+### Status
+COMPLETE
+
+---
+
+# End of MECHANICS INDEX v1.46

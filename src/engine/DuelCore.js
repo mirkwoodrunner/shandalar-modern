@@ -2540,6 +2540,14 @@ if (self && !hasKw(self, KEYWORDS.FIRST_STRIKE.id)) {
 }
 break;
 }
+// OBSERVATION (found while implementing the A9 Upkeep-Restricted
+// Activated-Ability batch's removeBandingEOT, which mirrors this case's
+// shape; not fixed here since layers.js is protected and out of scope):
+// layerDef.layer is set to the STRING '6' below, but layers.js's layer-6
+// pass filters with `e.layer === 6` (number), so this removeKeywords effect
+// never matches and is silently dropped by computeCharacteristics. No test
+// currently asserts this case's only consumer (Radjan Spirit) actually loses
+// flying.
 case "removeFlying": {
 if (tgtC && hasKw(tgtC, KEYWORDS.FLYING.id, ns)) {
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
@@ -3251,6 +3259,128 @@ case "scavengingGhoulRegen": {
   }
   break;
 }
+
+// -- A9 Upkeep-Restricted Activated-Ability batch (5 cards) -----------------
+
+// Dwarven Weaponsmith: "Put a +1/+1 counter on target creature." Same shape
+// as Ashnod's Transmogrant's counterAndArtifactType, minus the artifact-type
+// change and the nonartifact restriction (this one can hit any creature).
+case "dwarvenWeaponsmithCounter": {
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid
+        ? { ...c, counters: { ...c.counters, P1P1: (c.counters?.P1P1 || 0) + 1 } }
+        : c
+    ) } };
+    ns = dlog(ns, `${card.name}: ${tgtC.name} gets a +1/+1 counter.`, "effect");
+  }
+  break;
+}
+
+// Hell's Caretaker: "Return target creature card from your graveyard to the
+// battlefield." Same gyCardChoice mechanism as regrowth/regrowthCreature
+// (Raise Dead, Adun Oakenshield), but returns to "bf" instead of "hand".
+// RULING (2018-03-16): Hell's Caretaker can be the creature sacrificed to pay
+// its own cost, but can never be the target of its own ability -- so the
+// source's own iid is excluded from eligible targets unconditionally, not
+// just when it happens to be the sacrificed creature.
+case "hellsCaretakerReanimate": {
+  const myC = ns[caster].gy.filter(c => isCre(c) && c.iid !== card.iid);
+  const gyTgtC = tgt ? myC.find(c => c.iid === tgt) : null;
+  if (gyTgtC) {
+    ns = applyHellsCaretakerReturn(ns, gyTgtC.iid, caster, card.name);
+  } else if (myC.length > 1) {
+    ns = createPendingChoice(ns, {
+      sourceCardId: card.iid,
+      controller: caster,
+      kind: 'gyCardChoice',
+      mode: 'hellsCaretakerReanimate',
+      cardName: card.name,
+      options: myC.map(c => ({ id: c.iid, label: c.name })),
+    });
+  } else if (myC.length === 1) {
+    ns = applyHellsCaretakerReturn(ns, myC[0].iid, caster, card.name);
+  }
+  break;
+}
+
+// Life Matrix: puts a matrix counter on target creature and grants it a
+// counter-cost regenerate ability. Combines two existing idioms: the
+// Regeneration Aura's "c.activated || {...}" grant-if-none-present convention
+// (see the Aura-attach code, card.mod.regenerationAura) and the counter-cost
+// regen idiom (Scavenging Ghoul's CORPSE counter / Triskelion's convention).
+// Same caveat as the Aura precedent: if the target already has an activated
+// ability, this does not overwrite it (matches existing behavior, not a new
+// limitation introduced here).
+case "grantMatrixCounterRegen": {
+  if (tgtC) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid
+        ? { ...c, counters: { ...c.counters, MATRIX: (c.counters?.MATRIX || 0) + 1 }, activated: c.activated || { cost: "counter", effect: "matrixRegen" } }
+        : c
+    ) } };
+    ns = dlog(ns, `${card.name} puts a matrix counter on ${tgtC.name}.`, "effect");
+  }
+  break;
+}
+// The granted ability itself: "Remove a matrix counter from this creature:
+// Regenerate this creature." Once granted, `card` here refers to the
+// creature bearing the granted ability, not Life Matrix.
+case "matrixRegen": {
+  const mc = ns[caster].bf.find(c => c.iid === card.iid);
+  if (mc && (mc.counters?.MATRIX || 0) > 0) {
+    ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+      c.iid === card.iid
+        ? { ...c, counters: { ...c.counters, MATRIX: c.counters.MATRIX - 1 }, regenerating: true }
+        : c
+    ) } };
+    ns = dlog(ns, `${card.name} removes a matrix counter and will regenerate.`, "effect");
+  }
+  break;
+}
+
+// Mirror Universe: "Exchange life totals with target opponent." No prior
+// life-exchange effect exists, but both halves are precedented: the
+// jovialEvil/revealHand "tgt === 'p' || tgt === 'o' ? tgt : opp" idiom for
+// resolving a player target in a 2-player duel, and the T,sac self-sacrifice
+// cost shape (Strip Mine, Black Lotus). No "can't lose life" prevention
+// system exists anywhere in the engine yet, so none is added here.
+case "exchangeLifeTotals": {
+  const victim = tgt === 'p' || tgt === 'o' ? tgt : opp;
+  const casterLife = ns[caster].life;
+  const victimLife = ns[victim].life;
+  ns = { ...ns, [caster]: { ...ns[caster], life: victimLife }, [victim]: { ...ns[victim], life: casterLife } };
+  ns = dlog(ns, `${card.name}: ${caster} and ${victim} exchange life totals.`, "effect");
+  break;
+}
+
+// Tolaria: "Target creature loses banding and all "bands with other"
+// abilities until end of turn." Exact mirror of the existing removeFlying
+// case, targeting BANDING instead of FLYING (this engine implements the
+// combined BANDING keyword per CR 702.22; "bands with other" has no separate
+// representation and no card in this pool grants it, so stripping BANDING
+// is the correct and complete implementation at this engine's granularity).
+// OBSERVATION (not fixed here -- layers.js is protected and out of scope for
+// this prompt): layers.js's layer-6 pass filters with `e.layer === 6`
+// (number), but this eotBuffs shape (copied verbatim from the pre-existing
+// removeFlying case) sets `layerDef.layer` to the STRING '6', so the pushed
+// removeKeywords effect never matches that filter and is silently dropped by
+// computeCharacteristics. This appears to be a pre-existing latent bug already
+// affecting removeFlying's only consumer (Radjan Spirit, src/data/cards.js),
+// which likewise has no test asserting the keyword is actually gone
+// afterward. Flagging per CLAUDE.md rather than touching layers.js.
+case "removeBandingEOT": {
+  if (tgtC && hasKw(tgtC, KEYWORDS.BANDING.id, ns)) {
+    ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+      c.iid === tgtC.iid
+        ? { ...c, eotBuffs: [...(c.eotBuffs || []), { layerDef: { layer: '6', removeKeywords: [KEYWORDS.BANDING.id] } }] }
+        : c
+    ) } };
+    ns = dlog(ns, `${tgtC.name} loses banding until end of turn.`, 'effect');
+  }
+  break;
+}
+
 // Sage of Lat-Nam: "{T}, Sacrifice an artifact: Draw a card." Same shape as
 // Priest of Yawgmoth's addBBySacrificedCmc (cost: T,sacArt), but the drawn
 // amount is fixed at 1 -- no CMC scaling.
@@ -7706,6 +7836,13 @@ function applyRegrowthCreatureReturn(ns, iid, caster, cardName) {
   return dlog(ns, `${cardName} returns ${gyCard.name} to hand.`, "effect");
 }
 
+function applyHellsCaretakerReturn(ns, iid, caster, cardName) {
+  const gyCard = ns[caster].gy.find(c => c.iid === iid && isCre(c));
+  if (!gyCard) return ns;
+  ns = zMove(ns, gyCard.iid, caster, caster, "bf");
+  return dlog(ns, `${cardName} returns ${gyCard.name} to the battlefield.`, "effect");
+}
+
 // createPendingChoice: the single place that sets state.pendingChoice. Callable
 // from resolveTrigger() (triggered abilities) or directly from resolveEff()
 // (e.g. Alchor's Tomb's color choice, which has no triggered ability at all).
@@ -9424,6 +9561,14 @@ case "ACTIVATE_ABILITY": {
   if (act.myUpkeepOnly && (s.phase !== PHASE.UPKEEP || s.active !== w)) {
     return dlog(s, `${card.name} can only be activated during your upkeep.`, "info");
   }
+  // Tolaria: "Activate only during any upkeep step" -- unlike myUpkeepOnly,
+  // this doesn't require it be the activating player's own upkeep, just that
+  // the game is currently in an upkeep step (either player's). Same
+  // each-player-upkeep idiom as Copper Tablet/Storm World/Mana Vortex, applied
+  // to an activation gate instead of a trigger.
+  if (act.anyUpkeepOnly && s.phase !== PHASE.UPKEEP) {
+    return dlog(s, `${card.name} can only be activated during any upkeep step.`, "info");
+  }
   // "Activate only during your turn."
   if (act.myTurnOnly && s.active !== w) {
     return dlog(s, `${card.name} can only be activated during your turn.`, "info");
@@ -10101,6 +10246,9 @@ case "RESOLVE_CHOICE": {
     let ns = { ...s, pendingChoice: null };
     if (choice.mode === 'regrowthCreature') {
       return applyRegrowthCreatureReturn(ns, action.optionId, choice.controller, choice.cardName);
+    }
+    if (choice.mode === 'hellsCaretakerReanimate') {
+      return applyHellsCaretakerReturn(ns, action.optionId, choice.controller, choice.cardName);
     }
     return applyRegrowthReturn(ns, action.optionId, choice.controller);
   }

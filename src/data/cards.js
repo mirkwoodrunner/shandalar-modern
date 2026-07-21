@@ -859,6 +859,18 @@ export const CARD_DB = [
 {id:"season_of_the_witch",name:"Season of the Witch",type:"Enchantment",color:"B",cmc:3,cost:"BBB",keywords:[],rarity:"R",text:"At the beginning of your upkeep, sacrifice this enchantment unless you pay 2 life.\nAt the beginning of the end step, destroy all untapped creatures that didn't attack this turn, except for creatures that couldn't attack.",upkeep:"seasonOfTheWitchUpkeep"},
 {id:"worms_of_the_earth",name:"Worms of the Earth",type:"Enchantment",color:"B",cmc:5,cost:"2BBB",keywords:[],rarity:"R",text:"Players can't play lands.\nLands can't enter the battlefield.\nAt the beginning of each upkeep, any player may sacrifice two lands of their choice or have this enchantment deal 5 damage to that player. If a player does either, destroy this enchantment.",landLock:true},
 
+// -- A9 UPKEEP-RESTRICTED ACTIVATED-ABILITY BATCH (5 cards) -----------------
+// Closes the A9 non-legendary gap for "activate only during your upkeep"
+// activated abilities (distinct from the upkeep-trigger cards in the batches
+// above). See docs/CURRENT_SPRINT.md / docs/MECHANICS_INDEX.md for the full
+// batch writeup, and tests/scenarios/a9-upkeep-activated-batch.test.js and
+// tests/scenarios/life-matrix.test.js for coverage.
+{id:"dwarven_weaponsmith",name:"Dwarven Weaponsmith",type:"Creature",subtype:"Dwarf Artificer",color:"R",cmc:2,cost:"1R",power:1,toughness:1,keywords:[],rarity:"U",text:"{T}, Sacrifice an artifact: Put a +1/+1 counter on target creature. Activate only during your upkeep.",activated:{cost:"T,sacArt",effect:"dwarvenWeaponsmithCounter",myUpkeepOnly:true}},
+{id:"hells_caretaker",name:"Hell's Caretaker",type:"Creature",subtype:"Horror",color:"B",cmc:4,cost:"3B",power:1,toughness:1,keywords:[],rarity:"R",text:"{T}, Sacrifice a creature: Return target creature card from your graveyard to the battlefield. Activate only during your upkeep.",activated:{cost:"T,sacCre",effect:"hellsCaretakerReanimate",myUpkeepOnly:true}},
+{id:"life_matrix",name:"Life Matrix",type:"Artifact",color:"",cmc:4,cost:"4",keywords:[],rarity:"R",text:"{4}, {T}: Put a matrix counter on target creature and that creature gains \"Remove a matrix counter from this creature: Regenerate this creature.\" Activate only during your upkeep.",activated:{cost:"4,T",effect:"grantMatrixCounterRegen",myUpkeepOnly:true}},
+{id:"mirror_universe",name:"Mirror Universe",type:"Artifact",color:"",cmc:6,cost:"6",keywords:[],rarity:"R",text:"{T}, Sacrifice Mirror Universe: Exchange life totals with target opponent. Activate only during your upkeep.",activated:{cost:"T,sac",effect:"exchangeLifeTotals",myUpkeepOnly:true}},
+{id:"tolaria",name:"Tolaria",type:"Legendary Land",color:"",cmc:0,cost:"",text:"{T}: Add {U}.\n{T}: Target creature loses banding and all \"bands with other\" abilities until end of turn. Activate only during any upkeep step.",produces:["U"],rarity:"U",activated:{cost:"T",effect:"removeBandingEOT",anyUpkeepOnly:true}},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------

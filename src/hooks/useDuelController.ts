@@ -343,6 +343,9 @@ export const ACTIVATE_TARGET_EFFECTS = new Set([
   // Legendary Creatures batch 4:
   'destroyTappedOrBlocking', // Tetsuo Umezawa -- "target tapped or blocking creature"
   'preventCombatDamageDealtTarget', // Lady Evangela -- "target creature"
+  // A9 Upkeep-Restricted Activated-Ability batch:
+  'dwarvenWeaponsmithCounter', 'grantMatrixCounterRegen', 'exchangeLifeTotals',
+  'removeBandingEOT',
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -360,6 +363,7 @@ const PLAYER_TARGETABLE_ABILITY_EFFECTS = new Set([
   // Legendary Creatures Cleanup batch:
   'draw1Tgt',      // Xira Arien -- "target player draws a card"
   'discardOneTgt', // Gwendlyn Di Corci -- "target player discards a card at random"
+  'exchangeLifeTotals', // Mirror Universe -- "target opponent"
 ]);
 
 function scoreLibCard(card: any, _state: any): number {
