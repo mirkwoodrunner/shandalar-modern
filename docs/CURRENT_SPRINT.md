@@ -10,10 +10,45 @@
   upkeep-trigger bucket is in progress -- 13 closed by the A9 Upkeep-Trigger
   Batch, 11 more closed by A9 Upkeep-Trigger Batch 2 (24 landed total; see
   `docs/ROADMAP.md` -- Milestone A for the corrected 27-member bucket count
-  and the running 234-card absent total). Remaining upkeep-trigger members are
+  and the running 228-card absent total). Remaining upkeep-trigger members are
   blocked on infra this track hasn't built yet (Divine Intervention, All
-  Hallow's Eve, Glyph of Delusion -- see the Batch 2 entry below for why).
+  Hallow's Eve, Glyph of Delusion -- see the Batch 2 entry below for why). The
+  6 phase-restricted "activate only during upkeep" cards reclassified out of
+  this bucket are now all closed (Giant Slug 2026-07-20; Dwarven Weaponsmith,
+  Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
+
+## Completed (2026-07-21)
+- **A9 Upkeep-Restricted Activated-Ability Batch (5 cards)** -- Dwarven
+  Weaponsmith, Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria.
+  `CARD_DB`: 698 -> 703. Closes the remaining 5 of the 6 cards deferred from
+  A9 Upkeep-Trigger Batch 2 as "activate only during upkeep" activated
+  abilities rather than upkeep triggers (the 6th, Giant Slug, closed
+  2026-07-20, see above). Two reusable patterns: a new `anyUpkeepOnly` gate
+  flag (sibling to `myUpkeepOnly`, no `s.active` constraint -- Tolaria's
+  "activate only during any upkeep step"), and Life Matrix's combination of
+  the Regeneration Aura's grant-if-none-present convention with the
+  counter-cost regen idiom (Scavenging Ghoul/Triskelion) to grant a new
+  activated ability onto an arbitrary target creature. Hell's Caretaker
+  reuses the `regrowthCreature`/`gyCardChoice` mechanism redirected to "bf"
+  instead of "hand"; per a 2018-03-16 ruling it can be the creature
+  sacrificed to pay its own cost but never targets itself. Mirror Universe
+  adds a new `exchangeLifeTotals` effect (no prior life-exchange effect
+  existed, though both halves were precedented). Tolaria is a dual-ability
+  land, same shape as Strip Mine.
+  Two issues found and logged (not fixed -- both are in files out of this
+  batch's scope): a pre-existing `layers.js` Layer-6 filter bug
+  (`e.layer === 6` compares a number against the string `'6'` that
+  `removeFlying`/`removeBandingEOT` set, so the removeKeywords effect is
+  silently dropped -- predates this batch, already affecting Radjan Spirit);
+  and a UI click-routing gap where dual-ability lands (Tolaria, pre-existing
+  Strip Mine) have no click path to their non-mana ability on either
+  screen, since untapped-land clicks always tap for mana first on both
+  desktop and mobile. See `docs/MECHANICS_INDEX.md` -- A9 Upkeep-Restricted
+  Activated-Ability Batch for full detail.
+  Tests: 17 Vitest (`tests/scenarios/a9-upkeep-activated-batch.test.js` x13,
+  `tests/scenarios/life-matrix.test.js` x4), 4 Playwright (1 file x 2
+  viewports, `tests/e2e/a9-upkeep-activated-batch.spec.js`).
 
 ## Completed (2026-07-20)
 - **A9 Upkeep-Trigger Batch 2 (11 cards)** -- Fasting, Primordial Ooze, Psychic
@@ -28,7 +63,8 @@
   exists); **Dwarven Weaponsmith, Giant Slug, Hell's Caretaker, Life Matrix,
   Mirror Universe, Tolaria** (6 cards -- these are "activate only during
   upkeep" activated abilities, a different mechanic than an upkeep trigger;
-  Giant Slug closed 2026-07-20, see below -- the other 5 remain deferred);
+  Giant Slug closed 2026-07-20, see below; the other 5 closed 2026-07-21, see
+  A9 Upkeep-Restricted Activated-Ability Batch below);
   **Rapid Fire** (a Rampage-granting combat trick, not upkeep-related --
   belongs with the deferred Rampage infra work). See `docs/ROADMAP.md` --
   Milestone A for the corrected upkeep-trigger bucket accounting.

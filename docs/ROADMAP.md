@@ -74,6 +74,16 @@ dynamically-granted-ability system). Corrected count: 13 (batch 1) + 11 (batch 2
 reclassified cards remain in the 234 total, just under different (not yet
 separately re-bucketed) mechanic headings.
 
+**Update (2026-07-21) — the 6 reclassified "activate only during upkeep" cards
+closed.** Of the 6 phase-restricted-activation cards the note above reclassified
+out of the upkeep-trigger bucket, all 6 are now closed: Giant Slug (2026-07-20,
+1 card, tracked separately — see `docs/CURRENT_SPRINT.md` — but never applied
+against this running total at the time) plus Dwarven Weaponsmith, Hell's
+Caretaker, Life Matrix, Mirror Universe, and Tolaria (2026-07-21, the A9
+Upkeep-Restricted Activated-Ability Batch, 5 cards). Applying both catches the
+running absent-card total up: 234 − 1 (Giant Slug, retroactive) − 5 (this batch)
+= **228**.
+
 Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
 Stub heat map (historical — described the now-cleared 245-stub backlog specifically, not the 299-card entirely-missing gap): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.

@@ -305,6 +305,7 @@ docs/MECHANICS_INDEX.md      — mechanic-to-code traceability
 docs/COMPONENT_REGISTRY.md   — component inventory
 docs/ENGINE_CONTRACT_SPEC.md — system boundary contracts
 docs/AI.md                   — AI role definitions
+docs/TEST_AUDIT_LOG.md       — test:audit hard-stop failure log
 
 ```
 ---
@@ -398,11 +399,15 @@ covered here, fall back to the tag taxonomy table above.
 
 ```
 1. STOP. Do not run the full suite automatically.
-2. Report to Chris: which tag failed, which specific test(s), and your
-   diagnosis if you have one.
-3. Wait for Chris's permission before running `npm test && npm run
+2. Document the failure in `docs/TEST_AUDIT_LOG.md` -- date, which tag/file
+   was audited, which specific test(s) failed, and your diagnosis. Check
+   that file first too: if the same file/tag failed before with the same
+   signature, you may be looking at an already-logged, already-diagnosed
+   issue rather than a fresh one.
+3. Report to Chris: point to the log entry, plus a short summary.
+4. Wait for Chris's permission before running `npm test && npm run
    test:e2e` or any broader diagnostic command.
-4. Only resume the original task once Chris has responded.
+5. Only resume the original task once Chris has responded.
 ```
 
 ### Playwright setup (one-time)
@@ -476,6 +481,7 @@ card validation, stub checking, and missing card generation directly in Claude.a
 - [`docs/LVL5_MTG_JUDGE.md`](docs/LVL5_MTG_JUDGE.md) -- rules arbiter protocol
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) -- contribution guidelines
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) -- closed architectural decisions
+- [`docs/TEST_AUDIT_LOG.md`](docs/TEST_AUDIT_LOG.md) -- `test:audit` hard-stop failure log
 
 See [docs/DECISIONS.md](docs/DECISIONS.md) for confirmed architectural decisions and MCTS design records.
 
