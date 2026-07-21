@@ -16,28 +16,37 @@ Categorized all 258 by Forge-script ability pattern (`Card-Forge/forge`'s `forge
 
 | Mechanic bucket | Cards | Engine infra status |
 |---|---|---|
-| Upkeep trigger | 21 | existing choke point (`switch (c.upkeep)`) |
-| Damage prevention/redirect | 20 | existing (`turnState.damageShields`) |
-| P/T pump / anthem | 16 | existing (`layers.js`) |
-| Counters (misc types) | 13 | existing (free-form `c.counters[TYPE]`) |
-| Walls / can't-attack restriction | 12 | existing |
-| Destruction (single-target) | 11 | existing |
-| Untap/Tap manipulation | 11 | existing (`tapPermanent()`) |
-| Banding | 9 | existing (banding core, phases 1–3) |
-| Mass destroy/sacrifice-all | 9 | existing |
-| Tutor/zone-change (search, reanimate, bounce, mill) | 8 | existing (`zMove`) |
-| Rampage | 7 | **not built** — needs a new trigger point, same gap flagged in the Premodern Milestone-E table |
-| Type/color/text change | 7 | existing (layers.js Layer 3/4) |
-| Mana ability/ritual | 7 | existing |
-| Lifegain/loss | 5 | existing |
-| Discard | 4 | existing (`discardCard()`) |
-| Counter-magic/stack interaction | 4 | existing |
-| Landwalk | 4 | existing |
-| Protection/shroud | 3 | existing |
-| Control-change/steal | 2 | existing (control-grant system) |
-| Token creation | 1 | existing (`TOKEN_DB`/`createToken`) |
-| Face-down (Illusionary Mask, sole pre-Morph oddity) | 1 | bespoke one-off, not worth general infra for 1 card |
-| Uncategorized / bespoke one-offs | 83 | no shared infra either way — old Legends/Antiquities design is dense with unique one-shot text |
+| Uncategorized/bespoke | 77 | no shared infra |
+| Damage prevention/redirect | 23 | existing (`turnState.damageShields`) |
+| Tutor/zone-change | 11 | existing (`zMove`) |
+| Mana ability/ritual | 10 | existing |
+| Counter-magic/stack interaction | 9 | existing |
+| Banding | 7 | existing (banding core) |
+| Walls/can't-attack restriction | 7 | existing |
+| P/T pump / anthem | 7 | existing (`layers.js`) |
+| Destruction (single-target) | 6 | existing |
+| Rampage | 4 (+ Rapid Fire, see note) | **not built** |
+| Control-change/steal | 4 | existing |
+| Lifegain/loss | 4 | existing |
+| Discard | 3 | existing |
+| Untap/Tap manipulation | 3 | existing |
+| Counters (misc types) | 3 | existing |
+| Upkeep trigger | 2 | blocked on infra (Divine Intervention, All Hallow's Eve — both already known-deferred) |
+| Landwalk | 2 | existing |
+| Type/color/text change | 1 | existing |
+| Protection/shroud | 1 | existing |
+| Token creation | 1 | existing |
+
+Note: Rapid Fire's Forge script grants Rampage dynamically via a Pump sub-ability
+rather than a static `K:Rampage` line, so it categorizes mechanically as P/T pump
+— but per the standing decision (Rapid Fire note, `docs/CURRENT_SPRINT.md`) it
+stays bundled with the Rampage-family work. Total Rampage-family count once
+built: 5 (4 static + Rapid Fire).
+
+This table reflects the 2026-07-21 recount (185 non-legendary absent cards, freshly
+categorized against actual Forge script content) and replaces the 2026-07-19 table
+that originally stood here — see the 2026-07-21 count-correction update below for
+why.
 
 **Bottom line:** unlike a brand-new-subsystem backlog, almost all of A9 is per-card data
 work against choke points that already exist — same conclusion the Milestone E
@@ -84,6 +93,34 @@ Upkeep-Restricted Activated-Ability Batch, 5 cards). Applying both catches the
 running absent-card total up: 234 − 1 (Giant Slug, retroactive) − 5 (this batch)
 = **228**.
 
+**Update (2026-07-21) — A9 count correction + refreshed non-legendary heat map.**
+The 228 figure above drifted: `234 − 1 − 5 = 228` assumed `CARD_DB` had grown by
+only 30 cards since the 2026-07-19 baseline (650). It actually grew by 53 (to
+703) — the other 23 came in through legendary-creature batches that landed
+after the 650 baseline but were never subtracted from the A9 running total.
+Same failure mode this file already documents happening once before
+(legendary batches closing ~41 cards without anyone decrementing A9).
+
+Re-ran the reconciliation fresh against live `main` (`CARD_DB.length` via
+direct import, not a nested-id-prone grep; same diacritic/punctuation-
+normalized slug matching as `tools/enemy-deck-audit/analyze.mjs`, verified
+correct by independently re-deriving the known "7 extras" footnote):
+
+- **205 cards absent** (not 228), against the 901-card curated list.
+- ~19-20 of those overlap the separately-tracked legendary-creature backlog
+  (consistent with the already-tracked "~21 remaining" there — the two tracks
+  were never cleanly split, small variance expected).
+- **185 non-legendary absent**, freshly categorized by actual Forge script
+  content (`Card-Forge/forge`, `forge-gui/res/cardsfolder/`), not card-name
+  keyword-matching — see the refreshed heat map above, which replaces the
+  2026-07-19 table.
+
+The full 185-card per-bucket list is not persisted to a file (matches the
+existing footnote's own convention for the 258-card breakdown) — re-derive
+via the same Forge cross-reference if needed for a specific batch; don't
+trust a stale copy without re-running it, per the drift this update is
+fixing.
+
 Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
 Stub heat map (historical — described the now-cleared 245-stub backlog specifically, not the 299-card entirely-missing gap): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.
@@ -105,9 +142,9 @@ The spine of the roadmap. Each batch is Scryfall-verified before any handler is 
 - ~~**A7. Ante cards.**~~ Stub backlog under this heading is empty. The four cards explicitly named here (Contract from Below, Darkpact, Demonic Attorney, Jeweled Bird) are absent from `cards.js` entirely — see A9.
 - ~~**A8. Walls, landwalk, remaining one-offs.**~~ **DONE.**
 
-- **A9. Close the entirely-missing-card gap.** 258 cards from the curated target list (`scryfall/Shandalar Cardpool.txt`) have no `cards.js` entry at all — not stubbed, absent (was 299 as of 2026-07-17; legendary-creature batches since then closed ~41 without tracking against this heading). Audit complete as of 2026-07-19 — see the mechanic heat map above. Batching is now in progress; the upkeep-trigger bucket (21 cards) is the first sub-batch scoped.
+- **A9. Close the entirely-missing-card gap.** 205 cards from the curated target list (`scryfall/Shandalar Cardpool.txt`) have no `cards.js` entry at all — not stubbed, absent (was 299 as of 2026-07-17, then 258 as of 2026-07-19; the running total drifted to a stale 228 before the 2026-07-21 recount corrected it — see above). Audit complete as of 2026-07-19, count refreshed 2026-07-21 — see the mechanic heat map above. Batching is now in progress; the upkeep-trigger bucket (21 cards) is the first sub-batch scoped.
 
-A1–A8 took roughly the originally-estimated 6–8 sprints. A9's audit is done (see above); its total size is now known (258 cards, 21 shared-mechanic buckets, one genuine infra gap in Rampage) but it is not yet sequenced into sprints.
+A1–A8 took roughly the originally-estimated 6–8 sprints. A9's audit is done (see above); its total size is now known (205 cards absent overall, 185 non-legendary across the refreshed heat map above, one genuine infra gap in Rampage) but it is not yet sequenced into sprints.
 
 ## Milestone B — Determinism backbone
 
@@ -189,7 +226,7 @@ see below. Kept for historical reference; the real next-step decision is B vs. C
 4. ~~A6 (pumps), A8 (one-offs)~~ — done. Milestone C defender-block fix — still open.
 5. A7 (ante) — stub backlog empty, but see A9. Milestone D loop polish — still open.
 6. Premodern go/no-go — audit done (see Milestone E), decision still open.
-7. **A9 (entirely-missing-card gap)** — audited 2026-07-19 (258 cards, heat map above); batching now underway starting with the upkeep-trigger bucket. Still not sequenced against B/C/D as a milestone-level priority call.
+7. **A9 (entirely-missing-card gap)** — audited 2026-07-19, count corrected 2026-07-21 (205 cards, heat map above); batching now underway starting with the upkeep-trigger bucket. Still not sequenced against B/C/D as a milestone-level priority call.
 
 ## Graduation rule
 
