@@ -5877,4 +5877,86 @@ COMPLETE
 
 ---
 
+## Batch: Enemy Deck Audit Coverage (6 cards) -- 2026-07-23
+
+Follow-up to "Batch: Enemy Deck Audit -- Missing Cards -- 2026-07-20" above,
+which explicitly deferred 8 remaining unmatched deck-file names as out of
+its scope: Ragman, Zephyr Falcons, Whimsy, the 4 non-white Mana Batteries,
+V. Enchantress, Deep Water, Abu Jafar.
+
+### Alias-only fixes (no new `CARD_DB` entry needed)
+
+4 of the 8 names were false positives of the same shape `analyze.mjs`'s
+`ALIASES` table already handles elsewhere in the file -- the real card
+already existed in `CARD_DB`, just under a different spelling than the deck
+file uses:
+
+- `Ragman` (deck file) -> `Rag Man` (`CARD_DB` id `rag_man`)
+- `Zephyr Falcons` (deck file, plural) -> `Zephyr Falcon` (id `zephyr_falcon`)
+- `Abu Jafar` (deck file, no apostrophe) -> `Abu Ja'far` (id `abu_jasfar`)
+- `V. Enchantress` (deck file abbreviation) -> `Verduran Enchantress` (id
+  `verduran_enchantress`)
+
+Fixed with 4 new `ALIASES` entries in `tools/enemy-deck-audit/analyze.mjs`;
+no `CARD_DB` changes.
+
+### New `CARD_DB` entries (6)
+
+All classified `effect:"STUB"`, sourced from `scryfall/shandalar-card-pool.json`
+(exact-name match, no re-fetch needed):
+
+- `black_mana_battery`, `blue_mana_battery`, `green_mana_battery`,
+  `red_mana_battery` -- color siblings of the pre-existing
+  `white_mana_battery` (Fourth Edition). Identical charge-counter mana
+  ability, one per color.
+- `whimsy` (Astral Cards / PAST) -- `{X}{U}{U}` sorcery, "Play X random fast
+  effects." Random-effect-list mechanic this engine has no generic handler
+  for, same class as the prior batch's Power Struggle/Faerie Dragon.
+- `deep_water` (The Dark) -- `{U}{U}` enchantment, `{U}`: lands you tap
+  produce {U} instead of their normal color until end of turn. No existing
+  mana-type-override handler.
+
+`CARD_DB`: 703 -> 709.
+
+### Coverage (this batch's audit run)
+
+| Stage | original | spells-of-the-ancients |
+|---|---|---|
+| Before (2026-07-20 batch's end state) | 99.7% | 99.8% |
+| After this batch | 100% | 100% |
+
+Both packs now report full coverage. Prismatic Dragon, the one card the
+originating task expected to remain permanently deferred/unmatched, was
+already resolved by the 2026-07-20 batch (it's pool-sourced and was added
+there) -- so there was no remaining gap once this batch's 6 cards + 4
+aliases landed.
+
+### Known issues found, not fixed
+
+See `docs/CURRENT_SPRINT.md` -- Known open issues for the full list. Running
+`test:targeted -- @engine` for this batch surfaced a wider set of
+pre-existing test failures than the two (`OUB-24`, `SAC-21`) already flagged
+by the originating task -- confirmed via a clean-checkout comparison to be
+unrelated to this batch (same failures reproduce on `main` with none of this
+batch's changes applied). Also re-confirmed the pre-existing
+`validateCardIds()` diacritic/apostrophe bug (flagged, not fixed, in the
+2026-07-20 batch) now additionally covers `hells_caretaker` (added
+2026-07-21, after that bug was first flagged).
+
+### Tests
+
+**Vitest (5):** `tests/scenarios/enemy-deck-audit-stub-batch.test.js` -- the
+6 new ids exist with `effect:"STUB"`; no duplicate ids in `CARD_DB`;
+`makeCardInstance()` constructs each without throwing;
+`validateCardIds()` raises no new warnings for the 6 new ids; running
+`tools/enemy-deck-audit/analyze.mjs` reports 100% coverage with an empty
+`missingCardFrequency` on both packs.
+
+**Playwright:** none (data-only change, no UI surface).
+
+### Status
+COMPLETE
+
+---
+
 # End of MECHANICS INDEX v1.46

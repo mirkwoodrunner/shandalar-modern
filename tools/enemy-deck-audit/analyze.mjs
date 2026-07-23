@@ -73,6 +73,10 @@ const ALIASES = {
   'necropolis of azaar': 'Necropolis of Azar',      // original pack manual spelling
   'knights of the rainbow vale': 'Rainbow Knights', // original pack manual spelling
   'mons goblin raiders': "Mons's Goblin Raiders",   // deck files drop the apostrophe-s, both packs
+  'ragman': 'Rag Man',                              // spacing, deck packs
+  'zephyr falcons': 'Zephyr Falcon',                // plural in deck packs, card is singular
+  'abu jafar': "Abu Ja'far",                        // deck files drop the apostrophe; CARD_DB id is abu_jasfar
+  'v. enchantress': 'Verduran Enchantress',          // abbreviation, deck packs
 };
 
 const slugMap = new Map();
