@@ -60,12 +60,25 @@
     card/engine file this batch touched. Not diagnosed further here (out of
     scope for a data-only batch); flagging so a future pass doesn't have to
     rediscover that these predate it.
-  - `validateCardIds()` in `src/data/cards.js` has the same diacritic/
-    apostrophe-regex bug fixed in `analyze.mjs` here, logging false-positive
-    ID-mismatch warnings on every dev-mode run (e.g. `hells_caretaker` ->
-    `hellss_caretaker` for "Hell's Caretaker", plus the ~14 previously
-    logged for other accented/apostrophe cards) -- separate fix, not
-    bundled here.
+- **Fix: `validateCardIds()` diacritic bug** -- `src/data/cards.js`'s
+  `validateCardIds()` derived ids without stripping diacritics first, so
+  accented `CARD_DB` names (Dandan, Juzam Djinn, El-Hajjaj, Ghazban Ogre,
+  Khabal Ghoul, Junun Efreet, Ifh-Biff Efreet) never matched their own
+  correctly-set `id` and logged false-positive warnings on every dev-mode
+  run. Fixed by NFKD-normalizing and stripping combining diacritical marks
+  before the existing lowercase/apostrophe/slugify steps. The double-s
+  possessive convention (`replace(/['']/g, 's')`, e.g. `ashnods_altar` ->
+  derives `ashnodss_altar`) is unchanged -- it's the dominant convention
+  across 20+ ids, not a bug. Updated the known-exception sets in
+  `tests/scenarios/enemy-deck-audit-missing-cards.test.js` and
+  `tests/scenarios/enemy-deck-audit-stub-batch.test.js`: removed the 7
+  now-fixed diacritic ids, added `hells_caretaker` (a pre-existing gap --
+  `Hell's Caretaker` mismatches under the double-s regex today and always
+  has, it just wasn't tracked in either list). Remaining 10 legacy ids
+  (double-s possessive mismatches) are a separate, not-yet-scoped follow-up
+  -- would need an id rename touching every reference to fully resolve.
+  Tests: 0 new Vitest, 0 new Playwright (edited two existing known-exception
+  lists; re-ran both modified files, 13/13 pass).
 
 ## Completed (2026-07-21)
 - **A9 Upkeep-Restricted Activated-Ability Batch (5 cards)** -- Dwarven

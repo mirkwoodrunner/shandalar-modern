@@ -1106,6 +1106,8 @@ BOSS_GREEN: {
 export function validateCardIds(cardDatabase) {
   cardDatabase.forEach(card => {
     const derived = card.name
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '') // strip combining diacritical marks
       .toLowerCase()
       .replace(/['']/g, 's')
       .replace(/[^a-z0-9]+/g, '_')

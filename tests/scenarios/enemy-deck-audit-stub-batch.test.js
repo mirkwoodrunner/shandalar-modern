@@ -29,16 +29,20 @@ const NEW_IDS = [
   'red_mana_battery', 'whimsy', 'deep_water',
 ];
 
-// Ids already known (pre-existing) to trip validateCardIds() on
-// accented/apostrophe names -- see tools/enemy-deck-audit/analyze.mjs and
+// Legacy ids that predate the double-s possessive convention (e.g.
+// Aladdin's Lamp -> aladdinss_lamp) and would need an id rename -- touching
+// every reference to them -- to fully resolve. validateCardIds() now strips
+// diacritics before comparing, so the accented names that used to appear
+// here (Dandan, Juzam Djinn, El-Hajjaj, Ghazban Ogre, Khabal Ghoul, Junun
+// Efreet, Ifh-Biff Efreet) are gone from this set. See
+// tools/enemy-deck-audit/analyze.mjs and
 // tests/scenarios/enemy-deck-audit-missing-cards.test.js. None of this
 // batch's 6 new ids have accents or apostrophes, so none belong here --
 // this list exists only so the test can assert "no *new* warnings".
 const KNOWN_PRE_EXISTING_WARNING_IDS = new Set([
-  'dandan', 'juzam_djinn', 'monss_goblin_raiders', 'gaea_liege', 'hurkyls_recall',
-  'nevinyrral_disk', 'ashnods_altar', 'tawnos_coffin', 'davenant_archer',
-  'el_hajjaj', 'ghazban_ogre', 'khabal_ghoul', 'ring_of_maruf', 'junun_efreet',
-  'will_o_the_wisp', 'ifh_biff_efreet',
+  'monss_goblin_raiders', 'gaea_liege', 'hurkyls_recall', 'nevinyrral_disk',
+  'ashnods_altar', 'tawnos_coffin', 'davenant_archer', 'ring_of_maruf',
+  'will_o_the_wisp', 'hells_caretaker',
 ]);
 
 describe('@engine @premodern Scenario: enemy-deck-audit stub batch (mana batteries, Whimsy, Deep Water)', () => {

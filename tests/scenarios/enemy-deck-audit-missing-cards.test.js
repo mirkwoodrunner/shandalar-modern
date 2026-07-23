@@ -54,15 +54,17 @@ const LIVE_FETCHED_IDS = ['rainbow_knights', 'necropolis_of_azar', 'aswan_jaguar
 
 const ALL_NEW_IDS = [...POOL_SOURCED_IDS, ...LIVE_FETCHED_IDS];
 
-// Ids already known (pre-existing, before this batch) to trip validateCardIds()
-// on accented/apostrophe names -- see the ALIASES diacritics-fix comment in
-// tools/enemy-deck-audit/analyze.mjs. "ifh_biff_efreet" joins this list as
-// part of this batch (its real Scryfall name is "Ifh-Bíff Efreet").
+// Legacy ids that predate the double-s possessive convention (e.g.
+// Aladdin's Lamp -> aladdinss_lamp) and would need an id rename -- touching
+// every reference to them -- to fully resolve. validateCardIds() now strips
+// diacritics before comparing, so the accented names that used to appear
+// here (Dandan, Juzam Djinn, El-Hajjaj, Ghazban Ogre, Khabal Ghoul, Junun
+// Efreet, Ifh-Biff Efreet) are gone from this set. See the ALIASES
+// diacritics-fix comment in tools/enemy-deck-audit/analyze.mjs.
 const KNOWN_DIACRITIC_OR_APOSTROPHE_WARNING_IDS = new Set([
-  'dandan', 'juzam_djinn', 'monss_goblin_raiders', 'gaea_liege', 'hurkyls_recall',
-  'nevinyrral_disk', 'ashnods_altar', 'tawnos_coffin', 'davenant_archer',
-  'el_hajjaj', 'ghazban_ogre', 'khabal_ghoul', 'ring_of_maruf', 'junun_efreet',
-  'will_o_the_wisp', 'ifh_biff_efreet',
+  'monss_goblin_raiders', 'gaea_liege', 'hurkyls_recall', 'nevinyrral_disk',
+  'ashnods_altar', 'tawnos_coffin', 'davenant_archer', 'ring_of_maruf',
+  'will_o_the_wisp', 'hells_caretaker',
 ]);
 
 describe('@engine @premodern Scenario: enemy-deck-audit missing-cards batch', () => {
