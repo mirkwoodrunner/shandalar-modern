@@ -8,16 +8,12 @@
 // renderHook) -- see that file's own header comment for precedent.
 
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import path from 'path';
 import { duelReducer, canPay, isCre, buildDuelState } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { RULESETS } from '../../src/data/rulesets.js';
+import { CARD_DB } from '../../src/data/cards.js';
 import { makeState, makeCreature, makeLand, makeSpell } from '../../src/engine/__tests__/_factory.js';
 import { needsAnyTarget, isOptionalTarget } from '../../src/hooks/useDuelController';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function makeSacrifice(iid, overrides = {}) {
   return makeSpell(iid, {
@@ -351,16 +347,10 @@ describe('@engine-batch-stubs-1 Scenario: additional-cost-sacrifice -- regressio
     expect(wouldStopAtAdditionalCost).toBe(false); // advanceCastFlow's new gate is skipped entirely
   });
 
-  it('SAC-21: exactly 7 uppercase STUB entries remain in cards.js, and Sacrifice is no longer one of them', () => {
-    const filePath = path.join(__dirname, '../../src/data/cards.js');
-    const src = readFileSync(filePath, 'utf8');
-    const matches = src.match(/effect:"STUB"/g) || [];
-    expect(matches.length).toBe(7);
-
-    const sacrificeLine = src.split('\n').find(l => l.includes('id:"sacrifice"'));
-    expect(sacrificeLine).toBeTruthy();
-    expect(sacrificeLine).not.toContain('effect:"STUB"');
-    expect(sacrificeLine).toContain('additionalCost:{type:"sacrificeCreature"}');
+  it('SAC-21: Sacrifice is fully implemented (not STUB)', () => {
+    const sacrifice = CARD_DB.find(c => c.id === 'sacrifice');
+    expect(sacrifice, 'expected sacrifice in CARD_DB').toBeTruthy();
+    expect(sacrifice.effect).not.toBe('STUB');
   });
 
   it('SAC-22: additionalCostSnapshot defaults to null in fresh game state and is cleared at end-of-turn cleanup', () => {

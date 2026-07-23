@@ -38,14 +38,21 @@
   Audit Coverage (6 cards) for full detail.
   Tests: 5 Vitest (`tests/scenarios/enemy-deck-audit-stub-batch.test.js`), 0
   Playwright (data-only change, no UI surface).
+- **Fix: OUB-24 / SAC-21 stale STUB count assertions** -- both tests counted
+  `effect:"STUB"` occurrences via a raw-text regex on `cards.js` source,
+  which also matched a comment on line 819 (giving 30 vs. the real 29), and
+  asserted an exact global STUB total -- an invariant that keeps drifting
+  now that STUB cards are a normal, ongoing backlog rather than a fixed
+  milestone. Replaced both with named-card checks parsed from `CARD_DB`
+  directly: OUB-24 now asserts `blaze_of_glory` and `ring_of_maruf` stay
+  non-STUB; SAC-21 now asserts `sacrifice` stays non-STUB. No engine files
+  touched. Tests: 2 Vitest cases modified in place in
+  `tests/scenarios/oubliette.test.js` and
+  `tests/scenarios/additional-cost-sacrifice.test.js` (net zero test-case
+  count change), 0 Playwright.
 - **Known open issues (found while running `test:targeted -- @engine` for
   the batch above, confirmed pre-existing via a clean-checkout comparison,
   not caused by this batch):**
-  - `OUB-24` (`tests/scenarios/oubliette.test.js`) and `SAC-21`
-    (`tests/scenarios/additional-cost-sacrifice.test.js`) have stale
-    hardcoded `effect:"STUB"` count assertions (expect 2 and 7; actual is 0)
-    -- every prior STUB card those counts covered has since been unstubbed.
-    Needs its own fix, not bundled here.
   - Same stale-count pattern also currently fails in
     `tests/scenarios/animate-artifact.test.js` (`AA-23`),
     `tests/scenarios/ring-of-maruf.test.js` (`RM-22`), and
