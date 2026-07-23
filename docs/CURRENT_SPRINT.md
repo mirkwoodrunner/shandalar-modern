@@ -18,6 +18,55 @@
   Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-23)
+- **Batch: Enemy Deck Audit Coverage (follow-up, 6 cards)** -- closes the
+  gaps deliberately deferred by the 2026-07-20 "Enemy Deck Audit -- Missing
+  Cards" batch (Ragman, Zephyr Falcons, Whimsy, the 4 non-white Mana
+  Batteries, V. Enchantress, Deep Water, Abu Jafar). Of those 8 deck-file
+  names, 4 (Ragman, Zephyr Falcons, V. Enchantress, Abu Jafar) already had
+  matching `CARD_DB` entries under their real Scryfall names (Rag Man,
+  Zephyr Falcon, Verduran Enchantress, Abu Ja'far) -- the gap was
+  `tools/enemy-deck-audit/analyze.mjs`'s `ALIASES` table missing the
+  deck-file spelling, not a missing card; fixed with 4 new alias entries.
+  The other 6 needed genuine new `CARD_DB` entries, all `effect:"STUB"`:
+  `black_mana_battery`, `blue_mana_battery`, `green_mana_battery`,
+  `red_mana_battery` (siblings of the pre-existing `white_mana_battery`),
+  `whimsy`, `deep_water`. `CARD_DB`: 703 -> 709. Audit now reports 100%
+  coverage on both `original` and `spells-of-the-ancients` enemy deck packs
+  (Prismatic Dragon, previously the last deferred gap, was already resolved
+  by the prior batch). See `docs/MECHANICS_INDEX.md` -- Batch: Enemy Deck
+  Audit Coverage (6 cards) for full detail.
+  Tests: 5 Vitest (`tests/scenarios/enemy-deck-audit-stub-batch.test.js`), 0
+  Playwright (data-only change, no UI surface).
+- **Known open issues (found while running `test:targeted -- @engine` for
+  the batch above, confirmed pre-existing via a clean-checkout comparison,
+  not caused by this batch):**
+  - `OUB-24` (`tests/scenarios/oubliette.test.js`) and `SAC-21`
+    (`tests/scenarios/additional-cost-sacrifice.test.js`) have stale
+    hardcoded `effect:"STUB"` count assertions (expect 2 and 7; actual is 0)
+    -- every prior STUB card those counts covered has since been unstubbed.
+    Needs its own fix, not bundled here.
+  - Same stale-count pattern also currently fails in
+    `tests/scenarios/animate-artifact.test.js` (`AA-23`),
+    `tests/scenarios/ring-of-maruf.test.js` (`RM-22`), and
+    `tests/scenarios/gloom.test.js` (`GLOOM-22`) -- all assert an exact
+    remaining-STUB-count or STUB-membership that's since drifted.
+  - `tests/scenarios/tap-centralization.test.js` (`TAP-14`),
+    `tests/scenarios/coral-helm.test.js` (`HELM-02`),
+    `tests/scenarios/raging-river.test.js` (`RR-17`),
+    `tests/scenarios/guardian-angel.test.js` (`GA-01`, `GA-03`), and
+    `tests/scenarios/aladdins-lamp.test.js` (`AL-01`, `AL-02`, `AL-03`,
+    `AL-04`, `AL-14`) also fail on a clean `main` checkout, unrelated to any
+    card/engine file this batch touched. Not diagnosed further here (out of
+    scope for a data-only batch); flagging so a future pass doesn't have to
+    rediscover that these predate it.
+  - `validateCardIds()` in `src/data/cards.js` has the same diacritic/
+    apostrophe-regex bug fixed in `analyze.mjs` here, logging false-positive
+    ID-mismatch warnings on every dev-mode run (e.g. `hells_caretaker` ->
+    `hellss_caretaker` for "Hell's Caretaker", plus the ~14 previously
+    logged for other accented/apostrophe cards) -- separate fix, not
+    bundled here.
+
 ## Completed (2026-07-21)
 - **A9 Upkeep-Restricted Activated-Ability Batch (5 cards)** -- Dwarven
   Weaponsmith, Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria.

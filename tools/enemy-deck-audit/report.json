@@ -1,69 +1,23 @@
 {
-  "generatedAt": "2026-07-20T04:24:31.218Z",
-  "cardDbSize": 686,
+  "generatedAt": "2026-07-23T14:00:42.555Z",
+  "cardDbSize": 709,
   "rollups": {
     "original": {
       "deckCount": 55,
       "totalCards": 3302,
-      "matchedCards": 3293,
-      "coveragePct": 99.7,
-      "fullyCoveredDecks": 51,
-      "missingCardFrequency": [
-        {
-          "name": "Ragman",
-          "deckCopies": 2
-        },
-        {
-          "name": "Zephyr Falcons",
-          "deckCopies": 2
-        },
-        {
-          "name": "Whimsy",
-          "deckCopies": 1
-        },
-        {
-          "name": "Black Mana Battery",
-          "deckCopies": 1
-        },
-        {
-          "name": "Blue Mana Battery",
-          "deckCopies": 1
-        },
-        {
-          "name": "Green Mana Battery",
-          "deckCopies": 1
-        },
-        {
-          "name": "Red Mana Battery",
-          "deckCopies": 1
-        }
-      ],
+      "matchedCards": 3302,
+      "coveragePct": 100,
+      "fullyCoveredDecks": 55,
+      "missingCardFrequency": [],
       "filesWithIdCollisions": []
     },
     "spells-of-the-ancients": {
       "deckCount": 55,
       "totalCards": 3327,
-      "matchedCards": 3320,
-      "coveragePct": 99.8,
-      "fullyCoveredDecks": 51,
-      "missingCardFrequency": [
-        {
-          "name": "V. Enchantress",
-          "deckCopies": 2
-        },
-        {
-          "name": "Deep Water",
-          "deckCopies": 2
-        },
-        {
-          "name": "Abu Jafar",
-          "deckCopies": 2
-        },
-        {
-          "name": "Whimsy",
-          "deckCopies": 1
-        }
-      ],
+      "matchedCards": 3327,
+      "coveragePct": 100,
+      "fullyCoveredDecks": 55,
+      "missingCardFrequency": [],
       "filesWithIdCollisions": [
         {
           "file": "0030.dck",
@@ -208,9 +162,9 @@
       "titleSpells": "Great Druid (Gr, Type 1)",
       "titleMismatch": false,
       "coverageOriginal": 100,
-      "coverageSpells": 96.7,
-      "betterSource": "original",
-      "contentOverlapPct": 33.3,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 38.1,
       "contentMismatchFlag": false
     },
     {
@@ -274,9 +228,9 @@
       "titleSpells": "Merfolk Shaman (Ub, Type 1)",
       "titleMismatch": false,
       "coverageOriginal": 100,
-      "coverageSpells": 96.7,
-      "betterSource": "original",
-      "contentOverlapPct": 50,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 47.1,
       "contentMismatchFlag": false
     },
     {
@@ -340,9 +294,9 @@
       "titleSpells": "High Priest (Wh, Type 1)",
       "titleMismatch": false,
       "coverageOriginal": 100,
-      "coverageSpells": 96.7,
-      "betterSource": "original",
-      "contentOverlapPct": 56.3,
+      "coverageSpells": 100,
+      "betterSource": "tie",
+      "contentOverlapPct": 52.9,
       "contentMismatchFlag": false
     },
     {
@@ -636,10 +590,10 @@
       "titleOriginal": "Whim (Ub/Bl/Wh, 4th)",
       "titleSpells": "Whim (U/B/W, Type 1)",
       "titleMismatch": false,
-      "coverageOriginal": 98.4,
-      "coverageSpells": 98.4,
+      "coverageOriginal": 100,
+      "coverageSpells": 100,
       "betterSource": "tie",
-      "contentOverlapPct": 36.7,
+      "contentOverlapPct": 38.7,
       "contentMismatchFlag": false
     },
     {
@@ -658,10 +612,10 @@
       "titleOriginal": "Dracur (R/G/B, 4th)",
       "titleSpells": "Dracur (R/G/B, Type 1, D.K.)",
       "titleMismatch": false,
-      "coverageOriginal": 96.6,
+      "coverageOriginal": 100,
       "coverageSpells": 100,
-      "betterSource": "spells-of-the-ancients",
-      "contentOverlapPct": 38.2,
+      "betterSource": "tie",
+      "contentOverlapPct": 37.1,
       "contentMismatchFlag": false
     },
     {
@@ -669,10 +623,10 @@
       "titleOriginal": "Kiska-Ra (W/G/U, 4th)",
       "titleSpells": "Kiska Ra (W/G/U, Type 1)",
       "titleMismatch": true,
-      "coverageOriginal": 97,
+      "coverageOriginal": 100,
       "coverageSpells": 100,
-      "betterSource": "spells-of-the-ancients",
-      "contentOverlapPct": 71.9,
+      "betterSource": "tie",
+      "contentOverlapPct": 75,
       "contentMismatchFlag": false
     },
     {
@@ -680,10 +634,10 @@
       "titleOriginal": "Arzakon",
       "titleSpells": "Climatic Battle",
       "titleMismatch": true,
-      "coverageOriginal": 97.1,
+      "coverageOriginal": 100,
       "coverageSpells": 100,
-      "betterSource": "spells-of-the-ancients",
-      "contentOverlapPct": 11.2,
+      "betterSource": "tie",
+      "contentOverlapPct": 10.8,
       "contentMismatchFlag": true
     }
   ],
@@ -836,10 +790,10 @@
       "titleOriginal": "Kiska-Ra (W/G/U, 4th)",
       "titleSpells": "Kiska Ra (W/G/U, Type 1)",
       "titleMismatch": true,
-      "coverageOriginal": 97,
+      "coverageOriginal": 100,
       "coverageSpells": 100,
-      "betterSource": "spells-of-the-ancients",
-      "contentOverlapPct": 71.9,
+      "betterSource": "tie",
+      "contentOverlapPct": 75,
       "contentMismatchFlag": false
     },
     {
@@ -847,10 +801,10 @@
       "titleOriginal": "Arzakon",
       "titleSpells": "Climatic Battle",
       "titleMismatch": true,
-      "coverageOriginal": 97.1,
+      "coverageOriginal": 100,
       "coverageSpells": 100,
-      "betterSource": "spells-of-the-ancients",
-      "contentOverlapPct": 11.2,
+      "betterSource": "tie",
+      "contentOverlapPct": 10.8,
       "contentMismatchFlag": true
     }
   ],
@@ -2537,15 +2491,10 @@
         "file": "0991.DCK",
         "title": "Whim (Ub/Bl/Wh, 4th)",
         "totalCards": 62,
-        "matchedCards": 61,
-        "unmatchedCards": 1,
-        "coveragePct": 98.4,
-        "unmatchedNames": [
-          {
-            "name": "Whimsy",
-            "qty": 1
-          }
-        ],
+        "matchedCards": 62,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "island",
           "plains",
@@ -2569,7 +2518,8 @@
           "colossus_of_sardia",
           "carrion_ants",
           "kismet",
-          "kormus_bell"
+          "kormus_bell",
+          "whimsy"
         ],
         "sideboardColors": [
           "None",
@@ -2626,15 +2576,10 @@
         "file": "0993.DCK",
         "title": "Dracur (R/G/B, 4th)",
         "totalCards": 59,
-        "matchedCards": 57,
-        "unmatchedCards": 2,
-        "coveragePct": 96.6,
-        "unmatchedNames": [
-          {
-            "name": "Ragman",
-            "qty": 2
-          }
-        ],
+        "matchedCards": 59,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "mountain",
           "swamp",
@@ -2656,6 +2601,7 @@
           "desert_twister",
           "fissure",
           "mind_twist",
+          "rag_man",
           "hypnotic_specter",
           "disrupting_scepter",
           "wall_of_dust"
@@ -2674,15 +2620,10 @@
         "file": "0994.DCK",
         "title": "Kiska-Ra (W/G/U, 4th)",
         "totalCards": 66,
-        "matchedCards": 64,
-        "unmatchedCards": 2,
-        "coveragePct": 97,
-        "unmatchedNames": [
-          {
-            "name": "Zephyr Falcons",
-            "qty": 2
-          }
-        ],
+        "matchedCards": 66,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "plains",
           "island",
@@ -2695,6 +2636,7 @@
           "giant_tortoise",
           "elvish_archers",
           "scryb_sprites",
+          "zephyr_falcon",
           "tundra_wolves",
           "timber_wolves",
           "samite_healer",
@@ -2719,27 +2661,10 @@
         "file": "0999.DCK",
         "title": "Arzakon",
         "totalCards": 138,
-        "matchedCards": 134,
-        "unmatchedCards": 4,
-        "coveragePct": 97.1,
-        "unmatchedNames": [
-          {
-            "name": "Black Mana Battery",
-            "qty": 1
-          },
-          {
-            "name": "Blue Mana Battery",
-            "qty": 1
-          },
-          {
-            "name": "Green Mana Battery",
-            "qty": 1
-          },
-          {
-            "name": "Red Mana Battery",
-            "qty": 1
-          }
-        ],
+        "matchedCards": 138,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "hurr_jackal",
           "forest",
@@ -2796,6 +2721,8 @@
           "spirit_link",
           "mishrass_factory",
           "aladdinss_ring",
+          "black_mana_battery",
+          "blue_mana_battery",
           "brass_man",
           "clockwork_avian",
           "clockwork_beast",
@@ -2803,6 +2730,7 @@
           "dancing_scimitar",
           "diabolic_machine",
           "fellwar_stone",
+          "green_mana_battery",
           "grapeshot_catapult",
           "obsianus_golem",
           "shapeshifter",
@@ -2811,6 +2739,7 @@
           "triskelion",
           "urzass_avenger",
           "white_mana_battery",
+          "red_mana_battery",
           "mishrass_workshop"
         ],
         "sideboardColors": [
@@ -3132,15 +3061,10 @@
         "file": "0095.dck",
         "title": "Great Druid (Gr, Type 1)",
         "totalCards": 60,
-        "matchedCards": 58,
-        "unmatchedCards": 2,
-        "coveragePct": 96.7,
-        "unmatchedNames": [
-          {
-            "name": "V. Enchantress",
-            "qty": 2
-          }
-        ],
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "forest",
           "mox_emerald",
@@ -3155,6 +3079,7 @@
           "living_lands",
           "stream_of_life",
           "untamed_wilds",
+          "verduran_enchantress",
           "erhnam_djinn",
           "citanul_druid"
         ],
@@ -3298,15 +3223,10 @@
         "file": "0150.dck",
         "title": "Merfolk Shaman (Ub, Type 1)",
         "totalCards": 60,
-        "matchedCards": 58,
-        "unmatchedCards": 2,
-        "coveragePct": 96.7,
-        "unmatchedNames": [
-          {
-            "name": "Deep Water",
-            "qty": 2
-          }
-        ],
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "island",
           "merfolk_of_the_pearl_trident",
@@ -3319,7 +3239,8 @@
           "power_sink",
           "phantasmal_terrain",
           "sea_serpent",
-          "pirate_ship"
+          "pirate_ship",
+          "deep_water"
         ],
         "sideboardColors": [],
         "idCollisions": []
@@ -3458,15 +3379,10 @@
         "file": "0203.dck",
         "title": "High Priest (Wh, Type 1)",
         "totalCards": 60,
-        "matchedCards": 58,
-        "unmatchedCards": 2,
-        "coveragePct": 96.7,
-        "unmatchedNames": [
-          {
-            "name": "Abu Jafar",
-            "qty": 2
-          }
-        ],
+        "matchedCards": 60,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "plains",
           "armageddon",
@@ -3475,6 +3391,7 @@
           "healing_salve",
           "consecrate_land",
           "mesa_pegasus",
+          "abu_jasfar",
           "savannah_lions",
           "mishrass_factory",
           "white_knight",
@@ -4198,15 +4115,10 @@
         "file": "0991.dck",
         "title": "Whim (U/B/W, Type 1)",
         "totalCards": 61,
-        "matchedCards": 60,
-        "unmatchedCards": 1,
-        "coveragePct": 98.4,
-        "unmatchedNames": [
-          {
-            "name": "Whimsy",
-            "qty": 1
-          }
-        ],
+        "matchedCards": 61,
+        "unmatchedCards": 0,
+        "coveragePct": 100,
+        "unmatchedNames": [],
         "matchedCardIds": [
           "island",
           "twiddle",
@@ -4225,7 +4137,8 @@
           "serra_angel",
           "clone",
           "meekstone",
-          "kismet"
+          "kismet",
+          "whimsy"
         ],
         "sideboardColors": [],
         "idCollisions": []
