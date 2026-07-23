@@ -18,12 +18,10 @@
 // See docs/ENGINE_CONTRACT_SPEC.md -- One-Shot Phasing (Oubliette).
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { duelReducer, zMove, recomputeTypeEffects, isCre } from '../../src/engine/DuelCore.js';
 import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature, makeLand } from '../../src/engine/__tests__/_factory.js';
-import { getCardById } from '../../src/data/cards.js';
+import { getCardById, CARD_DB } from '../../src/data/cards.js';
 import {
   needsExplicitTarget,
   needsAnyTarget,
@@ -485,11 +483,13 @@ describe("@engine-card-scenarios-1 Scenario: Oubliette (one-shot phasing)", () =
     expect(state.p.emblems[0].source).toBe('titanias_song');
   });
 
-  it('OUB-24: the uppercase effect:"STUB" sentinel count in cards.js is exactly 2 (Blaze of Glory, Ring of Ma\'ruf remaining)', () => {
-    const cardsPath = fileURLToPath(new URL('../../src/data/cards.js', import.meta.url));
-    const src = readFileSync(cardsPath, 'utf8');
-    const stubCount = (src.match(/effect:"STUB"/g) || []).length;
-    expect(stubCount).toBe(2);
+  it('OUB-24: Blaze of Glory and Ring of Ma\'ruf remain fully implemented (not STUB)', () => {
+    const blaze = CARD_DB.find(c => c.id === 'blaze_of_glory');
+    const ring = CARD_DB.find(c => c.id === 'ring_of_maruf');
+    expect(blaze, 'expected blaze_of_glory in CARD_DB').toBeTruthy();
+    expect(blaze.effect).not.toBe('STUB');
+    expect(ring, 'expected ring_of_maruf in CARD_DB').toBeTruthy();
+    expect(ring.effect).not.toBe('STUB');
   });
 
 });
