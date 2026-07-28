@@ -5959,4 +5959,116 @@ COMPLETE
 
 ---
 
-# End of MECHANICS INDEX v1.46
+## Legendary Creatures Batch 5: Rampage Keyword -- 2026-07-28
+
+**4 of 4 scoped cards shipped, no deferrals.** Introduces the Rampage
+keyword and its first 4 cards: Chromium ({2}{W}{W}{U}{U}{B}{B}, Elder
+Dragon, 7/7, flying + rampage 2), Marhault Elsdragon ({3}{R}{R}{G}, Elf
+Warrior, 4/6, rampage 1), Hunding Gjornersen ({3}{W}{U}{U}, Human Warrior,
+5/4, rampage 1), Gabriel Angelfire ({3}{G}{G}{W}{W}, Angel, 4/4, upkeep
+choice of flying/first strike/trample/rampage 3).
+
+**Rampage N -- `Whenever this creature becomes blocked, it gets +N/+N until
+end of turn for each creature blocking it beyond the first.`** New
+`KEYWORDS.RAMPAGE` entry (`classic:true, modern:false`, Legends-era, never
+reprinted -- same era classification as `MUST_ATTACK`/`BANDING`/`LANDWALK`/
+`FEAR`/`LURE`), plus a `rampage: N` card-data field storing the magnitude
+(same storage shape as `PROTECTION`'s `protection: [...]` array). Resolved
+generically, once per combat, in `DuelCore.js`'s `advPhase()` at the
+`COMBAT_BLOCKERS` -> `COMBAT_AFTER_BLOCKERS` transition -- an inline scan
+over `s.attackers` gated on `hasKw(att, KEYWORDS.RAMPAGE.id)`, immediately
+after the existing `MUST_ATTACK` auto-declare block and using the same
+keyword-driven-inline-scan idiom (not a named per-card trigger, since every
+Rampage creature uses identical math parameterized only by its magnitude).
+Blocker count is read from `s.blockers` (blocker iid -> attacker iid map)
+via `Object.values(s.blockers).filter(a => a === attId).length`; bonus is
+`rampageN * (blockerCount - 1)`, applied through the existing `eotBuffs`
+`{power, toughness}` bucket (expires at CLEANUP, same as every other
+until-end-of-turn pump in this file). `hasKw()` (not a raw `keywords` array
+check) is used specifically so Gabriel Angelfire's `eotBuffs`-granted
+Rampage is detected identically to a statically-keyworded card.
+
+**Chromium -- `sacrifice this creature unless you pay {W}{U}{B}`.** New
+`sacrificeUnless_WUB` case in the `switch (c.upkeep)` chain, copying the
+exact shape of `sacrificeUnless_RGW`/`UBR`/`BRG` (Palladia-Mors/Nicol Bolas/
+Vaevictis Asmadi, Legendary Creatures Batch 3). Inherits the same documented
+mana-burn-first behavior as those three siblings: `burnMana()` runs
+unconditionally for both players at the top of every `advPhase()` call,
+including the same call that processes the `UNTAP` -> `UPKEEP` transition's
+upkeep effects, so any mana pre-loaded before the transition is always wiped
+before this case's affordability check runs. In practice this means the tax
+is never actually payable through the normal upkeep transition for any of
+these four cards -- an existing, protected-file (`DuelCore.js`) behavior,
+not something this batch introduced or was asked to fix. Regression-tested
+the same way Batch 3 tests it: sacrificed by default, and still sacrificed
+even with `{W}{U}{B}` pre-loaded (documents the mana-burn-first ordering
+rather than asserting an unreachable "kept, mana paid" scenario).
+
+**Gabriel Angelfire -- `At the beginning of your upkeep, choose flying,
+first strike, trample, or rampage 3. Gabriel Angelfire gains that ability
+until your next upkeep.`** SIMPLIFICATION: "until your next upkeep" is
+approximated as "until end of turn" via `eotBuffs` (cleared at CLEANUP) --
+the same simplification already established for that exact oracle wording
+on Erhnam Djinn and Xenic Poltergeist. No manual removal of a prior grant is
+needed: `eotBuffs` are wiped for both players every CLEANUP, which always
+happens before this creature's own next upkeep can occur. AI (`'o'`)
+auto-grants rampage 3 unconditionally (no UI needed for the opponent); human
+(`'p'`) is queued via a new `gabrielAngelfireUpkeep` entry in
+`UPKEEP_CHOICE_HANDLERS`, resolving `action.choice` (`'flying'` |
+`'first_strike'` | `'trample'` | `'rampage_3'`) into the matching `eotBuffs`
+grant (the first three grant a bare `{keywords:[...]}`; `rampage_3` also
+carries a sibling `rampageBonus: 3` field, read by the Rampage combat scan
+above in preference to a static `rampage` value). Card data's static
+`keywords` array is intentionally empty -- the card only ever has an ability
+temporarily, via the upkeep choice, so listing First Strike/Trample
+statically would misrepresent it (Scryfall's `keywords` metadata field lists
+every keyword *mentioned in the oracle text*, not permanent
+characteristics).
+
+**UI (new upkeep-choice modal):** `GabrielAngelfireUpkeepModal.tsx` -- new
+file, modeled structurally on `LandPickerUpkeepModal.tsx` (same
+`popover-overlay`/`popover-content` shell, one button per option) but with 4
+fixed options instead of a dynamic land list; kept as a separate component
+rather than extending `LandPickerUpkeepModal` since that component is
+land-specific (Island styling) and already shared by Serendib Djinn/Mana
+Vortex. Registered in `upkeepChoiceRegistry.tsx`'s `UPKEEP_CHOICE_MODALS`
+map (both `DuelScreen.tsx` and `DuelScreenMobile.tsx` already read this
+registry generically) -- no screen-file changes, so this batch cannot affect
+any existing desktop or mobile behavior beyond the new modal itself.
+
+No legend-rule work needed -- `checkLegendRule()`/`isLegendary()` are
+generic, driven by the `type` string containing `"Legendary"`; all 4 new
+cards need nothing beyond the `type:"Legendary Creature"` string already
+used by every other legendary creature in `cards.js`.
+
+Closes 4 more of A9's legendary-creature count: 38 of 55 (34 before this
+batch: 21 from Batch 1+2, 6 from Cleanup, 3 from Batch 3, 4 from Batch 4;
+plus these 4); see `docs/ROADMAP.md` A9 for the remaining backlog.
+
+**Tests:**
+- Vitest: `tests/scenarios/legendary-creatures-batch-5-rampage.test.js` (8:
+  3 Rampage combat-math cases [no bonus on a single block, Marhault's
+  double-block +1/+1 with CLEANUP expiry, Chromium's triple-block +4/+4], 2
+  Chromium upkeep-tax cases [sacrificed by default, still sacrificed with
+  pre-loaded mana], 2 Gabriel Angelfire cases [AI auto-grant + a subsequent
+  double-block, human upkeep-choice queuing + all 4 `UPKEEP_CHOICE_RESOLVE`
+  branches], 1 legend-rule sanity check using two Chromiums).
+- Playwright: `tests/e2e/legendary-creatures-batch-5-rampage.spec.js` (1
+  file x 2 viewports, styled after `tests/e2e/upkeep-batch-a9.spec.js`'s
+  `seedAndReachUpkeep` + explicit `test.use({viewport})` `runSuite` pattern
+  -- desktop 1280x800 and mobile 390x844 both exercised directly by the spec
+  itself, not by `playwright.config.js`'s `mobile-chrome` `testMatch`
+  allowlist, avoiding the exact gap flagged in "Legend Rule / Legendary
+  Creatures Mobile Spec Gap" above. Covers Gabriel Angelfire's upkeep modal
+  rendering and all 4 option buttons resolving to the correct `eotBuffs`
+  entry. Chromium/Marhault Elsdragon/Hunding Gjornersen and the Rampage
+  combat math itself are engine-only -- no new UI surface -- so they're
+  covered only by the Vitest file, per the same convention documented in
+  Legendary Creatures Batch 4's Playwright entry above.).
+
+### Status
+COMPLETE -- 4 of 4 cards shipped
+
+---
+
+# End of MECHANICS INDEX v1.47

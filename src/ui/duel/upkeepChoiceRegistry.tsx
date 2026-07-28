@@ -14,6 +14,7 @@ import { SafeHavenUpkeepModal } from './SafeHavenUpkeepModal';
 import { WormsOfTheEarthUpkeepModal } from './WormsOfTheEarthUpkeepModal';
 import { SeasonOfTheWitchUpkeepModal } from './SeasonOfTheWitchUpkeepModal';
 import { PsychicAllergyUpkeepModal } from './PsychicAllergyUpkeepModal';
+import { GabrielAngelfireUpkeepModal } from './GabrielAngelfireUpkeepModal';
 import { isLand } from '../../engine/DuelCore.js';
 
 export const UPKEEP_CHOICE_MODALS: Record<string, {
@@ -91,6 +92,12 @@ export const UPKEEP_CHOICE_MODALS: Record<string, {
   },
   psychicAllergyUpkeep: {
     component: PsychicAllergyUpkeepModal,
+    getProps: (_s, _choice, resolveUpkeepChoice) => ({
+      onResolve: resolveUpkeepChoice,
+    }),
+  },
+  gabrielAngelfireUpkeep: {
+    component: GabrielAngelfireUpkeepModal,
     getProps: (_s, _choice, resolveUpkeepChoice) => ({
       onResolve: resolveUpkeepChoice,
     }),

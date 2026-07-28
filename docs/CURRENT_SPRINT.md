@@ -18,6 +18,40 @@
   Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-07-28)
+- **Legendary Creatures Batch 5: Rampage Keyword (4 cards)** -- Chromium,
+  Marhault Elsdragon, Hunding Gjornersen, Gabriel Angelfire. Introduces the
+  Rampage keyword: resolved generically once per combat in `DuelCore.js`'s
+  `advPhase()` at the `COMBAT_BLOCKERS` -> `COMBAT_AFTER_BLOCKERS`
+  transition (same keyword-driven-inline-scan idiom as the existing
+  `MUST_ATTACK` auto-declare block, not a named per-card trigger), applying
+  `+N*(blockers-1)` via the existing `eotBuffs` bucket. Chromium's
+  `sacrificeUnless_WUB` upkeep tax copies `sacrificeUnless_RGW`/`UBR`/`BRG`
+  (Palladia-Mors/Nicol Bolas/Vaevictis Asmadi, Batch 3) verbatim, including
+  their documented mana-burn-first quirk (mana always wipes before the
+  affordability check runs, so the tax is never actually payable through the
+  normal upkeep transition -- pre-existing, protected-file behavior, not
+  something this batch introduced or was asked to fix). Gabriel Angelfire's
+  "choose flying/first strike/trample/rampage 3 until your next upkeep" is
+  approximated as "until end of turn" via `eotBuffs` -- the same
+  simplification already established for that exact wording on Erhnam Djinn
+  and Xenic Poltergeist; AI auto-grants rampage 3, human gets a new
+  `gabrielAngelfireUpkeep` upkeep-choice modal (`GabrielAngelfireUpkeepModal.tsx`,
+  registered in `upkeepChoiceRegistry.tsx`, modeled on `LandPickerUpkeepModal.tsx`
+  with 4 fixed options instead of a dynamic land list). No legend-rule work
+  needed (generic, `type`-string-driven). Closes 4 more of A9's
+  legendary-creature count: 38 of 55 (34 from Batch 1+2/Cleanup/Batch 3/
+  Batch 4, plus these 4); see `docs/ROADMAP.md` A9 for the remaining
+  backlog. Tests: 8 Vitest
+  (`tests/scenarios/legendary-creatures-batch-5-rampage.test.js`), 2
+  Playwright (`tests/e2e/legendary-creatures-batch-5-rampage.spec.js`, 1
+  file x 2 viewports -- desktop and mobile both exercised directly by the
+  spec itself via `test.use({viewport})`, same pattern as
+  `tests/e2e/upkeep-batch-a9.spec.js`, covering Gabriel Angelfire's upkeep
+  modal and all 4 option buttons; the other 3 cards and the Rampage combat
+  math itself are engine-only, no new UI surface, so Vitest-only). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 5: Rampage Keyword.
+
 ## Completed (2026-07-23)
 - **Batch: Enemy Deck Audit Coverage (follow-up, 6 cards)** -- closes the
   gaps deliberately deferred by the 2026-07-20 "Enemy Deck Audit -- Missing

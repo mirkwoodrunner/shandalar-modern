@@ -48,6 +48,10 @@ export const KEYWORDS = {
   FEAR:          { id:"FEAR",          name:"Fear",          classic:true,  modern:false, desc:"Can't be blocked except by artifact creatures and/or black creatures." },
   LURE:          { id:"LURE",          name:"Lure",          classic:true,  modern:false, desc:"All creatures able to block this creature do so.", rulesetGated:"lure" },
   MUST_ATTACK:   { id:"MUST_ATTACK",   name:"Must Attack",   classic:true,  modern:false, desc:"This creature attacks each combat if able." },
+  RAMPAGE: {
+    id:"RAMPAGE", name:"Rampage", classic:true, modern:false,
+    desc:"Whenever this creature becomes blocked, it gets +N/+N until end of turn for each creature blocking it beyond the first.",
+  },
 };
 
 export default KEYWORDS;
