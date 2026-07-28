@@ -877,6 +877,16 @@ export const CARD_DB = [
 {id:"mirror_universe",name:"Mirror Universe",type:"Artifact",color:"",cmc:6,cost:"6",keywords:[],rarity:"R",text:"{T}, Sacrifice Mirror Universe: Exchange life totals with target opponent. Activate only during your upkeep.",activated:{cost:"T,sac",effect:"exchangeLifeTotals",myUpkeepOnly:true}},
 {id:"tolaria",name:"Tolaria",type:"Legendary Land",color:"",cmc:0,cost:"",text:"{T}: Add {U}.\n{T}: Target creature loses banding and all \"bands with other\" abilities until end of turn. Activate only during any upkeep step.",produces:["U"],rarity:"U",activated:{cost:"T",effect:"removeBandingEOT",anyUpkeepOnly:true}},
 
+// -- LEGENDARY CREATURES BATCH 5: RAMPAGE KEYWORD (4 cards) -----------------
+// Introduces the Rampage keyword (see src/data/keywords.js). See
+// docs/MECHANICS_INDEX.md / docs/CURRENT_SPRINT.md for the full batch
+// writeup, and tests/scenarios/legendary-creatures-batch-5-rampage.test.js
+// for coverage.
+{id:"chromium",name:"Chromium",type:"Legendary Creature",subtype:"Elder Dragon",color:"WUB",cmc:8,cost:"2WWUUBB",power:7,toughness:7,keywords:[KEYWORDS.FLYING.id,KEYWORDS.RAMPAGE.id],rampage:2,rarity:"R",text:"Flying\nRampage 2 (Whenever this creature becomes blocked, it gets +2/+2 until end of turn for each creature blocking it beyond the first.)\nAt the beginning of your upkeep, sacrifice Chromium unless you pay {W}{U}{B}.",upkeep:"sacrificeUnless_WUB"},
+{id:"marhault_elsdragon",name:"Marhault Elsdragon",type:"Legendary Creature",subtype:"Elf Warrior",color:"RG",cmc:6,cost:"3RRG",power:4,toughness:6,keywords:[KEYWORDS.RAMPAGE.id],rampage:1,rarity:"U",text:"Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"},
+{id:"hunding_gjornersen",name:"Hunding Gjornersen",type:"Legendary Creature",subtype:"Human Warrior",color:"WU",cmc:6,cost:"3WUU",power:5,toughness:4,keywords:[KEYWORDS.RAMPAGE.id],rampage:1,rarity:"U",text:"Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"},
+{id:"gabriel_angelfire",name:"Gabriel Angelfire",type:"Legendary Creature",subtype:"Angel",color:"GW",cmc:7,cost:"3GGWW",power:4,toughness:4,keywords:[],rarity:"R",text:"At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel Angelfire gains that ability until your next upkeep. (Whenever a creature with rampage 3 becomes blocked, it gets +3/+3 until end of turn for each creature blocking it beyond the first.)"},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------

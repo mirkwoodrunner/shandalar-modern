@@ -5364,6 +5364,33 @@ if (next === PHASE.COMBAT_ATTACKERS) {
   });
 }
 
+// Rampage N: "whenever this creature becomes blocked, it gets +N/+N until
+// end of turn for each creature blocking it beyond the first." Computed
+// once, generically, when blocks lock in leaving COMBAT_BLOCKERS -- same
+// keyword-driven-inline-scan idiom as the MUST_ATTACK auto-declare block
+// above, not a named per-card trigger (every Rampage creature uses identical
+// math, parameterized only by its `rampage` value). Static on Chromium,
+// Marhault Elsdragon, Hunding Gjornersen; temporary (via eotBuffs) on
+// Gabriel Angelfire -- see gabrielAngelfireUpkeep below. hasKw() (not a raw
+// keywords-array check) is required here specifically so Gabriel's
+// eotBuffs-granted Rampage is detected, same as any static Rampage card.
+if (s.phase === PHASE.COMBAT_BLOCKERS) {
+  for (const attId of (s.attackers || [])) {
+    const att = getBF(ns, attId);
+    if (!att || !hasKw(att, KEYWORDS.RAMPAGE.id)) continue;
+    const blockerCount = Object.values(s.blockers).filter(a => a === attId).length;
+    if (blockerCount < 2) continue;
+    const rampageN = (att.eotBuffs || []).find(b => typeof b.rampageBonus === 'number')?.rampageBonus ?? att.rampage ?? 0;
+    if (!rampageN) continue;
+    const bonus = rampageN * (blockerCount - 1);
+    const attSide = ns.p.bf.some(c => c.iid === attId) ? 'p' : 'o';
+    ns = { ...ns, [attSide]: { ...ns[attSide], bf: ns[attSide].bf.map(c =>
+      c.iid === attId ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: bonus, toughness: bonus }] } : c
+    ) } };
+    ns = dlog(ns, `${att.name}'s Rampage ${rampageN} triggers: +${bonus}/+${bonus} until end of turn (blocked by ${blockerCount}).`, "effect");
+  }
+}
+
 if (next === PHASE.COMBAT_END) {
   for (const iid of (ns.turnState.venomTargets ?? [])) {
     const who = ['p','o'].find(w => ns[w].bf.some(c => c.iid === iid));
@@ -5886,6 +5913,27 @@ if (c.name === "Mana Vortex") {
     ns = dlog(ns, "Mana Vortex: no lands remain on the battlefield -- sacrificed.", "effect");
   }
 }
+// Gabriel Angelfire: "At the beginning of your upkeep, choose flying, first
+// strike, trample, or rampage 3. Gabriel Angelfire gains that ability until
+// your next upkeep." SIMPLIFICATION: "until your next upkeep" approximated
+// as "until end of turn" via eotBuffs (cleared at CLEANUP) -- same
+// convention already established for this exact wording on Erhnam Djinn and
+// Xenic Poltergeist elsewhere in this file. No manual removal of a prior
+// grant is needed: eotBuffs are wiped for both players every CLEANUP, which
+// always happens before this creature's own next upkeep can occur.
+// AI ('o') auto-picks rampage 3 (no UI needed for the opponent); human ('p')
+// gets the upkeep-choice modal via gabrielAngelfireUpkeep below.
+if (c.name === "Gabriel Angelfire") {
+  if (w === "o") {
+    ns = { ...ns, o: { ...ns.o, bf: ns.o.bf.map(x => x.iid === c.iid
+      ? { ...x, eotBuffs: [...(x.eotBuffs || []), { keywords: [KEYWORDS.RAMPAGE.id], rampageBonus: 3 }] }
+      : x
+    ) } };
+    ns = dlog(ns, "Gabriel Angelfire gains rampage 3 until end of turn.", "effect");
+  } else {
+    ns = queueUpkeepChoice(ns, { cardName: "Gabriel Angelfire", handlerKey: "gabrielAngelfireUpkeep", iid: c.iid });
+  }
+}
 // The Abyss: "At the beginning of each player's upkeep, destroy target
 // nonartifact creature that player controls of their choice. It can't be
 // regenerated." Same "each player's upkeep, target is always ns.active"
@@ -6133,6 +6181,15 @@ break;
 case "sacrificeUnless_BRG": {
 const mp = { ...ns[w].mana };
 if ((mp.B || 0) >= 1 && (mp.R || 0) >= 1 && (mp.G || 0) >= 1) { mp.B--; mp.R--; mp.G--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
+else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
+break;
+}
+// Chromium: "sacrifice this creature unless you pay {W}{U}{B}." Same shape
+// as sacrificeUnless_RGW/UBR/BRG above (Palladia-Mors/Nicol Bolas/Vaevictis
+// Asmadi).
+case "sacrificeUnless_WUB": {
+const mp = { ...ns[w].mana };
+if ((mp.W || 0) >= 1 && (mp.U || 0) >= 1 && (mp.B || 0) >= 1) { mp.W--; mp.U--; mp.B--; ns = { ...ns, [w]: { ...ns[w], mana: mp } }; }
 else { ns = zMove(ns, c.iid, w, w, "gy"); ns = dlog(ns, `${c.name} sacrificed.`, "death"); }
 break;
 }
@@ -8188,6 +8245,28 @@ const UPKEEP_CHOICE_HANDLERS = {
       if (!land || !isLand(land)) return s;
       const owner = land.controller;
       return dlog(zMove(s, land.iid, owner, owner, "gy"), `Mana Vortex: ${owner} sacrifices ${land.name}.`, "effect");
+    },
+  },
+  // Gabriel Angelfire: choice.iid is Gabriel itself; action.choice is one of
+  // 'flying' | 'first_strike' | 'trample' | 'rampage_3'.
+  gabrielAngelfireUpkeep: {
+    resolve(s, choice, action) {
+      const self = getBF(s, choice.iid);
+      if (!self) return s;
+      const owner = self.controller;
+      const grants = {
+        flying: { keywords: [KEYWORDS.FLYING.id] },
+        first_strike: { keywords: [KEYWORDS.FIRST_STRIKE.id] },
+        trample: { keywords: [KEYWORDS.TRAMPLE.id] },
+        rampage_3: { keywords: [KEYWORDS.RAMPAGE.id], rampageBonus: 3 },
+      };
+      const grant = grants[action.choice];
+      if (!grant) return s;
+      let ns = { ...s, [owner]: { ...s[owner], bf: s[owner].bf.map(c =>
+        c.iid === self.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), grant] } : c
+      ) } };
+      const label = { flying: 'flying', first_strike: 'first strike', trample: 'trample', rampage_3: 'rampage 3' }[action.choice];
+      return dlog(ns, `Gabriel Angelfire gains ${label} until end of turn.`, "effect");
     },
   },
   // Magnetic Mountain: computes the eligible/affordable count at resolve time

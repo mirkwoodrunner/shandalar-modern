@@ -14,6 +14,76 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-07-28 -- `tests/e2e/structure-icons.spec.ts` (picked while auditing Legendary Creatures Batch 5: Rampage Keyword)
+
+**Originating change:** `claude/rampage-legendary-batch-5-yvxvsw` -- new
+Rampage keyword (`src/data/keywords.js`) plus 4 new cards (Chromium,
+Marhault Elsdragon, Hunding Gjornersen, Gabriel Angelfire) in `cards.js`,
+supporting `DuelCore.js` changes (a generic Rampage combat-math scan in
+`advPhase()`, a `sacrificeUnless_WUB` upkeep-tax case, a
+`gabrielAngelfireUpkeep` upkeep-choice handler), and one new UI file
+(`GabrielAngelfireUpkeepModal.tsx` + its `upkeepChoiceRegistry.tsx` entry).
+Targeted run (8 Vitest + 1 Playwright file x 2 viewports, both scoped
+exactly to this batch's own new test files) passed cleanly. The audit script
+(`node scripts/run-audit.js --files ...`) then randomly selected
+`tests/e2e/structure-icons.spec.ts` as an untouched Playwright file to
+verify against.
+
+**Command:**
+```
+node scripts/run-audit.js --files tests/scenarios/legendary-creatures-batch-5-rampage.test.js --pw-files tests/e2e/legendary-creatures-batch-5-rampage.spec.js
+```
+
+**Result:** 1 of 26 tests failed (25 passed), on the `mobile-chrome` project
+only:
+- `RUIN tile: <img alt="RUIN"> present when a ruin is in viewport [mobile
+  390x844]` -- `Test timeout of 30000ms exceeded` at a
+  `page.waitForTimeout(400)` call that runs after `page.goto` +
+  `waitForOverworld` + `revealMap(page, 20)`, i.e. the setup steps alone
+  consumed nearly the entire 30s budget before the final 400ms wait pushed
+  it over.
+
+**Diagnosis:** Judged unrelated to the originating change, for two reasons:
+1. **Zero code-path overlap.** The originating change touches exactly
+   `src/data/keywords.js`, `src/data/cards.js`, `src/engine/DuelCore.js`
+   (duel-engine upkeep/combat logic only), and one new duel-upkeep-modal UI
+   file. `structure-icons.spec.ts` exercises `OverworldGame.jsx` /
+   `useOverworldController.js` / `MapGenerator.js` structure-tile rendering
+   -- an entirely separate system per `CLAUDE.md` -- System Separation
+   (World Map, Duel Engine, and Card Database logic must remain strictly
+   separated).
+2. **Failure signature matches environment flakiness, not a logic
+   regression.** All 26 tests in this run (both `chromium` and
+   `mobile-chrome` projects) individually took 25.7s-30.0s against the same
+   30s ceiling, and Playwright's own reporter flagged the file itself as
+   slow (`Slow test file: [chromium] > tests/e2e/structure-icons.spec.ts
+   (6.1m)`). Only the one test that happened to land closest to the ceiling
+   (30.0s) tipped over. This is the same class of failure as the 2026-07-21
+   entry below (`tests/e2e/overworld-sprites.spec.ts`): a real-time,
+   fixed-window wait/navigation test tripping a 30s ceiling under a slow
+   container, not a code regression -- and this batch shares that entry's
+   exact "zero code-path overlap with the World Map system" argument too.
+
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy, logging this failure
+here per the documented procedure. Consistent with the 2026-07-21 precedent
+immediately below (same failure class: a real-time overworld/sprite-adjacent
+Playwright spec timing out at the 30s ceiling under container load, zero
+code-path overlap with the audited change, and every sibling test in the
+same run clustered near the same ceiling) -- proceeding to commit per that
+established disposition rather than re-blocking on an already-recognized
+environment-flakiness class.
+
+**Follow-up (not done here):** If `tests/e2e/structure-icons.spec.ts` comes
+up failing again in a future audit, check this entry first -- if the same
+"whole file runs close to the 30s ceiling, one test tips over" signature
+recurs with no plausible connection to the change under audit, it's likely
+the same environment-flakiness class. If it starts failing deterministically
+(not just under audit's single random draw), the file's own per-test
+timeouts may need raising, or `revealMap(page, 20)` may need to become
+cheaper -- out of scope for a data/engine batch like this one to fix.
+
+---
+
 ## 2026-07-21 -- `tests/e2e/overworld-sprites.spec.ts` (picked while auditing the A9 Upkeep-Restricted Activated-Ability batch)
 
 **Originating change:** `claude/a9-upkeep-activated-batch-dywz3e` -- 5 new
