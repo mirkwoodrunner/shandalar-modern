@@ -887,6 +887,24 @@ export const CARD_DB = [
 {id:"hunding_gjornersen",name:"Hunding Gjornersen",type:"Legendary Creature",subtype:"Human Warrior",color:"WU",cmc:6,cost:"3WUU",power:5,toughness:4,keywords:[KEYWORDS.RAMPAGE.id],rampage:1,rarity:"U",text:"Rampage 1 (Whenever this creature becomes blocked, it gets +1/+1 until end of turn for each creature blocking it beyond the first.)"},
 {id:"gabriel_angelfire",name:"Gabriel Angelfire",type:"Legendary Creature",subtype:"Angel",color:"GW",cmc:7,cost:"3GGWW",power:4,toughness:4,keywords:[],rarity:"R",text:"At the beginning of your upkeep, choose flying, first strike, trample, or rampage 3. Gabriel Angelfire gains that ability until your next upkeep. (Whenever a creature with rampage 3 becomes blocked, it gets +3/+3 until end of turn for each creature blocking it beyond the first.)"},
 
+// -- A9 DAMAGE PREVENTION/REDIRECT BUCKET, SUB-BATCHES 1+2 (12 cards) -------
+// See docs/MECHANICS_INDEX.md for the full batch writeup (new flags
+// preventAllDamageToThisTurn/preventAllDamageByThisTurn, shield modes
+// preventHalf/redirectToCreature, destroyAtNextEnd, untapStepsSkipRemaining)
+// and tests/scenarios/damage-prevention-batch-1-2.test.js for coverage.
+{id:"horn_of_deafening",name:"Horn of Deafening",type:"Artifact",color:"",cmc:4,cost:"4",keywords:[],rarity:"R",text:"{2}, {T}: Prevent all combat damage that would be dealt by target creature this turn.",activated:{cost:"2,T",effect:"preventCombatDamageDealtTarget",requiresTarget:true}},
+{id:"subdue",name:"Subdue",type:"Instant",color:"G",cmc:1,cost:"G",keywords:[],rarity:"C",text:"Prevent all combat damage that would be dealt by target creature this turn. That creature gets +0/+X until end of turn, where X is its mana value.",effect:"preventCombatDamageDealtPumpByCMC"},
+{id:"feint",name:"Feint",type:"Instant",color:"R",cmc:1,cost:"R",keywords:[],rarity:"C",text:"Tap all creatures blocking target attacking creature. Prevent all combat damage that would be dealt this turn by that creature and each creature blocking it.",effect:"feintTapBlockersPreventDamage"},
+{id:"reverberation",name:"Reverberation",type:"Instant",color:"U",cmc:4,cost:"2UU",keywords:[],rarity:"R",text:"All damage that would be dealt this turn by target sorcery spell is dealt to that spell's controller instead.",effect:"reverberateSorceryRedirect"},
+{id:"indestructible_aura",name:"Indestructible Aura",type:"Instant",color:"W",cmc:1,cost:"W",keywords:[],rarity:"C",text:"Prevent all damage that would be dealt to target creature this turn.",effect:"preventAllDamageToTarget"},
+{id:"silhouette",name:"Silhouette",type:"Instant",color:"U",cmc:2,cost:"1U",keywords:[],rarity:"U",text:"Choose target creature. If a spell or ability that targets that creature would cause a source to deal damage to that creature this turn, prevent that damage.",effect:"preventAllDamageToTarget"},
+{id:"kry_shield",name:"Kry Shield",type:"Artifact",color:"",cmc:2,cost:"2",keywords:[],rarity:"U",text:"{2}, {T}: Prevent all damage that would be dealt this turn by target creature you control. That creature gets +0/+X until end of turn, where X is its mana value.",activated:{cost:"2,T",effect:"kryShieldPreventAndPump",requiresTarget:true}},
+{id:"maze_of_ith",name:"Maze of Ith",type:"Land",color:"",cmc:0,cost:"",keywords:[],rarity:"R",text:"{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn.",activated:{cost:"T",effect:"mazeOfIthUntapAndPrevent",requiresTarget:true}},
+{id:"glyph_of_destruction",name:"Glyph of Destruction",type:"Instant",color:"R",cmc:1,cost:"R",keywords:[],rarity:"C",text:"Target blocking Wall you control gets +10/+0 until end of combat. Prevent all damage that would be dealt to it this turn. Destroy it at the beginning of the next end step.",effect:"glyphOfDestructionPumpPreventDestroy"},
+{id:"dark_sphere",name:"Dark Sphere",type:"Artifact",color:"",cmc:0,cost:"0",keywords:[],rarity:"U",damageShieldMode:"preventHalf",text:"{T}, Sacrifice Dark Sphere: The next time a source of your choice would deal damage to you this turn, prevent half that damage, rounded down.",activated:{cost:"T,sac",effect:"chooseDamageShieldSource"}},
+{id:"nova_pentacle",name:"Nova Pentacle",type:"Artifact",color:"",cmc:4,cost:"4",keywords:[],rarity:"R",text:"{3}, {T}: The next time a source of your choice would deal damage to you this turn, that damage is dealt to target creature of an opponent's choice instead.",activated:{cost:"3,T",effect:"novaPentacleRedirect"}},
+{id:"telekinesis",name:"Telekinesis",type:"Instant",color:"U",cmc:2,cost:"UU",keywords:[],rarity:"C",text:"Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps.",effect:"telekinesisTapPreventUntapSkip"},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------

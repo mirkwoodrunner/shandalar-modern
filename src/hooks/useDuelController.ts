@@ -97,6 +97,18 @@ export const EXPLICIT_TARGET_EFFECTS = new Set([
   // One-shot phasing (see THIRD_PARTY_NOTICES.md):
   'oubliettePhaseOut', // Oubliette -- "target creature phases out"
   'blazeOfGlory', // Blaze of Glory -- "target creature defending player controls"
+  // A9 Damage Prevention/Redirect batch 1+2:
+  'preventCombatDamageDealtPumpByCMC', // Subdue -- "target creature"
+  'feintTapBlockersPreventDamage', // Feint -- "target attacking creature"
+  'preventAllDamageToTarget', // Indestructible Aura / Silhouette -- "target creature"
+  'glyphOfDestructionPumpPreventDestroy', // Glyph of Destruction -- "target blocking Wall you control"
+  'telekinesisTapPreventUntapSkip', // Telekinesis -- "target creature"
+  // Reverberation targets a stack item only (see needsStackTarget below), but
+  // still needs EXPLICIT_TARGET_EFFECTS membership so needsAnyTarget() enters
+  // the cast flow's targeting step at all -- mirrors colorLace's same
+  // double-registration (EXPLICIT_TARGET_EFFECTS + needsStackTarget) for the
+  // same reason.
+  'reverberateSorceryRedirect', // Reverberation -- "target sorcery spell"
 ]);
 
 export function needsExplicitTarget(card: any): boolean {
@@ -145,6 +157,14 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   // Legendary Creatures batch 4:
   'destroyTappedOrBlocking', // Tetsuo Umezawa -- "target tapped or blocking creature"
   'preventCombatDamageDealtTarget', // Lady Evangela -- "target creature"
+  // A9 Damage Prevention/Redirect batch 1+2:
+  'preventCombatDamageDealtPumpByCMC', // Subdue -- "target creature"
+  'feintTapBlockersPreventDamage', // Feint -- "target attacking creature"
+  'preventAllDamageToTarget', // Indestructible Aura / Silhouette -- "target creature"
+  'glyphOfDestructionPumpPreventDestroy', // Glyph of Destruction -- "target blocking Wall you control"
+  'telekinesisTapPreventUntapSkip', // Telekinesis -- "target creature"
+  'kryShieldPreventAndPump', // Kry Shield -- "target creature you control" (activated ability)
+  'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature" (activated ability)
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -224,6 +244,9 @@ export function needsStackTarget(card: any, pendingMode: 'counter' | 'destroy' |
   // is always a legal click target alongside the permanent click path already
   // enabled via EXPLICIT_TARGET_EFFECTS (no mode toggle needed, unlike BEB/REB).
   if (card?.effect === 'colorLace') return true;
+  // Reverberation: "target sorcery spell" -- targets a stack item, not a
+  // battlefield permanent.
+  if (card?.effect === 'reverberateSorceryRedirect') return true;
   return false;
 }
 
@@ -346,6 +369,9 @@ export const ACTIVATE_TARGET_EFFECTS = new Set([
   // A9 Upkeep-Restricted Activated-Ability batch:
   'dwarvenWeaponsmithCounter', 'grantMatrixCounterRegen', 'exchangeLifeTotals',
   'removeBandingEOT',
+  // A9 Damage Prevention/Redirect batch 1+2:
+  'kryShieldPreventAndPump', // Kry Shield -- "target creature you control"
+  'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).

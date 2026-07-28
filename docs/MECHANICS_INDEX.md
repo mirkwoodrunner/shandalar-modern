@@ -6071,4 +6071,136 @@ COMPLETE -- 4 of 4 cards shipped
 
 ---
 
-# End of MECHANICS INDEX v1.47
+## Batch: Damage Prevention/Redirect 1+2 (12 cards) -- 2026-07-28
+
+Closes 12 of the A9 damage-prevention/redirect bucket's 22 non-legendary
+cards: Horn of Deafening, Subdue, Feint, Reverberation, Indestructible Aura,
+Silhouette, Kry Shield, Maze of Ith, Glyph of Destruction, Dark Sphere, Nova
+Pentacle, Telekinesis. Rasputin Dreamweaver was excluded (Legendary Creature,
+belongs in the legendary sub-track). `CARD_DB`: 713 -> 725.
+
+### New per-creature flags (`src/engine/DuelCore.js`)
+
+- `preventAllDamageToThisTurn` -- recipient-side, any source, this turn.
+  Checked at the top of `dmgWithShield()` (combat damage) and in
+  `hurtCreature()` (non-combat damage). Backs Indestructible Aura,
+  Silhouette, Maze of Ith (damage *to* the untapped attacker), and Glyph of
+  Destruction.
+- `preventAllDamageByThisTurn` -- source-side, any recipient, this turn.
+  Checked at the top of `hurt()` and `hurtCreature()` via a source-card
+  lookup on `meta.sourceIid`. Backs Kry Shield's "ALL damage" scope (broader
+  than the pre-existing combat-only `preventCombatDamageDealt` flag, which
+  Kry Shield also sets alongside it so the ~14 existing combat checkpoints
+  keep working unchanged).
+
+Both flags are cleared at `CLEANUP` alongside the pre-existing
+`damageShield`/`preventCombatDamageDealt` reset, whether or not they were
+consumed.
+
+### New shield modes (`hurt()`'s exact-source `chosenSourceIid` branch)
+
+- `preventHalf` (Dark Sphere) -- prevents `Math.floor(amt / 2)`; the
+  remainder re-enters `hurt()` and applies normally.
+- `redirectToCreature` (Nova Pentacle) -- redirects the full amount to a
+  creature (via `hurtCreature()`) instead of the player. Threaded through
+  `resolveDamageShieldChoice`'s new 5th `redirectToCreatureIid` parameter and
+  the `RESOLVE_DAMAGE_SHIELD_CHOICE` reducer case, both of which now carry
+  `redirectToCreatureIid` in the shield entry when set.
+- `redirectInstead` (Reverberation) -- **not** the pre-existing `redirect`
+  mode (Eye for an Eye), which deals the primary damage to the original
+  target *and* an equal amount to the source's controller (that card's own
+  "also" wording). Reverberation's oracle text says "instead" -- the original
+  target takes zero, only the source's controller is damaged -- so it needed
+  a distinct mode rather than reusing `redirect` verbatim.
+
+Reverberation's shield entry is pushed to **both** players'
+`turnState.damageShields`, since which player the targeted sorcery ends up
+damaging isn't known until it resolves; only the matching side's `hurt()`
+call ever consumes its own entry (each side has an independent array entry,
+so this is not a double-consumption risk even if a future "each player"
+sorcery were targeted).
+
+### Other new fields
+
+- `destroyAtNextEnd` (Glyph of Destruction) -- delayed-destroy flag, sibling
+  to the pre-existing `returnToHandNextEnd`, checked in the same
+  `PHASE.END` loop (`zMove(...,'gy')` instead of `'hand'`).
+- `untapStepsSkipRemaining` (Telekinesis) -- countdown field, sibling to the
+  pre-existing single-use `skipNextUntap`, checked/decremented in the same
+  untap-phase computation in `advPhase()`. Set to `2`; decrements by 1 each
+  of the controller's own untap steps while `> 0`, pre-empting the normal
+  untap exactly like `skipNextUntap` does.
+
+### Simplifications
+
+- **Silhouette** ("If a spell or ability that targets that creature would
+  cause a source to deal damage to that creature this turn, prevent that
+  damage") shares Indestructible Aura's `preventAllDamageToTarget` case
+  verbatim, approximated as "all damage to it this turn" -- tracking
+  targeting provenance through to the damage event has no existing
+  mechanism in this engine. Same class of simplification as the
+  Erhnam Djinn/Xenic Poltergeist "until your next upkeep" -> "until end of
+  turn" precedent.
+- **Nova Pentacle** ("dealt to target creature of an opponent's choice")
+  auto-picks the first creature on the opponent's battlefield -- no
+  "opponent chooses a target for my spell" UI exists anywhere in this
+  codebase (same convention as `sacArt`/`sacCre`'s no-picker auto-decide).
+
+### Reused without modification
+
+- Horn of Deafening reuses the existing `preventCombatDamageDealtTarget`
+  case (Lady Evangela) verbatim.
+- Dark Sphere reuses the existing `chooseDamageShieldSource` case verbatim
+  -- only `damageShieldMode:"preventHalf"` on the card data plus the new
+  `preventHalf` consumption branch in `hurt()` were needed.
+
+### Targeting allowlists (`src/hooks/useDuelController.ts`)
+
+`preventCombatDamageDealtPumpByCMC` (Subdue), `feintTapBlockersPreventDamage`
+(Feint), `preventAllDamageToTarget` (Indestructible Aura/Silhouette),
+`glyphOfDestructionPumpPreventDestroy` (Glyph of Destruction), and
+`telekinesisTapPreventUntapSkip` (Telekinesis) were added to
+`EXPLICIT_TARGET_EFFECTS` + `CREATURE_ONLY_TARGET_EFFECTS` (cast-time spell
+effects). `kryShieldPreventAndPump` (Kry Shield) and `mazeOfIthUntapAndPrevent`
+(Maze of Ith) were added to `CREATURE_ONLY_TARGET_EFFECTS` +
+`ACTIVATE_TARGET_EFFECTS` only (activated abilities, not top-level spell
+effects -- matching `preventCombatDamageDealtTarget`'s existing precedent,
+which is likewise absent from `EXPLICIT_TARGET_EFFECTS`).
+`reverberateSorceryRedirect` (Reverberation) needed its own
+`EXPLICIT_TARGET_EFFECTS` entry (so `needsAnyTarget()` enters the cast
+flow's targeting step at all -- a stack-only target has no other route in)
+plus a `needsStackTarget()` branch, mirroring `colorLace`'s existing
+double-registration for the same reason. No `DuelScreen.tsx`/
+`DuelScreenMobile.tsx` changes -- every new effect reuses the existing
+generic click-a-creature-target flow or the existing
+`pendingDamageShieldChoice` modal.
+
+### Tests
+
+**Vitest (23):** `tests/scenarios/damage-prevention-batch-1-2.test.js` --
+one `describe` block per card (Feint, Reverberation, Indestructible Aura,
+Kry Shield, Maze of Ith, Glyph of Destruction, and Telekinesis each split
+across 2+ `it()` cases for their multi-step coverage), plus a CLEANUP-reset
+case and a flag-isolation regression case.
+
+**Playwright (8, chromium only):**
+`tests/e2e/damage-prevention-batch-1-2.spec.js`, styled after
+`legendary-creatures-batch-3.spec.js` (engine-only `page.evaluate` +
+`duelReducer` cases, no UI click-flow -- this batch adds no new UI surface,
+only data-only Set membership changes to already-existing generic flows).
+Covers Horn of Deafening/Kry Shield/Maze of Ith activation and
+Subdue/Feint/Telekinesis casting each resolving correctly end-to-end, plus
+Dark Sphere/Nova Pentacle each opening the existing damage-shield picker and
+completing with the correct new mode.
+
+### Status
+COMPLETE -- 12 of 22 non-legendary cards in the A9 damage-prevention/redirect
+bucket shipped. Remaining 6 (Bronze Horse, Enchanted Being, Demonic Torment,
+Wall of Putrid Flesh, Wall of Shadows, Wall of Vapor) are sub-batch 3
+(static per-card special cases); Al-abara's Carpet, Scarecrow, Whippoorwill,
+and Marble Priest are not yet scoped into a sub-batch. Rasputin Dreamweaver
+tracks separately in the legendary-creature sub-track (38/55).
+
+---
+
+# End of MECHANICS INDEX v1.48
