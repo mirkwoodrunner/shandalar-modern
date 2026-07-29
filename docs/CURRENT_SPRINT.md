@@ -16,6 +16,13 @@
   6 phase-restricted "activate only during upkeep" cards reclassified out of
   this bucket are now all closed (Giant Slug 2026-07-20; Dwarven Weaponsmith,
   Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
+- A9 damage-prevention/redirect sub-track: 12 of 22 non-legendary cards
+  closed by sub-batches 1+2 (2026-07-28, see Completed above). Remaining 6
+  are sub-batch 3 (static per-card special cases): Bronze Horse, Enchanted
+  Being, Demonic Torment, Wall of Putrid Flesh, Wall of Shadows, Wall of
+  Vapor. Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble Priest are
+  not yet scoped into a sub-batch. Rasputin Dreamweaver (Legendary Creature)
+  tracks separately in the legendary-creature sub-track, not here.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-07-28)
@@ -51,6 +58,31 @@
   modal and all 4 option buttons; the other 3 cards and the Rampage combat
   math itself are engine-only, no new UI surface, so Vitest-only). See
   `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 5: Rampage Keyword.
+- **A9 Damage Prevention/Redirect bucket, sub-batches 1+2 (12 cards)** --
+  Horn of Deafening, Subdue, Feint, Reverberation, Indestructible Aura,
+  Silhouette, Kry Shield, Maze of Ith, Glyph of Destruction, Dark Sphere,
+  Nova Pentacle, Telekinesis. Two new per-creature flags
+  (`preventAllDamageToThisTurn`/`preventAllDamageByThisTurn`, both
+  cleared at `CLEANUP`), two new `hurt()` shield modes (`preventHalf` for
+  Dark Sphere's half-damage rounding, `redirectToCreature` for Nova
+  Pentacle's redirect-to-a-creature), a new `redirectInstead` mode for
+  Reverberation (distinct from Eye for an Eye's `redirect` mode, which
+  wrongly would have also dealt the primary damage to the original target --
+  Reverberation's "instead" wording needs the original target to take
+  zero), a `destroyAtNextEnd` delayed-destroy field (Glyph of Destruction,
+  sibling to `returnToHandNextEnd`), and an `untapStepsSkipRemaining`
+  countdown field (Telekinesis, sibling to `skipNextUntap`). Silhouette
+  shares Indestructible Aura's case verbatim (SIMPLIFICATION: "all damage
+  this turn" instead of tracking targeting provenance); Nova Pentacle's
+  "opponent's choice" of redirect target is auto-picked (no picker UI
+  exists for that shape). No `DuelScreen.tsx`/`DuelScreenMobile.tsx`
+  changes -- every effect reuses the existing generic creature-target flow
+  or the existing damage-shield-choice modal via data-only Set additions
+  in `useDuelController.ts`. `CARD_DB`: 713 -> 725. Tests: 23 Vitest
+  (`tests/scenarios/damage-prevention-batch-1-2.test.js`), 8 Playwright
+  (`tests/e2e/damage-prevention-batch-1-2.spec.js`, chromium only --
+  engine-only `page.evaluate` cases, no new UI surface). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Damage Prevention/Redirect 1+2.
 
 ## Completed (2026-07-23)
 - **Batch: Enemy Deck Audit Coverage (follow-up, 6 cards)** -- closes the

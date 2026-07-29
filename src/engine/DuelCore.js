@@ -384,7 +384,7 @@ function buildDamageShieldPool(state, card) {
 // instead of turnState.damageShields[caster], and produces the
 // { mode:'redirect', redirectToPlayer: caster } creature-shield entry shape
 // instead of the player-shield entry shape. See docs/ENGINE_CONTRACT_SPEC.md.
-function resolveDamageShieldChoice(ns, card, caster, tgtC) {
+function resolveDamageShieldChoice(ns, card, caster, tgtC, redirectToCreatureIid) {
   const pool = buildDamageShieldPool(ns, card);
   if (!pool.length) {
     return dlog(ns, `${card.name}: no legal source to choose -- fizzles.`, "effect");
@@ -403,9 +403,10 @@ function resolveDamageShieldChoice(ns, card, caster, tgtC) {
       const entry = {
         chosenSourceIid: chosen.iid,
         chosenSourceController: chosen.controller,
-        mode: card.damageShieldMode || 'prevent',
+        mode: redirectToCreatureIid ? 'redirectToCreature' : (card.damageShieldMode || 'prevent'),
         shieldSourceIid: card.iid,
         shieldSourceName: card.name,
+        ...(redirectToCreatureIid ? { redirectToCreatureIid } : {}),
         ...(card.gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
       };
       ns = { ...ns, turnState: { ...ns.turnState, damageShields: { ...ns.turnState.damageShields, [caster]: [...(ns.turnState.damageShields?.[caster] || []), entry] } } };
@@ -416,9 +417,10 @@ function resolveDamageShieldChoice(ns, card, caster, tgtC) {
     ...ns,
     pendingDamageShieldChoice: {
       caster,
-      mode: card.damageShieldMode || 'prevent',
+      mode: redirectToCreatureIid ? 'redirectToCreature' : (card.damageShieldMode || 'prevent'),
       shieldSourceIid: card.iid,
       shieldSourceName: card.name,
+      ...(redirectToCreatureIid ? { redirectToCreatureIid } : {}),
       ...(card.gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
       ...(tgtC ? { tgtIid: tgtC.iid } : {}),
       pool,
@@ -430,6 +432,10 @@ function resolveDamageShieldChoice(ns, card, caster, tgtC) {
 // Used at the resolveCombat call sites, which mutate c.damage inline rather than via hurt().
 // Adapted from Card-Forge/forge (a/alabaster_potion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 function dmgWithShield(c, amount) {
+  // Indestructible Aura / Silhouette / Maze of Ith / Glyph of Destruction:
+  // "prevent all damage to it this turn" -- checked here for combat damage,
+  // and in hurtCreature() for non-combat damage. See docs/SYSTEMS.md.
+  if (c.preventAllDamageToThisTurn && amount > 0) return { damage: c.damage };
   const shield = c.damageShield || 0;
   if (shield <= 0 || amount <= 0) return { damage: c.damage + amount };
   const prevented = Math.min(shield, amount);
@@ -516,6 +522,22 @@ export function hurtCreature(state, targetIid, amt, src = "", meta = null) {
     console.error(`[DuelCore] hurtCreature: target ${targetIid} not found`);
     return state;
   }
+  // Indestructible Aura / Silhouette / Maze of Ith / Glyph of Destruction:
+  // "prevent all damage to it this turn" (recipient-side, any source).
+  const side0 = inP ? 'p' : 'o';
+  const targetCard0 = state[side0].bf.find(c => c.iid === targetIid);
+  if (targetCard0?.preventAllDamageToThisTurn && amt > 0) {
+    return dlog(state, `${targetCard0.name}: all damage prevented this turn.`, 'effect');
+  }
+  // Kry Shield: "prevent all damage that would be dealt this turn by target
+  // creature you control" (source-side, any recipient, general -- combat is
+  // already fully covered by the pre-existing preventCombatDamageDealt flag).
+  if (amt > 0 && meta?.sourceIid) {
+    const srcCard0 = getBF(state, meta.sourceIid) || state.stack.find(item => item.card?.iid === meta.sourceIid)?.card;
+    if (srcCard0?.preventAllDamageByThisTurn) {
+      return dlog(state, `${srcCard0.name}: prevented from dealing damage this turn.`, 'effect');
+    }
+  }
   const { state: ns0, remainingAmt } = consumeCreatureDamageShields(state, targetIid, amt, meta);
   let ns = ns0;
   if (remainingAmt > 0) {
@@ -560,6 +582,14 @@ export function destroyLand(state, targetIid, src = "", meta = null) {
 }
 
 export function hurt(s, who, amt, src = "", meta = null) {
+// Kry Shield: "prevent all damage that would be dealt this turn by target
+// creature you control" (source-side, any recipient, general).
+if (amt > 0 && meta?.sourceIid) {
+  const srcCard1 = getBF(s, meta.sourceIid) || s.stack.find(item => item.card?.iid === meta.sourceIid)?.card;
+  if (srcCard1?.preventAllDamageByThisTurn) {
+    return dlog(s, `${srcCard1.name}: prevented from dealing damage this turn.`, 'effect');
+  }
+}
 // Lich: "If you would gain life, draw that many cards instead."
 // Adapted from Card-Forge/forge (l/lich.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 if (amt < 0 && s[who].lichActive) {
@@ -606,6 +636,26 @@ if (amt > 0 && meta?.sourceIid) {
         return hurt(ns1, who, -prevented, shield.shieldSourceName, null);
       }
       return ns1;
+    }
+    // Reverberation: "dealt to that spell's controller INSTEAD" -- unlike
+    // 'redirect' (Eye for an Eye), which deals the primary damage AND an
+    // equal amount to the source's controller, this mode deals the damage
+    // ONLY to the source's controller; the original target takes none.
+    if (shield.mode === 'redirectInstead') {
+      const ns1 = dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} redirects ${amt} damage from ${who} to ${shield.chosenSourceController} instead.`, 'effect');
+      return hurt(ns1, shield.chosenSourceController, amt, src, null);
+    }
+    // Dark Sphere: prevent HALF (rounded down); remainder applies normally.
+    if (shield.mode === 'preventHalf') {
+      const prevented = Math.floor(amt / 2);
+      const remainder = amt - prevented;
+      const ns1 = dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} prevents ${prevented} damage to ${who}${src ? ` from ${src}` : ''}.`, 'effect');
+      return hurt(ns1, who, remainder, src, null);
+    }
+    // Nova Pentacle: redirect to a CREATURE instead of a player.
+    if (shield.mode === 'redirectToCreature') {
+      const ns1 = dlog(ns0, `${shield.shieldSourceName || 'Prevention effect'} redirects ${amt} damage to a creature instead of ${who}.`, 'effect');
+      return hurtCreature(ns1, shield.redirectToCreatureIid, amt, shield.shieldSourceName);
     }
     // redirect (Eye for an Eye): re-enter hurt() with the shield already
     // consumed so the primary damage applies normally (and any other
@@ -4275,6 +4325,153 @@ case "preventCombatDamageDealtTarget": {
   }
   break;
 }
+// Subdue: "Prevent all combat damage that would be dealt by target creature
+// this turn. That creature gets +0/+X until end of turn, where X is its
+// mana value." Reuses the existing preventCombatDamageDealt flag/checkpoints
+// (dealt BY, combat only -- matches the oracle text exactly, no
+// simplification needed) plus a CMC-scaled pump.
+case "preventCombatDamageDealtPumpByCMC": {
+  if (!tgtC || !isCre(tgtC)) { ns = dlog(ns, `${card.name} fizzles -- no legal creature target.`, "effect"); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, preventCombatDamageDealt: true, eotBuffs: [...(c.eotBuffs || []), { power: 0, toughness: tgtC.cmc || 0 }] } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name}'s combat damage is prevented this turn; gets +0/+${tgtC.cmc || 0}.`, "effect");
+  break;
+}
+// Feint: "Tap all creatures blocking target attacking creature. Prevent all
+// combat damage that would be dealt this turn by that creature and each
+// creature blocking it." Only the blockers get tapped -- the attacker itself
+// is not tapped by this effect. Both directions of combat damage between the
+// attacker and its blockers are prevented via the existing
+// preventCombatDamageDealt flag on BOTH sides.
+case "feintTapBlockersPreventDamage": {
+  if (!tgtC || !tgtC.attacking) { ns = dlog(ns, `${card.name} fizzles -- no legal attacking creature target.`, "effect"); break; }
+  const blockerIids = Object.entries(ns.blockers).filter(([, atkId]) => atkId === tgtC.iid).map(([blId]) => blId);
+  for (const w of ['p', 'o']) {
+    ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => {
+      if (c.iid === tgtC.iid) return { ...c, preventCombatDamageDealt: true };
+      if (blockerIids.includes(c.iid)) return { ...c, tapped: true, preventCombatDamageDealt: true };
+      return c;
+    }) } };
+  }
+  ns = dlog(ns, `${card.name}: taps ${tgtC.name}'s blockers; combat damage between them is prevented this turn.`, "effect");
+  break;
+}
+// Reverberation: "All damage that would be dealt this turn by target
+// sorcery spell is dealt to that spell's controller instead." Targets a
+// spell already on the stack -- reuses findStackTarget (the same helper
+// counter-type effects use) rather than tgtC/getBF, since the target is a
+// stack item, not a battlefield permanent. The redirect shield is pushed to
+// BOTH players' turnState.damageShields, since which player the sorcery
+// ends up damaging isn't known until it resolves; only the matching side
+// will ever consume it. Uses the 'redirectInstead' mode (not 'redirect' --
+// Eye for an Eye's mode also deals the primary damage to the original
+// target, which is wrong for Reverberation's "instead" wording).
+case "reverberateSorceryRedirect": {
+  const targetStackItem = findStackTarget(ns.stack, tgt, null);
+  if (!targetStackItem || !isSort(targetStackItem.card)) {
+    ns = dlog(ns, `${card.name} fizzles -- no legal sorcery spell on the stack.`, "effect");
+    break;
+  }
+  const entry = {
+    chosenSourceIid: targetStackItem.card.iid,
+    chosenSourceController: targetStackItem.caster,
+    mode: 'redirectInstead',
+    shieldSourceIid: card.iid,
+    shieldSourceName: card.name,
+  };
+  ns = { ...ns, turnState: { ...ns.turnState, damageShields: {
+    p: [...(ns.turnState.damageShields?.p || []), entry],
+    o: [...(ns.turnState.damageShields?.o || []), entry],
+  } } };
+  ns = dlog(ns, `${card.name}: ${targetStackItem.card.name}'s damage will be redirected to its controller this turn.`, "effect");
+  break;
+}
+// Indestructible Aura / Silhouette: "Prevent all damage that would be dealt
+// to target creature this turn." SIMPLIFICATION for Silhouette (narrows to
+// damage from a spell/ability that targets the creature in the real oracle
+// text; approximated here as "all damage this turn" since there is no
+// existing mechanism to track targeting provenance through to the damage
+// event) -- both cards share this exact case.
+case "preventAllDamageToTarget": {
+  if (!tgtC || !isCre(tgtC)) { ns = dlog(ns, `${card.name} fizzles -- no legal creature target.`, "effect"); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, preventAllDamageToThisTurn: true } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: all damage to ${tgtC.name} is prevented this turn.`, "effect");
+  break;
+}
+// Kry Shield: "Prevent all damage that would be dealt this turn by target
+// creature you control. That creature gets +0/+X until end of turn, where X
+// is its mana value." Broader than Subdue -- ALL damage, not just combat --
+// so sets both the existing combat-only flag (leaves the ~14 existing
+// combat checkpoints untouched) and the new general source-side flag (for
+// any non-combat damage the creature might deal via an ability).
+case "kryShieldPreventAndPump": {
+  if (!tgtC || !isCre(tgtC) || tgtC.controller !== caster) {
+    ns = dlog(ns, `${card.name} fizzles -- target must be a creature you control.`, "effect");
+    break;
+  }
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, preventCombatDamageDealt: true, preventAllDamageByThisTurn: true, eotBuffs: [...(c.eotBuffs || []), { power: 0, toughness: tgtC.cmc || 0 }] } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name}'s damage is prevented this turn; gets +0/+${tgtC.cmc || 0}.`, "effect");
+  break;
+}
+// Maze of Ith: "Untap target attacking creature. Prevent all combat damage
+// that would be dealt to and dealt by that creature this turn."
+case "mazeOfIthUntapAndPrevent": {
+  if (!tgtC || !tgtC.attacking) { ns = dlog(ns, `${card.name} fizzles -- no legal attacking creature target.`, "effect"); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, tapped: false, preventCombatDamageDealt: true, preventAllDamageToThisTurn: true } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: untaps ${tgtC.name}; combat damage to and from it is prevented this turn.`, "effect");
+  break;
+}
+// Glyph of Destruction: "Target blocking Wall you control gets +10/+0 until
+// end of combat. Prevent all damage that would be dealt to it this turn.
+// Destroy it at the beginning of the next end step." destroyAtNextEnd is a
+// new field, checked in the PHASE.END block alongside the existing
+// returnToHandNextEnd. The pump uses scope:'combat' so it expires at
+// COMBAT_END rather than lingering to CLEANUP, matching "until end of combat".
+case "glyphOfDestructionPumpPreventDestroy": {
+  if (!tgtC || !tgtC.subtype?.includes("Wall") || tgtC.controller !== caster || tgtC.blocking == null) {
+    ns = dlog(ns, `${card.name} fizzles -- target must be a blocking Wall you control.`, "effect");
+    break;
+  }
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, eotBuffs: [...(c.eotBuffs || []), { power: 10, toughness: 0, scope: 'combat' }], preventAllDamageToThisTurn: true, destroyAtNextEnd: true } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} gets +10/+0 until end of combat, all damage to it is prevented this turn, and it will be destroyed at the next end step.`, "effect");
+  break;
+}
+// Nova Pentacle: "The next time a source of your choice would deal damage
+// to you this turn, that damage is dealt to target creature of an
+// opponent's choice instead." SIMPLIFICATION: no "opponent chooses a target
+// for my spell" UI exists anywhere in this codebase, so the redirect
+// destination is auto-selected deterministically (first creature on the
+// opponent's battlefield), matching the existing convention of
+// auto-deciding choices with no dedicated picker (e.g. sacArt/sacCre).
+case "novaPentacleRedirect": {
+  const oppSide = caster === 'p' ? 'o' : 'p';
+  const oppCreatures = ns[oppSide].bf.filter(isCre);
+  if (!oppCreatures.length) { ns = dlog(ns, `${card.name} fizzles -- opponent controls no creature.`, "effect"); break; }
+  ns = resolveDamageShieldChoice(ns, card, caster, null, oppCreatures[0].iid);
+  break;
+}
+// Telekinesis: "Tap target creature. Prevent all combat damage that would
+// be dealt by that creature this turn. It doesn't untap during its
+// controller's next two untap steps." untapStepsSkipRemaining is a new
+// counter field, checked/decremented in the untap phase computation, sibling
+// to the existing single-use skipNextUntap.
+case "telekinesisTapPreventUntapSkip": {
+  if (!tgtC || !isCre(tgtC)) { ns = dlog(ns, `${card.name} fizzles -- no legal creature target.`, "effect"); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, tapped: true, preventCombatDamageDealt: true, untapStepsSkipRemaining: 2 } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: taps ${tgtC.name}; its combat damage is prevented this turn and it won't untap for its controller's next two untap steps.`, "effect");
+  break;
+}
 // Siren's Call: "Creatures the active player controls attack this turn if
 // able. At the beginning of the next end step, destroy all non-Wall creatures
 // that player controls that didn't attack this turn." SIMPLIFICATION: the
@@ -5462,6 +5659,11 @@ if (next === PHASE.END) {
       ns = zMove(ns, c.iid, w, w, 'hand');
       ns = dlog(ns, `${c.name} returns to its owner's hand.`, 'effect');
     }
+    // Glyph of Destruction: "destroy it at the beginning of the next end step."
+    for (const c of [...ns[w].bf].filter(x => x.destroyAtNextEnd)) {
+      ns = zMove(ns, c.iid, w, w, 'gy');
+      ns = dlog(ns, `${c.name} is destroyed (delayed trigger).`, 'effect');
+    }
     ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.revertAnimateAtEnd
       ? { ...c, type: c.revertAnimateAtEnd.type, power: c.revertAnimateAtEnd.power, toughness: c.revertAnimateAtEnd.toughness, revertAnimateAtEnd: undefined }
       : c) } };
@@ -5616,6 +5818,8 @@ return { ...base, tapped:false };
 if (isCre(c)) {
 // Barl's Cage: skip this creature's untap once, then clear the flag.
 if (c.skipNextUntap) return { ...base, skipNextUntap: false };
+// Telekinesis: doesn't untap during its controller's next two untap steps.
+if (c.untapStepsSkipRemaining > 0) return { ...base, untapStepsSkipRemaining: c.untapStepsSkipRemaining - 1 };
 if (meekstoneOut && getPow(c, ns) >= 3) return base;
 if (smokeOut && cresUntapped >= 1) return base;
 if (magneticMountainOut && c.color === "U") return base;
@@ -6795,7 +6999,7 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.blocksAllAttackers ? { ..
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
   if (ns[w].channelActive) ns = { ...ns, [w]: { ...ns[w], channelActive: false }};
-  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (c.damageShield || c.preventCombatDamageDealt) ? { ...c, damageShield: 0, preventCombatDamageDealt: false } : c) } };
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (c.damageShield || c.preventCombatDamageDealt || c.preventAllDamageToThisTurn || c.preventAllDamageByThisTurn) ? { ...c, damageShield: 0, preventCombatDamageDealt: false, preventAllDamageToThisTurn: false, preventAllDamageByThisTurn: false } : c) } };
   // Player-level "prevent the next N damage this turn" shield (Alabaster Potion,
   // Conservator, etc.) and Forcefield's identity-scoped combat shield both expire
   // unconditionally at end of turn, whether or not they were consumed.
@@ -10122,7 +10326,7 @@ case "RESOLVE_DAMAGE_SHIELD_CHOICE": {
   // shape instead (see resolveDamageShieldChoice / chooseDamageShieldSourceForTarget).
   const pdsc = s.pendingDamageShieldChoice;
   if (!pdsc) return s;
-  const { caster, mode, shieldSourceIid, shieldSourceName, gainLifeOnPrevent, tgtIid, pool } = pdsc;
+  const { caster, mode, shieldSourceIid, shieldSourceName, gainLifeOnPrevent, tgtIid, pool, redirectToCreatureIid } = pdsc;
   const chosen = pool.find(c => c.iid === action.iid);
   if (!chosen) return s;
   if (tgtIid) {
@@ -10140,6 +10344,7 @@ case "RESOLVE_DAMAGE_SHIELD_CHOICE": {
     mode,
     shieldSourceIid,
     shieldSourceName,
+    ...(redirectToCreatureIid ? { redirectToCreatureIid } : {}),
     ...(gainLifeOnPrevent ? { gainLifeOnPrevent: true } : {}),
   };
   const ns = {
