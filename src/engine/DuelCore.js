@@ -538,6 +538,29 @@ export function hurtCreature(state, targetIid, amt, src = "", meta = null) {
       return dlog(state, `${srcCard0.name}: prevented from dealing damage this turn.`, 'effect');
     }
   }
+  // Wall of Putrid Flesh: static, recipient-side, ALL damage (not just
+  // combat) from a creature with an Aura attached ("enchanted creature") is
+  // prevented. Combat sources are caught by resolveCombat's own
+  // staticDamagePrevented() check; this covers non-combat sources
+  // (spells/abilities), since hurtCreature() is their sole choke point
+  // (never called with meta.combat:true). Adapted from Card-Forge/forge
+  // (w/wall_of_putrid_flesh.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  if (targetCard0?.preventDamageFromEnchanted === 'all' && amt > 0 && meta?.sourceIid) {
+    const srcCard2 = getBF(state, meta.sourceIid) || state.stack.find(item => item.card?.iid === meta.sourceIid)?.card;
+    if (srcCard2?.enchantments?.length > 0) {
+      return dlog(state, `${targetCard0.name}: prevents damage from enchanted creatures.`, 'effect');
+    }
+  }
+  // Bronze Horse: "As long as you control another creature, prevent all
+  // damage that would be dealt to Bronze Horse by spells that target it."
+  // Adapted from Card-Forge/forge (b/bronze_horse.txt), GPL-3.0. See
+  // THIRD_PARTY_NOTICES.md.
+  if (targetCard0?.preventDamageFromTargetingSpellsIfOtherCreature && meta?.sourceType === 'spell' && amt > 0) {
+    const controlsOtherCreature = state[side0].bf.some(c => c.iid !== targetIid && isCre(c));
+    if (controlsOtherCreature) {
+      return dlog(state, `${targetCard0.name}: prevents damage from targeted spells (controls another creature).`, 'effect');
+    }
+  }
   const { state: ns0, remainingAmt } = consumeCreatureDamageShields(state, targetIid, amt, meta);
   let ns = ns0;
   if (remainingAmt > 0) {
@@ -5201,6 +5224,24 @@ if (anyFirstStrike) ns = dlog(ns, "First strike damage.", "combat");
 const isGaseous = c => c.enchantments?.some(e => e.mod?.gaseousForm);
 // Spirit Link: returns 1 when host has a Spirit Link aura (caller multiplies by damage dealt).
 const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink) ? 1 : 0;
+// A9 Damage Prevention/Redirect sub-batch 3: three related static combat-
+// damage preventions, checked once per attacker/blocker pairing alongside
+// the existing protection checks below. Adapted from Card-Forge/forge,
+// GPL-3.0. See THIRD_PARTY_NOTICES.md.
+//   - Enchanted Being / Wall of Putrid Flesh: recipient can't be dealt
+//     combat damage by a creature with an Aura attached ("enchanted"). Both
+//     cards' `preventDamageFromEnchanted` value ('combat' or 'all') gates
+//     combat damage identically here; 'all' additionally gates non-combat
+//     damage in hurtCreature() (see 2b below).
+//   - Wall of Shadows / Wall of Vapor: recipient can't be dealt damage by
+//     the specific creature it's blocking (`preventDamageFromBlocked`).
+//   - Demonic Torment: source can't deal combat damage while enchanted with
+//     it, read from the aura's enchantments[].mod entry (same convention as
+//     Brainwash's mod.cantAttackUnlessPay).
+const staticDamagePrevented = (recipient, source) =>
+  (!!recipient.preventDamageFromEnchanted && (source.enchantments?.length > 0)) ||
+  (!!recipient.preventDamageFromBlocked && recipient.blocking === source.iid) ||
+  !!source.enchantments?.some(e => e.mod?.preventCombatDamageBySelf);
 const fsBlockerShares = computeBandBlockerShares(ns);
 
 // First-strike pass: only combatants with FIRST_STRIKE deal their damage here.
@@ -5260,7 +5301,7 @@ if (!blockers.length) {
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
     // specific creature from dealing (source-side), independent of the gaseous receiver checks.
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && blFS) {
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !staticDamagePrevented(att, bl) && blFS) {
       let bpForAttRemaining;
       ({ state: ns, remainingAmt: bpForAttRemaining } = consumeCreatureDamageShields(ns, attId, bpForAtt, { sourceIid: bl.iid, sourceType: 'creature', combat: true }));
       ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bpForAttRemaining) } : c) } };
@@ -5272,7 +5313,7 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) {
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && attFS) {
       let dblRemaining;
       ({ state: ns, remainingAmt: dblRemaining } = consumeCreatureDamageShields(ns, bl.iid, dbl, { sourceIid: attId, sourceType: 'creature', combat: true }));
       ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, ...dmgWithShield(c, dblRemaining) } : c) } };
@@ -5284,11 +5325,11 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bpForAtt > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
-    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && dbl > 0 && spiritLinkGain(att) && attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !staticDamagePrevented(att, bl) && bpForAtt > 0 && spiritLinkGain(bl) && blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
@@ -5354,7 +5395,7 @@ if (!blockers.length) {
     // Gaseous Form: attacker is gaseous -> blocker deals 0 to it; blocker is gaseous -> attacker deals 0 to it
     // Sewers of Estark: bl.preventCombatDamageDealt / att.preventCombatDamageDealt stop that
     // specific creature from dealing (source-side), independent of the gaseous receiver checks.
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !blFS) {
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !staticDamagePrevented(att, bl) && !blFS) {
       let bpForAttRemaining;
       ({ state: ns, remainingAmt: bpForAttRemaining } = consumeCreatureDamageShields(ns, attId, bpForAtt, { sourceIid: bl.iid, sourceType: 'creature', combat: true }));
       ns = { ...ns, [actrl]: { ...ns[actrl], bf: ns[actrl].bf.map(c => c.iid === attId ? { ...c, ...dmgWithShield(c, bpForAttRemaining) } : c) } };
@@ -5366,7 +5407,7 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) {
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && !attFS) {
       let dblRemaining;
       ({ state: ns, remainingAmt: dblRemaining } = consumeCreatureDamageShields(ns, bl.iid, dbl, { sourceIid: attId, sourceType: 'creature', combat: true }));
       ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, ...dmgWithShield(c, dblRemaining) } : c) } };
@@ -5378,11 +5419,11 @@ if (!blockers.length) {
         }
       }
     }
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) rem = Math.max(0, rem - dbl);
-    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
-    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && bpForAtt > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
-    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && !attFS) rem = Math.max(0, rem - dbl);
+    if (hasLifelink && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && dbl > 0 && spiritLinkGain(att) && !attFS) ns = hurt(ns, actrl, -dbl, att.name, { sourceIid: att.iid, sourceType: 'creature', combat: true });
+    if (!attackerProtectsFromBl && !attGaseous && !bl.preventCombatDamageDealt && !staticDamagePrevented(att, bl) && bpForAtt > 0 && spiritLinkGain(bl) && !blFS) ns = hurt(ns, bl.controller, -bpForAtt, bl.name, { sourceIid: bl.iid, sourceType: 'creature', combat: true });
+    if (hasKw(att, KEYWORDS.DEATHTOUCH.id) && ns.ruleset.deathtouch && !blockerProtectsFromAtt && !blGaseous && !att.preventCombatDamageDealt && !staticDamagePrevented(bl, att) && !attFS) ns = { ...ns, [defW]: { ...ns[defW], bf: ns[defW].bf.map(c => c.iid === bl.iid ? { ...c, damage: Math.max(c.toughness, c.damage+1) } : c) } };
   }
   if (hasKw(att, KEYWORDS.TRAMPLE.id) && rem > 0 && !attGaseous && !att.preventCombatDamageDealt && !attFS) ns = hurt(ns, defW, rem, `${att.name} (trample)`, { sourceIid: att.iid, sourceType: 'creature', combat: true, unblocked: false });
 }
@@ -9320,6 +9361,12 @@ case "DECLARE_ATTACKER": {
       return dlog(s, `${c.name} can't attack -- Island Sanctuary protects the defending player.`, 'rule');
     }
   }
+  // Demonic Torment: "Enchanted creature can't attack." Read from the
+  // aura's enchantments[].mod entry (same convention as Brainwash's own
+  // mod.cantAttackUnlessPay check just below). Adapted from Card-Forge/forge
+  // (d/demonic_torment.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+  const cantAttackAura = c.enchantments?.find(e => e.mod?.cantAttack);
+  if (cantAttackAura) return dlog(s, `${c.name} can't attack -- enchanted with ${cantAttackAura.name}.`, 'rule');
   // Brainwash: "Enchanted creature can't attack unless its controller pays {3}."
   // SIMPLIFICATION: no "decline to pay" UI -- auto-pays if able (same convention
   // as Demonic Hordes' "unless you pay" upkeep cost), otherwise blocks the attack.

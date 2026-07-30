@@ -905,6 +905,19 @@ export const CARD_DB = [
 {id:"nova_pentacle",name:"Nova Pentacle",type:"Artifact",color:"",cmc:4,cost:"4",keywords:[],rarity:"R",text:"{3}, {T}: The next time a source of your choice would deal damage to you this turn, that damage is dealt to target creature of an opponent's choice instead.",activated:{cost:"3,T",effect:"novaPentacleRedirect"}},
 {id:"telekinesis",name:"Telekinesis",type:"Instant",color:"U",cmc:2,cost:"UU",keywords:[],rarity:"C",text:"Tap target creature. Prevent all combat damage that would be dealt by that creature this turn. It doesn't untap during its controller's next two untap steps.",effect:"telekinesisTapPreventUntapSkip"},
 
+// -- A9 DAMAGE PREVENTION/REDIRECT BUCKET, SUB-BATCH 3 (6 cards) -----------
+// See docs/MECHANICS_INDEX.md for the full batch writeup (new fields
+// preventDamageFromEnchanted/preventDamageFromBlocked/
+// preventDamageFromTargetingSpellsIfOtherCreature, new Aura mod fields
+// cantAttack/preventCombatDamageBySelf) and
+// tests/scenarios/damage-prevention-batch-3.test.js for coverage.
+{id:"bronze_horse",name:"Bronze Horse",type:"Artifact Creature",subtype:"Horse",color:"",cmc:7,cost:"7",power:4,toughness:4,keywords:[KEYWORDS.TRAMPLE.id],rarity:"U",text:"Trample\nAs long as you control another creature, prevent all damage that would be dealt to Bronze Horse by spells that target it.",preventDamageFromTargetingSpellsIfOtherCreature:true},
+{id:"enchanted_being",name:"Enchanted Being",type:"Creature",subtype:"Human",color:"W",cmc:3,cost:"1WW",power:2,toughness:2,keywords:[],rarity:"C",text:"Prevent all combat damage that would be dealt to Enchanted Being by enchanted creatures.",preventDamageFromEnchanted:"combat"},
+{id:"demonic_torment",name:"Demonic Torment",type:"Enchantment",subtype:"Aura",color:"B",cmc:3,cost:"2B",keywords:[],rarity:"C",text:"Enchant creature\nEnchanted creature can't attack.\nPrevent all combat damage that would be dealt by enchanted creature.",effect:"enchantCreature",mod:{cantAttack:true,preventCombatDamageBySelf:true}},
+{id:"wall_of_putrid_flesh",name:"Wall of Putrid Flesh",type:"Creature",subtype:"Wall",color:"B",cmc:3,cost:"2B",power:2,toughness:4,keywords:[KEYWORDS.DEFENDER.id,KEYWORDS.PROTECTION.id],protection:["white"],rarity:"U",text:"Defender (This creature can't attack.)\nProtection from white\nPrevent all damage that would be dealt to Wall of Putrid Flesh by enchanted creatures.",preventDamageFromEnchanted:"all"},
+{id:"wall_of_shadows",name:"Wall of Shadows",type:"Creature",subtype:"Wall",color:"B",cmc:3,cost:"1BB",power:0,toughness:1,keywords:[KEYWORDS.DEFENDER.id],rarity:"C",text:"Defender (This creature can't attack.)\nPrevent all damage that would be dealt to Wall of Shadows by creatures it's blocking.\nWall of Shadows can't be the target of spells that can target only Walls or of abilities that can target only Walls.",preventDamageFromBlocked:true},
+{id:"wall_of_vapor",name:"Wall of Vapor",type:"Creature",subtype:"Wall",color:"U",cmc:4,cost:"3U",power:0,toughness:1,keywords:[KEYWORDS.DEFENDER.id],rarity:"C",text:"Defender (This creature can't attack.)\nPrevent all damage that would be dealt to Wall of Vapor by creatures it's blocking.",preventDamageFromBlocked:true},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------
