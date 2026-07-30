@@ -6196,11 +6196,114 @@ completing with the correct new mode.
 ### Status
 COMPLETE -- 12 of 22 non-legendary cards in the A9 damage-prevention/redirect
 bucket shipped. Remaining 6 (Bronze Horse, Enchanted Being, Demonic Torment,
-Wall of Putrid Flesh, Wall of Shadows, Wall of Vapor) are sub-batch 3
-(static per-card special cases); Al-abara's Carpet, Scarecrow, Whippoorwill,
-and Marble Priest are not yet scoped into a sub-batch. Rasputin Dreamweaver
-tracks separately in the legendary-creature sub-track (38/55).
+Wall of Putrid Flesh, Wall of Shadows, Wall of Vapor) shipped in sub-batch 3
+(see below); Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble Priest
+are not yet scoped into a sub-batch. Rasputin Dreamweaver tracks separately
+in the legendary-creature sub-track (38/55).
 
 ---
 
-# End of MECHANICS INDEX v1.48
+## Batch: Damage Prevention/Redirect 3 (6 cards) -- 2026-07-29
+
+Closes the final 6 of the A9 damage-prevention/redirect bucket's 22
+non-legendary cards: Bronze Horse, Enchanted Being, Demonic Torment, Wall of
+Putrid Flesh, Wall of Shadows, Wall of Vapor. All 6 are static abilities on
+vanilla creatures or a single Aura -- no new UI, targeting registration, or
+activated ability needed. `CARD_DB`: 725 -> 731.
+
+### New per-creature flags (`src/data/cards.js` / `src/engine/DuelCore.js`)
+
+- `preventDamageFromEnchanted` (`'combat'` or `'all'`) -- recipient can't be
+  dealt damage by a creature with an Aura attached ("enchanted creature").
+  Enchanted Being uses `'combat'` (checked only in `resolveCombat`'s
+  `staticDamagePrevented` helper); Wall of Putrid Flesh uses `'all'` (checked
+  there too, plus a second non-combat check in `hurtCreature()` since its
+  scope is broader than combat).
+- `preventDamageFromBlocked` -- recipient can't be dealt damage by the
+  specific creature it's blocking (`recipient.blocking === source.iid`).
+  Backs Wall of Shadows and Wall of Vapor. Combat-only (no `hurtCreature()`
+  counterpart needed -- a creature that isn't blocking anything has no
+  "the creature it's blocking" to compare against).
+- `preventDamageFromTargetingSpellsIfOtherCreature` -- recipient can't be
+  dealt damage by a targeted spell (`meta.sourceType === 'spell'`) as long as
+  its controller controls another creature. Backs Bronze Horse. Checked only
+  in `hurtCreature()` (spells never deal combat damage), gated on a live
+  battlefield scan (`state[side0].bf.some(c => c.iid !== targetIid && isCre(c))`)
+  each time, not a cached flag -- correctly re-evaluates as the controller's
+  board state changes.
+
+### New Aura `mod` fields (`src/data/cards.js`)
+
+- `mod.cantAttack` -- enchanted creature can't attack. Checked in the
+  `DECLARE_ATTACKER` reducer case (`c.enchantments?.find(e => e.mod?.cantAttack)`),
+  immediately before the pre-existing Brainwash `mod.cantAttackUnlessPay`
+  check (same convention, unconditional block instead of a payable tax).
+  Backs Demonic Torment.
+- `mod.preventCombatDamageBySelf` -- enchanted creature's own combat damage
+  is prevented (source-side, checked via `source.enchantments` in
+  `staticDamagePrevented`, symmetric with the recipient-side
+  `preventDamageFromEnchanted` checks above). Also backs Demonic Torment,
+  alongside `mod.cantAttack` -- the enchanted creature can still be
+  declared as a blocker, but its own damage to the attacker it blocks is
+  suppressed while damage dealt *to* it is unaffected.
+
+### `staticDamagePrevented` helper (`src/engine/DuelCore.js`, `resolveCombat`)
+
+A single `(recipient, source) => boolean` closure covers all three
+prevention shapes above, checked once per attacker/blocker pairing at all
+14 existing damage-application call sites in `resolveCombat` (7 first-strike
+pass, 7 regular pass -- mirroring the pre-existing `preventCombatDamageDealt`/
+gaseous-form gating already present at each site). Adapted from
+Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.
+
+### `hurtCreature()` -- two new non-combat checks
+
+Inserted between the existing Kry Shield (`preventAllDamageByThisTurn`)
+block and `consumeCreatureDamageShields`: Wall of Putrid Flesh's `'all'`-scope
+enchanted-creature check (mirrors the combat-side check for non-combat
+sources), and Bronze Horse's targeting-spell check. Both are `meta`-gated
+(`meta?.sourceIid` / `meta?.sourceType === 'spell'`) the same way the
+pre-existing Kry Shield check is.
+
+### Simplifications
+
+- **Wall of Shadows** ("can't be the target of spells that can target only
+  Walls or of abilities that can target only Walls") has no interaction in
+  this codebase -- no spell or ability anywhere in `cards.js` targets "only
+  Walls" (confirmed via search). Carried in `text` for oracle fidelity only,
+  same convention as other no-op-in-this-engine clauses noted elsewhere in
+  `cards.js`.
+
+### Tests
+
+**Vitest (19):** `tests/scenarios/damage-prevention-batch-3.test.js` -- one
+`describe` block per card (Bronze Horse x3, Enchanted Being x4, Demonic
+Torment x4, Wall of Putrid Flesh x4, Wall of Shadows x2, Wall of Vapor x2),
+covering each prevention firing correctly, its scope boundary (combat vs.
+non-combat, or a live board-state re-check), and a negative case
+demonstrating the flag doesn't over-fire. The Wall of Shadows/Vapor
+"different creature" negative case uses a banding (CR 702.22h) setup --
+two attackers sharing a `bandId` so a wall recorded as blocking only one of
+them is treated as an effective blocker of both -- since a non-banded
+single block pairing always has `recipient.blocking === source.iid` by
+construction, banding is the only way to reach the negative branch through
+`resolveCombat`'s real pairing logic.
+
+**Playwright (6, chromium only, x2 viewports = 12 executions):**
+`tests/e2e/damage-prevention-batch-3.spec.js`, styled after
+`damage-prevention-batch-1-2.spec.js` (`page.evaluate` + dynamic-import
+`resolveCombat`/`hurtCreature`/`duelReducer` calls, no UI click-flow -- this
+batch adds no new UI surface). One case per card confirming its core
+prevention fires correctly end-to-end via the real reducer, run at both
+1280x800 and 390x844 via `test.use({viewport})` in the same spec.
+
+### Status
+COMPLETE -- all 6 sub-batch 3 cards shipped; the A9 damage-prevention/redirect
+bucket's non-legendary cards are now fully closed except Al-abara's Carpet,
+Scarecrow, Whippoorwill, and Marble Priest, which remain unscoped into a
+sub-batch. Rasputin Dreamweaver tracks separately in the legendary-creature
+sub-track (38/55).
+
+---
+
+# End of MECHANICS INDEX v1.49

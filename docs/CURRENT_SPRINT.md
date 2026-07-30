@@ -16,14 +16,39 @@
   6 phase-restricted "activate only during upkeep" cards reclassified out of
   this bucket are now all closed (Giant Slug 2026-07-20; Dwarven Weaponsmith,
   Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
-- A9 damage-prevention/redirect sub-track: 12 of 22 non-legendary cards
-  closed by sub-batches 1+2 (2026-07-28, see Completed above). Remaining 6
-  are sub-batch 3 (static per-card special cases): Bronze Horse, Enchanted
-  Being, Demonic Torment, Wall of Putrid Flesh, Wall of Shadows, Wall of
-  Vapor. Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble Priest are
-  not yet scoped into a sub-batch. Rasputin Dreamweaver (Legendary Creature)
-  tracks separately in the legendary-creature sub-track, not here.
+- A9 damage-prevention/redirect sub-track: all 22 non-legendary cards
+  closed (sub-batches 1+2 on 2026-07-28, sub-batch 3 on 2026-07-29, see
+  Completed above). Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble
+  Priest are not yet scoped into a sub-batch. Rasputin Dreamweaver
+  (Legendary Creature) tracks separately in the legendary-creature
+  sub-track, not here.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
+
+## Completed (2026-07-29)
+- **A9 Damage Prevention/Redirect bucket, sub-batch 3 (6 cards)** -- Bronze
+  Horse, Enchanted Being, Demonic Torment, Wall of Putrid Flesh, Wall of
+  Shadows, Wall of Vapor. Closes the A9 damage-prevention/redirect bucket's
+  final 6 non-legendary cards (18/22 closed by sub-batches 1+2; all 22 now
+  closed). Three new per-creature flags
+  (`preventDamageFromEnchanted`/`preventDamageFromBlocked`/
+  `preventDamageFromTargetingSpellsIfOtherCreature`) and two new Aura `mod`
+  fields (`cantAttack`/`preventCombatDamageBySelf`), all static abilities on
+  vanilla creatures or a single Aura -- no new UI, targeting registration,
+  or activated ability needed. A single `staticDamagePrevented` helper in
+  `resolveCombat` covers all three combat-facing preventions at the 14
+  existing damage-application call sites (7 first-strike pass, 7 regular
+  pass); two new non-combat checks were added to `hurtCreature()` (Wall of
+  Putrid Flesh's broader `'all'` scope, Bronze Horse's targeting-spell
+  check); one new check was added to the `DECLARE_ATTACKER` reducer case
+  (Demonic Torment's `cantAttack`). Wall of Shadows' "can't be the target of
+  spells/abilities that can target only Walls" clause is a documented no-op
+  (no such targeting restriction exists anywhere in this engine). `CARD_DB`:
+  725 -> 731. Tests: 19 Vitest
+  (`tests/scenarios/damage-prevention-batch-3.test.js`), 6 Playwright x 2
+  viewports = 12 executions
+  (`tests/e2e/damage-prevention-batch-3.spec.js`, chromium only --
+  engine-only `page.evaluate` cases, no new UI surface). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Damage Prevention/Redirect 3.
 
 ## Completed (2026-07-28)
 - **Legendary Creatures Batch 5: Rampage Keyword (4 cards)** -- Chromium,
