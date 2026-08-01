@@ -17,12 +17,41 @@
   this bucket are now all closed (Giant Slug 2026-07-20; Dwarven Weaponsmith,
   Hell's Caretaker, Life Matrix, Mirror Universe, Tolaria 2026-07-21).
 - A9 damage-prevention/redirect sub-track: all 22 non-legendary cards
-  closed (sub-batches 1+2 on 2026-07-28, sub-batch 3 on 2026-07-29, see
-  Completed above). Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble
-  Priest are not yet scoped into a sub-batch. Rasputin Dreamweaver
+  closed (sub-batches 1+2 on 2026-07-28, sub-batch 3 on 2026-07-29, batch 4
+  on 2026-08-01, see Completed above). Rasputin Dreamweaver
   (Legendary Creature) tracks separately in the legendary-creature
   sub-track, not here.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
+
+## Completed (2026-08-01)
+- **A9 Damage Prevention/Redirect bucket, batch 4 (4 cards)** -- Al-abara's
+  Carpet, Scarecrow, Whippoorwill, Marble Priest. Closes the A9
+  damage-prevention/redirect bucket entirely (22/22 non-legendary cards).
+  New `turnState.filteredDamagePrevention` mechanism ({p:[],o:[]}) backs
+  Al-abara's Carpet/Scarecrow: repeatable ({T}), player-scoped, standing
+  filter ('flying' or 'attackingNonFlying') checked in `hurt()` and NOT
+  consumed on match -- distinct from the pre-existing one-time
+  exact-source `damageShields`. Not gated on `meta.combat`, per the
+  2004-10-04 Oracle ruling that Scarecrow also prevents non-combat damage
+  from a matching creature. Whippoorwill's `{G}{G},{T}` curse adds two new
+  creature fields -- `cantPreventOrRedirectDamage` (bypasses every
+  recipient-side prevention/redirect mechanism, checked in `dmgWithShield`
+  and `consumeCreatureDamageShields`, leaving the underlying shield
+  unconsumed) and `exileOnDeathThisTurn` (read in `checkDeath` alongside
+  the existing `exileNextDeath` global flag) -- reusing the existing
+  `cantRegenerateThisTurn` field for its regen clause. Marble Priest adds a
+  third `preventDamageFromWalls` clause to the existing
+  `staticDamagePrevented` helper (Batch 3), plus an AI-only
+  `mustBeBlockedByWalls` forced-block heuristic in `AI.js`'s `planBlock`
+  (same precedent as the existing Lure heuristic). No new UI: Carpet/
+  Scarecrow reuse the generic untargeted activation button, Whippoorwill
+  reuses the existing creature-targeting flow (Kry Shield/Maze of Ith),
+  Marble Priest has no activated ability. `CARD_DB`: 731 -> 735. Tests: 22
+  Vitest (`tests/scenarios/damage-prevention-batch-4.test.js`), 4
+  Playwright x 2 viewports = 8 executions
+  (`tests/e2e/damage-prevention-batch-4.spec.js`, chromium only --
+  engine-only `page.evaluate` cases, no new UI surface). See
+  `docs/MECHANICS_INDEX.md` -- Batch: Damage Prevention/Redirect 4.
 
 ## Completed (2026-07-29)
 - **A9 Damage Prevention/Redirect bucket, sub-batch 3 (6 cards)** -- Bronze

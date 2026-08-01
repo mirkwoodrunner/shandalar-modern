@@ -918,6 +918,17 @@ export const CARD_DB = [
 {id:"wall_of_shadows",name:"Wall of Shadows",type:"Creature",subtype:"Wall",color:"B",cmc:3,cost:"1BB",power:0,toughness:1,keywords:[KEYWORDS.DEFENDER.id],rarity:"C",text:"Defender (This creature can't attack.)\nPrevent all damage that would be dealt to Wall of Shadows by creatures it's blocking.\nWall of Shadows can't be the target of spells that can target only Walls or of abilities that can target only Walls.",preventDamageFromBlocked:true},
 {id:"wall_of_vapor",name:"Wall of Vapor",type:"Creature",subtype:"Wall",color:"U",cmc:4,cost:"3U",power:0,toughness:1,keywords:[KEYWORDS.DEFENDER.id],rarity:"C",text:"Defender (This creature can't attack.)\nPrevent all damage that would be dealt to Wall of Vapor by creatures it's blocking.",preventDamageFromBlocked:true},
 
+// -- A9 DAMAGE PREVENTION/REDIRECT BUCKET, BATCH 4 (4 cards) ---------------
+// See docs/MECHANICS_INDEX.md for the full batch writeup (new turnState
+// field filteredDamagePrevention, new creature fields
+// cantPreventOrRedirectDamage/exileOnDeathThisTurn/mustBeBlockedByWalls/
+// preventDamageFromWalls) and
+// tests/scenarios/damage-prevention-batch-4.test.js for coverage.
+{id:"al_abaras_carpet", name:"Al-abara's Carpet", type:"Artifact", color:"", cmc:5, cost:"5", keywords:[], rarity:"R", text:"{5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without flying.", activated:{cost:"5,T", effect:"preventDamageFromAttackingNonFlying"}},
+{id:"scarecrow", name:"Scarecrow", type:"Artifact Creature", subtype:"Scarecrow", color:"", cmc:5, cost:"5", power:2, toughness:2, keywords:[], rarity:"U", text:"{6}, {T}: Prevent all damage that would be dealt to you this turn by creatures with flying.", activated:{cost:"6,T", effect:"preventDamageFromFlying"}},
+{id:"whippoorwill", name:"Whippoorwill", type:"Creature", subtype:"Bird", color:"G", cmc:1, cost:"G", power:1, toughness:1, keywords:[], rarity:"U", text:"{G}{G}, {T}: Target creature can't be regenerated this turn. Damage that would be dealt to that creature this turn can't be prevented or dealt instead to another permanent or player. When the creature dies this turn, exile the creature.", activated:{cost:"GG,T", effect:"whippoorwillCurse", requiresTarget:true}},
+{id:"marble_priest", name:"Marble Priest", type:"Artifact Creature", subtype:"Cleric", color:"", cmc:5, cost:"5", power:3, toughness:3, keywords:[], rarity:"U", text:"All Walls able to block Marble Priest do so.\nPrevent all combat damage that would be dealt to Marble Priest by Walls.", mustBeBlockedByWalls:true, preventDamageFromWalls:true},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------

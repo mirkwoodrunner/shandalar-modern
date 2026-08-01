@@ -432,6 +432,10 @@ function resolveDamageShieldChoice(ns, card, caster, tgtC, redirectToCreatureIid
 // Used at the resolveCombat call sites, which mutate c.damage inline rather than via hurt().
 // Adapted from Card-Forge/forge (a/alabaster_potion.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
 function dmgWithShield(c, amount) {
+  // Whippoorwill: bypasses every recipient-side prevention/redirect
+  // mechanism below (preventAllDamageToThisTurn, the flat damageShield) --
+  // the shield doesn't get to act at all, so it's also left unconsumed.
+  if (c.cantPreventOrRedirectDamage) return { damage: c.damage + amount };
   // Indestructible Aura / Silhouette / Maze of Ith / Glyph of Destruction:
   // "prevent all damage to it this turn" -- checked here for combat damage,
   // and in hurtCreature() for non-combat damage. See docs/SYSTEMS.md.
@@ -468,6 +472,13 @@ export function isProtectedFromSource(target, sourceCard, state) {
 export function consumeCreatureDamageShields(state, targetIid, amt, srcMeta) {
   let ns = state;
   const targetCreature = ns.p.bf.find(c => c.iid === targetIid) || ns.o.bf.find(c => c.iid === targetIid);
+  // Whippoorwill: bypasses this function entirely -- both the protection
+  // check and any creatureDamageShields (Jade Monolith-style
+  // redirect/redirectPoint) entries -- for the cursed creature. This
+  // function is called from hurtCreature() AND from both combat-pairing
+  // call sites in resolveCombat, so this one change covers non-combat and
+  // combat damage to the cursed creature uniformly.
+  if (targetCreature?.cantPreventOrRedirectDamage) return { state: ns, remainingAmt: amt };
   const sourceCard = srcMeta?.sourceIid
     ? (getBF(ns, srcMeta.sourceIid) || ns.stack.find(item => item.card?.iid === srcMeta.sourceIid)?.card)
     : null;
@@ -604,6 +615,20 @@ export function destroyLand(state, targetIid, src = "", meta = null) {
   return ns;
 }
 
+// Scarecrow / Al-abara's Carpet: does a creature source match a standing
+// player-level damage-prevention filter for the rest of the turn? 'flying'
+// checks the source's current flying status (through hasKw's layer-aware
+// lookup, so Aura-granted flying counts); 'attackingNonFlying' additionally
+// requires the source to currently be an attacker. Non-creature sources
+// never match (both cards' oracle text says "creatures").
+function filteredDamagePreventionMatches(filter, sourceCard, state) {
+  if (!sourceCard || !isCre(sourceCard)) return false;
+  const flying = hasKw(sourceCard, KEYWORDS.FLYING.id, state);
+  if (filter === 'flying') return flying;
+  if (filter === 'attackingNonFlying') return sourceCard.attacking === true && !flying;
+  return false;
+}
+
 export function hurt(s, who, amt, src = "", meta = null) {
 // Kry Shield: "prevent all damage that would be dealt this turn by target
 // creature you control" (source-side, any recipient, general).
@@ -689,6 +714,21 @@ if (amt > 0 && meta?.sourceIid) {
     let ns = hurt(ns0, who, amt, src, meta);
     ns = hurt(ns, shield.chosenSourceController, amt, shield.shieldSourceName, null);
     return ns;
+  }
+}
+// Scarecrow / Al-abara's Carpet: player-level filtered damage prevention --
+// repeatable for the rest of the turn against any creature source matching
+// a named filter. Distinct from turnState.damageShields (one-time,
+// exact-source): this re-checks a standing filter against every qualifying
+// source, and is NOT consumed on a match.
+if (amt > 0 && meta?.sourceIid) {
+  const filters = s.turnState.filteredDamagePrevention?.[who] || [];
+  if (filters.length) {
+    const srcCardF = getBF(s, meta.sourceIid) || s.stack.find(item => item.card?.iid === meta.sourceIid)?.card;
+    const matchedFilter = filters.find(f => filteredDamagePreventionMatches(f.filter, srcCardF, s));
+    if (matchedFilter) {
+      return dlog(s, `${matchedFilter.shieldSourceName} prevents ${amt} damage to ${who} from ${srcCardF.name}.`, 'effect');
+    }
   }
 }
 if (amt > 0) {
@@ -1081,8 +1121,11 @@ while (changed) {
       const blockingId = dyingCard.blocking || null;
       const blockedByIds = [...ns.p.bf, ...ns.o.bf].filter(x => x.blocking === dyingCard.iid).map(x => x.iid);
       // Disintegrate exile override: if exileNextDeath is set, exile instead of GY.
-      ns = zMove(ns, c.iid, w, w, ns.exileNextDeath ? "exile" : "gy");
-      ns = dlog(ns, `${c.name} is ${ns.exileNextDeath ? "exiled" : "destroyed"}.`, "death");
+      // Whippoorwill: exileOnDeathThisTurn is the same override, scoped to a
+      // single cursed creature instead of the whole-game one-shot flag.
+      const exileThisDeath = ns.exileNextDeath || c.exileOnDeathThisTurn;
+      ns = zMove(ns, c.iid, w, w, exileThisDeath ? "exile" : "gy");
+      ns = dlog(ns, `${c.name} is ${exileThisDeath ? "exiled" : "destroyed"}.`, "death");
       ns = emitEvent(ns, { type: 'ON_CREATURE_DIES', payload: { cardId: dyingCard.iid, previousController: w, blockingId, blockedByIds } });
       ns = processTriggerQueue(ns);
       changed = true;
@@ -4451,6 +4494,43 @@ case "mazeOfIthUntapAndPrevent": {
   ns = dlog(ns, `${card.name}: untaps ${tgtC.name}; combat damage to and from it is prevented this turn.`, "effect");
   break;
 }
+// Al-abara's Carpet: "{5}, {T}: Prevent all damage that would be dealt to
+// you this turn by attacking creatures without flying." Adapted from
+// Card-Forge/forge (a/al_abaras_carpet.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "preventDamageFromAttackingNonFlying": {
+  ns = { ...ns, turnState: { ...ns.turnState, filteredDamagePrevention: {
+    ...ns.turnState.filteredDamagePrevention,
+    [caster]: [...(ns.turnState.filteredDamagePrevention?.[caster] || []), { filter: 'attackingNonFlying', shieldSourceName: card.name }],
+  } } };
+  ns = dlog(ns, `${card.name}: damage from attacking creatures without flying is prevented this turn.`, "effect");
+  break;
+}
+// Scarecrow: "{6}, {T}: Prevent all damage that would be dealt to you this
+// turn by creatures with flying." Adapted from Card-Forge/forge
+// (s/scarecrow.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "preventDamageFromFlying": {
+  ns = { ...ns, turnState: { ...ns.turnState, filteredDamagePrevention: {
+    ...ns.turnState.filteredDamagePrevention,
+    [caster]: [...(ns.turnState.filteredDamagePrevention?.[caster] || []), { filter: 'flying', shieldSourceName: card.name }],
+  } } };
+  ns = dlog(ns, `${card.name}: damage from creatures with flying is prevented this turn.`, "effect");
+  break;
+}
+// Whippoorwill: "{G}{G}, {T}: Target creature can't be regenerated this
+// turn. Damage that would be dealt to that creature this turn can't be
+// prevented or dealt instead to another permanent or player. When the
+// creature dies this turn, exile the creature." cantRegenerateThisTurn
+// already exists (Hurr Jackal). cantPreventOrRedirectDamage and
+// exileOnDeathThisTurn are new. Adapted from Card-Forge/forge
+// (w/whippoorwill.txt), GPL-3.0. See THIRD_PARTY_NOTICES.md.
+case "whippoorwillCurse": {
+  if (!tgtC) { ns = dlog(ns, `${card.name} fizzles -- no legal creature target.`, "effect"); break; }
+  ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
+    c.iid === tgtC.iid ? { ...c, cantRegenerateThisTurn: true, cantPreventOrRedirectDamage: true, exileOnDeathThisTurn: true } : c
+  ) } };
+  ns = dlog(ns, `${card.name}: ${tgtC.name} can't be regenerated this turn; damage to it can't be prevented or redirected this turn; it will be exiled if it dies this turn.`, "effect");
+  break;
+}
 // Glyph of Destruction: "Target blocking Wall you control gets +10/+0 until
 // end of combat. Prevent all damage that would be dealt to it this turn.
 // Destroy it at the beginning of the next end step." destroyAtNextEnd is a
@@ -5241,6 +5321,7 @@ const spiritLinkGain = (c) => (c.enchantments ?? []).some(e => e.mod?.spiritLink
 const staticDamagePrevented = (recipient, source) =>
   (!!recipient.preventDamageFromEnchanted && (source.enchantments?.length > 0)) ||
   (!!recipient.preventDamageFromBlocked && recipient.blocking === source.iid) ||
+  (!!recipient.preventDamageFromWalls && source.subtype?.includes('Wall')) ||
   !!source.enchantments?.some(e => e.mod?.preventCombatDamageBySelf);
 const fsBlockerShares = computeBandBlockerShares(ns);
 
@@ -6971,7 +7052,7 @@ if (ns.pendingRiverDivide || ns.pendingRiverSides) {
   console.error('[DuelCore] CLEANUP: river division/siding still pending -- force clearing');
   ns = { ...ns, pendingRiverDivide: null, pendingRiverSides: null };
 }
-ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
+ns = { ...ns, manaTapSnapshot: null, additionalCostSnapshot: null, turnState: { ...ns.turnState, damageLog: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, filteredDamagePrevention: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {} } };
 const ac = ns.active;
 // Library of Leng: "You have no maximum hand size." See docs/MECHANICS_INDEX.md.
 const effectiveMax = ns[ac].bf.some(c => c.id === 'library_of_leng') ? Infinity : ns.ruleset.maxHandSize;
@@ -7040,7 +7121,7 @@ ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => c.blocksAllAttackers ? { ..
 // Clear channelActive and damageShield at end of turn
 for (const w of ["p","o"]) {
   if (ns[w].channelActive) ns = { ...ns, [w]: { ...ns[w], channelActive: false }};
-  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (c.damageShield || c.preventCombatDamageDealt || c.preventAllDamageToThisTurn || c.preventAllDamageByThisTurn) ? { ...c, damageShield: 0, preventCombatDamageDealt: false, preventAllDamageToThisTurn: false, preventAllDamageByThisTurn: false } : c) } };
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => (c.damageShield || c.preventCombatDamageDealt || c.preventAllDamageToThisTurn || c.preventAllDamageByThisTurn || c.cantPreventOrRedirectDamage || c.exileOnDeathThisTurn) ? { ...c, damageShield: 0, preventCombatDamageDealt: false, preventAllDamageToThisTurn: false, preventAllDamageByThisTurn: false, cantPreventOrRedirectDamage: false, exileOnDeathThisTurn: false } : c) } };
   // Player-level "prevent the next N damage this turn" shield (Alabaster Potion,
   // Conservator, etc.) and Forcefield's identity-scoped combat shield both expire
   // unconditionally at end of turn, whether or not they were consumed.
@@ -8861,7 +8942,7 @@ exileNextDeath: false,
 pendingLotus: false,
 pendingLotusIid: null,
 pendingBop: false,
-turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {}, endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
+turnState: { damageLog: [], sengirDamagedIids: [], powerSurgeUntappedCount: 0, attackedThisCombat: [], mustAttackEligible: [], venomTargets: [], damageTakenThisTurn: {}, damageBySourceType: {}, damageShields: { p: [], o: [] }, filteredDamagePrevention: { p: [], o: [] }, creatureDamageShields: {}, landDestructionShields: {}, creaturesDiedThisTurn: [], sacrificedIids: [], activatedOnceIids: [], activationCounts: {}, endOfCombatDestroy: [], endOfCombatSacrifice: [], combatDamageOrders: {} },
 triggerQueue: [],
 pendingChoice: null,
 // Suspends processTriggerQueue for a triggered ability that needs a fresh

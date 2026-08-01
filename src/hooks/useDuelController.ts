@@ -165,6 +165,8 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'telekinesisTapPreventUntapSkip', // Telekinesis -- "target creature"
   'kryShieldPreventAndPump', // Kry Shield -- "target creature you control" (activated ability)
   'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature" (activated ability)
+  // A9 Damage Prevention/Redirect batch 4:
+  'whippoorwillCurse', // Whippoorwill -- "target creature" (activated ability)
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -372,6 +374,8 @@ export const ACTIVATE_TARGET_EFFECTS = new Set([
   // A9 Damage Prevention/Redirect batch 1+2:
   'kryShieldPreventAndPump', // Kry Shield -- "target creature you control"
   'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature"
+  // A9 Damage Prevention/Redirect batch 4:
+  'whippoorwillCurse', // Whippoorwill -- "target creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
