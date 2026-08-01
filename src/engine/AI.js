@@ -1175,6 +1175,25 @@ function planBlock(state, profile) {
     }
   }
 
+  // Marble Priest: "All Walls able to block Marble Priest do so." Same
+  // simplification as the existing Lure heuristic just above -- AI-only
+  // (the AI defender is biased to commit its Walls), not a hard rule
+  // enforced against a human defender declining to block. Matches this
+  // codebase's existing precedent for Lure itself.
+  const marblePriestAttId = incomingAttackerIds.find(id => {
+    const att = getBF(state, id);
+    return att?.mustBeBlockedByWalls;
+  });
+  if (marblePriestAttId) {
+    const mpAtt = getBF(state, marblePriestAttId);
+    for (const bl of available) {
+      if (!alreadyBlocking.has(bl.iid) && bl.subtype?.includes('Wall') && canBlockDuel(bl, mpAtt)) {
+        alreadyBlocking.add(bl.iid);
+        blockActions.push({ type: 'BLOCK', blockerId: bl.iid, attackerId: marblePriestAttId });
+      }
+    }
+  }
+
   // Aggregate lethal check: sum unblocked damage and force chumps if needed.
   const totalIncoming = incomingAttackerIds.reduce((sum, id) => {
     const att = getBF(state, id);

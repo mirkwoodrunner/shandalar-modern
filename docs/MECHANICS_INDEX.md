@@ -6196,9 +6196,9 @@ completing with the correct new mode.
 ### Status
 COMPLETE -- 12 of 22 non-legendary cards in the A9 damage-prevention/redirect
 bucket shipped. Remaining 6 (Bronze Horse, Enchanted Being, Demonic Torment,
-Wall of Putrid Flesh, Wall of Shadows, Wall of Vapor) shipped in sub-batch 3
-(see below); Al-abara's Carpet, Scarecrow, Whippoorwill, and Marble Priest
-are not yet scoped into a sub-batch. Rasputin Dreamweaver tracks separately
+Wall of Putrid Flesh, Wall of Shadows, Wall of Vapor) shipped in sub-batch 3;
+the final 4 (Al-abara's Carpet, Scarecrow, Whippoorwill, Marble Priest)
+shipped in batch 4 (see below). Rasputin Dreamweaver tracks separately
 in the legendary-creature sub-track (38/55).
 
 ---
@@ -6299,11 +6299,121 @@ prevention fires correctly end-to-end via the real reducer, run at both
 
 ### Status
 COMPLETE -- all 6 sub-batch 3 cards shipped; the A9 damage-prevention/redirect
-bucket's non-legendary cards are now fully closed except Al-abara's Carpet,
-Scarecrow, Whippoorwill, and Marble Priest, which remain unscoped into a
-sub-batch. Rasputin Dreamweaver tracks separately in the legendary-creature
-sub-track (38/55).
+bucket's non-legendary cards are fully closed as of batch 4 (see below).
+Rasputin Dreamweaver tracks separately in the legendary-creature sub-track
+(38/55).
 
 ---
 
-# End of MECHANICS INDEX v1.49
+## Batch: Damage Prevention/Redirect 4 (4 cards) -- 2026-08-01
+
+Closes the A9 damage-prevention/redirect bucket entirely: Al-abara's Carpet,
+Scarecrow, Whippoorwill, Marble Priest. `CARD_DB`: 731 -> 735.
+
+### New mechanism: `turnState.filteredDamagePrevention` (`src/engine/DuelCore.js`)
+
+Al-abara's Carpet and Scarecrow are both repeatable (`{T}`), player-scoped,
+standing-filter damage preventions for the rest of the turn -- distinct from
+the pre-existing `turnState.damageShields` (one-time, exact-chosen-source,
+Circle of Protection-style, consumed on match). The new field is
+`{ p: [], o: [] }`, an array per player of `{ filter, shieldSourceName }`
+entries, reset every turn in both the initial `turnState` object and the
+CLEANUP-phase `turnState` reset (repeatable `{T}` abilities re-activate each
+turn, they don't persist). Two filter values: `'flying'` (Scarecrow) and
+`'attackingNonFlying'` (Al-abara's Carpet), matched by the new
+`filteredDamagePreventionMatches(filter, sourceCard, state)` helper (module
+scope, alongside `hurt()` -- reads flying status through `hasKw`'s
+layer-aware lookup, so Aura-granted flying counts). Checked in `hurt()`
+immediately after the existing exact-source `damageShields` block, **not**
+gated on `meta.combat`: per the 2004-10-04 Oracle ruling on Scarecrow, this
+also prevents non-combat damage from a matching creature source, so the
+check has to fire for any `hurt()` call with a `meta.sourceIid`, combat or
+not. Unlike `damageShields`, a match here is **not consumed** -- the filter
+stays live and keeps preventing damage from every qualifying source for the
+rest of the turn.
+
+### New creature fields backing Whippoorwill's curse (`src/engine/DuelCore.js`)
+
+Whippoorwill's activated ability (`{G}{G}, {T}: target creature`) sets three
+flags on the target via the new `whippoorwillCurse` `resolveEff` case:
+- `cantRegenerateThisTurn` -- pre-existing field (Hurr Jackal); reused as-is.
+- `cantPreventOrRedirectDamage` (new) -- bypasses *every* recipient-side
+  prevention/redirect mechanism for damage dealt to this creature for the
+  rest of the turn. Checked at two choke points: `dmgWithShield(c, amount)`
+  (combat damage mutation, as the first check ahead of
+  `preventAllDamageToThisTurn`/the flat `damageShield`) and
+  `consumeCreatureDamageShields(state, targetIid, amt, srcMeta)` (checked
+  immediately after the target lookup, ahead of both the protection check
+  and any `creatureDamageShields` redirect/point entries). The latter is
+  called from both `hurtCreature()` (non-combat) and both combat-pairing
+  call sites in `resolveCombat`, so the one change covers non-combat and
+  combat damage to the cursed creature uniformly. In both functions, hitting
+  the bypass means the underlying shield/flag is left **unconsumed** -- it
+  doesn't get to act at all, rather than being spent and failing.
+  **Explicitly out of scope** (documented simplification, not an oversight):
+  combat-source *protection* (`blockerProtectsFromAtt`/`attackerProtectsFromBl`
+  in `resolveCombat`) and `staticDamagePrevented()`'s own
+  `preventDamageFromEnchanted`/`preventDamageFromBlocked`/`preventDamageFromWalls`
+  checks are evaluated as gates *before* either bypassed function is ever
+  called in the combat loop -- if either blocks the pairing, damage is 0 and
+  neither bypass runs. Whippoorwill's cursed target is therefore not immune
+  to protection-based or Wall-of-Putrid-Flesh-style combat prevention;
+  overriding that would mean touching ~16 individual conditions across the
+  first-strike and regular combat passes for one niche card.
+- `exileOnDeathThisTurn` (new) -- read in `checkDeath()` alongside the
+  pre-existing global `exileNextDeath` one-shot flag (Disintegrate):
+  `exileThisDeath = ns.exileNextDeath || c.exileOnDeathThisTurn`. Scoped to
+  the single cursed creature rather than the whole game.
+
+All three flags are cleared every CLEANUP alongside the pre-existing
+`damageShield`/`preventCombatDamageDealt`/`preventAllDamageToThisTurn`/
+`preventAllDamageByThisTurn` per-creature reset (`cantRegenerateThisTurn`
+already had its own separate reset, unchanged).
+
+### Marble Priest -- static prevention + AI-only forced block
+
+- `preventDamageFromWalls` (new recipient-side flag) -- added as a third OR
+  clause to the existing `staticDamagePrevented(recipient, source)` helper
+  (`recipient.preventDamageFromWalls && source.subtype?.includes('Wall')`),
+  so it's threaded through all 14 existing combat-damage-application call
+  sites in `resolveCombat` for free, same as the Batch 3 fields. Combat-only,
+  matching "Prevent all combat damage" -- not extended to `hurtCreature()`'s
+  non-combat path.
+- `mustBeBlockedByWalls` (new, `src/engine/AI.js` `planBlock`) -- AI-only
+  simplification, same precedent as the pre-existing Lure heuristic
+  immediately above it in `planBlock`: every available untapped Wall the AI
+  controls is forced into the block list against Marble Priest. Not a hard
+  rule enforced against a human defender declining to block -- there is no
+  such enforcement anywhere in this codebase for Lure either.
+
+### Tests
+
+**Vitest (22):** `tests/scenarios/damage-prevention-batch-4.test.js` -- one
+`describe` block per card (Al-abara's Carpet x5, Scarecrow x5, Whippoorwill
+x8, Marble Priest x4). The Whippoorwill block includes four isolation cases
+proving the bypass fires at both choke points and leaves the underlying
+shield unconsumed (flat `damageShield`, `preventAllDamageToThisTurn`, a
+`creatureDamageShields` redirect entry, and the `cantRegenerateThisTurn`
+regen-shield interaction), plus the exile-vs-graveyard death routing in both
+directions (cursed and uncursed, same turn).
+
+**Playwright (4, chromium only, x2 viewports = 8 executions):**
+`tests/e2e/damage-prevention-batch-4.spec.js`, styled after
+`damage-prevention-batch-3.spec.js` (`page.evaluate` + dynamic-import
+`duelReducer`/`hurtCreature`/`getAIPlan` calls, no UI click-flow). None of
+the 4 cards required a new UI component: Al-abara's Carpet/Scarecrow reuse
+the existing generic untargeted activation button, Whippoorwill reuses the
+existing creature-targeting flow (Kry Shield/Maze of Ith) via its new
+`ACTIVATE_TARGET_EFFECTS`/`CREATURE_ONLY_TARGET_EFFECTS` registration, and
+Marble Priest has no activated ability at all -- so the desktop/mobile
+guarantee is structural (both screens dispatch through the same
+reducer/hook path), not just tested.
+
+### Status
+COMPLETE -- all 4 cards shipped. The A9 damage-prevention/redirect bucket's
+22 non-legendary cards are now fully closed. Rasputin Dreamweaver tracks
+separately in the legendary-creature sub-track (38/55).
+
+---
+
+# End of MECHANICS INDEX v1.50

@@ -757,6 +757,36 @@ other call sites), which remains checked afterward, unchanged.
   (`ON_CREATURE_DIES`, `scope: 'self'`) -- no engine change was needed for
   that half.
 
+### 7.9.1 Addendum: `cantPreventOrRedirectDamage` bypass (Whippoorwill, A9 batch 4)
+
+`consumeCreatureDamageShields`'s documented contract above gains one new
+rule, checked immediately after the target-creature lookup and BEFORE the
+protection check: if `targetCreature.cantPreventOrRedirectDamage` is true,
+the function returns `{ state, remainingAmt: amt }` immediately -- the full
+amount passes through untouched, protection is not checked, and no
+`creatureDamageShields` entry is consumed (they remain queued for a future
+non-cursed event this turn, if any). A future card wanting the same
+"damage to this creature can't be prevented or redirected" shape can set
+this same flag; no further engine change is needed.
+
+The companion choke point, `dmgWithShield(c, amount)` (combat-only, the
+separate flat-`damageShield` system this section's opening paragraph
+describes as untouched), gained the identical bypass as its own first
+check, ahead of `preventAllDamageToThisTurn`. Both bypasses are consulted
+in the fixed order described above (`consumeCreatureDamageShields` first,
+then `dmgWithShield` on the remainder) at every existing call site, so a
+cursed creature bypasses both systems in one pass without any call-site
+changes.
+
+Deliberately NOT extended to `resolveCombat`'s pre-shield gates
+(`blockerProtectsFromAtt`/`attackerProtectsFromBl` combat-source protection,
+or `staticDamagePrevented()`'s `preventDamageFromEnchanted`/
+`preventDamageFromBlocked`/`preventDamageFromWalls` checks) -- those are
+evaluated as gates before either bypassed function is even called; if one
+of them blocks a pairing, damage is 0 and the flag is moot for that event.
+See `docs/MECHANICS_INDEX.md` -- Batch: Damage Prevention/Redirect 4 for
+the full card-level writeup.
+
 ## 7.10 Land Destruction (`destroyLand` Choke Point) + Pyramids
 
 A single choke point for "a land is about to be destroyed," replacing 9 ad
