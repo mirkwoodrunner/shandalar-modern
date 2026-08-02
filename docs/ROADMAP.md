@@ -187,7 +187,12 @@ See `gdd.md` §3.2.9 (AI Engine) and §3.4 (AI Archetypes) for the existing impl
 
 ## Milestone D — Loop polish
 
-Construction is done; this is feel and balance. Reward/difficulty curves vs. distance from start, dungeon entity variety, ante stakes, world-magic balance, and Resume Duel v2 (checkpoint-gated loading — `LOAD_STATE` exists in the reducer but is currently dead code). Lower urgency than A–C, higher than premodern.
+Construction is done; this is feel and balance. Reward/difficulty curves vs. distance from start,
+dungeon entity variety, ante stakes, and world-magic balance are still open. Resume Duel v2 was
+rescoped 2026-08-02 from mid-duel checkpointing into full campaign persistence (position, world
+state, deck, binder, quests, mana links, dungeon progress, gold) — see `docs/DECISIONS.md`,
+"Persistence Model." Two sub-decisions remain open there (save slots, autosave vs. safe-point) and
+this item is explicitly not scheduled as next work. Lower urgency than A–C, higher than premodern.
 
 ## Milestone E — Premodern fork (go/no-go decision point)
 
