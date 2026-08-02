@@ -19,8 +19,38 @@
 - A9 damage-prevention/redirect sub-track: all 22 non-legendary cards
   closed (sub-batches 1+2 on 2026-07-28, sub-batch 3 on 2026-07-29, batch 4
   on 2026-08-01, see Completed above). Rasputin Dreamweaver
-  (Legendary Creature) tracks separately in the legendary-creature
-  sub-track, not here.
+  (Legendary Creature) shipped in Legendary Creatures Batch 6
+  (2026-08-01, see Completed below) via the separately-tracked
+  legendary-creature sub-track, not this bucket.
+- Legendary-creature sub-track: 49/55 shipped as of Legendary Creatures
+  Batch 6 (2026-08-01, see Completed below). 6 remain absent, each deferred
+  pending its own scoped prompt (not attempted in Batch 6):
+  - **Arcades Sabboth** -- needs a new turn-conditional anthem CDA ("each
+    untapped, non-attacking creature you control gets +0/+2", re-evaluated
+    live) plus a new 3-color `sacrificeUnless_GWU` upkeep variant. No
+    precedent for the anthem shape; scope it alone.
+  - **Axelrod Gunnarson** -- needs a generalized "creatures damaged by this
+    specific creature this turn" tracker. The only precedent
+    (`turnState.sengirDamagedIids`) is hardcoded to Sengir Vampire by name
+    check, not reusable -- this card is the trigger to actually generalize
+    it (real trigger-pipeline work, own prompt).
+  - **Halfdane** -- "change base P/T to target creature's P/T until the end
+    of your *next* upkeep" spans a full turn cycle; the established "until
+    your next upkeep -> approximate as until end of turn" simplification
+    (Erhnam Djinn/Xenic Poltergeist/Gabriel Angelfire) would be materially
+    wrong here. Needs real duration-design work, not a reused approximation.
+  - **Johan** -- "attacking doesn't tap your creatures this combat if Johan
+    is untapped" is a new conditional-vigilance-grant mechanism tied to the
+    granting creature's own tapped status. No precedent.
+  - **Nebuchadnezzar** -- "choose a card name" has zero precedent anywhere
+    in this codebase (no card-naming UI exists at all). Blocks the card
+    entirely until that interaction is designed -- not a per-card fix.
+  - **Stangg** -- the ETB token (Stangg Twin) and Stangg itself are
+    mutually dependent (exile the token if Stangg leaves; sacrifice Stangg
+    if the token leaves), a bidirectional linked-pair distinct from
+    Tetravus's self-referential remembered-token tracking. Doable, but
+    needs a focused prompt to avoid a subtle infinite-loop or
+    double-trigger bug.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
 ## Completed (2026-08-01)
@@ -52,6 +82,51 @@
   (`tests/e2e/damage-prevention-batch-4.spec.js`, chromium only --
   engine-only `page.evaluate` cases, no new UI surface). See
   `docs/MECHANICS_INDEX.md` -- Batch: Damage Prevention/Redirect 4.
+- **Legendary Creatures Batch 6 (9 cards)** -- Sol'kanar the Swamp King,
+  Boris Devilboon, Gosta Dirk, Lord Magnus, Ur-Drago, Livonya Silone,
+  Rubinia Soulsinger, Ayesha Tanaka, Rasputin Dreamweaver. Four new shared
+  mechanisms: (1) landwalk nullification (`nullifiesLandwalk` field,
+  checked globally across both battlefields in `canBlockDuel()` -- Gosta
+  Dirk/island, Lord Magnus/plains+forest, Ur-Drago/swamp); (2) legendary
+  landwalk (`landwalkLegendary` field, reuses `isLegendary()` from the
+  Legend Rule Infrastructure batch -- Livonya Silone; a no-op until one of
+  the 5 still-absent Legendary Lands ships); (3) a new
+  `whileGrantorControlledAndTapped` `checkControlGrants()` condition
+  (Rubinia Soulsinger's `rubiniaSteal`, modeled on Old Man of the Sea's
+  `whileTappedAndPowerLte` but with no power ceiling); (4) a colored/
+  ability-aware extension to `pendingConditionalCounter`/
+  `CONDITIONAL_COUNTER_CHOICE` -- new `costColor` (deduct one specific
+  color instead of generic cheapest-first) and `targetIsAbility` (skip the
+  graveyard move on decline, since the target is an ability, not a spell)
+  fields, used by Ayesha Tanaka's `counterActivatedAbilityUnlessPay`.
+  Discovered and fixed two real pre-existing UI gaps while wiring Ayesha's
+  targeting flow: `isCounterEffect()`/`ACTIVATE_TARGET_EFFECTS` only
+  recognized spell-shaped `card.effect`, never an activated ability's
+  `card.activated.effect` (extended additively); and the stack-targeting
+  gate in `DuelScreen.tsx`/`DuelScreenMobile.tsx` derived `sourceCard` from
+  hand only, so an activated-ability counter effect could never open the
+  stack-click flow at all (fixed to check `card.activated`/battlefield too,
+  mirroring the existing kind-aware lookup already used by `castPrompt`).
+  Also fixed the AI's `pendingConditionalCounter` auto-resolve
+  (`useDuelController.ts`) to read the already-computed `canPay` flag
+  instead of recomputing a generic `totalMana >= cost` check -- harmless
+  for Force Spike/Power Sink's generic costs, but would have let the AI
+  "pay" a colored cost (Ayesha's `{W}`) without actually holding that
+  color. Boris Devilboon adds a Minor Demon token
+  (`src/data/tokens.js`). Rasputin Dreamweaver enters with 7 DREAM
+  counters (`etbCounters`) and exposes its two counter-cost abilities via
+  the `activatedAbilities[]` array (a card can only have one
+  `card.activated` object); each resolves immediately without the stack,
+  matching every other array-shaped ability in this codebase (Mishra's
+  Factory, Pyramids, Vaevictis Asmadi, Safe Haven, Voodoo Doll). `CARD_DB`:
+  735 -> 744. Legendary-creature sub-track: 40 -> 49 shipped (49/55); 6
+  remain absent, deferred to their own prompts (see Up Next above).
+  6 of the original 15 candidates deferred (Arcades Sabboth, Axelrod
+  Gunnarson, Halfdane, Johan, Nebuchadnezzar, Stangg -- see Up Next).
+  Tests: 34 Vitest (`tests/scenarios/legendary-creatures-batch-6.test.js`),
+  6 Playwright x 2 viewports = 12 executions
+  (`tests/e2e/legendary-creatures-batch-6.spec.js`). See
+  `docs/MECHANICS_INDEX.md` -- Legendary Creatures Batch 6.
 
 ## Completed (2026-07-29)
 - **A9 Damage Prevention/Redirect bucket, sub-batch 3 (6 cards)** -- Bronze

@@ -167,6 +167,8 @@ export const CREATURE_ONLY_TARGET_EFFECTS = new Set([
   'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature" (activated ability)
   // A9 Damage Prevention/Redirect batch 4:
   'whippoorwillCurse', // Whippoorwill -- "target creature" (activated ability)
+  // Legendary Creatures Batch 6:
+  'rubiniaSteal', // Rubinia Soulsinger -- "target creature" (activated ability)
 ]);
 
 // Every existing CREATURE_ONLY_TARGET_EFFECTS/PLAYER_ONLY_TARGET_EFFECTS member
@@ -228,7 +230,12 @@ export function isArtifactOnlyTarget(card: any, abilityId?: string | null): bool
 export function isCounterEffect(card: any): boolean {
   // 'counterArtifact' (Artifact Blast, simple-tier Forge batch) targets a spell
   // on the stack exactly like the other counter effects -- same stack-click flow.
-  return ['counter', 'counterCreature', 'powerSink', 'counterArtifact'].includes(card?.effect);
+  // Ayesha Tanaka (Legendary Creatures Batch 6) is the first counter-style
+  // effect sourced from an activated ability rather than a spell -- its
+  // targeting effect lives at card.activated.effect, not the top-level
+  // card.effect every other member here uses.
+  return ['counter', 'counterCreature', 'powerSink', 'counterArtifact'].includes(card?.effect)
+    || card?.activated?.effect === 'counterActivatedAbilityUnlessPay';
 }
 
 export function isBebRebEffect(card: any): boolean {
@@ -376,6 +383,13 @@ export const ACTIVATE_TARGET_EFFECTS = new Set([
   'mazeOfIthUntapAndPrevent', // Maze of Ith -- "target attacking creature"
   // A9 Damage Prevention/Redirect batch 4:
   'whippoorwillCurse', // Whippoorwill -- "target creature"
+  // Legendary Creatures Batch 6: registered here (not a battlefield-click
+  // effect) purely so beginActivateFlow opens the castFlow targeting step at
+  // all -- isCounterEffect() routes the actual click to the stack instead of
+  // a battlefield permanent, same "double-registration for stack-only
+  // targets" idiom as reverberateSorceryRedirect (see EXPLICIT_TARGET_EFFECTS above).
+  'counterActivatedAbilityUnlessPay', // Ayesha Tanaka -- "target activated ability from an artifact source"
+  'rubiniaSteal', // Rubinia Soulsinger -- "target creature"
 ]);
 
 // Ability effects that can target players (in addition to permanents).
@@ -771,11 +785,15 @@ export function useDuelController(
     if (s.over) return;
     if (s.pendingUpkeepChoice) return;
 
-    // AI resolves conditional counter payment (Force Spike, Power Sink)
+    // AI resolves conditional counter payment (Force Spike, Power Sink, Ayesha
+    // Tanaka). Reads the already-computed `canPay` flag off pendingConditionalCounter
+    // rather than recomputing total-mana affordability here -- Force Spike/Power
+    // Sink's canPay was always `totalMana >= cost` (identical to the old inline
+    // check), but Ayesha Tanaka's cost is a specific color ({W}), not generic, so
+    // a generic totalMana comparison would let the AI "pay" without actually
+    // having the required color.
     if (s.pendingConditionalCounter && s.pendingConditionalCounter.targetCaster === 'o') {
-      const { cost } = s.pendingConditionalCounter;
-      const totalMana = Object.values(s.o.mana as Record<string, number>).reduce((a, v) => a + v, 0);
-      resolveConditionalCounter(totalMana >= cost);
+      resolveConditionalCounter(s.pendingConditionalCounter.canPay);
       return;
     }
 

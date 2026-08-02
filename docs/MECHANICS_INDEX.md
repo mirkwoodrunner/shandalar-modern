@@ -6416,4 +6416,201 @@ separately in the legendary-creature sub-track (38/55).
 
 ---
 
+## Legendary Creatures Batch 6 -- 2026-08-01
+
+**9 of the 15 candidate cards shipped; 6 deferred (see below).** Sol'kanar
+the Swamp King ({2}{U}{B}{R}, Demon, 5/5, swampwalk + gain-1-life trigger),
+Boris Devilboon ({3}{B}{R}, Zombie Wizard, 2/2, token generator), Gosta Dirk
+({3}{W}{W}{U}{U}, Human Warrior, 4/4, first strike + islandwalk
+nullification), Lord Magnus ({3}{G}{W}{W}, Human Druid, 4/3, first strike +
+plainswalk/forestwalk nullification), Ur-Drago ({3}{U}{U}{B}{B}, Elemental,
+4/4, first strike + swampwalk nullification), Livonya Silone
+({2}{R}{R}{G}{G}, Human Warrior, 4/4, first strike + legendary landwalk),
+Rubinia Soulsinger ({2}{G}{W}{U}, Faerie, 2/3, conditional control theft),
+Ayesha Tanaka ({W}{W}{U}{U}, Human Artificer, 2/2, banding + activated-
+ability counter), Rasputin Dreamweaver ({4}{W}{U}, Human Wizard, 4/1, dream
+counters). Legendary-creature sub-track: **40 -> 49 shipped (49/55)**
+against the 901-card curated pool (re-derived via live `CARD_DB` import,
+same method as the ROADMAP.md A9 recounts); `CARD_DB.length` 735 -> 744.
+
+### New shared infrastructure 1: landwalk nullification (`nullifiesLandwalk`)
+
+Gosta Dirk/Lord Magnus/Ur-Drago all read "Creatures with X-walk can be
+blocked as though they didn't have X-walk" -- a global, unconditional
+nullification, not scoped to either player. New `nullifiesLandwalk: string[]`
+card-data field (basic land-type names, lowercase: `'island'`, `'plains'`,
+`'forest'`, `'swamp'`; mountain has no nullifier card yet). Checked in
+`canBlockDuel()` immediately before the pre-existing `SPECIFIC_WALKS` loop:
+scans `[...state.p.bf, ...state.o.bf]` (both battlefields, regardless of
+which player controls the nullifier -- proven by a dedicated test where the
+nullifier sits on the *attacking* creature's own side) and skips any
+`SPECIFIC_WALKS` entry whose land-type is in the nullified set. Reusable by
+any future landwalk-nullifier card via the same field -- no per-card code
+needed.
+
+### New shared infrastructure 2: legendary landwalk (`landwalkLegendary`)
+
+Livonya Silone's "legendary landwalk" is a supertype match (`isLegendary()`,
+reused as-is from the Legend Rule Infrastructure batch), not a land-subtype
+match like the 5 basic walks. New `landwalkLegendary: true` card-data field,
+checked in `canBlockDuel()` immediately after the existing generic
+`at.landwalkType` block: unblockable if `defBf` contains a land where
+`isLegendary()` is true. Currently a no-op in practice -- none of the 5
+Legendary Lands (Hammerheim, Karakas, Pendelhaven, The Tabernacle at
+Pendrell Vale, Urborg) exist in `CARD_DB` yet, so the only reachable case
+today is "always blockable." Correct to ship now anyway, same precedent as
+Legend Rule Infrastructure itself shipping before any card used it --
+regression-tested via a synthetic fixture (`type: 'Legendary Land'`) proving
+the mechanism itself works, separate from the "no real card exercises it
+yet" case.
+
+### New shared infrastructure 3: `whileGrantorControlledAndTapped` control-grant condition
+
+Rubinia Soulsinger's `rubiniaSteal` activated ability ("Gain control of
+target creature for as long as you control Rubinia Soulsinger and Rubinia
+Soulsinger remains tapped") is a third `checkControlGrants()` condition,
+alongside the pre-existing `whileGrantorControlled` (Aladdin) and
+`whileTappedAndPowerLte` (Old Man of the Sea). No power ceiling, unlike Old
+Man of the Sea. **Naming gotcha worth flagging for future conditions:**
+`controlGrant.grantorController` is a shared field read by the single
+`revertControlGrant()` helper regardless of condition, and it always means
+"the *original* controller to revert the stolen permanent back to" (matches
+Aladdin/Old Man's existing usage) -- **not** "the controller of the granting
+permanent," despite the field name reading that way. Rubinia's own
+"does the caster still control the grantor" check is therefore derived
+separately, from the stolen creature's own *current* `controller` field
+(which equals the caster, since that's who it was stolen to), not from
+`grantorController`. Getting this backwards (an earlier draft did) silently
+breaks every revert path, since `revertControlGrant` would move the
+"reverted" creature right back to the same side it just left.
+
+### New shared infrastructure 4: colored/ability-aware `pendingConditionalCounter`
+
+Ayesha Tanaka's `counterActivatedAbilityUnlessPay` extends the Force
+Spike/Power Sink `pendingConditionalCounter`/`CONDITIONAL_COUNTER_CHOICE`
+mechanism with two new optional fields -- full contract writeup (not
+previously documented) at `docs/ENGINE_CONTRACT_SPEC.md` Section 7.15:
+- **`costColor`** -- Ayesha's cost is a specific `{W}`, not generic; the
+  payment branch deducts from that single color's pool when present,
+  otherwise keeps the original generic cheapest-first deduction (purely
+  additive, byte-identical for the two existing members).
+- **`targetIsAbility`** -- Ayesha's legal target is an activated ability
+  (an `isAbility: true` stack item from an artifact source), not a spell;
+  the decline branch removes only the stack item when present, skipping the
+  graveyard move a countered spell gets.
+
+Discovered and fixed two real pre-existing gaps while wiring this up (both
+in `useDuelController.ts`/`DuelScreen.tsx`/`DuelScreenMobile.tsx`, not new
+infrastructure invented for this batch):
+1. `isCounterEffect()`/`ACTIVATE_TARGET_EFFECTS` only recognized the
+   spell-shaped `card.effect` -- extended additively to also check
+   `card?.activated?.effect`, since Ayesha's targeting effect lives on a
+   permanent's `activated` object, not a top-level spell field.
+2. The `sourceCard` lookup gating `StackDisplay`'s `onItemClick` (in both
+   screen files, at the stack-render call site) derived `sourceCard` from
+   the player's hand only -- correct for a spell, but always `undefined`
+   for an activated ability (whose source lives on the battlefield),
+   silently disabling stack-click targeting for any activated-ability
+   counter effect. Fixed by mirroring the same kind-aware `sourceCard`
+   lookup `castPrompt` already used a few lines away in the same files.
+3. (Bugfix, not a gap in scope for Ayesha alone but exposed by her colored
+   cost.) The AI's `pendingConditionalCounter` auto-resolve in
+   `useDuelController.ts` recomputed a generic `totalMana >= cost` check
+   inline instead of reading the already-color-aware `canPay` flag stored
+   on `pendingConditionalCounter` -- harmless for Force Spike/Power Sink's
+   generic costs (where the two checks are identical), but would have let
+   the AI "pay" Ayesha's `{W}` cost without actually holding white mana.
+   Fixed to read `canPay` directly.
+
+### Straightforward per-card work
+
+- **Boris Devilboon** -- `borisCreateMinorDemon` resolveEff case (models
+  `createSerpentToken`), new `minor_demon` TOKEN_DB entry.
+- **Sol'kanar the Swamp King** -- `gainLife1` new declarative
+  triggered-effect type (unconditional life gain, no `requiresChoice`
+  wrapper), modeled on Throne of Bone's `ON_SPELL_CAST`/`spellColorIncludes`
+  trigger shape minus its pay-{1} choice wrapper. Swampwalk itself is the
+  pre-existing `SWAMPWALK` keyword, unaffected by the new nullification
+  mechanism (regression-tested explicitly, since swampwalk is also one of
+  Ur-Drago's nullified types and both cards can plausibly share a fixture).
+- **Rasputin Dreamweaver** -- enters with 7 DREAM counters (`etbCounters`).
+  Its two counter-cost abilities (`rasputinAddMana`,
+  `rasputinPreventDamage1Self`) are exposed via the `activatedAbilities[]`
+  array shape (a card can hold only one `card.activated` object, and
+  Rasputin needs two independently-costed abilities -- same reason Vaevictis
+  Asmadi/Wormwood Treefolk use the array shape). This matters mechanically:
+  array-shaped abilities dispatch through a hardcoded per-effect `if`
+  chain in `ACTIVATE_ABILITY` (not the generic `card.activated` mana-cost-
+  string parser), so each ability's DREAM-counter cost is checked/paid
+  inline (Triskelion/Osai Vultures' counter-cost convention) before
+  dispatching to `resolveEff` via a synthetic ability item -- same pattern
+  Pyramids' `destroyLandAura`/`preventLandDestructionOnce` already
+  established for array-shaped abilities that need `resolveEff`'s shared
+  case dispatch. Also means Rasputin's abilities resolve **immediately,
+  without the stack** -- consistent with every other array-shaped ability
+  in this codebase (Mishra's Factory, Pyramids, Vaevictis Asmadi, Safe
+  Haven, Voodoo Doll all skip the stack too), not a new simplification.
+  `rasputinUpkeep` case in the `switch (c.upkeep)` chain: "if untapped at
+  your upkeep, gain a DREAM counter (max 7)" is read live rather than as a
+  true start-of-turn snapshot -- accurate in every normal line of play
+  since neither ability taps Rasputin itself, so nothing under its own
+  power can tap it between UNTAP and UPKEEP.
+
+### Deferred cards (6 of the original 15 candidates, not attempted)
+
+- **Arcades Sabboth** -- needs a new turn-conditional anthem CDA ("each
+  untapped, non-attacking creature you control gets +0/+2", re-evaluated
+  live) plus a new 3-color `sacrificeUnless_GWU` upkeep variant. No
+  precedent for the anthem shape; scope it alone.
+- **Axelrod Gunnarson** -- needs a generalized "creatures damaged by this
+  specific creature this turn" tracker. The only precedent
+  (`turnState.sengirDamagedIids`) is hardcoded to Sengir Vampire by name
+  check, not reusable -- this card is the trigger to actually generalize it
+  (real trigger-pipeline work, its own prompt).
+- **Halfdane** -- "change base P/T to target creature's P/T until the end
+  of your *next* upkeep" spans a full turn cycle; the established "until
+  your next upkeep -> approximate as until end of turn" simplification
+  (Erhnam Djinn/Xenic Poltergeist/Gabriel Angelfire) would be materially
+  wrong here (a stat-copy expiring one turn early is a different card).
+  Needs real duration-design work, not a reused approximation.
+- **Johan** -- "attacking doesn't tap your creatures this combat if Johan
+  is untapped" is a new conditional-vigilance-grant mechanism tied to the
+  granting creature's own tapped status. No precedent.
+- **Nebuchadnezzar** -- "choose a card name" has zero precedent anywhere in
+  this codebase (no card-naming UI exists at all). Blocks the card entirely
+  until that interaction is designed -- not a per-card fix.
+- **Stangg** -- the ETB token (Stangg Twin) and Stangg itself are mutually
+  dependent (exile the token if Stangg leaves; sacrifice Stangg if the
+  token leaves), a bidirectional linked-pair distinct from Tetravus's
+  self-referential remembered-token tracking. Doable, but needs a focused
+  prompt to avoid a subtle infinite-loop or double-trigger bug.
+
+### Tests
+
+**Vitest (34):** `tests/scenarios/legendary-creatures-batch-6.test.js` --
+landwalk-nullify family + regression (11), legendary landwalk (2), Rubinia
+Soulsinger (5), Ayesha Tanaka (5), Rasputin Dreamweaver (5), Boris Devilboon
+(2), Sol'kanar the Swamp King (4).
+
+**Playwright (6, x2 viewports = 12 executions):**
+`tests/e2e/legendary-creatures-batch-6.spec.js`, run at both desktop
+(1280x800, `/?duel=sandbox`) and mobile (390x844, `/?duel=sandbox-mobile`)
+so both `DuelScreen.tsx` and `DuelScreenMobile.tsx` render paths are
+exercised -- real click-driven flows for the landwalk-nullify family,
+Livonya Silone's combat click-flow, Rubinia's activate/target/revert cycle,
+Ayesha's activate/target-a-stack-item/pay-or-decline cycle, Rasputin's
+ability-menu activation, and Boris's token creation. No dedicated UI
+component renders raw counter values anywhere in this codebase (a
+pre-existing gap, out of scope here) -- Rasputin's dream-counter case
+verifies via `window.__duelState()` immediately after the real click-driven
+activation, the same "real click, then read engine state" pattern already
+used throughout this suite wherever no dedicated visual exists.
+
+### Status
+COMPLETE -- 9 of 15 candidate cards shipped, 6 explicitly deferred (see
+above, tracked in `docs/CURRENT_SPRINT.md` Up Next). Legendary-creature
+sub-track: 49/55.
+
+---
+
 # End of MECHANICS INDEX v1.50

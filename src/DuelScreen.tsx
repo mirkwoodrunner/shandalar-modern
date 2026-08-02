@@ -602,8 +602,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             />
             {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
             {!isMobile && s.stack.length > 0 && (() => {
+              // Ayesha Tanaka (Legendary Creatures Batch 6) is the first
+              // stack-targeting effect sourced from a battlefield permanent's
+              // activated ability rather than a hand spell -- mirrors the
+              // kind-aware sourceCard lookup already used by castPrompt below.
               const sourceCard = castFlow
-                ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+                ? (castFlow.kind === 'spell'
+                    ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+                    : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid))
                 : null;
               const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && needsStackTarget(sourceCard, pendingMode);
               return (
@@ -942,7 +948,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
       {isMobile && s.stack.length > 0 && (() => {
-        const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard);
+        // s.selCard may be a battlefield permanent's iid (e.g. Ayesha Tanaka's
+        // activated ability, selected via beginActivateFlow), not just a hand card.
+        const selCardDef = (s.p.hand as any[]).find((c: any) => c.iid === s.selCard)
+          ?? (s.p.bf as any[]).find((c: any) => c.iid === s.selCard);
         const stackTargeting = needsStackTarget(selCardDef, pendingMode);
         return (
           <StackDisplay

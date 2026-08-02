@@ -1258,6 +1258,60 @@ insertion-point table and the AI policy function).
   -- `ChoiceModal.tsx` already renders any `{id,label}[]` options array
   generically.
 
+## 7.15 Conditional Counter Payment (`pendingConditionalCounter` / `CONDITIONAL_COUNTER_CHOICE`)
+
+Backs "counter target spell/ability unless its controller pays {cost}"
+effects (Force Spike, Power Sink, Ayesha Tanaka). Not previously documented
+in this file -- first written up here alongside the Legendary Creatures
+Batch 6 extension that generalized it.
+
+- **Shape** (`state.pendingConditionalCounter`, set by the triggering
+  `resolveEff` case instead of resolving immediately):
+  `{ cardId, cardName, stackItemId, targetCaster, cost, canPay, costColor?, targetIsAbility? }`.
+  `canPay` is computed once, at trigger time, against the *actual* required
+  payment -- callers should always read this flag rather than recomputing
+  affordability themselves (see the AI note below).
+- **`costColor`** (new, Ayesha Tanaka): when present, `CONDITIONAL_COUNTER_CHOICE`'s
+  payment branch deducts `cost` from that single color's pool only. Absent
+  (Force Spike/Power Sink), the branch keeps its original generic
+  cheapest-first-color deduction (`C,G,R,B,U,W` order) -- purely additive,
+  byte-identical behavior for the two existing members.
+- **`targetIsAbility`** (new, Ayesha Tanaka): when present, the decline
+  branch removes only the stack item (`stackItemId`) and does **not** move
+  anything to a graveyard -- the target is an activated ability
+  (`isAbility: true` stack entry), not a spell, so its source permanent must
+  stay wherever it already is. Absent, the decline branch keeps the
+  original spell-counter behavior (move `top.card` to `targetCaster`'s gy).
+- **AI auto-resolve (`useDuelController.ts`):** the AI main loop resolves
+  `pendingConditionalCounter` for `targetCaster === 'o'` by reading the
+  stored `canPay` flag directly (`resolveConditionalCounter(s.pendingConditionalCounter.canPay)`),
+  not by recomputing a generic `totalMana >= cost` check inline. This was a
+  bugfix landed alongside the `costColor` field: the old inline check was
+  color-blind, so it would have let the AI "pay" a colored cost without
+  actually holding that color. For Force Spike/Power Sink, `canPay` was
+  always defined as `totalMana >= cost` anyway, so this is behavior-neutral
+  for both existing members.
+- **Human-controlled resolution:** `ConditionalCounterModal` renders only
+  when `pendingConditionalCounter.targetCaster === 'p'` (`DuelScreen.tsx`).
+  A future card whose target can be controlled by the human player needs no
+  new UI -- the modal already reads `cardName`/`cost`/`canPay` generically.
+- **New target shape (Ayesha Tanaka):** the countered target is an
+  activated ability sourced from a permanent (`card.activated.effect`), not
+  a spell (`card.effect`). Since `isCounterEffect()`/`ACTIVATE_TARGET_EFFECTS`
+  previously only recognized the spell shape, both were extended additively
+  to also check `card?.activated?.effect` -- see the array-shaped-ability
+  precedent in Section 7.10's `getEffectiveAbilityEffect` for the general
+  pattern of resolving a targeting effect name across card/ability shapes.
+  The stack-targeting click gate in `DuelScreen.tsx`/`DuelScreenMobile.tsx`
+  (the `sourceCard` lookup gating `StackDisplay`'s `onItemClick`) had a
+  latent gap of its own: it derived `sourceCard` from the player's hand
+  only, which is correct for a spell (`castFlow.kind === 'spell'`) but
+  always `undefined` for an activated ability (`castFlow.kind === 'ability'`,
+  whose source lives on the battlefield) -- silently disabling stack-click
+  targeting for any activated-ability-sourced counter effect, not just
+  Ayesha's. Fixed by mirroring the same kind-aware `sourceCard` lookup
+  `castPrompt` already used a few lines away in the same files.
+
 ---
 
 # 8. Determinism Contract

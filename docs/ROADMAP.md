@@ -121,6 +121,19 @@ via the same Forge cross-reference if needed for a specific batch; don't
 trust a stale copy without re-running it, per the drift this update is
 fixing.
 
+**Update (2026-08-01) — Legendary Creatures Batch 6.** 9 more legendary
+creatures shipped (Sol'kanar the Swamp King, Boris Devilboon, Gosta Dirk,
+Lord Magnus, Ur-Drago, Livonya Silone, Rubinia Soulsinger, Ayesha Tanaka,
+Rasputin Dreamweaver), bringing the separately-tracked legendary-creature
+sub-count to **49/55** (40 → 49 shipped against the 901-card curated pool;
+`CARD_DB.length` 735 → 744, re-derived via live import same as the
+2026-07-21 recount above). 6 legendary creatures remain absent (Arcades
+Sabboth, Axelrod Gunnarson, Halfdane, Johan, Nebuchadnezzar, Stangg), each
+deferred pending its own dedicated infrastructure prompt — see
+`docs/MECHANICS_INDEX.md` and `docs/CURRENT_SPRINT.md` for reasons. Not
+applied against the non-legendary 185/205 A9 figures above, which track
+separately.
+
 Historical framing (described the now-cleared 245-stub backlog, not the 299-card gap above): primary pool (`src/data/cards.js`) was 617 cards, 245 stubbed (~60% implemented) as of the 2026-05-08 stub audit. Premodern pool (`src/data/cardsPremodern.js`): 5,408 entries, effectively all unimplemented — this figure is unaffected by the update above.
 
 Stub heat map (historical — described the now-cleared 245-stub backlog specifically, not the 299-card entirely-missing gap): upkeep triggers ~32, P/T pump ~30, ante ~27, text/color/type change ~23, untap/tap manipulation ~20, draw ~18, destruction ~18, damage prevention ~17, lifegain ~14, Walls ~11, discard ~10, landwalk ~9.

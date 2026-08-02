@@ -929,6 +929,29 @@ export const CARD_DB = [
 {id:"whippoorwill", name:"Whippoorwill", type:"Creature", subtype:"Bird", color:"G", cmc:1, cost:"G", power:1, toughness:1, keywords:[], rarity:"U", text:"{G}{G}, {T}: Target creature can't be regenerated this turn. Damage that would be dealt to that creature this turn can't be prevented or dealt instead to another permanent or player. When the creature dies this turn, exile the creature.", activated:{cost:"GG,T", effect:"whippoorwillCurse", requiresTarget:true}},
 {id:"marble_priest", name:"Marble Priest", type:"Artifact Creature", subtype:"Cleric", color:"", cmc:5, cost:"5", power:3, toughness:3, keywords:[], rarity:"U", text:"All Walls able to block Marble Priest do so.\nPrevent all combat damage that would be dealt to Marble Priest by Walls.", mustBeBlockedByWalls:true, preventDamageFromWalls:true},
 
+// -- LEGENDARY CREATURES BATCH 6 (9 cards) ---------------------------------
+// See docs/MECHANICS_INDEX.md for the full batch writeup. New shared
+// infrastructure: landwalk nullification (nullifiesLandwalk), legendary
+// landwalk (landwalkLegendary), whileGrantorControlledAndTapped control-grant
+// condition, and a colored/ability-aware extension to pendingConditionalCounter.
+{id:"solkanar_the_swamp_king", name:"Sol'kanar the Swamp King", type:"Legendary Creature", subtype:"Demon", color:"UBR", cmc:5, cost:"2UBR", power:5, toughness:5, keywords:["SWAMPWALK"], rarity:"R", text:"Swampwalk (This creature can't be blocked as long as defending player controls a Swamp.)\nWhenever a player casts a black spell, you gain 1 life.", triggeredAbilities:[{id:'solkanar_gain_life', trigger:{event:'ON_SPELL_CAST'}, condition:{type:'spellColorIncludes', color:'B'}, effect:{type:'gainLife1'}}]},
+
+{id:"boris_devilboon", name:"Boris Devilboon", type:"Legendary Creature", subtype:"Zombie Wizard", color:"BR", cmc:5, cost:"3BR", power:2, toughness:2, keywords:[], rarity:"R", text:"{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature token named Minor Demon.", activated:{cost:"2BR,T", effect:"borisCreateMinorDemon"}},
+
+{id:"gosta_dirk", name:"Gosta Dirk", type:"Legendary Creature", subtype:"Human Warrior", color:"WU", cmc:7, cost:"3WWUU", power:4, toughness:4, keywords:["FIRST_STRIKE"], rarity:"R", text:"First strike\nCreatures with islandwalk can be blocked as though they didn't have islandwalk.", nullifiesLandwalk:["island"]},
+
+{id:"lord_magnus", name:"Lord Magnus", type:"Legendary Creature", subtype:"Human Druid", color:"GW", cmc:6, cost:"3GWW", power:4, toughness:3, keywords:["FIRST_STRIKE"], rarity:"U", text:"First strike\nCreatures with plainswalk can be blocked as though they didn't have plainswalk.\nCreatures with forestwalk can be blocked as though they didn't have forestwalk.", nullifiesLandwalk:["plains","forest"]},
+
+{id:"ur_drago", name:"Ur-Drago", type:"Legendary Creature", subtype:"Elemental", color:"UB", cmc:7, cost:"3UUBB", power:4, toughness:4, keywords:["FIRST_STRIKE"], rarity:"R", text:"First strike\nCreatures with swampwalk can be blocked as though they didn't have swampwalk.", nullifiesLandwalk:["swamp"]},
+
+{id:"livonya_silone", name:"Livonya Silone", type:"Legendary Creature", subtype:"Human Warrior", color:"RG", cmc:6, cost:"2RRGG", power:4, toughness:4, keywords:["FIRST_STRIKE"], rarity:"R", text:"First strike; legendary landwalk (This creature can't be blocked as long as defending player controls a legendary land.)", landwalkLegendary:true},
+
+{id:"rubinia_soulsinger", name:"Rubinia Soulsinger", type:"Legendary Creature", subtype:"Faerie", color:"GWU", cmc:5, cost:"2GWU", power:2, toughness:3, keywords:[], rarity:"R", text:"You may choose not to untap Rubinia Soulsinger during your untap step.\n{T}: Gain control of target creature for as long as you control Rubinia Soulsinger and Rubinia Soulsinger remains tapped.", optionalUntap:true, optionalUntapAlways:true, activated:{cost:"T", effect:"rubiniaSteal", requiresTarget:true}},
+
+{id:"ayesha_tanaka", name:"Ayesha Tanaka", type:"Legendary Creature", subtype:"Human Artificer", color:"WU", cmc:4, cost:"WWUU", power:2, toughness:2, keywords:["BANDING"], rarity:"R", text:"Banding\n{T}: Counter target activated ability from an artifact source unless that ability's controller pays {W}.", activated:{cost:"T", effect:"counterActivatedAbilityUnlessPay", requiresTarget:true}},
+
+{id:"rasputin_dreamweaver", name:"Rasputin Dreamweaver", type:"Legendary Creature", subtype:"Human Wizard", color:"WU", cmc:6, cost:"4WU", power:4, toughness:1, keywords:[], rarity:"R", text:"Rasputin Dreamweaver enters with seven dream counters on it.\nRemove a dream counter from Rasputin Dreamweaver: Add {C}.\nRemove a dream counter from Rasputin Dreamweaver: Prevent the next 1 damage that would be dealt to Rasputin Dreamweaver this turn.\nAt the beginning of your upkeep, if Rasputin Dreamweaver started the turn untapped, put a dream counter on it.\nRasputin Dreamweaver can't have more than seven dream counters on it.", etbCounters:{DREAM:7}, upkeep:"rasputinUpkeep", activatedAbilities:[{id:'rasputin_add_mana', cost:"counter", effect:"rasputinAddMana", description:"Remove a dream counter: Add {C}"},{id:'rasputin_prevent_damage', cost:"counter", effect:"rasputinPreventDamage1Self", description:"Remove a dream counter: Prevent the next 1 damage to Rasputin Dreamweaver this turn"}]},
+
 ];
 
 // --- CONVENIENCE LOOKUP ------------------------------------------------------

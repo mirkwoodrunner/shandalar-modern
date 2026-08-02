@@ -81,4 +81,16 @@ export const TOKEN_DB = [
     color: "RGW",
     keywords: [],
   },
+  // Boris Devilboon: "Create a 1/1 black and red Demon creature token named
+  // Minor Demon."
+  {
+    tokenId: "minor_demon",
+    name: "Minor Demon",
+    type: "Creature",
+    subtype: "Demon",
+    power: 1,
+    toughness: 1,
+    color: "BR",
+    keywords: [],
+  },
 ];
