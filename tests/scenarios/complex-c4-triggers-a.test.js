@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/complex-c4-triggers-a.test.js
 // Complex-tier stub cards implemented from Card-Forge/forge reference scripts
 // (GPL-3.0), sub-batch C4 (triggered abilities), checkpoint A (12 cards).

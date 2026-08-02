@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/moderate-m1-activated.test.js
 // Moderate-tier Alpha/Beta stub cards implemented from Card-Forge/forge reference
 // scripts (GPL-3.0), sub-batch M1: activated abilities and spells.

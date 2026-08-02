@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/library-of-leng.test.js
 // Library of Leng Phase 2: the first production DISCARD_REPLACEMENTS
 // consumer (discard centralization Phase 1 shipped the empty registry) and

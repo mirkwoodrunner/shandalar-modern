@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-batch-1-2.test.js
 // Legendary Creatures Batch 1+2: 21 of the planned 26 legendary creatures
 // (11 vanilla + 10 single-ability). Five cards from the original batch --

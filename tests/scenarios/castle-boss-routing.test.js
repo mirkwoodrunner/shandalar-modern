@@ -1,3 +1,6 @@
+/**
+ * @module-tag overworld
+ */
 import { describe, it, expect } from 'vitest';
 import { MAGE_BOSS_ARCHS } from '../../src/engine/MapGenerator.js';
 import { ARCHETYPES } from '../../src/data/cards.js';

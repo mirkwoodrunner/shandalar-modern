@@ -139,8 +139,8 @@ function runTagMode(argv) {
   // --- Vitest ------------------------------------------------------------------
   console.log('\n[audit] Running Vitest...');
   const vitestResult = spawnSync(
-    'npm',
-    ['test', '--', '--testNamePattern', auditTag],
+    'npx',
+    ['vitest', 'run', '--tags-filter', auditTag.slice(1)],
     { stdio: 'inherit', shell: true, cwd: process.cwd() }
   );
 

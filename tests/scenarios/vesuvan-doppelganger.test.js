@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/vesuvan-doppelganger.test.js
 // Vesuvan Doppelganger: optional ETB copy of any creature (colorOverride keeps
 // it blue instead of the copied creature's color), plus a recurring upkeep

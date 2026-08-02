@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-choice-batch-a9-2.test.js
 // A9 upkeep-trigger batch 2: Safe Haven, Season of the Witch, Psychic
 // Allergy -- optional and mandatory pendingUpkeepChoice shapes. See

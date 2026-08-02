@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ai-fatal-error-handling.test.js
 // Fail-fast hardening for the two aiDecide() call sites in
 // useDuelController.ts ("AI priority window effect" and "AI main loop"

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/coral-helm.test.js
 // Coral Helm: {3}, Discard a card at random: Target creature gets +2/+2 until end of turn.
 // Verifies the discardRandom cost token, pumpCreature eotBuff, and preflight guard.

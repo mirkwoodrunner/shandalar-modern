@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/cyclopean-tomb.test.js
 // Cyclopean Tomb: "{2}, {T}: Put a mire counter on target non-Swamp land. That
 // land is a Swamp for as long as it has a mire counter on it. Activate only

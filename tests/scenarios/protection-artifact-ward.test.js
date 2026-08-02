@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/protection-artifact-ward.test.js
 // Protection-from-Artifact Extension + Artifact Ward.
 // Extends the existing color-only protection system (canBlockDuel, the two

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/eye-for-an-eye.test.js
 // Damage Shields (Part 3): Eye for an Eye. Unlike the Circles of Protection,
 // this is an Instant (not an activated ability) whose "choose a source" trigger

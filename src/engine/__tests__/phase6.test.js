@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/phase6.test.js
 // Phase 6 expanded test coverage.
 // Systems under test: Power Surge, Holy Ground, Sengir Vampire counter trigger,

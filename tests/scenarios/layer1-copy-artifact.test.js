@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/layer1-copy-artifact.test.js
 // Layer 1 (copy): Copy Artifact enters as a copy of a target artifact's
 // printed (copiable) values from CARD_DB -- not the live battlefield object.

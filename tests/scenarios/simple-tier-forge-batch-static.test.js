@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/simple-tier-forge-batch-static.test.js
 // Simple-tier Alpha/Beta stub cards implemented as continuous/static effects:
 // Castle, Fortified Area, Weakstone (layers.js collectEffects, name-based

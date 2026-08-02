@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/cleanup-discard.test.js
 // Cleanup-step hand-limit discard: the human player ('p') now chooses which
 // cards to discard via pendingCleanupDiscard + RESOLVE_CLEANUP_DISCARD,

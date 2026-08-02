@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/a9-upkeep-activated-batch.test.js
 // A9 Upkeep-Restricted Activated-Ability batch (5 cards): Dwarven Weaponsmith,
 // Hell's Caretaker, Mirror Universe, and Tolaria. Life Matrix gets its own

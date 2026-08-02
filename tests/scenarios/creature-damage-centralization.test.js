@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/creature-damage-centralization.test.js
 // Creature Damage Centralization + Jade Monolith + Personal Incarnation.
 // Validates: hurtCreature()/consumeCreatureDamageShields() as the new creature-damage

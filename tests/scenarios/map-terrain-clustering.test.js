@@ -1,3 +1,6 @@
+/**
+ * @module-tag overworld
+ */
 // tests/scenarios/map-terrain-clustering.test.js
 // Validates the coherent value-noise terrain generation in MapGenerator.js:
 // determinism, biome proportions, connectivity, and spatial clustering

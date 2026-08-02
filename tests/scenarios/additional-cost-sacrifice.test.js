@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/additional-cost-sacrifice.test.js
 // Additional Costs Infrastructure + Sacrifice (Phase 3 of discard/cost work).
 // Sacrifice: "As an additional cost to cast this spell, sacrifice a creature.

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/land-destruction-pyramids.test.js
 // Land Destruction Centralization + Pyramids.
 // Validates: destroyLand() as the new land-destruction choke point,

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/life-floor.test.js
 import { describe, it, expect } from 'vitest';
 import { hurt, getLifeFloor } from '../../src/engine/DuelCore.js';

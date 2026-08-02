@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ai-mulligan-no-restall.test.js
 //
 // Regression tests for the AI re-mulligan stall bug.

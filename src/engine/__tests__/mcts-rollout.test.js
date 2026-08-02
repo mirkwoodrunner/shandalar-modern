@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/mcts-rollout.test.js
 // POST-FIX: rollout taps exact cost, casts one spell per main phase, resolves it. Life assertion guards against mana-burn regression.
 // Group A was flipped by Prompt 2 after TD-003 was resolved. Groups B and C unchanged.

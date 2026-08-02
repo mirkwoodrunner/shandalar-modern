@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/AI.sim.test.js
 // Headless AI-vs-AI simulation tests.
 // Detects infinite loops, illegal terminal states, and non-determinism.

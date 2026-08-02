@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/pestilence-sacrifice.test.js
 // Bug fix: Pestilence's end-step sacrifice check was gated on "controller has
 // no black creatures" instead of the oracle condition "no creatures are on

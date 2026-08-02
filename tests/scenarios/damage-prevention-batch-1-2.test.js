@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/damage-prevention-batch-1-2.test.js
 // A9 Damage Prevention/Redirect bucket, sub-batches 1+2 (12 cards): Horn of
 // Deafening, Subdue, Feint, Reverberation, Indestructible Aura, Silhouette,

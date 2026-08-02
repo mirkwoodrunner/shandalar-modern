@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/damage-prevention-batch-3.test.js
 // A9 Damage Prevention/Redirect bucket, sub-batch 3 (6 cards): Bronze Horse,
 // Enchanted Being, Demonic Torment, Wall of Putrid Flesh, Wall of Shadows,

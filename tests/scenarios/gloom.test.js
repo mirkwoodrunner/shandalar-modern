@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/gloom.test.js
 // Gloom: "White spells cost {3} more to cast. Activated abilities of white
 // enchantments cost {3} more to activate." New shared applyCostTax() helper

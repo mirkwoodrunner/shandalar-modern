@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/life-matrix.test.js
 // Life Matrix: "{4}, {T}: Put a matrix counter on target creature and that
 // creature gains 'Remove a matrix counter from this creature: Regenerate

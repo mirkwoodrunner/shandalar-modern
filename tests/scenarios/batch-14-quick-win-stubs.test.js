@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/batch-14-quick-win-stubs.test.js
 // Batch 14 -- Quick-Win Stubs: Living Artifact, Elder Spawn, Osai Vultures,
 // Scavenging Ghoul, Sage of Lat-Nam, Island of Wak-Wak, Urza's Avenger.

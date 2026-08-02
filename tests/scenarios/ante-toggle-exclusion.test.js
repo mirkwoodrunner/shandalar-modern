@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ante-toggle-exclusion.test.js
 // Regression coverage for Part 4: generateStartingDeck must never include
 // anteOnly cards when ante is disabled, and may include them when ante is on.

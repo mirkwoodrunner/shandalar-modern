@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ante-exchange-darkpact.test.js
 // Generalize Existing Choice Mechanisms (Part 2): Darkpact reuses TutorModal's
 // card-array picker (pendingAnteExchange) but resolves by exchanging the

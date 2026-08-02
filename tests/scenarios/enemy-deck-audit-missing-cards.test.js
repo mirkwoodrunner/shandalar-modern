@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/enemy-deck-audit-missing-cards.test.js
 // Structural integrity tests for the enemy-deck-audit missing-cards batch
 // (tools/enemy-deck-audit/analyze.mjs bugfixes + 23 new CARD_DB entries).

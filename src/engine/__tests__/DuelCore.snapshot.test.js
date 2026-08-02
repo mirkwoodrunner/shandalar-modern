@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/DuelCore.snapshot.test.js
 // Snapshot regression tests for duelReducer.
 // Run once to create snapshots; subsequent runs catch unintended engine changes.

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/stub-batch-rd-conv-stasis.test.js
 // Stub Batch: Reverse Damage, Conversion, Stasis. Three small, data-driven
 // reuses of existing infrastructure (chooseDamageShieldSource/gainLifeOnPrevent,

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ante-zone-setup.test.js
 // Regression coverage for the Part 1 buildDuelState library-removal fix, and
 // the Part 2 generalized ante zone (anteExtraP/anteExtraO) + handleDuelEnd

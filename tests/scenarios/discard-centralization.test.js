@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/discard-centralization.test.js
 // Discard centralization Phase 1: every "card moves from hand to graveyard as
 // a discard" mutation site in DuelCore.js now routes through the single

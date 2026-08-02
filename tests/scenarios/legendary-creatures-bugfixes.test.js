@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-bugfixes.test.js
 // Legendary Creatures Cleanup batch follow-up: three bugs surfaced (not fixed) by that
 // batch's completion report. See docs/CURRENT_SPRINT.md and docs/MECHANICS_INDEX.md for

@@ -1,3 +1,6 @@
+/**
+ * @module-tag overworld
+ */
 // tests/scenarios/map-structure-names.test.js
 // Regression test for the "Dungeon14" bug: structure name pools must stay
 // sized above their max spawn counts, and the fallback (if ever hit) must

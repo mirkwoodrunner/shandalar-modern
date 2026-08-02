@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ai-priority-passthrough.test.js
 // AI priority pass-through stall fix (useDuelController.ts "AI priority window
 // effect"). Follows the hook-level testing pattern established in

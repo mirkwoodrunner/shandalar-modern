@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/trigger-events-expansion.test.js
 // Deferral Sweep 1: four new trigger event types (ON_ATTACKS_DECLARED, ON_SPELL_CAST,
 // ON_PERMANENT_LEAVES_BF, ON_END_STEP) added to the event/listener system.

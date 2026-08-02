@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-aura-and-eachplayer-batch-a9-2.test.js
 // A9 upkeep-trigger batch 2: Takklemaggot, Venarian Gold, The Abyss, Worms of
 // the Earth -- the aura-tied-to-enchanted-permanent's-controller shape

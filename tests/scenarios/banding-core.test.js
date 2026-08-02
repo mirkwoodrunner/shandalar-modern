@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/banding-core.test.js
 // Banding core subsystem (CR 702.22): band formation validity, 702.22h/i
 // blocked-propagation, the 702.22j/k damage-division choices, and the

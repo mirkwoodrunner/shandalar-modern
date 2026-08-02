@@ -1,3 +1,6 @@
+/**
+ * @module-tag premodern
+ */
 // tests/scenarios/cardsPremodern.test.js
 // Structural integrity tests for the Premodern card pool data file.
 // These tests validate the data file itself, not any runtime game logic.

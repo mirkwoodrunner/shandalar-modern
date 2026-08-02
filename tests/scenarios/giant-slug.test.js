@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/giant-slug.test.js
 // Giant Slug: "{5}: At the beginning of your next upkeep, choose a basic
 // land type. This creature gains landwalk of the chosen type until the end

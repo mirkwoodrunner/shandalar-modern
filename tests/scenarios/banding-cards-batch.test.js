@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/banding-cards-batch.test.js
 // Banding phase 3 of 3: unstubs Battering Ram, Mishra's War Machine, Nalathni
 // Dragon, and Knights of Thorn now that the phase 1/2 banding subsystem and AI

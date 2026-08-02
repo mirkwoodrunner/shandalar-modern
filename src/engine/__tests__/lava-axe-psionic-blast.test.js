@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/lava-axe-psionic-blast.test.js
 //
 // Regression tests for:

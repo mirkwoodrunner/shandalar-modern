@@ -146,15 +146,17 @@ function runTagMode(argv) {
     process.exit(1);
   }
 
-  const pattern = tags.join('|');
+  const tagsFilterExpr = tags.map(t => t.slice(1)).join(' or ');
+  const grepPattern = tags.join('|');
   console.log(`[targeted] Running tags: ${tags.join(', ')}`);
-  console.log(`[targeted] Pattern: ${pattern}`);
+  console.log(`[targeted] Vitest --tags-filter: "${tagsFilterExpr}"`);
+  console.log(`[targeted] Playwright --grep: "${grepPattern}"`);
 
   // --- Vitest ------------------------------------------------------------------
   console.log('\n[targeted] Running Vitest...');
   const vitestResult = spawnSync(
-    'npm',
-    ['test', '--', '--testNamePattern', pattern],
+    'npx',
+    ['vitest', 'run', '--tags-filter', tagsFilterExpr],
     { stdio: 'inherit', shell: true, cwd: process.cwd() }
   );
 
@@ -164,7 +166,7 @@ function runTagMode(argv) {
   console.log('\n[targeted] Running Playwright...');
   const pwResult = spawnSync(
     'npm',
-    ['run', 'test:e2e', '--', '--grep', pattern],
+    ['run', 'test:e2e', '--', '--grep', grepPattern],
     { stdio: 'inherit', shell: true, cwd: process.cwd() }
   );
 

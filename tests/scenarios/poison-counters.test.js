@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/poison-counters.test.js
 // Poison counters: threshold fix (5 -> 10), grantPoisonCounters trigger effect,
 // Marsh Viper / Pit Scorpion / Serpent Generator's Snake token.

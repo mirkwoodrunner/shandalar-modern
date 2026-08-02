@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/titanias-song.test.js
 // Titania's Song: "Each noncreature artifact loses all abilities and becomes
 // an artifact creature with power and toughness each equal to its mana value.

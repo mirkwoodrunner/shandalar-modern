@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/enemy-deck-audit-stub-batch.test.js
 // Structural integrity tests for the follow-up enemy-deck-audit batch that
 // closes out the gaps deliberately deferred by the prior
