@@ -294,6 +294,11 @@ if (hasKw(at, KEYWORDS.LANDWALK.id, state) && at.landwalkType && defBf) {
   const landSub = at.landwalkType.toLowerCase();
   if (defBf.some(c => isLand(c) && c.subtype?.toLowerCase().includes(landSub))) return false;
 }
+// Livonya Silone: "legendary landwalk" -- unblockable if defending player
+// controls a legendary land (supertype match, not a land subtype match like
+// the 5 basic walks below). isLegendary() already exists from the Legend
+// Rule Infrastructure batch.
+if (at.landwalkLegendary && defBf && defBf.some(c => isLand(c) && isLegendary(c))) return false;
 // Specific landwalk keywords (including those granted via lord effects through hasKw lord layer)
 if (defBf) {
   const SPECIFIC_WALKS = [
@@ -303,7 +308,15 @@ if (defBf) {
     [KEYWORDS.SWAMPWALK.id,    'swamp'],
     [KEYWORDS.PLAINSWALK.id,   'plains'],
   ];
+  // Gosta Dirk / Lord Magnus / Ur-Drago: "Creatures with X-walk can be
+  // blocked as though they didn't have X-walk" -- a global nullification,
+  // checked against both battlefields (not just the defender's), reusable
+  // by any future landwalk-nullifier card via the same field.
+  const nullifiedTypes = state
+    ? new Set([...(state.p.bf || []), ...(state.o.bf || [])].flatMap(c => c.nullifiesLandwalk || []))
+    : new Set();
   for (const [kw, sub] of SPECIFIC_WALKS) {
+    if (nullifiedTypes.has(sub)) continue;
     if (hasKw(at, kw, state) && defBf.some(c => isLand(c) && c.subtype?.toLowerCase().includes(sub))) return false;
   }
 }
@@ -1179,6 +1192,22 @@ function checkControlGrants(state) {
       if (!grantor || !grantor.tapped || getPow(card, ns) > grant.maxPower) {
         ns = revertControlGrant(ns, card.iid);
       }
+    } else if (grant.condition === 'whileGrantorControlledAndTapped') {
+      // Rubinia Soulsinger: reverts if the grantor left the battlefield, is no
+      // longer under the stolen creature's current controller (i.e. "you" lost
+      // control of Rubinia), or is no longer tapped. No power-comparison leg
+      // (unlike Old Man of the Sea's whileTappedAndPowerLte) -- Rubinia has no
+      // power ceiling on what it can steal.
+      // Note: grant.grantorController (like Aladdin/Old Man's) always names the
+      // ORIGINAL controller to revert the stolen creature back to -- shared by
+      // revertControlGrant() below regardless of condition -- so "does the
+      // caster still control Rubinia" is instead derived from card.controller
+      // (the stolen creature's CURRENT controller, i.e. the caster).
+      const grantor = getBF(ns, grant.grantorIid);
+      const grantorStillUnderCasterControl = grantor && ns[card.controller]?.bf.some(c => c.iid === grant.grantorIid);
+      if (!grantorStillUnderCasterControl || !grantor.tapped) {
+        ns = revertControlGrant(ns, card.iid);
+      }
     }
   }
   return ns;
@@ -1606,6 +1635,32 @@ case "createSerpentToken": {
   ns = dlog(ns, `${card.name} creates a 1/1 Snake token.`, 'effect');
   break;
 }
+// Boris Devilboon: "{2}{B}{R}, {T}: Create a 1/1 black and red Demon creature
+// token named Minor Demon."
+case "borisCreateMinorDemon": {
+  ns = createToken(ns, 'minor_demon', 1, caster, card.iid);
+  ns = dlog(ns, `${card.name} creates a 1/1 black and red Minor Demon token.`, "effect");
+  break;
+}
+// Rasputin Dreamweaver: "Remove a dream counter from Rasputin Dreamweaver:
+// Add {C}." The counter itself is removed by the array-dispatch cost step
+// in ACTIVATE_ABILITY before this fires -- this case only applies the effect.
+case "rasputinAddMana": {
+  ns = { ...ns, [caster]: { ...ns[caster], mana: { ...ns[caster].mana, C: (ns[caster].mana.C || 0) + 1 } } };
+  ns = dlog(ns, `${card.name} adds {C}.`, "effect");
+  break;
+}
+// Rasputin Dreamweaver: "Remove a dream counter from Rasputin Dreamweaver:
+// Prevent the next 1 damage that would be dealt to Rasputin Dreamweaver this
+// turn." Reuses the same flat damageShield field dmgWithShield()/hurtCreature()
+// already consume for combat/non-combat damage to this creature.
+case "rasputinPreventDamage1Self": {
+  ns = { ...ns, [caster]: { ...ns[caster], bf: ns[caster].bf.map(c =>
+    c.iid === card.iid ? { ...c, damageShield: (c.damageShield || 0) + 1 } : c
+  ) } };
+  ns = dlog(ns, `${card.name} will have the next 1 damage to it prevented this turn.`, "effect");
+  break;
+}
 case "damage3": {
 if (tgt === "p" || tgt === "o") ns = hurt(ns, tgt, 3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
 else if (tgtC) ns = hurtCreature(ns, tgtC.iid, 3, card.name, { sourceIid: card.iid, sourceType: inferSourceType(card) });
@@ -1676,6 +1731,25 @@ return { ...ns, pendingConditionalCounter: {
   cost: psX,
   canPay: totalMana >= psX,
 }};
+}
+// Ayesha Tanaka: "{T}: Counter target activated ability from an artifact
+// source unless that ability's controller pays {W}." Legal target must
+// already be an isAbility:true stack item (see ACTIVATE_ABILITY's single-
+// card.activated push-to-stack path) whose card is an artifact -- neither
+// condition can be true for a spell, so this can never accidentally counter
+// one.
+case "counterActivatedAbilityUnlessPay": {
+  const top = findStackTarget(ns.stack, tgt, item.id);
+  if (!top || !top.isAbility || !isArt(top.card)) {
+    ns = dlog(ns, `${card.name} fizzles -- no legal target (must be an activated ability from an artifact source).`, "effect");
+    break;
+  }
+  ns = dlog(ns, `${card.name} targets ${top.card?.name}'s ability. Controller may pay {W}.`, "effect");
+  return { ...ns, pendingConditionalCounter: {
+    cardId: 'ayesha_tanaka', cardName: 'Ayesha Tanaka', stackItemId: top.id, targetCaster: top.caster,
+    cost: 1, costColor: 'W', targetIsAbility: true,
+    canPay: (ns[top.caster].mana?.W || 0) >= 1,
+  }};
 }
 case "draw3":   ns = drawD(ns, tgt === "p" || tgt === "o" ? tgt : caster, 3); break;
 // draw1Tgt (Xira Arien -- "target player draws a card") shares this body with draw1
@@ -3220,6 +3294,22 @@ case "oldManSteal": {
   const omStolen = { ...tgtC, controller: caster, summoningSick: true, tapped: false, attacking: false, blocking: null,
     controlGrant: { grantorIid: card.iid, grantorController: omOrigCtrl, condition: 'whileTappedAndPowerLte', maxPower: oldManPow } };
   ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, omStolen] } };
+  ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, 'effect');
+  break;
+}
+case "rubiniaSteal": {
+  // Layer 2: Rubinia Soulsinger activated ability. Control conditional on
+  // Rubinia staying tapped and under the caster's control -- no power
+  // ceiling, unlike Old Man of the Sea. grantorController names the ORIGINAL
+  // controller to revert back to (rbOrigCtrl), same convention as
+  // Aladdin/Old Man above -- revertControlGrant() is shared across every
+  // condition and always reads that field this way.
+  if (!tgtC || !isCre(tgtC)) break;
+  const rbOrigCtrl = tgtC.controller;
+  ns = { ...ns, [rbOrigCtrl]: { ...ns[rbOrigCtrl], bf: ns[rbOrigCtrl].bf.filter(c => c.iid !== tgtC.iid) } };
+  const rbStolen = { ...tgtC, controller: caster, summoningSick: true, tapped: false, attacking: false, blocking: null,
+    controlGrant: { grantorIid: card.iid, grantorController: rbOrigCtrl, condition: 'whileGrantorControlledAndTapped' } };
+  ns = { ...ns, [caster]: { ...ns[caster], bf: [...ns[caster].bf, rbStolen] } };
   ns = dlog(ns, `${card.name} takes control of ${tgtC.name}.`, 'effect');
   break;
 }
@@ -6370,6 +6460,19 @@ if (w === ns.active && w === 'p' && c.id === "tetravus") {
 }
 switch (c.upkeep) {
 case "selfDamage1": ns = hurt(ns, w, 1, c.name, { sourceIid: c.iid, sourceType: inferSourceType(c) }); break;
+// Rasputin Dreamweaver: "At the beginning of your upkeep, if Rasputin
+// Dreamweaver started the turn untapped, put a dream counter on it." Read
+// live at upkeep time rather than a true start-of-turn snapshot -- Rasputin
+// has no {T} in either activated ability, so nothing it can do under its own
+// power taps it between UNTAP and UPKEEP, making "started the turn untapped"
+// and "is untapped right now" equivalent in every normal line of play.
+case "rasputinUpkeep": {
+  if (w !== ns.active || c.tapped) break;
+  const dream = c.counters?.DREAM || 0;
+  if (dream >= 7) break;
+  ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(x => x.iid === c.iid ? { ...x, counters: { ...x.counters, DREAM: dream + 1 } } : x) } };
+  break;
+}
 case "forceOfNatureUpkeep": {
 if (w !== ns.active) break;
 if (w === "o") {
@@ -7687,6 +7790,13 @@ function resolveTriggeredEffect(state, sourceCard, effect, payload) {
     case 'gainLifeController': {
       const who = sourceCard.controller;
       return hurt(state, who, -effect.amount, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
+    }
+    // Sol'kanar the Swamp King: "Whenever a player casts a black spell, you
+    // gain 1 life." Unconditional -- no requiresChoice wrapper needed, unlike
+    // Throne of Bone's optional-pay version of the same trigger.
+    case 'gainLife1': {
+      const who = sourceCard.controller;
+      return hurt(state, who, -1, sourceCard.name, { sourceIid: sourceCard.iid, sourceType: inferSourceType(sourceCard) });
     }
     // Soul Net: optional-cost trigger, resolved via the RESOLVE_CHOICE/pendingChoice
     // pipeline (options presented through the existing ChoiceModal UI).
@@ -9876,6 +9986,25 @@ case "ACTIVATE_ABILITY": {
       return dlog(ns, `${card.name} deals ${pin} damage.`, "effect");
     }
 
+    // Rasputin Dreamweaver: two independently repeatable "Remove a dream
+    // counter: ..." abilities on one card -- same activatedAbilities[] shape
+    // as Vaevictis Asmadi's three pump abilities above, since a card can
+    // have only one card.activated object. Cost is paid by removing a DREAM
+    // counter (Triskelion/Osai Vultures' counter-cost convention -- checked
+    // and paid inline here, not via the generic mana-cost string parsing the
+    // single-card.activated path uses), then dispatched through resolveEff
+    // (Pyramids' destroyLandAura/preventLandDestructionOnce precedent) so
+    // the actual effect isn't duplicated inline.
+    if (ab.effect === "rasputinAddMana" || ab.effect === "rasputinPreventDamage1Self") {
+      const dream = card.counters?.DREAM || 0;
+      if (dream <= 0) return dlog(s, `${card.name} has no dream counters to remove.`, "info");
+      const ns = { ...s, [w]: { ...s[w], bf: s[w].bf.map(c =>
+        c.iid === iid ? { ...c, counters: { ...c.counters, DREAM: dream - 1 } } : c
+      ) } };
+      const abItem = { id: makeId(), card: { ...card, effect: ab.effect }, caster: w, targets: [], xVal: 1 };
+      return resolveEff(ns, abItem);
+    }
+
     return s;
   }
 
@@ -10982,31 +11111,45 @@ case "UPKEEP_CHOICE_RESOLVE": {
 case "CONDITIONAL_COUNTER_CHOICE": {
   // action.paid: boolean
   if (!s.pendingConditionalCounter) return s;
-  const { cardId, cardName, stackItemId, targetCaster, cost } = s.pendingConditionalCounter;
+  const { cardId, cardName, stackItemId, targetCaster, cost, costColor, targetIsAbility } = s.pendingConditionalCounter;
   let ns = { ...s, pendingConditionalCounter: null };
 
   if (action.paid) {
-    // Deduct `cost` generic mana from cheapest available colors (C first, then GRBUOW)
-    let remaining = cost;
+    // Ayesha Tanaka: a specific colored cost ({W}), not generic -- deduct
+    // from that color's pool only, not the cheapest-first generic loop below.
     const pool = { ...ns[targetCaster].mana };
-    for (const col of ['C','G','R','B','U','W']) {
-      if (remaining <= 0) break;
-      const take = Math.min(pool[col] || 0, remaining);
-      pool[col] = (pool[col] || 0) - take;
-      remaining -= take;
+    if (costColor) {
+      pool[costColor] = (pool[costColor] || 0) - cost;
+    } else {
+      // Deduct `cost` generic mana from cheapest available colors (C first, then GRBUOW)
+      let remaining = cost;
+      for (const col of ['C','G','R','B','U','W']) {
+        if (remaining <= 0) break;
+        const take = Math.min(pool[col] || 0, remaining);
+        pool[col] = (pool[col] || 0) - take;
+        remaining -= take;
+      }
     }
     ns = { ...ns, [targetCaster]: { ...ns[targetCaster], mana: pool } };
-    ns = dlog(ns, `${targetCaster} pays {${cost}}. ${cardName} is countered.`, "effect");
+    ns = dlog(ns, `${targetCaster} pays ${costColor ? `{${costColor}}` : `{${cost}}`}. ${cardName} is countered.`, "effect");
     // Targeted spell remains on stack; Force Spike / Power Sink already removed by RESOLVE_STACK.
   } else {
-    // Targeted spell is countered
-    const top = ns.stack.find(i => i.id === stackItemId);
-    if (top) {
-      ns = { ...ns,
-        stack: ns.stack.filter(i => i.id !== stackItemId),
-        [targetCaster]: { ...ns[targetCaster], gy: [...ns[targetCaster].gy, { ...top.card }] },
-      };
-      ns = dlog(ns, `${targetCaster} does not pay. ${cardName} counters ${top.card?.name}.`, "effect");
+    // Ayesha Tanaka: the countered target is an activated ability, not a
+    // spell -- its source permanent is not exiled/binned, only the stack
+    // item (the ability itself) is removed.
+    if (targetIsAbility) {
+      ns = { ...ns, stack: ns.stack.filter(i => i.id !== stackItemId) };
+      ns = dlog(ns, `${targetCaster} does not pay. ${cardName} counters the ability.`, "effect");
+    } else {
+      // Targeted spell is countered
+      const top = ns.stack.find(i => i.id === stackItemId);
+      if (top) {
+        ns = { ...ns,
+          stack: ns.stack.filter(i => i.id !== stackItemId),
+          [targetCaster]: { ...ns[targetCaster], gy: [...ns[targetCaster].gy, { ...top.card }] },
+        };
+        ns = dlog(ns, `${targetCaster} does not pay. ${cardName} counters ${top.card?.name}.`, "effect");
+      }
     }
     // Power Sink additional effect: tap all lands and drain mana if player declined
     if (cardId === 'power_sink') {

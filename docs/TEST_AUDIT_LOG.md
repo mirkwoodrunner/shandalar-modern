@@ -14,6 +14,71 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-08-01 -- `npm run test:targeted -- @engine` (Legendary Creatures Batch 6, 9 cards)
+
+**Originating change:** `claude/legendary-creatures-batch-6-gfrol1` -- 9 new
+cards (Sol'kanar the Swamp King, Boris Devilboon, Gosta Dirk, Lord Magnus,
+Ur-Drago, Livonya Silone, Rubinia Soulsinger, Ayesha Tanaka, Rasputin
+Dreamweaver) plus supporting `DuelCore.js`/`useDuelController.ts`/
+`DuelScreen.tsx`/`DuelScreenMobile.tsx`/`cards.js`/`tokens.js` engine
+changes. This batch's own dedicated tests (34 Vitest in
+`tests/scenarios/legendary-creatures-batch-6.test.js`, 6 Playwright x 2
+viewports in `tests/e2e/legendary-creatures-batch-6.spec.js`) all passed,
+plus a spot-check of the Vitest files most likely to interact with the
+`canBlockDuel()`/`checkControlGrants()` changes
+(`tests/scenarios/layer2-control-change.test.js`,
+`tests/scenarios/dual-land-mountainwalk.test.js`,
+`tests/scenarios/deferral-sweep-1-cards.test.js`) and a clean `tsc --noEmit`.
+
+**Deviation from the documented `test:audit` procedure, noted for accuracy:**
+this finding did not come from `npm run test:audit` (which randomly samples
+one *untouched* tag/file). It came from actually running `npm run
+test:targeted -- @engine` per the file-path-to-tag lookup table, which
+turned out to be far larger than "targeted" in practice: Vitest's
+`--testNamePattern @engine` substring-matches every numbered `@engine-*`
+sub-tag used across the codebase (`@engine-card-scenarios-2`,
+`@engine-combat-2`, `@engine-core-mechanics-2`, etc.), not just the literal
+`@engine` tag, and the Playwright half (`--grep @engine`) matched 754 tests
+at a single worker (~26-28s each -- multi-hour wall clock). Both were killed
+mid-run once this was noticed. The Vitest half had already completed one
+full pass before being interrupted, surfacing the failures below.
+
+**Result:** 15 of ~1420 Vitest tests failed, across 10 files entirely
+unrelated to this batch: `aladdins-lamp.test.js` (4), `animate-artifact.test.js`
+(1), `coral-helm.test.js` (1), `creature-damage-centralization.test.js` (1),
+`enemy-deck-audit-missing-cards.test.js` (1), `gloom.test.js` (1),
+`guardian-angel.test.js` (2), `raging-river.test.js` (1),
+`ring-of-maruf.test.js` (1), `tap-centralization.test.js` (1). Signatures are
+mostly "meta" tests asserting exact counts of code patterns (stub counts,
+raw `tapped:true`/`damage: c.damage +` assignment counts, warning-list
+lengths) rather than gameplay assertions.
+
+**Diagnosis:** Confirmed pre-existing and unrelated, not a side effect of
+this batch -- verified directly rather than inferred from code-path overlap:
+`git stash push -u` (removing every change from this branch), then re-ran
+all 10 failing files against the resulting clean `main` tree. All 15 tests
+failed identically, byte-for-byte the same assertions. `git stash pop`
+restored the batch's changes afterward with no conflicts.
+
+**Disposition:** Logged here per the hard-stop policy's intent (an
+untargeted area surfaced failures during a scoped change), even though the
+discovery path was `test:targeted` rather than `test:audit`. Not
+self-overridden -- reported to the user, who flagged the `--grep @engine`
+run as disproportionate before this log entry was written; no broader
+diagnostic (`npm test && npm run test:e2e`) was run. Proceeding to commit
+Batch 6 on the strength of its own dedicated tests plus the stash-confirmed
+pre-existing status of these 15.
+
+**Follow-up (not done here):** If any of these 10 files come up failing
+again in a future `test:audit` draw, this entry already has the
+stash-confirmed pre-existing diagnosis on file -- no need to re-derive it.
+Separately, `npm run test:targeted -- @engine` (bare, no numbered suffix)
+should probably be reconsidered as a *default* recommendation for `@engine`-
+tagged changes given how broad the substring match actually is in practice;
+not fixed here since it's tooling/process, not this batch's card work.
+
+---
+
 ## 2026-07-28 -- `tests/e2e/structure-icons.spec.ts` (picked while auditing Legendary Creatures Batch 5: Rampage Keyword)
 
 **Originating change:** `claude/rampage-legendary-batch-5-yvxvsw` -- new

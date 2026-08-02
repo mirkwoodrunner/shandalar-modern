@@ -709,8 +709,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
 
       {/* Stack display — renders only when stack is non-empty. Mobile: bottom sheet above drawer. Desktop: overlay over battlefield center column. */}
       {s_state.stack?.length > 0 && (() => {
+        // Ayesha Tanaka (Legendary Creatures Batch 6) is the first
+        // stack-targeting effect sourced from a battlefield permanent's
+        // activated ability rather than a hand spell -- mirrors the
+        // kind-aware sourceCard lookup already used by castPrompt above.
         const sourceCard = castFlow
-          ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+          ? (castFlow.kind === 'spell'
+              ? (s_state.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+              : (s_state.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid))
           : null;
         const stackTargeting = castFlow?.mode === 'targeting' && sourceCard && needsStackTarget(sourceCard, pendingMode);
         return (
