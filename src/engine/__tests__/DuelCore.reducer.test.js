@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/DuelCore.reducer.test.js
 // Isolated unit tests for duelReducer action handlers.
 

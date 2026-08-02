@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-batch-5-rampage.test.js
 // Legendary Creatures Batch 5: introduces the Rampage keyword (see
 // src/data/keywords.js) plus Chromium, Marhault Elsdragon, Hunding

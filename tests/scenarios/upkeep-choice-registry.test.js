@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-choice-registry.test.js
 // Generalize Existing Choice Mechanisms (Part 3): pendingUpkeepChoice is now
 // backed by a small handlerKey-keyed registry (UPKEEP_CHOICE_HANDLERS) plus a

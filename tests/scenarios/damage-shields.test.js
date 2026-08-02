@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/damage-shields.test.js
 // Damage Shields + hurt() Source Metadata (Part 2): turnState.damageShields --
 // a one-time, exact-identity shield against a specific chosen source, backing

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/pending-choice-generalized.test.js
 // Generalize Existing Choice Mechanisms (Part 1): pendingChoice can now be
 // created directly from resolveEff (createPendingChoice), not only from

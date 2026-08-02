@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/tawnos-coffin.test.js
 // Tawnos's Coffin: "You may choose not to untap this artifact during your
 // untap step. {3}, {T}: Exile target creature and all Auras attached to it.

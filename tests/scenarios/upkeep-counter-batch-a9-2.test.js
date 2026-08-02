@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-counter-batch-a9-2.test.js
 // A9 upkeep-trigger batch 2: Fasting, Primordial Ooze, Cocoon, Voodoo Doll --
 // the self-referential counter-accumulation shape (a card puts a counter on

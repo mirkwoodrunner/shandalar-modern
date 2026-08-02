@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ante-cards.test.js
 // Per-card regression coverage for the ante batch (Part 7): Contract from
 // Below, Demonic Attorney, Jeweled Bird, Rebirth. Bronze Tablet and Tempest

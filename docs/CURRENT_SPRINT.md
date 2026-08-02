@@ -53,6 +53,21 @@
     double-trigger bug.
 - Milestone C combat-AI port (`docs/AI_COMBAT_PORT_PLAN.md`) -- not yet batched. `docs/MAGE_GO_AI_REFERENCE.md` has pattern-level notes (not portable code, different license) to weigh when this is planned.
 
+## Completed (2026-08-02)
+- **Vitest tag scoping — real fix** -- `--testNamePattern` had zero filtering
+  effect in this repo (confirmed directly against Vitest 4.1.5: a nonsense
+  pattern and the real pattern produced identical results, every test run every
+  time), which is why `test:targeted -- @engine` was silently running the full
+  suite. Migrated to Vitest 4.1's native tag system: `vite.config.js` now
+  declares `engine`/`overworld`/`mobile`/`premodern` as real tags with
+  `strictTags` enforcement, every Vitest test file carries a `@module-tag`
+  JSDoc header, and `run-targeted.js`/`run-audit.js` call `--tags-filter`
+  instead of `--testNamePattern`. Playwright's `--grep` path was already
+  correct and is unchanged. Verified against the live suite: `--tags-filter`
+  correctly narrows execution and reproduces the exact same 10-file/15-test
+  pre-existing failure set already logged in `TEST_AUDIT_LOG.md`, confirming no
+  regression.
+
 ## Completed (2026-08-01)
 - **A9 Damage Prevention/Redirect bucket, batch 4 (4 cards)** -- Al-abara's
   Carpet, Scarecrow, Whippoorwill, Marble Priest. Closes the A9

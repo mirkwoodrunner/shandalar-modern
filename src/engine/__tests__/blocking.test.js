@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/blocking.test.js
 // Regression: MTG rule 509.1a -- tapped creatures cannot be declared as blockers.
 // This test fails before the canBlockDuel tapped guard and passes after.

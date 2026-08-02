@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/artifact-possession-haunting-wind-powerleech.test.js
 // Tap centralization Phase 2: unstubs Artifact Possession, Haunting Wind, and
 // Powerleech on top of the new ON_ABILITY_ACTIVATED_NO_TAP event (emitted from

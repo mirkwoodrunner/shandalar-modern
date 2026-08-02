@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/blaze-of-glory.test.js
 // Blaze of Glory: "Cast this spell only during combat before blockers are
 // declared. Target creature defending player controls can block any number

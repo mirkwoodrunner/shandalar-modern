@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/combat-damage.test.js
 // Smoke tests for the core combat damage loop.
 // Validates: unblocked damage, mutual lethal blocking, summoning sickness lock.

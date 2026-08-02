@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/token-creation.test.js
 // Token creation infrastructure: TOKEN_DB, makeTokenInstance, and the CR 111.7
 // "a token that leaves the battlefield ceases to exist" rule enforced in zMove.

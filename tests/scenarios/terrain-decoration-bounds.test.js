@@ -1,3 +1,6 @@
+/**
+ * @module-tag overworld
+ */
 // tests/scenarios/terrain-decoration-bounds.test.js
 // Regression coverage for the tree horizontal-clipping and vertical-clamp-order
 // bugs (Sprite Black Boxes + Tree Clipping fix, 2026-07-02). Pure-data tests

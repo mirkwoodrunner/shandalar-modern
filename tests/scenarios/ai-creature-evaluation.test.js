@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ai-creature-evaluation.test.js
 // Scenario tests for evaluateCreatureValue() / evaluateBoard() (src/engine/AI.js).
 // Covers the Forge CreatureEvaluator port -- see docs/SYSTEMS.md and

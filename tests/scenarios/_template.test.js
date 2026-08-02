@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/_template.test.js
 // Template for scenario-based duel tests.
 //

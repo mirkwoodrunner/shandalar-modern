@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/layer2-control-change.test.js
 // Layer 2 (control): Aladdin activated ability, Old Man of the Sea activated ability,
 // and Guardian Beast static prevention. Tests conditional control-change with revert.

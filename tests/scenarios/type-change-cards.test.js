@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/type-change-cards.test.js
 // Deferral Sweep 2: Living Lands, Kormus Bell, Blood Moon, Evil Presence.
 // Adapted from Card-Forge/forge, GPL-3.0. See THIRD_PARTY_NOTICES.md.

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/animate-artifact.test.js
 // Animate Artifact: "Enchant artifact. As long as enchanted artifact isn't a
 // creature, it's an artifact creature with power and toughness each equal to

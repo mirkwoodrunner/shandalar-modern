@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/alchors-tomb.test.js
 // Alchor's Tomb: "{2}, {T}: Target permanent you control becomes the color of
 // your choice. (This effect lasts indefinitely.)" Implemented via the

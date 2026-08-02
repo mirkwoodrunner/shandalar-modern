@@ -1,3 +1,6 @@
+/**
+ * @module-tag overworld
+ */
 // tests/scenarios/monster-variety.test.js
 // Validates that encounter monster selection is decoupled from terrain biome:
 // pickMonster(tier, rand) picks a tier-appropriate monster from a RANDOM biome

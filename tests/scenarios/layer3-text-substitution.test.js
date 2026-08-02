@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/layer3-text-substitution.test.js
 // Layer 3 (text substitution): Magical Hack (landtype word swap) and
 // Sleight of Mind (color word swap). Baked-in mutation + computeCharacteristics.

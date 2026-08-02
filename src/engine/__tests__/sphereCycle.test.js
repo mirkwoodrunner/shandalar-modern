@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/sphereCycle.test.js
 // engine
 // Sphere lifegain cycle: Crystal Rod, Iron Star, Ivory Cup, Wooden Sphere.

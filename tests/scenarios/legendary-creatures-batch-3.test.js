@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-batch-3.test.js
 // Legendary Creatures Batch 3 -- the three Elder Dragons (Palladia-Mors, Nicol
 // Bolas, Vaevictis Asmadi). All three reuse the existing sacrificeUnless_U /

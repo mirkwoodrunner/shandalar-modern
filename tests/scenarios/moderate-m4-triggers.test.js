@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/moderate-m4-triggers.test.js
 // Moderate-tier Alpha/Beta stub cards implemented from Card-Forge/forge reference
 // scripts (GPL-3.0), sub-batch M4: triggered abilities.

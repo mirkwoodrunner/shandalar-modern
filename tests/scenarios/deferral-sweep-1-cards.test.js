@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/deferral-sweep-1-cards.test.js
 // Deferral Sweep 1, Part 3: per-card tests for the 12 cards unblocked by the new
 // trigger events and hurt() damage-source meta. See THIRD_PARTY_NOTICES.md.

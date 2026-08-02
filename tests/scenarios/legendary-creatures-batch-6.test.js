@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-batch-6.test.js
 // Legendary Creatures Batch 6 (9 cards): Sol'kanar the Swamp King, Boris
 // Devilboon, Gosta Dirk, Lord Magnus, Ur-Drago, Livonya Silone, Rubinia

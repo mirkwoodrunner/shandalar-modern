@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/AI.banding.test.js
 // AI heuristics for banding (CR 702.22), phase 2 of 3. Phase 1 built the core
 // subsystem (bandId, FORM_BAND, the 702.22j/k damage-division choices) with

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/hurt-meta-retrofit.test.js
 // Damage Shields + hurt() Source Metadata (Part 1): spot-checks a representative
 // sample of the ~113 hurt() call sites retrofitted with { sourceIid, sourceType }

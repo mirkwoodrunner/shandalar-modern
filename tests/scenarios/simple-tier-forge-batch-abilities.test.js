@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/simple-tier-forge-batch-abilities.test.js
 // Simple-tier Alpha/Beta stub cards implemented from Card-Forge/forge reference
 // scripts (GPL-3.0). Covers activated-ability cards, including the new

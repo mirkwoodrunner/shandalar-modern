@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ai-land-destruction.test.js
 //
 // Regression suite for the AI land-destruction bug (Sinkhole / Stone Rain /

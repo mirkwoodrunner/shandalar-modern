@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/AI.summoningSick.tap.test.js
 // Regression tests for summoning sickness blocking AI tap-for-mana planning.
 // A creature that entered this turn must not be counted as a mana source or

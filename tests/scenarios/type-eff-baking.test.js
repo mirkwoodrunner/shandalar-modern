@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/type-eff-baking.test.js
 // Deferral Sweep 2: verifies the typeEff/subtypeEff/colorEff/bloodMoonNeutered
 // baking pipeline in isolation, before testing the individual cards that rely on it.

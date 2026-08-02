@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/damage-prevention-batch-4.test.js
 // A9 Damage Prevention/Redirect bucket, batch 4 (4 cards): Al-abara's Carpet,
 // Scarecrow, Whippoorwill, Marble Priest. See docs/MECHANICS_INDEX.md for the

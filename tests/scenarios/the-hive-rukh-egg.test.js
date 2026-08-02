@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/the-hive-rukh-egg.test.js
 // The Hive and Rukh Egg: token-creation card implementations.
 // See THIRD_PARTY_NOTICES.md for Card-Forge/forge attribution.

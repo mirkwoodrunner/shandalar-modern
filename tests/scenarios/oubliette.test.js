@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/oubliette.test.js
 // Oubliette: "When this enchantment enters, target creature phases out until
 // this enchantment leaves the battlefield. Tap that creature as it phases in

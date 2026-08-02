@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legendary-creatures-batch-4.test.js
 // Legendary Creatures Batch 4: Lady Evangela, Angus Mackenzie, Dakkon Blackblade,
 // Tetsuo Umezawa. Angus Mackenzie reuses the existing "fog" effect directly as an

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/circle-of-protection.test.js
 // Damage Shields (Part 3): the six Circle of Protection enchantments and
 // Greater Realm of Preservation. Cards are pulled live from CARD_DB so these

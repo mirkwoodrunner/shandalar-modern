@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/copy-mechanism-generalized.test.js
 // Layer 1 (copy): applyPermanentCopy is the generalized helper extracted from
 // Copy Artifact's original copyPermanentCharacteristics case. Verifies Copy

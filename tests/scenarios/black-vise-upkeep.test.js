@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/black-vise-upkeep.test.js
 // Black Vise: "As this artifact enters, choose an opponent. At the beginning
 // of the chosen player's upkeep, this artifact deals X damage to that

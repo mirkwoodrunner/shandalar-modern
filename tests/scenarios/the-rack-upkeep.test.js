@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/the-rack-upkeep.test.js
 // The Rack: "At the beginning of the chosen player's upkeep, this artifact
 // deals X damage to that player, where X is 3 minus the number of cards in

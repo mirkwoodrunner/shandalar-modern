@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/primal-clay.test.js
 // Primal Clay: "As this creature enters, it becomes your choice of a 3/3
 // artifact creature, a 2/2 artifact creature with flying, or a 1/6 Wall

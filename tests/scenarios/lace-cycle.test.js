@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/lace-cycle.test.js
 // The five "lace" color-changing instants (Chaoslace, Deathlace, Lifelace,
 // Purelace, Thoughtlace) share one effect id, "colorLace", parameterized by

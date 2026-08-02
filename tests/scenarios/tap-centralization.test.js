@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/tap-centralization.test.js
 // Tap centralization Phase 1: every "becomes tapped" mutation site in
 // DuelCore.js now routes through the single tapPermanent() choke point,

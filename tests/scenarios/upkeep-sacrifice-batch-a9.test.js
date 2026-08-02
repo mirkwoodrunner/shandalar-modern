@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-sacrifice-batch-a9.test.js
 // A9 upkeep-trigger batch: Junún Efreet, Curse Artifact, Serendib Djinn,
 // Dance of Many, Forethought Amulet, Mana Vortex's cast-time additional

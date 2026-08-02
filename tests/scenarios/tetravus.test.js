@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/tetravus.test.js
 // Tetravus: etbCounter, two optional upkeep abilities (remove counters -> make
 // tokens; exile own tokens -> regain counters), remembered-token tracking.

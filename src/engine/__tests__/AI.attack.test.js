@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // src/engine/__tests__/AI.attack.test.js
 // Regression tests for GDD §Bug B4 / Phase 4 P6:
 // "AI always attacks with all eligible creatures."

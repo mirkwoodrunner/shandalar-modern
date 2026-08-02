@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ownership-exchange.test.js
 // Regression coverage for Part 6: ownershipChanges (Bronze Tablet, Tempest
 // Efreet) fires unconditionally -- unlike ante reconciliation, it does not

@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/upkeep-damage-batch-a9.test.js
 // A9 upkeep-trigger batch: Serendib Efreet, Cursed Land, Copper Tablet,
 // Storm World, The Fallen. See docs/CURRENT_SPRINT.md / docs/MECHANICS_INDEX.md

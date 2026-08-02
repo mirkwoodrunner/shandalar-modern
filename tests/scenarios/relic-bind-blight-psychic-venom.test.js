@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/relic-bind-blight-psychic-venom.test.js
 // Unstubs Blight, Psychic Venom, and Relic Bind on top of tap centralization
 // Phase 1's new ON_TAP event and enchantedHostTapped condition.

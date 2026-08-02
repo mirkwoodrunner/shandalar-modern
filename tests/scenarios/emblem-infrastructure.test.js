@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/emblem-infrastructure.test.js
 // Shared "outlives its source" emblem infrastructure: state.p/o.emblems,
 // consumed by layers.js collectEffects (Layer 4/6/7a) and DuelCore.js

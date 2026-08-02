@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/ring-of-maruf.test.js
 // Ring of Ma'ruf: "{5}, {T}, Exile this artifact: The next time you would draw
 // a card this turn, instead put a card you own from outside the game into your

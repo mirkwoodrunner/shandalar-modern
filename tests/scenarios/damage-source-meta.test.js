@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/damage-source-meta.test.js
 // Deferral Sweep 1: hurt() structured damage-source meta, damageBySourceType
 // tracking, and the damageRedirect hook (Martyrs of Korlis, Veteran Bodyguard).

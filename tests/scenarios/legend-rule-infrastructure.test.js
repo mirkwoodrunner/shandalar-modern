@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/legend-rule-infrastructure.test.js
 // Legend rule (CR 704.5j) infrastructure: isLegendary, checkLegendRule SBA,
 // the legendRuleChoice pendingChoice/RESOLVE_CHOICE branch, and the AI policy

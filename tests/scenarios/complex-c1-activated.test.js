@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 // tests/scenarios/complex-c1-activated.test.js
 // Complex-tier stub cards implemented from Card-Forge/forge reference scripts
 // (GPL-3.0), sub-batch C1: activated abilities and spells.

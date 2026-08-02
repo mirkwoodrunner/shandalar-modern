@@ -360,7 +360,16 @@ All Playwright e2e specs now live in `tests/e2e/` (consolidated 2026-06-24 from 
 
 ### Tag taxonomy
 
-Every `test.describe` block carries a tag prefix so `--grep` / `--testNamePattern` can filter by area. Four tags are defined:
+Every `test.describe` block carries a tag prefix in its title for human
+readability. Playwright still filters on that title text via `--grep`.
+Vitest no longer does — `--testNamePattern` does not reliably scope Vitest in
+this repo (confirmed: it has no filtering effect at all as of Vitest 4.1.5).
+Vitest test files instead carry a `@module-tag <name>` JSDoc header (Vitest
+4.1's native tag system, defined in `vite.config.js`), filtered via
+`--tags-filter`. `scripts/run-targeted.js` and `scripts/run-audit.js` already
+do this — you don't need to pass `--tags-filter` yourself.
+
+Four tags are defined:
 
 | Tag | Coverage |
 |---|---|

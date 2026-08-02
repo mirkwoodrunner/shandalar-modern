@@ -1,3 +1,6 @@
+/**
+ * @module-tag engine
+ */
 import { describe, it, expect } from 'vitest';
 import { duelReducer } from '../../engine/DuelCore.js';
 import { PHASE } from '../../engine/phases.js';
