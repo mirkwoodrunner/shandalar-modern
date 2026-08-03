@@ -31,6 +31,32 @@ Cross-referenced from CLAUDE.md.
 
 ---
 
+## Persistence Model (confirmed 2026-08-02)
+
+Shandalar Modern follows the source material: a single persistent campaign save, not a roguelike
+run-reset model with meta-progression. Losing towns to conquest is meant to matter because the run
+can't just be shrugged off by refreshing the browser.
+
+**Current state:** only `shandalar_unlockables` (the 5 mage artifacts, owned booleans) persists
+across sessions, via localStorage in `useOverworldController.js`. Overworld run state -- position,
+gold, deck, binder, quests, mana links, dungeon progress -- has no persistence. Closing the tab or
+reloading discards the run entirely. `usePersistence.ts` / `LOAD_STATE` cover mid-duel crash
+recovery only (the resume-to-modal flow was deliberately removed, see RESUME-REMOVE-1); they do
+not cover the overworld/campaign layer.
+
+**Rescopes Milestone D's "Resume Duel v2"** from mid-duel checkpointing into full campaign
+persistence: position, world state, deck, binder, quests, mana links, dungeon progress, gold.
+
+**Open before implementation (not decided yet):**
+- Single continuous save vs. multiple save slots
+- Continuous autosave vs. safe-point saves (autosave-on-every-change risks capturing a bad
+  mid-transition state; safe-point saves need the same "safe phases only" gating already required
+  for mid-duel resume)
+
+Not scheduled as next work as of 2026-08-02.
+
+---
+
 ## MCTS Candidate Shape (TD-002)
 
 scoreMoves() in MCTS.js accepts an optional `nextState` field on candidate objects:
