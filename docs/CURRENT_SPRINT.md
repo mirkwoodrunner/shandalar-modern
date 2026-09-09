@@ -2,6 +2,31 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-09)
+- **Phaser rendering layer — Phase 1 POC** -- feature-flagged (`?duel=sandbox-phaser`)
+  Phaser 4 canvas mounted alongside the existing (unchanged, still-default)
+  `DuelScreen`. Renders the player's hand via `handLayout.ts` (pure,
+  unit-tested viewport -> card-position math) and animates a tapped land
+  from its hand slot to center stage before dispatching `PLAY_LAND` through
+  the same sandbox `window.__duelDispatch` hatch Playwright already uses.
+  `src/ui/Phaser/` never imports from `src/engine/` (verified by grep); the
+  only desktop/mobile difference is the numbers `getHandLayoutConfig()`
+  returns. Card art renders as placeholder rectangles + name text rather
+  than fetched Scryfall art -- a deliberate scope choice for reliability in
+  this POC, not because art loading required an engine import (it doesn't;
+  `useCardArt`/`scryfallArt.js` are engine-free). Battlefield, stack,
+  targeting, and combat remain untouched -- Phase 2 scope. Go/no-go on
+  Phase 2 is open; see `docs/DECISIONS.md` for the hybrid rendering
+  decision this phase sets up.
+  - New: `src/ui/Phaser/handLayout.ts`, `HandScene.ts`, `PhaserDuelHost.tsx`,
+    `src/ui/Phaser/__tests__/handLayout.test.ts` (9 cases),
+    `tests/e2e/phaser-hand-poc.spec.ts` (6 cases, added to the
+    `mobile-chrome` `testMatch` allowlist in `playwright.config.js`).
+  - Edited: `src/App.jsx` (new `SandboxPhaserApp` entry point, copied from
+    `SandboxMobileApp`'s config verbatim).
+  - `npm install phaser@^4.1.0` -> resolved 4.2.1. Bundle grew from 292.32 kB
+    to 676.09 kB gzip (+383.77 kB) -- under the 1.5 MB STOP threshold.
+
 ## Up Next (backlog, not scheduled)
 - Premodern card effect handlers -- ongoing batched track. Scryfall oracle verification required per batch. Continue the Batch 1A/1B cadence.
 - **Resume duel v2** (future): Checkpoint-gated resume -- only safe to load when `stack.length === 0` and phase is in a safe set (MAIN_1, MAIN_2). Requires `LOAD_STATE` reducer (currently dead code) and a gated modal.

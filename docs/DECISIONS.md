@@ -31,6 +31,35 @@ Cross-referenced from CLAUDE.md.
 
 ---
 
+## Rendering: Phaser for Duel + World Map, React for Chrome (hybrid, Phase 1 flagged POC -- 2026-09-09)
+
+Long-term rendering split, adopted for the animation/touch-input quality Phaser
+gives the duel and world-map screens:
+
+- **Phaser owns:** duel-screen rendering (battlefield, hand, stack, combat --
+  Phase 2+) and world-map rendering (Phase 3+).
+- **React keeps:** menus, deck builder, settings, modals -- permanently. These
+  are never migrated to Phaser.
+- **`DuelCore.js` remains the sole `GameState` mutator regardless of renderer.**
+  Phaser scenes render plain data and call callbacks; they never resolve
+  rules or mutate state themselves. This is the same UI/engine boundary
+  `CLAUDE.md` already enforces for React components, just extended to a
+  second rendering layer.
+
+**Phase 1 (this entry, 2026-09-09) is a feature-flagged POC only**
+(`?duel=sandbox-phaser`): a Phaser canvas rendering + animating the player's
+hand, mounted *alongside* the unchanged, still-default `DuelScreen`. It
+proves nothing about Phase 2 except animation feel and mobile touch input.
+
+**Go/no-go on Phase 2 (retiring the React duel screens in favor of Phaser) is
+open** -- not decided by this entry. Phase 2 would trigger a Tier 1
+`ENGINE_CONTRACT_SPEC.md` update (system boundary contracts between
+DuelCore/AI/UI change shape when the "UI" is a Phaser scene instead of
+React); Phase 1 does not, since it only consumes the existing UI-layer
+contract via the same sandbox dispatch hatch Playwright already uses.
+
+---
+
 ## Persistence Model (confirmed 2026-08-02)
 
 Shandalar Modern follows the source material: a single persistent campaign save, not a roguelike
