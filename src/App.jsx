@@ -57,6 +57,7 @@ import { ScoreScreen } from './ui/overworld/EncounterModal.jsx';
 import OverworldGame from './OverworldGame.jsx';
 import DuelScreen from './DuelScreen.tsx';
 import DuelScreenMobile from './ui/Mobile/DuelScreenMobile';
+import { PhaserDuelHost } from './ui/Phaser/PhaserDuelHost.tsx';
 import { getCardById } from './data/cards.js';
 import DungeonMap from './ui/dungeon/DungeonMap.jsx';
 import { generateDungeon } from './engine/DungeonGenerator.js';
@@ -132,6 +133,7 @@ const _dungeonParam   = new URLSearchParams(window.location.search).get('dungeon
 const _sandboxAnteEnabled = new URLSearchParams(window.location.search).get('ante') === '1';
 const sandboxMode          = _duelParam === 'sandbox';
 const sandboxMobileMode    = _duelParam === 'sandbox-mobile';
+const sandboxPhaserMode    = _duelParam === 'sandbox-phaser';
 const overworldSandboxMode = _overworldParam === 'sandbox';
 const dungeonSandboxMode   = _dungeonParam === 'sandbox';
 
@@ -245,6 +247,63 @@ function SandboxMobileApp() {
 
 
 // ---------------------------------------------------------------------------
+// Sandbox-phaser entry point (?duel=sandbox-phaser)
+// Mounts the feature-flagged Phaser hand-rendering POC alongside the
+// existing DuelScreen. Both render; DuelScreen remains the default,
+// playable renderer. See docs/DECISIONS.md for the hybrid rendering plan.
+// ---------------------------------------------------------------------------
+
+function SandboxPhaserApp() {
+  const [deckIds, setDeckIds] = useState(null);
+
+  useEffect(() => {
+    fetch('/sandbox-decklist.txt')
+      .then(r => r.text())
+      .then(text => setDeckIds(parseDecklistText(text)))
+      .catch(() => setDeckIds(FALLBACK_DECK));
+  }, []);
+
+  if (deckIds === null) {
+    return <div data-testid="sandbox-loading">Loading sandbox...</div>;
+  }
+
+  const injectedIds = new URLSearchParams(window.location.search)
+    .get('cards')?.split(',').filter(Boolean) ?? [];
+
+  const landIds = injectedIds.length ? resolveManaSupport(injectedIds) : [];
+  const forcedIds = [...landIds, ...injectedIds];
+
+  const sandboxPhaserConfig = {
+    pDeckIds: [...forcedIds, ...deckIds],
+    oppArchKey: 'AGGRO_RED',
+    ruleset: {
+      name:             'Sandbox',
+      startingLife:     20,
+      startingHandSize: 7,
+      manaBurn:         false,
+      stackType:        'full',
+      deathtouch:       true,
+      exileZone:        false,
+    },
+    overworldHP:  20,
+    castleMod:    null,
+    anteEnabled:  _sandboxAnteEnabled,
+    sandbox:      true,
+    forcedHandIds: forcedIds,
+  };
+
+  return (
+    <div data-testid="duel-screen-wrapper">
+      <DuelScreen
+        config={sandboxPhaserConfig}
+        onDuelEnd={() => { window.location.href = '/'; }}
+      />
+      <PhaserDuelHost sandbox={true} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Normal app
 // ---------------------------------------------------------------------------
 
@@ -322,6 +381,7 @@ function DungeonSandboxApp() {
 export default function App() {
   if (sandboxMode)          return <SandboxApp />;
   if (sandboxMobileMode)    return <SandboxMobileApp />;
+  if (sandboxPhaserMode)    return <SandboxPhaserApp />;
   if (overworldSandboxMode) return <SandboxOverworldApp />;
   if (dungeonSandboxMode)   return <DungeonSandboxApp />;
   return <NormalApp />;

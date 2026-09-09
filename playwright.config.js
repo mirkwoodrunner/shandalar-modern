@@ -58,6 +58,7 @@ export default defineConfig({
         'tests/e2e/overworld-sprites.spec.ts',
         'tests/e2e/overworld-tileset.spec.ts',
         'tests/e2e/overworld-visual.spec.ts',
+        'tests/e2e/phaser-hand-poc.spec.ts',
         'tests/e2e/plaque-visibility.spec.ts',
         'tests/e2e/power-sink-x-select.spec.js',
         'tests/e2e/preduel-sandbox.spec.ts',
