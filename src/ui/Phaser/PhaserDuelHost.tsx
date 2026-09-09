@@ -6,7 +6,7 @@
 // only ever dispatches a plain GameAction object, same as the UI layer
 // does everywhere else in this app.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { HandScene, type HandSceneCardData } from './HandScene';
 
@@ -39,10 +39,25 @@ function toSceneCards(hand: DuelStateLike['p'] extends { hand?: infer H } ? H : 
 }
 
 export function PhaserDuelHost({ sandbox = false, state, dispatch, castSpell, selectCard }: PhaserDuelHostProps) {
+  // Two nested divs on purpose: Phaser's Scale.RESIZE mode overwrites
+  // whatever element it's given as `parent` with its own inline
+  // width:100%/height:100%, which stomped the `bottom:0` this component
+  // needs on the element it positions below the ActionBar (the two goals
+  // fought over the same element's height and Phaser won, blowing the
+  // canvas out to a full viewport height regardless of where it started).
+  // outerRef is the one this component positions; containerRef is
+  // Phaser's own to mutate freely, nested inside where outerRef's
+  // (well-defined, top+bottom-derived) height sets the 100% it resolves against.
+  const outerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const sceneRef = useRef<HandScene | null>(null);
   const lastHandKeyRef = useRef<string>('');
+  // Where the real ActionBar's bottom edge sits, so the canvas footprint
+  // starts exactly there rather than a guessed constant. null == not yet
+  // measured, so the canvas stays collapsed (no click surface at all)
+  // instead of risking a full-viewport flash that swallows clicks.
+  const [topOffsetPx, setTopOffsetPx] = useState<number | null>(null);
 
   // Kept fresh across renders so the Phaser callback (set up once) always
   // sees the latest props/window hooks without needing to recreate the game.
@@ -130,6 +145,57 @@ export function PhaserDuelHost({ sandbox = false, state, dispatch, castSpell, se
     return () => clearInterval(interval);
   }, []);
 
+  // Track the real ActionBar's bottom edge so the canvas footprint starts
+  // exactly there instead of a guessed constant that drifted from actual
+  // layout between viewports (a fixed vh band overlapped the ActionBar's
+  // buttons on desktop while undershooting it on mobile). end-turn-button
+  // is present in both the normal ActionBar and its endTurnPending variant.
+  //
+  // Folded into the same tick: forcing Phaser to re-measure whenever the
+  // outer box's real size changes. Scale.RESIZE mode only re-measures its
+  // parent on a real `window` resize event -- a CSS-only size change (our
+  // `top` shift) never reaches it on its own, so without this the canvas
+  // keeps its stale mount-time size.
+  useEffect(() => {
+    let lastW = 0;
+    let lastH = 0;
+    const tick = () => {
+      const bar = document.querySelector('[data-testid="end-turn-button"]');
+      if (bar) {
+        const bottom = Math.round(bar.getBoundingClientRect().bottom);
+        setTopOffsetPx(prev => (prev === bottom ? prev : bottom));
+      }
+      const el = outerRef.current;
+      const game = gameRef.current;
+      if (el && game && sceneRef.current) {
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        if (w > 0 && h > 0 && (w !== lastW || h !== lastH)) {
+          lastW = w; lastH = h;
+          // Scale.RESIZE mode only re-measures its parent on a real
+          // `window` resize event (see ScaleManager#startListeners) — it
+          // has no ResizeObserver on the parent element itself, so a CSS
+          // -only size change (like the `top` shift below) never reaches
+          // it on its own. `scale.resize()` is documented for NONE mode
+          // only and fights RESIZE mode's own bookkeeping (it got
+          // immediately overwritten back to a stale 0-height parent
+          // reading). Calling the same sequence RESIZE mode's own
+          // window-resize handler uses is what actually sticks.
+          game.scale.updateBounds();
+          game.scale.getParentBounds();
+          game.scale.refresh();
+        }
+      }
+    };
+    tick();
+    const interval = setInterval(tick, POLL_INTERVAL_MS);
+    window.addEventListener('resize', tick);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', tick);
+    };
+  }, []);
+
   // Playwright hook, gated identically to the existing sandbox hatch.
   useEffect(() => {
     if (!sandbox) return;
@@ -141,7 +207,25 @@ export function PhaserDuelHost({ sandbox = false, state, dispatch, castSpell, se
     };
   }, [sandbox]);
 
-  return <div ref={containerRef} data-testid="phaser-host" style={{ position: 'absolute', inset: 0 }} />;
+  // Footprint is intentionally the hand-fan band at the bottom of the
+  // screen, not the full viewport: a full-bleed canvas sits in front of
+  // everything in the DOM and swallows every click, including the
+  // ActionBar's Pass Priority / Done Attacking / End Turn buttons that
+  // render just above the hand — that was a real lockup during combat,
+  // not a hypothetical. `top` tracks the ActionBar's measured bottom edge
+  // (see the effect above) so the canvas starts exactly below it and
+  // never overlaps, on any viewport. Until the first measurement lands,
+  // collapse to zero height so there's no full-viewport click-catching
+  // flash.
+  const outerStyle: React.CSSProperties = topOffsetPx === null
+    ? { position: 'absolute', left: 0, right: 0, top: '100%', bottom: 0, overflow: 'hidden' }
+    : { position: 'absolute', left: 0, right: 0, top: topOffsetPx, bottom: 0, overflow: 'hidden' };
+
+  return (
+    <div ref={outerRef} data-testid="phaser-host" style={outerStyle}>
+      <div ref={containerRef} />
+    </div>
+  );
 }
 
 export default PhaserDuelHost;
