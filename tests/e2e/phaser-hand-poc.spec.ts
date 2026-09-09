@@ -4,12 +4,17 @@ import { test, expect } from '@playwright/test';
 // Exercises the feature-flagged ?duel=sandbox-phaser entry point: a Phaser
 // canvas mounted alongside the existing DuelScreen. DuelScreen remains the
 // default, playable renderer — this spec only verifies the Phaser overlay.
+//
+// All page.goto() calls pass waitUntil: 'domcontentloaded' instead of the
+// Playwright default 'load' -- see tests/e2e/ante-system-complete.spec.ts
+// for why ('load' hangs indefinitely under this environment's outbound
+// network policy; the app is fully interactive well before it resolves).
 
 test.describe('@engine Phaser hand POC', () => {
   test.beforeEach(async ({ page }) => {
     // &cards=mountain guarantees a land is present in the opening hand so
     // the land-tap cases below don't depend on the random draw.
-    await page.goto('/?duel=sandbox-phaser&aiSpeed=0&cards=mountain');
+    await page.goto('/?duel=sandbox-phaser&aiSpeed=0&cards=mountain', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).__duelState === 'function');
     await page.waitForFunction(() => typeof (window as any).__phaserHand === 'function');
     await expect.poll(() => page.evaluate(() => (window as any).__phaserHand()?.length ?? -1))
@@ -78,8 +83,8 @@ test.describe('@engine Phaser hand POC', () => {
     // Away target is a different sandbox route (not the title screen) so
     // this only exercises the unmount/remount cycle this test is actually
     // checking, without the title screen's own asset loading in the mix.
-    await page.goto('/?duel=sandbox');
-    await page.goto('/?duel=sandbox-phaser&aiSpeed=0');
+    await page.goto('/?duel=sandbox', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?duel=sandbox-phaser&aiSpeed=0', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).__phaserHand === 'function');
     await expect(page.locator('[data-testid="phaser-host"] canvas')).toHaveCount(1);
   });
