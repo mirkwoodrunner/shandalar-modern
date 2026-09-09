@@ -75,7 +75,10 @@ test.describe('@engine Phaser hand POC', () => {
   });
 
   test('navigating away and back leaves exactly one canvas in the DOM', async ({ page }) => {
-    await page.goto('/');
+    // Away target is a different sandbox route (not the title screen) so
+    // this only exercises the unmount/remount cycle this test is actually
+    // checking, without the title screen's own asset loading in the mix.
+    await page.goto('/?duel=sandbox');
     await page.goto('/?duel=sandbox-phaser&aiSpeed=0');
     await page.waitForFunction(() => typeof (window as any).__phaserHand === 'function');
     await expect(page.locator('[data-testid="phaser-host"] canvas')).toHaveCount(1);
