@@ -14,6 +14,67 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-15 -- `npm run test:audit -- @learn` (Learn Mode Slice 1)
+
+**Originating change:** `claude/learn-mode-slice-1-zhs0gs` -- new Vite entry
+`learn.html` (unofficial MTG teaching app), all new code under `src/learn/`,
+plus 4 config edits (`vite.config.js` multi-page `build.rollupOptions.input`
++ `learn` Vitest tag, `playwright.config.js` mobile-chrome allowlist,
+`scripts/run-targeted.js`/`run-audit.js` valid-tag lists) and doc-only
+changes (`CLAUDE.md`, `docs/CURRENT_SPRINT.md`, `docs/COMPONENT_REGISTRY.md`,
+new `docs/LEARN_MODE.md`). No file under `src/engine/`, `src/data/`,
+`src/hooks/`, `src/OverworldGame.jsx`, or `src/ui/` (outside `src/learn/`)
+was touched. Targeted run (`npm run test:targeted -- @learn`: 39 Vitest +
+8 Playwright x 2 viewports, all in the two verbatim `src/learn/__tests__/`
+files and `tests/e2e/learn-slice.spec.ts`) passed cleanly. `npm run
+test:audit -- @learn` then randomly selected `@overworld` as the untouched
+tag to verify against.
+
+**Result:** 52 of 142 Playwright tests failed (90 passed, 2 skipped) across
+both `chromium` and `mobile-chrome` projects, all in overworld/sprite/visual
+files: `henchman-visibility.spec.ts`, `hooded-figure-sprites.spec.ts`,
+`map.spec.js`, `overworld-map-centering.spec.ts`, `overworld-sprites.spec.ts`,
+`overworld-visual.spec.ts`, `plaque-visibility.spec.ts`,
+`preduel-sandbox.spec.ts`, `ruins.spec.js`. Signatures are element-not-found
+timeouts on canvas/sprite/tile assertions (e.g. `.ow-plaque-ruin` never
+becoming visible within 15s, tint-correctness canvas checks, structure `<img>`
+presence checks) -- rendering/timing assertions, not gameplay logic
+assertions. No Vitest failures.
+
+**Diagnosis:** Same failure class as the 2026-07-21 and 2026-07-28 entries
+below, for the same two reasons:
+1. **Zero code-path overlap.** This change touches only `src/learn/**` (a
+   separate Vite entry that imports `duelReducer`/`buildDuelState`/etc. from
+   `DuelCore.js` read-only, never touching `src/OverworldGame.jsx`,
+   `useOverworldController.js`, or `MapGenerator.js`) plus build/test-tooling
+   config and docs. The `vite.config.js` edit only adds a second
+   `build.rollupOptions.input` entry, which affects `vite build` output
+   chunking, not what the Vite dev server serves at `/` -- every failing
+   test navigates to `http://localhost:5173` (the main Shandalar entry),
+   not `/learn.html`.
+2. **Failure signature matches previously-logged environment flakiness.**
+   The exact same files (`overworld-visual.spec.ts`, `plaque-visibility.spec.ts`,
+   `ruins.spec.js`, `overworld-sprites.spec.ts`) already appear in the
+   2026-07-21/2026-07-28 entries below with the same class of failure
+   (canvas/sprite rendering assertions and fixed-window waits tripping under
+   a slow/headless container), and `preduel-sandbox.spec.ts` failing outright
+   (its own test body is a placeholder `expect(title).toBeTruthy()` after a
+   `waitForSelector` -- a failure here points at boot/navigation timing, not
+   this batch's code).
+
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure is being
+reported rather than self-overridden. Logging here per the documented
+procedure; **not** proceeding to commit or run any broader diagnostic
+(`npm test && npm run test:e2e`) without the project owner's permission, per
+steps 3-4 of the hard-stop procedure.
+
+**Follow-up (not done here):** If any of these 9 files come up failing again
+in a future audit with the same element-not-found/timeout signature and no
+plausible connection to the change under audit, this entry (plus the two
+below it) already has the environment-flakiness diagnosis on file.
+
+---
+
 ## 2026-08-01 -- `npm run test:targeted -- @engine` (Legendary Creatures Batch 6, 9 cards)
 
 **Originating change:** `claude/legendary-creatures-batch-6-gfrol1` -- 9 new

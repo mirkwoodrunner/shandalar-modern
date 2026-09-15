@@ -1,0 +1,283 @@
+/* src/learn/ui/learn.css
+   Learn Mode stylesheet. One responsive layout for mobile and desktop.
+   Body scrolls -- unlike Shandalar's index.html, nothing here sets overflow:hidden. */
+
+* , *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #learn-root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #14110f;
+  color: #f1e9dd;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.learn-app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100vh;
+}
+
+.learn-unit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.learn-unit-list h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.learn-unit-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 16px;
+  background: #241f1a;
+  border: 1px solid #4a3f33;
+  border-radius: 8px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.learn-unit-button:hover {
+  border-color: #8a7455;
+}
+
+.learn-unit-title {
+  font-weight: 600;
+}
+
+.learn-unit-count {
+  color: #b8ab97;
+  font-size: 0.85rem;
+}
+
+.learn-lesson-player {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.learn-progress {
+  color: #b8ab97;
+  font-size: 0.9rem;
+}
+
+.learn-progress-bar {
+  height: 6px;
+  background: #241f1a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.learn-progress-bar-fill {
+  height: 100%;
+  background: #8a7455;
+  transition: width 0.2s ease;
+}
+
+.learn-engine-exercise, .learn-multiselect-exercise {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.learn-opp-life, .learn-mana-pool {
+  font-weight: 600;
+}
+
+.learn-card-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.learn-card {
+  position: relative;
+  min-width: 140px;
+  max-width: 200px;
+  flex: 1 1 140px;
+  padding: 10px;
+  background: #241f1a;
+  border: 1px solid #4a3f33;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.learn-card-clickable {
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.learn-card-tapped {
+  opacity: 0.55;
+}
+
+.learn-card-highlighted {
+  animation: learn-pulse 1.6s ease-in-out infinite;
+}
+
+.learn-card-selected {
+  outline: 3px solid #d4af37;
+  outline-offset: 2px;
+}
+
+@keyframes learn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.6); }
+  50% { box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.3); }
+}
+
+.learn-card-name-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.learn-card-type {
+  color: #b8ab97;
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.learn-card-text {
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+
+.learn-card-pt {
+  margin-top: 6px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.learn-card-badge {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.learn-card-badge-tapped {
+  background: #55483a;
+  color: #f1e9dd;
+}
+
+.learn-card-badge-new {
+  background: #2f6f4f;
+  color: #f1e9dd;
+  left: 8px;
+  right: auto;
+}
+
+.learn-button {
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #4a3f33;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.learn-button-primary {
+  background: #8a7455;
+  color: #14110f;
+  font-weight: 600;
+  border-color: #8a7455;
+}
+
+.learn-button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.learn-button-secondary {
+  background: transparent;
+  color: #f1e9dd;
+}
+
+.learn-ms-option {
+  display: block;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.learn-ms-option .learn-card {
+  border-width: 1px;
+}
+
+.learn-ms-option-selected .learn-card {
+  outline: 3px solid #d4af37;
+  outline-offset: 2px;
+}
+
+.learn-multiselect-label {
+  color: #b8ab97;
+  font-size: 0.85rem;
+}
+
+.learn-feedback-panel {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.learn-feedback-success {
+  background: rgba(47, 111, 79, 0.25);
+  border: 1px solid #2f6f4f;
+}
+
+.learn-feedback-fail {
+  background: rgba(139, 58, 46, 0.25);
+  border: 1px solid #8b3a2e;
+}
+
+.learn-feedback-rejected {
+  background: rgba(85, 72, 58, 0.25);
+  border: 1px solid #55483a;
+}
+
+.learn-unit-complete {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.learn-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 0.75rem;
+  color: #8a7c6a;
+  text-align: center;
+}
