@@ -9,7 +9,7 @@ export const UNITS: Unit[] = [
     title: 'Lands and mana',
     exercises: [
       {
-        kind: 'engine', id: '1.1-01', unit: '1.1', skill: 'tap-for-mana', title: 'Tap a land',
+        kind: 'engine', id: '1.1-01', unit: '1.1', skill: 'tap-for-mana', title: 'Tap a land', guided: true,
         prompt: 'Tap the Forest to make green mana.',
         hint: 'Tap the Forest card.',
         explanation: 'Tapping a land adds one mana to your mana pool. A Forest makes green mana, shown as G.',
