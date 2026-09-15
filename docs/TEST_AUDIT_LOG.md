@@ -92,21 +92,21 @@ below, for the same two reasons:
    chunking, not what the Vite dev server serves at `/` -- every failing
    test navigates to `http://localhost:5173` (the main Shandalar entry),
    not `/learn.html`.
-2. **Failure signature matches previously-logged environment flakiness.**
-   The exact same files (`overworld-visual.spec.ts`, `plaque-visibility.spec.ts`,
-   `ruins.spec.js`, `overworld-sprites.spec.ts`) already appear in the
-   2026-07-21/2026-07-28 entries below with the same class of failure
-   (canvas/sprite rendering assertions and fixed-window waits tripping under
-   a slow/headless container), and `preduel-sandbox.spec.ts` failing outright
-   (its own test body is a placeholder `expect(title).toBeTruthy()` after a
-   `waitForSelector` -- a failure here points at boot/navigation timing, not
-   this batch's code).
+2. **Correction (added in the Slice 2 prompt): the environment-flakiness diagnosis
+   below was verified wrong.** `tests/e2e/ruins.spec.js` and
+   `tests/e2e/plaque-visibility.spec.ts` were run on clean `main`, with no Learn
+   Mode code present, and produced identical failures with identical timings
+   (30.0 to 30.1s on the `<img>` selector assertions, 16.5 to 16.6s on the ruin
+   plaque). Deterministic reproduction on unrelated code rules out container
+   slowness. The overworld structure-rendering assertions are a real
+   pre-existing break and need their own investigation, not a flakiness
+   write-off. Conclusion for this entry is unchanged: not caused by the change
+   under audit.
 
-**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure is being
-reported rather than self-overridden. Logging here per the documented
-procedure; **not** proceeding to commit or run any broader diagnostic
-(`npm test && npm run test:e2e`) without the project owner's permission, per
-steps 3-4 of the hard-stop procedure.
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure was reported
+rather than self-overridden. It was logged here per the documented procedure,
+reported to the project owner, who approved proceeding; the branch was then
+committed and pushed as `4c263bf`.
 
 **Follow-up (not done here):** If any of these 9 files come up failing again
 in a future audit with the same element-not-found/timeout signature and no

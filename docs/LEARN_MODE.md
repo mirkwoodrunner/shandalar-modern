@@ -54,6 +54,89 @@ combination of legal blocks the opponent could make, and an attack is only marke
 the block that leaves the opponent at the highest life. The outcome cap is
 `MAX_BLOCK_OUTCOMES = 5000`; boards that would exceed it throw `LEARN_TOO_MANY_OUTCOMES`.
 
+## 3a. Puzzle checker
+
+`src/learn/engine/puzzleChecker.ts` is the automated content-quality gate for every
+exercise, run via `npm run learn:check` (readable authoring report) or the
+`puzzleChecker.test.ts` Vitest suite (CI gate). It is pure -- no I/O -- and imports
+only from `./types` and `./puzzleRunner`, so there is exactly one seam between Learn
+Mode and the engine. It answers five questions about each exercise before it ships:
+
+| Check | Question | Duolingo failure it targets |
+|---|---|---|
+| solvable | Does any legal line reach the goal? | unsolvable puzzle |
+| complete | Are all winning lines listed in `solutions`? | branching variations |
+| discriminating | Does at least one legal line lose, or one move get rejected? | puzzle that tests nothing |
+| theme | Does the tagged skill actually decide the outcome? | theme not present |
+| enumerate | Does the search terminate within its caps? | authoring blowup |
+
+**How each check works.**
+
+- **enumerate.** Combat exercises enumerate every non-empty subset of legally
+  attackable creatures and grade each through `resolveAttack`, which already tries
+  every legal block. Main-phase exercises run a breadth-first search over tap,
+  land-drop, and cast actions, deduplicated on a state key of tapped permanents, mana
+  pool, and lands played. Caps: `MAX_SEARCH_DEPTH = 6`, `MAX_SEARCH_NODES = 20000`,
+  `MAX_ENUM_ATTACKERS = 8`. Exceeding a cap throws, which the checker reports as an
+  `enumerate` error rather than hanging.
+- **discriminating.** Two signals, because dead ends alone are not enough. In a mana
+  puzzle you can almost always tap one more land, so nothing is ever truly stuck. What
+  makes those puzzles teach something is the move the UI lets you attempt and the
+  runner rejects: casting before you have paid, a second land drop.
+  `countRejectableMoves` counts those, excluding `NOT_IN_LESSON` rejections, which are
+  lesson scoping rather than a rules mistake. An exercise passes when at least one
+  legal line loses or at least one move is rejected. A main-phase exercise where every
+  legal line wins is a guided first step, not a broken puzzle -- data marks those with
+  `guided: true`, which drops the finding to a warning instead of an error.
+- **complete.** For combat, every winning attacker set must appear in `solutions`,
+  compared as a set so attacker order does not matter. This is the direct fix for
+  branching variations: an explanation that names one answer when two exist is caught
+  here. For main phase, listed solutions are compared as multisets of action plus iid,
+  since tap order commutes, and a shorter win than any listed solution produces a
+  warning.
+- **theme.** One entry per skill tag in `THEME_CHECKS` (engine) or
+  `MULTI_THEME_CHECKS` (multiSelect). A skill with no entry is an error, so new
+  content cannot ship a tag whose theme nothing verifies. Current entries: `tap-for-mana`
+  (every winning line only taps lands), `cast-creature` (every winning line casts a
+  spell), `colored-vs-generic` (some land subset has enough total mana but still
+  cannot pay the colors), `land-per-turn` (no winning line skips the land drop),
+  `lethal-evasion` (every winning set includes an attacker no defender can block),
+  `lethal-outnumber` (every winning set sends more attackers than they have untapped
+  blockers), `summoning-sickness` (removing the sickness opens a new winning set, so
+  the sickness is load-bearing), `read-costs` (excluded options include one that fails
+  on color and one that fails on total mana).
+
+**Known limitation.** Theme checks are hand-written per skill tag. Every new skill
+needs its own check written alongside it, in the same prompt that introduces the tag
+(see `CLAUDE.md` -- Learn Mode). The checker enforces that a check exists, not that it
+is a good check.
+
+**Verified current-content output** (`npm run learn:check`), reproduced exactly as of
+Slice 2:
+
+```
+1.1  Lands and mana
+  [warn] 1.1-01   tap-for-mana         1/1 lines win
+         warn: discriminating -- no legal line loses and no move is rejected, so the exercise tests nothing
+  [ ok ] 1.1-02   cast-creature        1/1 lines win
+  [ ok ] 1.1-03   colored-vs-generic   3/3 lines win
+  [ ok ] 1.1-04   read-costs           multiSelect
+  [ ok ] 1.1-05   land-per-turn        2/2 lines win
+
+3.1  Lethal this turn
+  [ ok ] 3.1-01   lethal-evasion       2/3 lines win
+  [ ok ] 3.1-02   lethal-outnumber     1/7 lines win
+  [ ok ] 3.1-03   lethal-outnumber     1/7 lines win
+  [ ok ] 3.1-04   summoning-sickness   1/3 lines win
+
+0 error(s), 1 warning(s).
+```
+
+`1.1-01` is the first exercise in the course -- the player taps one land and there is
+nothing else to do. That is correct for a guided first step, so it is the one
+intended warning; any other warning or any error means an exercise needs fixing
+before it ships.
+
 ## 4. Exercise schema and iid scheme
 
 See `src/learn/engine/types.ts` for the full type definitions. In summary:
@@ -93,8 +176,11 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
 
 ## 7. Slice roadmap
 
-- **Slice 1** (this slice): puzzle runner, lesson player, 9 exercises across Unit 1.1
+- **Slice 1** (done): puzzle runner, lesson player, 9 exercises across Unit 1.1
   (lands and mana) and Unit 3.1 (lethal this turn).
-- **Slice 2**: puzzle checker script for authoring new content outside the test suite.
-- **Slice 3**: remaining Unit 1.1 and 3.1 content, plus local progress and streaks.
+- **Slice 2** (done): puzzle checker (`src/learn/engine/puzzleChecker.ts`,
+  `npm run learn:check`) for authoring new content outside the test suite. See
+  section 3a above.
+- **Slice 3** (next): remaining Unit 1.1 and 3.1 content, plus local progress
+  and streaks.
 - **Slice 4**: checkpoint duel.
