@@ -131,3 +131,52 @@ Modal for the third step of Transmute Artifact: player taps mana to pay the CMC 
 
 Key props: `required`, `tutoredCard`, `currentMana`, `snapshotMana`, `onConfirm()`, `onUndo()`, `onDecline()`.
 data-testid: `transmute-pay-modal` (root), `transmute-pay-confirm`, `transmute-pay-undo`, `transmute-pay-decline`.
+
+## Learn Mode (src/learn/ui/)
+
+Separate Vite entry (`learn.html`), separate stylesheet (`ui/learn.css`), no shared state or components with Shandalar's own UI tree. See `docs/LEARN_MODE.md` for the full architecture.
+
+### `LessonPlayer` (`src/learn/ui/LessonPlayer.tsx`)
+
+Top-level screen for playing through one unit's exercises. Wires `useLessonPlayer` to `EngineExercise`/`MultiSelectExercise` and `FeedbackPanel`.
+
+Key props: `unit` (Unit), `startIndex` (number), `onExit()`.
+data-testid: `lesson-exit`, `lesson-progress`, `exercise-title`, `exercise-prompt`, `hint-button`, `hint-text` (once shown), `unit-complete` (shown when the unit is finished).
+
+### `EngineExercise` (`src/learn/ui/EngineExercise.tsx`)
+
+Renders one engine-graded puzzle: both battlefields, the player's hand, the mana pool, and the undo/attack controls. Presentation only -- clicks call back into `useLessonPlayer`.
+
+Key props: `ex` (EngineExercise data), `state` (GameState), `selectedAttackers` (string[]), `tapCard(iid)`, `undoTaps()`, `attack()`.
+data-testid: `opp-life`, `opp-bf`, `player-bf`, `player-mana-pool`, `player-hand`, `undo-taps` (shown only when the exercise allows `UNDO_MANA_TAPS`), `attack-button` (shown only in `COMBAT_ATTACKERS`).
+
+### `MultiSelectExercise` (`src/learn/ui/MultiSelectExercise.tsx`)
+
+Renders a fixed set of untapped lands plus a toggleable list of spell options; grading happens on demand via the check button.
+
+Key props: `msLands` (CardView[]), `msOptions` (CardView[]), `selectedOptions` (string[]), `toggleOption(cardId)`, `checkMultiSelect()`.
+data-testid: `ms-option-<cardId>` (toggle buttons, `aria-pressed`), `ms-check`.
+
+### `LearnCard` (`src/learn/ui/LearnCard.tsx`)
+
+Text-only card display shared by both exercise types. Accepts either a live GameState card (carries `iid`/`tapped`/`summoningSick`) or a display-only `CardView` (multiSelect lands and options, no `iid`).
+
+Key props: `card` (GameState card or CardView), `selected?` (boolean), `highlighted?` (boolean), `onClick?()`.
+data-testid: `card-<iid>` (only when the card carries an `iid`), with `data-tapped` and `data-selected` attributes.
+
+### `FeedbackPanel` (`src/learn/ui/FeedbackPanel.tsx`)
+
+Shows the result of the last graded action: success (with continue), fail (with retry), or rejected (text only).
+
+Key props: `feedback` (`{ result: 'success' | 'fail' | 'rejected'; text: string } | null`), `onContinue()`, `onRetry()`.
+data-testid: `feedback-panel` (with `data-result`), `feedback-text`, `continue-button` (success only), `retry-button` (fail only).
+
+### `LearnFooter` (`src/learn/ui/LearnFooter.tsx`)
+
+Renders the fan-content disclaimer on every Learn Mode screen.
+
+data-testid: `learn-disclaimer`.
+
+### `useLessonPlayer` hook (`src/learn/hooks/useLessonPlayer.ts`)
+
+Orchestration hook for `LessonPlayer`. Builds puzzle state via `puzzleRunner.buildPuzzleState`, routes taps to `TAP_LAND`/`PLAY_LAND`/`CAST_SPELL`/attacker-selection depending on phase, and tracks feedback/hint/progress state. Holds no rules logic itself -- every state change goes through the puzzle runner's `duelReducer` calls.

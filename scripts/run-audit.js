@@ -21,7 +21,7 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@premodern'];
+const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@premodern', '@learn'];
 
 const VITEST_DIRS = ['tests/scenarios', 'src/engine/__tests__'];
 const PW_DIRS = ['tests/e2e'];

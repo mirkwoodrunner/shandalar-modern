@@ -58,6 +58,7 @@ For rules verification during planning, see `docs/LVL5_MTG_JUDGE.md`.
 | `useDuel.js` | NO | YES (player only) | NO |
 | `useDuelController.ts` | NO | NO | NO |
 | UI components | NO | YES (via input) | NO |
+| `src/learn/` (Learn Mode) | NO (dispatches through `duelReducer` only) | YES (player steps only) | NO |
 
 ### Hard Rules
 
@@ -220,6 +221,15 @@ Do not blur these boundaries.
 See `docs/SYSTEMS.md` -- Section 22: Overworld Structure Types.
 
 ---
+
+## Learn Mode
+
+`learn.html` is a second Vite entry for an unofficial MTG teaching app built on DuelCore. Full spec in `docs/LEARN_MODE.md`.
+
+- `src/learn/engine/puzzleRunner.ts` is the only file under `src/learn/` that may import from `src/engine/` or `src/data/`.
+- Learn Mode prompts never edit engine, data, hook, or UI files outside `src/learn/`. A Learn Mode prompt that needs an engine change is a STOP until a separate engine prompt lands it.
+- Every exercise in `src/learn/data/` must pass `src/learn/__tests__/units.test.ts`. Never edit exercise data just to make a test pass.
+- Tests use the `learn` Vitest tag and the `@learn-` Playwright title prefix. Run with `npm run test:targeted -- @learn`.
 
 ## Documentation — Tiered Update Policy
 

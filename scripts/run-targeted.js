@@ -10,7 +10,7 @@
 
 import { spawnSync } from 'child_process';
 
-const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@premodern'];
+const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@premodern', '@learn'];
 
 const VITEST_CASE_CEILING = 75;
 const PW_FILE_CEILING = 20;
