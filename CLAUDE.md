@@ -226,7 +226,8 @@ See `docs/SYSTEMS.md` -- Section 22: Overworld Structure Types.
 
 `learn.html` is a second Vite entry for an unofficial MTG teaching app built on DuelCore. Full spec in `docs/LEARN_MODE.md`.
 
-- `src/learn/engine/puzzleRunner.ts` is the only file under `src/learn/` that may import from `src/engine/` or `src/data/`.
+- `src/learn/engine/puzzleRunner.ts` is the only file under `src/learn/` that may import from `src/engine/` or `src/data/`. `src/learn/engine/puzzleChecker.ts` imports only from `./types` and `./puzzleRunner`.
+- New exercise content must pass `npm run learn:check` with zero errors. Every new skill tag needs a matching entry in `THEME_CHECKS` or `MULTI_THEME_CHECKS`, written in the same prompt that introduces the tag.
 - Learn Mode prompts never edit engine, data, hook, or UI files outside `src/learn/`. A Learn Mode prompt that needs an engine change is a STOP until a separate engine prompt lands it.
 - Every exercise in `src/learn/data/` must pass `src/learn/__tests__/units.test.ts`. Never edit exercise data just to make a test pass.
 - Tests use the `learn` Vitest tag and the `@learn-` Playwright title prefix. Run with `npm run test:targeted -- @learn`.

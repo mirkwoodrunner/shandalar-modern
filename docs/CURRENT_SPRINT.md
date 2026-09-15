@@ -3,6 +3,11 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-15)
+- **Learn Mode Slice 2** -- puzzle checker. `src/learn/engine/puzzleChecker.ts` (pure, imports only the runner) plus `npm run learn:check`. Checks solvable, complete, discriminating, theme, enumerate. All 9 shipped exercises pass with one intended warning on the guided first exercise. 13 new Vitest cases, including 9 mutation cases proving each check fires on a deliberately broken exercise.
+  - New: `src/learn/engine/puzzleChecker.ts`, `src/learn/__tests__/puzzleChecker.test.ts`, `scripts/learn-check.js`.
+  - Edited: `src/learn/engine/types.ts` (`guided?`), `src/learn/data/units.ts` (1.1-01 flag), `package.json`, `CLAUDE.md`, `docs/LEARN_MODE.md`, `docs/TEST_AUDIT_LOG.md`.
+
+## Completed (2026-09-15)
 - **Learn Mode Slice 1** -- new Vite entry `learn.html` (unofficial MTG teaching app on DuelCore). Puzzle runner grades combat against every legal block. 9 exercises across Unit 1.1 (lands and mana) and Unit 3.1 (lethal this turn). No engine, data, hook, or Shandalar UI files touched. See `docs/LEARN_MODE.md`.
   - New: `learn.html`, `src/learn/**`, `tests/e2e/learn-slice.spec.ts` (8 cases, added to the `mobile-chrome` allowlist), `docs/LEARN_MODE.md`.
   - Edited: `vite.config.js` (multi-page input, `learn` tag), `playwright.config.js`, `scripts/run-targeted.js`, `scripts/run-audit.js`, `CLAUDE.md`.

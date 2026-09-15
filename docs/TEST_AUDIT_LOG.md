@@ -14,6 +14,46 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-15 -- `npm run test:audit -- @learn` (Learn Mode Slice 2)
+
+**Originating change:** `claude/learn-puzzle-checker-qc84m6` -- the puzzle
+checker (`src/learn/engine/puzzleChecker.ts`, `src/learn/__tests__/puzzleChecker.test.ts`,
+`scripts/learn-check.js`), a `guided?` field on `EngineExercise`, the
+corresponding `1.1-01` data flag, and a `learn:check` package script. No file
+under `src/engine/`, `src/data/`, `src/hooks/`, or `src/ui/` (outside
+`src/learn/`) was touched. `npm run test:targeted -- @learn` passed (3 files /
+52 Vitest tests, 16 Playwright specs across chromium + mobile-chrome). `npm
+run test:audit -- @learn` then randomly selected `@premodern` as the
+untouched tag to verify against.
+
+**Result:** Vitest passed (1 file / 16 tests). Playwright's
+`--grep @premodern` reported `Error: No tests found` and exited non-zero,
+which `run-audit.js` treats as an audit failure.
+
+**Diagnosis:** Not a regression. `find tests/e2e -name "*.spec.*" | xargs
+grep -l "@premodern"` returns zero files -- no Playwright spec in this repo
+carries an `@premodern` tag at all, on this branch or on `main`. Whenever
+`test:audit`'s random draw lands on `@premodern`, `playwright test --grep
+@premodern` will find no matching tests and exit non-zero every time,
+regardless of what change is under audit. This is a structural gap between
+the tag taxonomy (`@premodern` is defined for Vitest-only structural-integrity
+tests over the premodern card pool) and the audit script, which unconditionally
+runs both Vitest and Playwright for whatever tag it draws. It is unrelated to
+the puzzle-checker change under audit.
+
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure is being
+reported rather than self-overridden. Logged here per the documented
+procedure; not proceeding with the remaining Slice 2 documentation steps or
+committing/pushing until the project owner responds, per steps 3-5 of the
+hard-stop procedure.
+
+**Follow-up (not done here):** The audit tooling gap (`run-audit.js` treating
+"no tests found" for a Vitest-only tag as a Playwright failure) and/or the
+tag taxonomy documentation could use a fix so future audits don't hard-stop
+on this same non-issue. Out of scope for this prompt.
+
+---
+
 ## 2026-09-15 -- `npm run test:audit -- @learn` (Learn Mode Slice 1)
 
 **Originating change:** `claude/learn-mode-slice-1-zhs0gs` -- new Vite entry
@@ -52,21 +92,21 @@ below, for the same two reasons:
    chunking, not what the Vite dev server serves at `/` -- every failing
    test navigates to `http://localhost:5173` (the main Shandalar entry),
    not `/learn.html`.
-2. **Failure signature matches previously-logged environment flakiness.**
-   The exact same files (`overworld-visual.spec.ts`, `plaque-visibility.spec.ts`,
-   `ruins.spec.js`, `overworld-sprites.spec.ts`) already appear in the
-   2026-07-21/2026-07-28 entries below with the same class of failure
-   (canvas/sprite rendering assertions and fixed-window waits tripping under
-   a slow/headless container), and `preduel-sandbox.spec.ts` failing outright
-   (its own test body is a placeholder `expect(title).toBeTruthy()` after a
-   `waitForSelector` -- a failure here points at boot/navigation timing, not
-   this batch's code).
+2. **Correction (added in the Slice 2 prompt): the environment-flakiness diagnosis
+   below was verified wrong.** `tests/e2e/ruins.spec.js` and
+   `tests/e2e/plaque-visibility.spec.ts` were run on clean `main`, with no Learn
+   Mode code present, and produced identical failures with identical timings
+   (30.0 to 30.1s on the `<img>` selector assertions, 16.5 to 16.6s on the ruin
+   plaque). Deterministic reproduction on unrelated code rules out container
+   slowness. The overworld structure-rendering assertions are a real
+   pre-existing break and need their own investigation, not a flakiness
+   write-off. Conclusion for this entry is unchanged: not caused by the change
+   under audit.
 
-**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure is being
-reported rather than self-overridden. Logging here per the documented
-procedure; **not** proceeding to commit or run any broader diagnostic
-(`npm test && npm run test:e2e`) without the project owner's permission, per
-steps 3-4 of the hard-stop procedure.
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy, this failure was reported
+rather than self-overridden. It was logged here per the documented procedure,
+reported to the project owner, who approved proceeding; the branch was then
+committed and pushed as `4c263bf`.
 
 **Follow-up (not done here):** If any of these 9 files come up failing again
 in a future audit with the same element-not-found/timeout signature and no

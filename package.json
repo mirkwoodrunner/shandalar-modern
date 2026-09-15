@@ -14,7 +14,8 @@
     "oracle:sync": "node scryfall/sync-oracle-text.js",
     "oracle:apply": "node scryfall/apply-oracle-patch.js",
     "test:targeted": "node scripts/run-targeted.js",
-    "test:audit": "node scripts/run-audit.js"
+    "test:audit": "node scripts/run-audit.js",
+    "learn:check": "node scripts/learn-check.js"
   },
   "dependencies": {
     "phaser": "^4.2.1",

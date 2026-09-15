@@ -45,6 +45,9 @@ export type WrongLine = {
 
 export type EngineExercise = ExerciseBase & {
   kind: 'engine';
+  // A first-step exercise where every legal line is correct by design.
+  // Silences the puzzleChecker 'discriminating' error for this exercise.
+  guided?: boolean;
   setup: PuzzleSetup;
   allowed: ActionKind[];
   goal: Goal;
