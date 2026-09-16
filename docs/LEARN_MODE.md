@@ -112,7 +112,7 @@ needs its own check written alongside it, in the same prompt that introduces the
 is a good check.
 
 **Verified current-content output** (`npm run learn:check`), reproduced exactly as of
-Slice 2:
+Slice 3a:
 
 ```
 1.1  Lands and mana
@@ -122,6 +122,9 @@ Slice 2:
   [ ok ] 1.1-03   colored-vs-generic   3/3 lines win
   [ ok ] 1.1-04   read-costs           multiSelect
   [ ok ] 1.1-05   land-per-turn        2/2 lines win
+  [ ok ] 1.1-06   colored-vs-generic   3/3 lines win
+  [ ok ] 1.1-07   land-per-turn        2/2 lines win
+  [ ok ] 1.1-08   read-costs           multiSelect
 
 3.1  Lethal this turn
   [ ok ] 3.1-01   lethal-evasion       2/3 lines win
@@ -131,11 +134,6 @@ Slice 2:
 
 0 error(s), 1 warning(s).
 ```
-
-`1.1-01` is the first exercise in the course -- the player taps one land and there is
-nothing else to do. That is correct for a guided first step, so it is the one
-intended warning; any other warning or any error means an exercise needs fixing
-before it ships.
 
 ## 4. Exercise schema and iid scheme
 
@@ -181,6 +179,8 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
 - **Slice 2** (done): puzzle checker (`src/learn/engine/puzzleChecker.ts`,
   `npm run learn:check`) for authoring new content outside the test suite. See
   section 3a above.
-- **Slice 3** (next): remaining Unit 1.1 and 3.1 content, plus local progress
-  and streaks.
+- **Slice 3** (in progress):
+  - Slice 3a (done): remaining Unit 1.1 content -- `1.1-06` through `1.1-08`,
+    all reusing existing skill tags.
+  - Still open: remaining Unit 3.1 content, local progress and streaks.
 - **Slice 4**: checkpoint duel.

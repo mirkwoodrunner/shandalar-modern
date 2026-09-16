@@ -2,6 +2,10 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-16)
+- **Learn Mode Slice 3a** -- 3 new Unit 1.1 exercises (`1.1-06` colored-vs-generic, `1.1-07` land-per-turn, `1.1-08` read-costs multiSelect), each a same-skill parallel to an existing exercise in white/black instead of green/red. No new skill tags, no new files. `npm run learn:check`: 0 errors, 1 warning (unchanged, still the intended `1.1-01` guided warning). `units.test.ts` goes from 20 to 25 tests (data-driven, no test-file edit needed); suite total 52 -> 57.
+  - Edited: `src/learn/data/units.ts`, `docs/LEARN_MODE.md`.
+
 ## Completed (2026-09-15)
 - **Learn Mode Slice 2** -- puzzle checker. `src/learn/engine/puzzleChecker.ts` (pure, imports only the runner) plus `npm run learn:check`. Checks solvable, complete, discriminating, theme, enumerate. All 9 shipped exercises pass with one intended warning on the guided first exercise. 13 new Vitest cases, including 9 mutation cases proving each check fires on a deliberately broken exercise.
   - New: `src/learn/engine/puzzleChecker.ts`, `src/learn/__tests__/puzzleChecker.test.ts`, `scripts/learn-check.js`.
