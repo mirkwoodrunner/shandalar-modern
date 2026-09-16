@@ -14,6 +14,107 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-16 -- `npm run test:audit -- @learn` (Learn Mode Slice 3a)
+
+**Originating change:** `claude/learn-slice-3a-unit-1-1-do7la7` -- 3 new Unit
+1.1 exercises appended to `src/learn/data/units.ts` (`1.1-06`
+colored-vs-generic, `1.1-07` land-per-turn, `1.1-08` read-costs multiSelect),
+each a same-skill parallel to an existing exercise using white/black cards
+instead of green/red. No new skill tags, no new files, no file outside
+`src/learn/data/units.ts` and two docs (`docs/LEARN_MODE.md`,
+`docs/CURRENT_SPRINT.md`) touched. `npm run learn:check` reproduced the
+expected 8-exercise-in-1.1 / 0-error / 1-warning shape exactly.
+`npx vitest run src/learn/` passed 3 files / 57 tests. `npm run
+test:targeted -- @learn` passed cleanly (57 Vitest + 16 Playwright across
+chromium + mobile-chrome). `npm run test:audit -- @learn` then randomly
+selected `@mobile` as the untouched tag to verify against.
+
+**Result:** Vitest `--tags-filter mobile` passed (0 tests carry that tag --
+all skipped, exit 0). Playwright `--grep @mobile` failed: 244 of 724 tests
+failed (478 passed, 2 skipped), spanning far more than the previously
+documented `@overworld` visual/sprite set -- `ability-stack-bugs.spec.ts`,
+`ai-banding-smoke`, `ai-creature-evaluation-smoke`,
+`ancestral-recall-targeting`, `batch-a4-sphere`, `batch1a-desert-landwalk`,
+`batch1b-wall-destruction-sacrifice`, `card-type-line`, `deferral-sweep-1`,
+`duel-controller`, `lava-axe-targeting`, `lotus-cancel-undo.spec.js`,
+`mobile-targeting`, `power-sink-x-select.spec.js`, `sandbox-boot-startup`,
+`sandbox-combat-ai-parity`, `sandbox-targeting-modals`, `tutor-modal`, plus
+the already-documented overworld visual files (`henchman-visibility`,
+`hooded-figure-sprites`, `overworld-map-centering`, `overworld-tileset`,
+`overworld-visual`, `plaque-visibility`, `preduel-sandbox`, `ruins`). The
+terminal's own tail (captured via a backgrounded 1.2h run) only showed the
+summary line, not the individual failures; the actual failure set was
+recovered from `test-results/.last-run.json` (`status: "failed"`, 244
+`failedTests` entries) and per-test `error-context.md` snapshots.
+
+Failure signatures are heterogeneous, not one root cause:
+- 54x `Test timeout of 30000ms exceeded while running "beforeEach" hook` --
+  every sampled page snapshot at time of timeout shows the app stuck on the
+  "Opening Hand -- keep or mulligan" dialog, suggesting the shared
+  mulligan-dismiss test helper is not resolving within its window under this
+  run's load.
+- 44x plain assertion mismatches (`toBe` expected/received), 35x other
+  30000ms timeouts, 19x `page.evaluate: TypeError: Cannot read properties of
+  undefined (reading 'iid')`, 14x/8x/8x `waitForFunction` timeouts at
+  5000/10000/20000ms, 10x `toBeVisible()` failures.
+- 8x `locator.tap: The page does not support tap. Use hasTouch context
+  option` -- a `@mobile`-tagged test executing under the `chromium` project
+  (which has no `hasTouch`) rather than `mobile-chrome`, i.e. a tag/project
+  selection mismatch in how `--grep @mobile` pulls tests, not a code
+  regression.
+- 3x `console errors: Failed to load resource:
+  net::ERR_CERT_AUTHORITY_INVALID` -- consistent with this session's
+  outbound-HTTPS traffic going through a pre-configured agent proxy with its
+  own CA bundle (per this environment's setup); a headless Chromium instance
+  not configured to trust that CA would see any HTTPS fetch the app makes
+  (e.g. Scryfall art) fail cert validation. Environment-specific, not a code
+  issue.
+- 3x `ReferenceError: setPendingConditionalCounter is not defined` -- a real
+  code-level `ReferenceError`, but in `sandbox-combat-ai-parity.spec.ts`
+  (Force Spike / Power Sink conditional-counter flow), a file with zero
+  relationship to Learn Mode's data-only change.
+- A handful of one-off outliers (`state.p.library is not iterable`,
+  `window is not defined`, `enemy at dist=2 should chase toward player`).
+
+**Diagnosis:** Not investigated to a root cause here -- out of scope for a
+Learn Mode data-only prompt, and this file's own hard-stop policy requires
+reporting rather than self-diagnosing further. What is established:
+1. **Zero code-path overlap.** The originating change touches only
+   `src/learn/data/units.ts` (exercise data consumed exclusively by
+   `src/learn/engine/puzzleRunner.ts` and `src/learn/**` UI under the
+   separate `learn.html` Vite entry) plus two docs. None of the failing
+   specs load `/learn.html`; `tests/e2e/learn-slice.spec.ts` (which does)
+   passed cleanly in the same session, including its own
+   "Shandalar entry still boots, unaffected" case.
+2. **Larger and differently shaped than the documented `@overworld` set.**
+   The 9 files logged in the 2026-09-15/07-21/07-28 entries below account for
+   only a fraction of these 244 failures; the remainder (ability-stack,
+   combat/targeting/mobile UI, tutor modal, etc.) are new to this log and use
+   several distinct, unrelated failure signatures (timeouts, assertion
+   mismatches, a `ReferenceError`, a touch-context/project mismatch, and a
+   TLS cert error plausibly tied to this session's network proxy) rather
+   than the single element-not-found/timeout class previously seen on
+   overworld/sprite specs.
+
+**Disposition:** Per `CLAUDE.md`'s hard-stop policy and this prompt's own
+STOP condition ("`test:audit` fails with anything other than the documented
+pre-existing `@overworld` set"), this is being reported rather than
+self-overridden. Not proceeding with pushing the branch or resuming further
+Slice 3a steps until the project owner responds. The Slice 3a code change
+itself (`src/learn/data/units.ts` plus the two doc edits) is complete,
+verified via its own targeted run, and committed locally
+(not pushed).
+
+**Follow-up (not done here):** Root-causing this failure set is a
+significant, separate effort -- likely several distinct issues (a shared
+mulligan-dismiss helper timing out under load, a tag/project selection gap
+letting `chromium`-project tests inherit `@mobile`-tagged touch
+interactions, a TLS trust gap for this session's proxy, and at minimum one
+real `ReferenceError` in `sandbox-combat-ai-parity.spec.ts`) rather than one
+fix. Out of scope for this Learn Mode content prompt.
+
+---
+
 ## 2026-09-15 -- `npm run test:audit -- @learn` (Learn Mode Slice 2)
 
 **Originating change:** `claude/learn-puzzle-checker-qc84m6` -- the puzzle
