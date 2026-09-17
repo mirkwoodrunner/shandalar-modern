@@ -158,3 +158,19 @@ The Group A life assertion (`next.o.life === 20`) is the primary regression guar
   `learn:check`.
 - **Copyright posture:** unofficial fan content, free forever, no sales or profit
   intended. See `docs/LEARN_MODE_ROADMAP.md` section 6.
+- **Release order (2026-09-16):** Tier 1 ships publicly on its own, first, after
+  milestone L2c. Not Tiers 1 and 2 together, and not Tiers 4 and 5 first. Tier 1 needs
+  no new runner capability, no Learn card pool, and no duel-UI scenario mode, so it is
+  two milestones from shippable rather than six. It is also the only tier that
+  exercises the DuelCore grading path and `puzzleChecker`. Judge-prep-first was
+  considered and rejected: judge candidates study to a deadline and then stop, which is
+  the wrong population to tune retention systems against.
+- **Fan content notice is a release gate, not launch polish.** Moved from L11 to L2c.
+  The placeholder in `src/learn/content.ts` must be replaced before any public release.
+- **Tier 1 content is hand-authored before the L6 authoring pipeline exists.** At 40 to
+  50 exercises hand-authoring is affordable, and blocking the first release on tooling
+  is the wrong trade. L6 is designed against what L2b actually cost.
+- **Curriculum detail is tier-scoped.** `docs/LEARN_CURRICULUM.md` specifies Tier 1 in
+  full and Tiers 2 to 5 at skill-name granularity only. Each tier gets its full pass in
+  the milestone that unblocks it. Fully specifying tiers a year out produces stale
+  documentation, which is worse than thin documentation.
