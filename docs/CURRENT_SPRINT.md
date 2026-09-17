@@ -3,6 +3,14 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-16)
+- **Learn Mode release order** -- resolved open decision 1. Tier 1 ships publicly on its
+  own, first. Added milestones L2b (Tier 1 content fill, 40-50 exercises, hand-authored)
+  and L2c (fan content notice and first public release, pulled forward from L11). Scoped
+  L2 so Tier 1 is specified in full and Tiers 2-5 at skill-name granularity only.
+  Documents-only change, no code touched.
+  - Edited: `docs/LEARN_MODE_ROADMAP.md`, `docs/DECISIONS.md`.
+
+## Completed (2026-09-16)
 - **Learn Mode roadmap** -- new `docs/LEARN_MODE_ROADMAP.md`. Five curriculum tiers
   (zero player through judge prep), eleven milestones, fan content posture, open
   decisions. Documents-only change, no code touched.

@@ -50,6 +50,14 @@ Recorded in `docs/DECISIONS.md`. Restated here for context:
 - A separate Learn card database satisfying a shared contract, not a pool flag on `CARD_DB`.
 - Tier 5 teaches against the tournament policy documents, with version-stamped exercises
   and an automated staleness check.
+- **Release order.** Tier 1 ships publicly on its own, first, after L2c. Rationale: it is
+  the only tier needing no new runner capability, no card pool, and no duel-UI work, so it
+  is two milestones away rather than six. It is also the only tier that validates the
+  DuelCore grading path and `puzzleChecker`, which are the project's differentiating
+  assets and which Tiers 4 and 5 do not touch. Judge-prep content was considered as a
+  first release and rejected for retention reasons: judge candidates study to a deadline
+  and then stop, which is the wrong population to tune a streak and spaced-review system
+  against.
 
 ## 4. Curriculum tiers
 
@@ -102,6 +110,16 @@ renumber is a real change, not a cosmetic one.
 
 Ordered. Each milestone is one or more Claude Code slices under the normal prompt rules.
 
+**Release sequence (decided 2026-09-16).** The first public release is Tier 1 alone, after
+L2c. Everything from L3 onward is post-release work. L1 and L2 may run in parallel, since
+persistence has no dependency on the curriculum tree. L2b depends on L2, because authoring
+Tier 1 content requires the Tier 1 skill list that L2 produces.
+
+Reasoning is in section 3 under "Release order." The short version: Tier 1 is the only tier
+that needs no new runner capability, no card pool, and no duel-UI work, so it is reachable
+in two milestones instead of six, and it is the only tier that validates the DuelCore
+grading path the project is built on.
+
 ### L1. Persistence, profile, and onboarding survey
 
 Prerequisite for L8, L9, and L10. Nothing retention-flavored can ship before this. Progress
@@ -122,16 +140,69 @@ both viewports.
 ### L2. Curriculum spine
 
 Do this before authoring more exercises. The unit numbering implies a tree that exists
-nowhere in the repo.
+nowhere in the repo. May run in parallel with L1.
 
-- Write `docs/LEARN_CURRICULUM.md`. Every tier, every unit, every skill, prerequisite edges,
-  target exercise count per skill.
-- Tag each skill with its grading substrate and with the runner capability it needs. That
-  tagging produces the L5 work list directly.
+- Write `docs/LEARN_CURRICULUM.md`.
+- **Tier 1 at full detail.** Every unit, every skill, prerequisite edges, target exercise
+  count per skill. This is the direct input to L2b.
+- **Tiers 2 through 5 at skill-name granularity only.** A list of skills per unit and
+  nothing more. Do not fully specify tiers that may not be built for a year. The detail
+  will be wrong by the time it is reached, and a stale curriculum document is worse than
+  a thin one. Each tier gets its full pass in the milestone that unblocks it.
+- Tag each Tier 1 skill with the runner capability it needs, and confirm every one is
+  already supported. A Tier 1 skill that needs a new action kind is a scoping error and
+  belongs in Tier 2.
+- Tag Tiers 2 through 5 skills with grading substrate only. That tagging produces the L5
+  work list.
 - Renumber existing units into the real tree (see 4.3).
 
-Exit criteria. Every planned skill is listed and marked authorable-now, runner-blocked, or
-content-graded.
+Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
+current runner. Tiers 2 to 5 have named skills tagged by substrate.
+
+### L2b. Tier 1 content fill
+
+Depends on L2. Target 40 to 50 exercises covering the full Tier 1 skill list.
+
+Constraints that make this cheap:
+
+- No new action kinds. Every Tier 1 skill is authorable with the current runner, which L2
+  verifies as an exit criterion.
+- No Learn card pool. The existing Shandalar pool teaches lands, mana, costs, card types,
+  turn structure, and basic combat without gaps.
+- No card art required. Art is desirable at release and is L4b work, not a gate. The
+  text-only `LearnCard` renders every Tier 1 exercise correctly today.
+
+**Deliberately hand-authored, before the L6 authoring pipeline exists.** At 40 to 50
+exercises, hand-authoring is still affordable, and Slice 3a already demonstrated the
+same-skill parallel pattern. Blocking the first release on L6 would trade a shippable
+product for tooling that only pays off at Tier 2 scale. Expect L6 to be informed by what
+authoring 40 exercises actually feels like.
+
+Every exercise passes `npm run learn:check` with zero errors under the existing rules.
+New skill tags still require a matching `THEME_CHECKS` or `MULTI_THEME_CHECKS` entry in the
+same prompt, per `CLAUDE.md`.
+
+Exit criteria. Tier 1 skill list fully covered. `npm run learn:check` at 0 errors.
+`units.test.ts` green. A first-time player can complete Tier 1 end to end.
+
+### L2c. Fan content notice and first public release
+
+**Pulled forward from L11.** The fan content notice in `src/learn/content.ts` is currently
+placeholder wording. It is a release gate, not a launch-polish item, and it was mis-scoped
+in the original roadmap.
+
+- Replace the placeholder with the standard notice. See section 6.
+- Audit for Wizards logos, set symbols, and lifted official mana symbol art. Render mana as
+  project-owned glyphs.
+- Confirm the framing throughout is tutorial, not a place to play Magic. Tier 1 has the
+  highest overlap with Wizards' own new-player funnel of any tier, so presentation matters
+  more here than anywhere else in the project.
+- Release framed explicitly as early and incomplete.
+
+**Reassessment gate.** After release, the choice between Tier 2 and Tiers 4 and 5 gets
+decided with completion and return data rather than in the abstract. Note the limit of that
+data: a 40-exercise release shows whether people finish, not whether they return over six
+weeks. Do not over-read it when designing L8 and L9.
 
 ### L3. Duel UI scenario mode
 
@@ -231,6 +302,11 @@ hand-written theme check. That is fine at 12 exercises and is the whole project 
 
 Exit criteria. Author 20 exercises in the time Slice 3a took for 3.
 
+Note on ordering. L2b deliberately hand-authors 40 to 50 exercises before this milestone
+exists. That is not an oversight. Hand-authoring is affordable at that volume and blocking
+the first release on tooling would be the wrong trade. This milestone should be designed
+against what L2b actually cost.
+
 ### L7. Question-bank system
 
 Tier 4 and 5 substrate.
@@ -296,9 +372,8 @@ the real duel UI.
 
 ### L11. Launch readiness
 
-- Final fan content notice replacing the placeholder in `src/learn/content.ts`. See section 6.
 - Accessibility pass. Color is load-bearing in a mana-teaching app, so colorblind handling is
-  not optional.
+  not optional. (The fan content notice moved to L2c as a release gate.)
 - Local-only telemetry so content quality can be measured without collecting anything from users.
 
 ## 6. Fan content posture
@@ -341,11 +416,14 @@ truth so a hosting takedown is not a project-ending event.
 
 ## 8. Open decisions
 
-1. Which tiers ship publicly first. Shipping Tiers 1 and 2 before 4 and 5 exist is defensible.
-   Shipping 4 and 5 first is also defensible, since they need no runner work and serve an
-   audience that is easier to reach.
-2. Whether Tier 1 assumes paper Magic or a digital client as the reader's context. It changes
-   how shuffling, priority, and shortcuts are taught.
-3. Whether the Learn card pool tracks Standard, a fixed evergreen subset, or something else.
-   Tracking Standard means recurring content maintenance forever.
-4. Hosting. Affects the PWA story in L9 and the takedown-resilience plan in section 6.
+_Decision 1 (which tiers ship publicly first) was resolved 2026-09-16. See section 3 under
+"Release order" and section 5 under "Release sequence."_
+
+1. Whether Tier 1 assumes paper Magic or a digital client as the reader's context. It changes
+   how shuffling, priority, and shortcuts are taught. **Now gating L2**, since the Tier 1
+   curriculum cannot be fully specified without it.
+2. Whether the Learn card pool tracks Standard, a fixed evergreen subset, or something else.
+   Tracking Standard means recurring content maintenance forever. Gates L4a, not the first
+   release.
+3. Hosting. Affects the PWA story in L9 and the takedown-resilience plan in section 6.
+   **Now gating L2c**, since the first public release needs somewhere to live.
