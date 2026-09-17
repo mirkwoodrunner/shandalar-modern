@@ -3,6 +3,14 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-16)
+- **Learn Mode roadmap** -- new `docs/LEARN_MODE_ROADMAP.md`. Five curriculum tiers
+  (zero player through judge prep), eleven milestones, fan content posture, open
+  decisions. Documents-only change, no code touched.
+  - New: `docs/LEARN_MODE_ROADMAP.md`.
+  - Edited: `docs/LEARN_MODE.md` (section 7 now history, points at the roadmap),
+    `docs/DECISIONS.md` (Learn Mode scope decisions), `docs/ROADMAP.md` (pointer).
+
+## Completed (2026-09-16)
 - **Learn Mode Slice 3a** -- 3 new Unit 1.1 exercises (`1.1-06` colored-vs-generic, `1.1-07` land-per-turn, `1.1-08` read-costs multiSelect), each a same-skill parallel to an existing exercise in white/black instead of green/red. No new skill tags, no new files. `npm run learn:check`: 0 errors, 1 warning (unchanged, still the intended `1.1-01` guided warning). `units.test.ts` goes from 20 to 25 tests (data-driven, no test-file edit needed); suite total 52 -> 57.
   - Edited: `src/learn/data/units.ts`, `docs/LEARN_MODE.md`.
 

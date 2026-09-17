@@ -130,3 +130,31 @@ off, so a "tap all lands" refactor would pass unit tests while burning KARAG in 
 The Group A life assertion (`next.o.life === 20`) is the primary regression guard for this.
 
 *(Migrated from CLAUDE.md -- original decision date unknown)*
+
+---
+
+## Learn Mode scope decisions (confirmed 2026-09-16)
+
+- **Curriculum span:** brand-new player through judge-test preparation. Five tiers,
+  see `docs/LEARN_MODE_ROADMAP.md` section 4.
+- **Grading substrate forks at Tier 4.** Tiers 1 to 3 are graded by DuelCore. Tiers 4
+  and 5 are content-graded question banks. DuelCore will not be extended toward full
+  Comprehensive Rules coverage to grade judge-level content.
+- **Card art is in scope.** Reuse `src/utils/scryfallArt.js` and `src/utils/useCardArt.js`
+  with a printing-preference parameter rather than building a second art pipeline.
+  Shandalar's current oldest-printing behavior stays the default.
+- **Duel UI is in scope.** `DuelScreen.tsx` and `DuelScreenMobile.tsx` gain a scenario
+  mode that loads an in-progress game state for learning exercises. This revises the
+  `CLAUDE.md` rule that Learn Mode may not touch UI outside `src/learn/`. The revision
+  lands with the scenario-mode prompt (milestone L3), not before.
+- **Learn card pool:** a separate card database satisfying a shared card-shape contract,
+  NOT a pool flag on `CARD_DB`. A flag would make every `CARD_DB` consumer pool-aware
+  (deck generation, ante, shops, `MAGE_ARCHS`, AI archetypes) and a missed call site
+  would leak Learn cards into campaign decks.
+- **One application, not two.** Tiers 4 and 5 share the profile, mastery, and review
+  systems with Tiers 1 to 3. They differ only in exercise renderer.
+- **Tier 5 teaches against tournament policy documents** (MTR, IPG, Judging at Regular
+  REL) with per-exercise version stamps and an automated staleness check in
+  `learn:check`.
+- **Copyright posture:** unofficial fan content, free forever, no sales or profit
+  intended. See `docs/LEARN_MODE_ROADMAP.md` section 6.

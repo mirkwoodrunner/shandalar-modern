@@ -172,15 +172,21 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
 - The card pool currently used by Learn Mode has no deathtouch, lifelink, or menace
   cards available as a workaround.
 
-## 7. Slice roadmap
+## 7. Slice history
+
+This section records what shipped. Forward planning lives in
+`docs/LEARN_MODE_ROADMAP.md` -- tiers, milestones, fan content posture, and open
+decisions. Do not duplicate roadmap content here.
 
 - **Slice 1** (done): puzzle runner, lesson player, 9 exercises across Unit 1.1
   (lands and mana) and Unit 3.1 (lethal this turn).
 - **Slice 2** (done): puzzle checker (`src/learn/engine/puzzleChecker.ts`,
   `npm run learn:check`) for authoring new content outside the test suite. See
   section 3a above.
-- **Slice 3** (in progress):
-  - Slice 3a (done): remaining Unit 1.1 content -- `1.1-06` through `1.1-08`,
-    all reusing existing skill tags.
-  - Still open: remaining Unit 3.1 content, local progress and streaks.
-- **Slice 4**: checkpoint duel.
+- **Slice 3a** (done): remaining Unit 1.1 content -- `1.1-06` through `1.1-08`,
+  all reusing existing skill tags.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, starting at
+milestone L1 (persistence, profile, onboarding survey). The previously-listed
+"Slice 4: checkpoint duel" is now milestone L10 there, deliberately resequenced
+behind the duel-UI scenario mode it depends on.

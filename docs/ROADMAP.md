@@ -224,6 +224,14 @@ this item is explicitly not scheduled as next work. Lower urgency than A–C, hi
 - **Suggested build order by leverage, not by card count:** Shadow → Kicker/Buyback → Echo/Fading → Flanking/Rampage → Provoke → Amplify → Cycling → Flashback → Storm → Morph → Phasing. This clears the 476-card mechanic backlog spending the expensive, precedent-free subsystem work (Morph, Storm, Phasing) last, and in card-count order among themselves.
 - **Bottom line for the go/no-go decision:** 91.2% of the pool (4,932 cards) needs no new infrastructure at all — same per-card handler effort as Milestone A, just at 10x the volume. The 8.8% mechanic tail is what actually gates full completion, and it decomposes into a short, ordered list rather than one undifferentiated wall of unknown scope.
 
+## Learn Mode
+
+Learn Mode is a second product on this engine with its own milestone plan. See
+`docs/LEARN_MODE_ROADMAP.md`. Three of its milestones require changes outside
+`src/learn/` and will land as Shandalar engine or UI prompts under the normal rules:
+duel-screen scenario mode (L3), a parameterized card-pool lookup (L4a), and a
+printing-preference parameter on the Scryfall art pipeline (L4b).
+
 ## Cross-cutting (run throughout, not separate milestones)
 
 - **Parity tax.** Every duel-facing change mirrors to `DuelScreen.tsx` and `DuelScreenMobile.tsx`. Budget this into every A/C batch, not as separate work.
