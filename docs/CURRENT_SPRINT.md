@@ -3,6 +3,61 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **@engine test infrastructure triage** -- the `@engine` gate now terminates, and the
+  Vitest half of it is green for the first time in an unknown number of sprints.
+  - **The AI.sim hang was an engine bug, not a slow test.** `rollout()` in `MCTS.js`
+    spun forever once a simulated state reached CLEANUP with `pendingCleanupDiscard`
+    set: `ADVANCE_PHASE` returns the state unchanged while that prompt is open, nothing
+    in a rollout answers it, so `s.turn` never advanced past `depthLimit`. The spin is
+    synchronous, so it blocked the worker's event loop and the file's own 30s per-test
+    timeouts could never fire -- the suite hung instead of failing. **Live bug, not just
+    a test one:** `AI.js` reaches `rollout()` via `getBestMove()` on every AI turn.
+    Fixed in `stepOnce()` (resolves the prompt) plus an absolute step cap in `rollout()`
+    (so the other six `pending*` blockers degrade to heuristic evaluation, not a hang).
+  - **Two more real engine bugs**, caught by the tap-centralization tripwire: Feint and
+    Telekinesis set the tapped flag inline, bypassing `tapPermanent`, so neither emitted
+    `ON_TAP`. Both now route through it. Tawnos's Coffin's third inline site was checked
+    against CR 603.2e and deliberately left alone -- that creature *enters* tapped, which
+    never counts as becoming tapped.
+  - **13 stale tests fixed, none skipped or deleted.** Three were worse than stale: they
+    were green or red for reasons unrelated to what they claimed to test. AL-03
+    dispatched `{ type: 'DRAW' }`, an action type `duelReducer` has no case for, so it
+    asserted against an untouched state. AL-02 passed vacuously. GA-01/GA-03 never gave
+    the player mana, so `CAST_SPELL` was refused silently and their `RESOLVE_STACK` was a
+    no-op.
+  - **Four source-shape tripwires rewritten to assert scope or identity, not a count.**
+    A bare count re-breaks on every legitimate addition and lets a real violation hide
+    behind a bump -- which is exactly how CDMG-12 and TAP-14 had drifted. The card-id
+    allowlist was made rule-based for the same reason.
+  - **Playwright baseline established** (this was the open question, not a formality):
+    **261 failed | 709 passed | 2 skipped, 1.3h** on clean `origin/main` at `0fb0ecd`,
+    matching the L3 branch run exactly. The 261 are pre-existing, now on the record in
+    `docs/TEST_AUDIT_LOG.md` with a per-file table and four probe-confirmed root causes.
+    Two are single-point fixes worth ~64 failures between them (one missing
+    `data-testid` on the title screen; an undismissed mulligan modal in two specs).
+    **The baseline is 261 +/- ~3, not exactly 261** -- a handful of specs are genuinely
+    flaky on clean main with `retries: 0` (`overworld-sprites.spec.ts` fails a different
+    test each run). The branch's own run came in at 263; diffed at test level all three
+    new failures reproduce as flaky on clean main, and on the churning specs in isolation
+    main scored one *worse* than the branch. No regression from this prompt's engine
+    changes.
+  - **Policy gap raised in `CLAUDE.md`, not left for prompts to discover:** the Vitest
+    half of the `@engine` gate is 15s and green; the Playwright half is 80 minutes with
+    261 known failures. The second cannot serve as the per-prompt gate CLAUDE.md mandates
+    until the baseline is repaired. Repairing it is its own prompt.
+  - **The audit mechanism itself is partly broken** (found by running it, reported not
+    fixed). Two of its four selectable tags cannot produce a usable audit: `@mobile` has
+    **zero** Vitest files tagged for it, so its Vitest half runs nothing; `@premodern` has
+    **zero** Playwright specs, so Playwright exits non-zero on an empty grep and
+    `run-audit.js` reads that as a **false hard STOP**. Only `@engine` and `@overworld`
+    audit meaningfully. The side-effect question was answered instead by the full
+    two-tree Playwright diff.
+  - **Reported, not fixed (outside scope):** every Vitest run rewrites
+    `tools/enemy-deck-audit/report.json` and `report.md`, because
+    `enemy-deck-audit-stub-batch.test.js` shells out to `analyze.mjs`. Any prompt that
+    runs the suite then commits will sweep them in or have to revert them. Logged as
+    Finding 4 with a proposed two-edit fix; needs a go-ahead.
+
 - **Learn Mode L3: duel UI scenario mode** -- an engine exercise now renders on the real duel
   screen, with legal actions restricted to the exercise's `allowed` list, campaign chrome
   suppressed and lesson chrome as an overlay. Both viewports, from slice one.

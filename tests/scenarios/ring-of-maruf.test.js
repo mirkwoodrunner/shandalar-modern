@@ -356,10 +356,16 @@ describe('@engine-card-scenarios-2 Ring of Maruf -- regression and meta', () => 
     expect(s2.pendingMarufPicks).toHaveLength(0);
   });
 
-  it('RM-22: ring_of_maruf is no longer a STUB; blaze_of_glory still is', () => {
+  // 2026-09-18: the second assertion was `expect(stubs).toContain('blaze_of_glory')`,
+  // a control proving the STUB filter actually selects something. blaze_of_glory
+  // has since been implemented (effect: 'blazeOfGlory'), so the control went
+  // stale. Pinning any single card id here just re-breaks this test the next
+  // time that card is implemented -- assert the filter is non-empty instead,
+  // which is all the control was ever for.
+  it('RM-22: ring_of_maruf is no longer a STUB', () => {
     const stubs = CARD_DB.filter(c => c.effect === 'STUB').map(c => c.id);
     expect(stubs).not.toContain('ring_of_maruf');
-    expect(stubs).toContain('blaze_of_glory');
+    expect(stubs.length).toBeGreaterThan(0);
     const ring = CARD_DB.find(c => c.id === 'ring_of_maruf');
     expect(ring.activated).toEqual({ cost: '5,T,exile', effect: 'marufCharge' });
   });

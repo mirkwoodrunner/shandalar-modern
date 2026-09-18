@@ -397,6 +397,29 @@ files changed (see the lookup table below), then `npm run test:audit -- <same ta
 once targeted passes. This is the default for every scoped change -- do not skip straight
 to a full-suite run because it "feels safer."
 
+**The two halves of `test:targeted -- @engine` are not equally usable (measured
+2026-09-18).** The Vitest half runs in about 15 seconds and is green. The
+Playwright half takes about 80 minutes and has **261 pre-existing failures**
+across 33 spec files, verified on a clean `origin/main` at `0fb0ecd`. Until that
+baseline is repaired:
+
+- Run the Vitest half on every `src/engine/` change. It is fast, green, and a
+  genuine gate. `npx vitest run --tags-filter engine` gives just that half.
+- Do **not** treat the Playwright half as a per-prompt gate. Run the specific
+  spec files your change plausibly touches, and compare any failure against the
+  reference baseline in `docs/TEST_AUDIT_LOG.md` (2026-09-18, Finding 3) before
+  reporting it as a regression. A failure already on that list is not yours.
+- **That baseline is 261 +/- ~3, not exactly 261.** A few specs are genuinely
+  flaky on clean `origin/main` with `retries: 0` -- `overworld-sprites.spec.ts`
+  fails a different test on each run. Expect churn in both directions. Re-run a
+  suspect spec two or three times before calling it a regression.
+- A prompt that cannot clear the Playwright half is not thereby blocked. Say
+  which specs you ran and what they did.
+
+This is a known, documented gap, not licence to skip verification. The
+underlying causes are concentrated -- two of them are single-point fixes worth
+roughly 64 of the 261 -- and repairing them is its own prompt.
+
 `npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
 plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+
 individual test executions). Do not run these bare commands by default. Only run the

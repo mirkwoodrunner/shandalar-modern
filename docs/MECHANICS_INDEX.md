@@ -1660,6 +1660,61 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 
 ## Bug Fix Log
 
+### Fix: MCTS rollout spins forever on any ADVANCE_PHASE-blocking pending state (MCTS-ROLLOUT-1)
+
+- **Real engine bug, reachable in play.** `rollout()` in `src/engine/MCTS.js` looped
+  forever whenever a simulated state reached `CLEANUP` with `pendingCleanupDiscard`
+  set for the human player. DuelCore's `ADVANCE_PHASE` returns the state unchanged
+  while that prompt is open, nothing inside a rollout dispatches
+  `RESOLVE_CLEANUP_DISCARD`, so `s.turn` never advanced and the loop's only bound
+  (`(s.turn - startTurn) < depthLimit`) never fired. `AI.js` reaches `rollout()`
+  through `getBestMove()` on every AI turn, so this spun the browser tab, not just
+  the test suite.
+- Because the spin is synchronous it blocks the worker's event loop, which is why
+  `src/engine/__tests__/AI.sim.test.js` **hung** rather than failing: its own 30s
+  per-test timeouts could never fire. The whole `@engine` gate was unrunnable.
+- Looked flaky (roughly 2 runs in 3) only because the engine shuffles with
+  `Math.random()`, so each run is a different game. Seeding the PRNG made it
+  deterministic at seed 0.
+- Predicted three months earlier: the `A4 -- PRIORITY WINDOW INTERACTION` note in
+  `MCTS.js`'s header (2026-05-23) describes this exact mechanism for
+  `priorityWindow`, concludes rollouts are "immune in practice", and leaves the
+  latent risk standing. Adding `pendingCleanupDiscard` (SYSTEMS.md S29) later made
+  it reachable. That note is now marked closed.
+- Fix, two parts in `src/engine/MCTS.js`:
+  - `stepOnce()` resolves a pending cleanup discard itself, with the same
+    deterministic "discard the last N" policy DuelCore already applies on the AI's
+    own side of that branch.
+  - `rollout()` carries an absolute step cap (`depthLimit * 40`). Seven `pending*`
+    states block `ADVANCE_PHASE` and a rollout can only answer one; the rest now
+    degrade to the heuristic evaluation instead of hanging the caller.
+- Verified: 150 consecutive seeded games terminate with a winner; `AI.sim.test.js`
+  passes 5/5 across 5 consecutive runs. Full diagnosis in `docs/TEST_AUDIT_LOG.md`.
+
+### Fix: Feint and Telekinesis bypassed tap centralization (TAP-CENTRAL-2)
+
+- **Real engine bug.** `feintTapBlockersPreventDamage` and
+  `telekinesisTapPreventUntapSkip` in `src/engine/DuelCore.js` both set the tapped
+  flag inline rather than calling `tapPermanent`, so neither emitted `ON_TAP` and
+  no tap-triggered ability (Relic Bind, Blight, Psychic Venom, Haunting Wind,
+  Powerleech, Artifact Possession) could see the event.
+- Both tap a permanent **already on the battlefield**, a genuine untapped->tapped
+  transition. Confirmed against `docs/MagicCompRules 20260417.pdf` **CR 603.2e**:
+  an ability that triggers on "becomes tapped" fires only when a permanent already
+  on the battlefield changes from untapped to tapped.
+- Fix: both route through `tapPermanent`. It no-ops on an already-tapped permanent,
+  so `preventCombatDamageDealt` and `untapStepsSkipRemaining` are applied
+  separately rather than in the same map.
+- **Not changed:** the third inline site, in `tawnosCoffinReturn`. That creature
+  *enters* the battlefield tapped (or phases in tapped), and CR 603.2e is explicit
+  that entering in that state never counts as becoming tapped -- routing it through
+  `tapPermanent` would emit a spurious `ON_TAP`.
+- Caught by `tests/scenarios/tap-centralization.test.js` TAP-14, which is exactly
+  what that tripwire exists for. TAP-14 now asserts the identity of each of the
+  three permitted sites instead of a bare count, so a future bypass cannot hide
+  behind a count bump.
+
+
 ### Fix: dungeon-tileset.spec.ts console-error checks tripped by unrelated Google Fonts failures (DUNGEON-TILESET-TEST-1)
 
 - Not a product bug -- `tests/e2e/dungeon-tileset.spec.ts` tests 1 and 7 asserted

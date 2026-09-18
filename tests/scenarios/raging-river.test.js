@@ -73,11 +73,16 @@ describe('@engine-card-scenarios-7 Raging River', () => {
     expect(state.o.bf.length).toBe(0);
   });
 
+  // 2026-09-18: this used to start at PHASE.COMBAT_END and advance, which steps
+  // OUT of combat end into MAIN_2. The strip runs in advPhase's
+  // `if (next === PHASE.COMBAT_END)` branch, i.e. on the transition INTO combat
+  // end, so the old setup never ran it. Start one phase earlier.
   it('RR-17: COMBAT_END strips riverSide/riverPile', () => {
-    const state = makeState({ phase: PHASE.COMBAT_END });
+    const state = makeState({ phase: PHASE.COMBAT_DAMAGE });
     state.p.bf = [{ ...makeCreature('a1'), riverSide: 'left' }];
     state.o.bf = [{ ...makeCreature('bl1'), riverPile: 'right' }];
     const s1 = duelReducer(state, { type: 'ADVANCE_PHASE' });
+    expect(s1.phase).toBe(PHASE.COMBAT_END);
     expect(s1.p.bf[0].riverSide).toBeUndefined();
     expect(s1.o.bf[0].riverPile).toBeUndefined();
   });

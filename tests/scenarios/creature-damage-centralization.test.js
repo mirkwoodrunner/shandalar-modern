@@ -147,10 +147,30 @@ describe('@engine-combat-2 Scenario: consumeCreatureDamageShields -- unit-level 
 });
 
 describe('@engine-combat-2 Scenario: creature damage centralization -- migration tripwire', () => {
-  it('CDMG-12: exactly 3 raw `damage: c.damage + N` sites remain after migration (2 inside dmgWithShield\'s own definition, 1 inside hurt()\'s untouched player-to-creature redirect at the former line 408 -- explicitly excluded from migration per spec)', () => {
+  // 2026-09-18: this used to assert a flat total of 3 (2 inside dmgWithShield,
+  // 1 inside hurt()'s redirect). The total is now 4 because Whippoorwill's
+  // `cantPreventOrRedirectDamage` early return added a third site INSIDE
+  // dmgWithShield -- the very function this migration centralized on, so it is
+  // not a migration violation. A bare total makes every legitimate addition
+  // inside dmgWithShield look like a regression, and worse, lets a real
+  // un-centralized site elsewhere hide behind a count bump. Scope the assertion
+  // instead: dmgWithShield may hold any number, everywhere else may hold
+  // exactly the one excluded hurt() redirect.
+  it('CDMG-12: the only raw `damage: c.damage + N` site outside dmgWithShield is hurt()\'s untouched player-to-creature redirect (explicitly excluded from migration per spec)', () => {
     const src = readFileSync(new URL('../../src/engine/DuelCore.js', import.meta.url), 'utf8');
-    const matches = src.match(/damage: c\.damage ?\+/g) || [];
-    expect(matches).toHaveLength(3);
+    const RE = /damage: c\.damage ?\+/g;
+
+    const fnStart = src.indexOf('function dmgWithShield(');
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnEnd = src.indexOf('\n}', fnStart);
+    expect(fnEnd).toBeGreaterThan(fnStart);
+    const dmgWithShieldBody = src.slice(fnStart, fnEnd);
+    const outsideDmgWithShield = src.slice(0, fnStart) + src.slice(fnEnd);
+
+    // Sanity: the centralized helper is still the main home for these writes.
+    expect(dmgWithShieldBody.match(RE) || []).not.toHaveLength(0);
+    // The actual tripwire.
+    expect(outsideDmgWithShield.match(RE) || []).toHaveLength(1);
   });
 });
 

@@ -51,8 +51,15 @@
  * (s.turn never changes; depthLimit condition never fires — latent infinite-loop risk).
  * At all current call sites, MCTS is invoked during the AI's own turn where
  * priorityWindow is false. stepOnce never dispatches OPEN_PRIORITY_WINDOW.
- * Conclusion: rollouts are immune to priority window blocking in practice. Latent risk
- * remains if getBestMove is ever called during an open priority window.
+ * Conclusion: rollouts are immune to priority window blocking in practice.
+ *
+ * CLOSED 2026-09-18. The latent risk this note described stopped being latent once
+ * DuelCore gained pendingCleanupDiscard (SYSTEMS.md S29), which blocks ADVANCE_PHASE
+ * the same way and IS reachable inside a rollout -- it hung AI.sim.test.js and any
+ * live AI turn whose rollout reached a CLEANUP with 'p' over hand size. stepOnce now
+ * resolves that prompt, and rollout() carries an absolute step cap so no
+ * ADVANCE_PHASE-blocking state can spin the loop again. See the Bug Fix Log in
+ * docs/MECHANICS_INDEX.md.
  *
  * A5 — evaluateBoard NAME COLLISION
  * -----------------------------------
@@ -248,6 +255,19 @@ function computeTaps(card, s, who) {
 }
 
 export function stepOnce(s) {
+  // A rollout must answer the human player's CLEANUP hand-size prompt itself.
+  // DuelCore raises pendingCleanupDiscard for 'p' at CLEANUP (SYSTEMS.md S29)
+  // and then silently refuses ADVANCE_PHASE until RESOLVE_CLEANUP_DISCARD
+  // arrives. Nothing inside a rollout supplies that action, so without this the
+  // turn counter never moves and the rollout loop below spins forever. Use the
+  // same deterministic "discard the last N" policy DuelCore applies on the AI's
+  // own side of that branch.
+  if (s.pendingCleanupDiscard) {
+    const { controller, count } = s.pendingCleanupDiscard;
+    const iids = s[controller].hand.slice(-count).map(c => c.iid);
+    s = duelReducer(s, { type: 'RESOLVE_CLEANUP_DISCARD', iids });
+  }
+
   const { phase } = s;
 
   if (phase === PHASE.MAIN_1 || phase === PHASE.MAIN_2) {
@@ -296,8 +316,20 @@ export function rollout(state, depthLimit = 20) {
   let s = JSON.parse(JSON.stringify(state));
   const startTurn = s.turn;
 
+  // Absolute step bound. Every stepOnce advances at most one phase and a turn is
+  // 14 phases, so depthLimit turns cost at most depthLimit * 14 steps -- this cap
+  // is roughly 3x that and is never reached by a progressing game. It exists
+  // because DuelCore's ADVANCE_PHASE returns the state unchanged while ANY
+  // pending decision is open (pendingUpkeepChoice, pendingConditionalCounter,
+  // pendingSphereTrigger, pendingCleanupDiscard, pendingLampPicks,
+  // pendingMarufPicks, pendingRiverDivide/Sides) and a rollout can only answer
+  // the cleanup-discard one. Any other such state must degrade to the heuristic
+  // evaluation below, not hang the caller.
+  const stepCap = depthLimit * 40;
+  let steps = 0;
+
   try {
-    while (!s.over && (s.turn - startTurn) < depthLimit) {
+    while (!s.over && (s.turn - startTurn) < depthLimit && steps++ < stepCap) {
       s = stepOnce(s);
     }
   } catch {

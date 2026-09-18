@@ -14,6 +14,396 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-18 -- `@engine` test infrastructure triage (engine-test-triage)
+
+Not a `test:audit` failure. This entry resolves the three findings recorded in
+the entry immediately below it. Base: `0fb0ecd` (`origin/main`, which now
+includes the merged L3 branch -- the L3 entry's base of `74590a5` is two
+commits behind).
+
+**Outcome:** `npm run test:targeted -- @engine` terminates. The Vitest half is
+green: **1350 passed | 0 failed | 257 skipped**, in about 15 seconds. The
+Playwright half is red and its baseline is recorded under Finding 3 below.
+
+`npm run test:audit -- @engine` was run twice at the end of this work. It drew
+`@mobile` once and `@premodern` once, and **neither draw produced a usable
+audit** -- see Findings 5 and 6. The side-effect question the audit exists to
+answer was instead answered directly, and far more thoroughly, by running the
+full Playwright `@engine|@mobile` suite on both this branch and clean
+`origin/main` and diffing at test level (Finding 3, "Branch delta"): no
+regression. No further full-suite diagnostics were run off the back of the
+false `@premodern` STOP.
+
+### Finding 1 (RESOLVED): `AI.sim.test.js` hang -- an engine bug, not a test bug
+
+**Root cause.** `rollout()` in `src/engine/MCTS.js` looped forever whenever a
+simulated state reached `CLEANUP` with `pendingCleanupDiscard` set for the human
+player. DuelCore's `ADVANCE_PHASE` returns the state unchanged while that prompt
+is open (`DuelCore.js`, the `if (s.pendingCleanupDiscard) return s;` guard), and
+nothing inside a rollout dispatches `RESOLVE_CLEANUP_DISCARD`. So `s.turn` never
+advanced, `s.over` stayed null, and the loop's only bound --
+`(s.turn - startTurn) < depthLimit` -- never fired.
+
+**Correcting the earlier diagnosis.** The L3 entry below reports the worker as
+"mostly idle", which suggested waiting. It is not waiting. Sampling
+`/proc/<pid>/status` during a reproduction shows the Vitest worker at **98% CPU,
+State R (running)** -- a synchronous spin. The parent `vitest` process is the
+idle one, which is what the earlier observation caught. This matters: because
+the spin is synchronous it blocks the worker's event loop, so the file's own
+30-second per-test timeouts can never fire. That is why the suite hangs rather
+than failing.
+
+**Why it looked flaky.** The engine shuffles with `Math.random()` (a known,
+already-flagged determinism violation -- see the `OBSERVED` comments in
+`DuelCore.js`), so every run is a different game. Roughly two runs in three hit
+a state that triggers the spin; the third passes in about 7 seconds. Seeding
+`Math.random` with a mulberry32 PRNG made it deterministic and reproducible at
+seed 0.
+
+**This was a live bug, not only a test bug.** `AI.js` reaches `rollout()`
+through `getBestMove()` at two call sites (planAttack and planMain), so any AI
+turn whose rollout reached a `CLEANUP` with `p` over hand size would spin the
+browser tab.
+
+**Already predicted.** The `A4 -- PRIORITY WINDOW INTERACTION` note in
+`MCTS.js`'s header (dated 2026-05-23) describes this exact failure mode for
+`priorityWindow`, concludes rollouts are "immune in practice", and leaves the
+latent risk standing. Adding `pendingCleanupDiscard` (SYSTEMS.md S29) later made
+it reachable. That note is now marked closed.
+
+**Fix (`src/engine/MCTS.js`, two changes).**
+1. `stepOnce()` resolves a pending cleanup discard itself, using the same
+   deterministic "discard the last N" policy DuelCore already applies on the
+   AI's own side of that branch, and which `AI.sim.test.js`'s own `runSimGame`
+   helper had already been given for the same reason.
+2. `rollout()` carries an absolute step cap (`depthLimit * 40`; a turn is 14
+   phases, so a progressing game never approaches it). Seven distinct `pending*`
+   states block `ADVANCE_PHASE` and a rollout can only answer one of them; the
+   rest now degrade to the heuristic evaluation instead of hanging the caller.
+
+**Verification.** 150 consecutive seeded games terminate with a winner. The real
+test file passes 5/5 in 5-9 seconds across 5 consecutive runs (previously: hung
+on 2 of 3).
+
+**Deliberately not done.** No timeout was bolted onto the suite, because the
+root cause turned out to be in scope. The `Math.random()` determinism violation
+in `DuelCore.js` is untouched -- it is a separate, already-flagged issue, and
+`AI.sim.test.js`'s "is deterministic" case only compares two clones of one
+already-shuffled state, so it does not depend on the fix.
+
+### Finding 2 (RESOLVED): 15 Vitest failures across 10 scenario files
+
+Two were real engine defects. Thirteen were stale tests. Each is listed with its
+verdict; every test edit carries a dated comment in the file saying why.
+
+**Real engine bugs (2)** -- both caught by the tap-centralization tripwire,
+which is exactly what it exists for:
+
+| Site | Card | Defect |
+|---|---|---|
+| `DuelCore.js` `feintTapBlockersPreventDamage` | Feint | set the tapped flag inline, bypassing `tapPermanent`, so no `ON_TAP` event |
+| `DuelCore.js` `telekinesisTapPreventUntapSkip` | Telekinesis | same |
+
+Both tap a permanent already on the battlefield, which is a genuine
+untapped->tapped transition and owes an `ON_TAP` event. Verified against
+`docs/MagicCompRules 20260417.pdf` **CR 603.2e**: an ability triggering on
+"becomes tapped" fires only when a permanent already on the battlefield changes
+from untapped to tapped. Both now route through `tapPermanent`. Because
+`tapPermanent` no-ops on an already-tapped permanent, the accompanying flags
+(`preventCombatDamageDealt`, `untapStepsSkipRemaining`) are applied separately.
+
+A third inline site, in `tawnosCoffinReturn`, is **left alone deliberately**:
+that creature *enters* the battlefield tapped (or phases in tapped), and CR
+603.2e is explicit that entering in that state never counts as becoming tapped.
+Routing it through `tapPermanent` would emit a spurious `ON_TAP`.
+
+**Stale tests (13):**
+
+| File | Case(s) | Verdict |
+|---|---|---|
+| `aladdins-lamp` | AL-01, AL-02 | Predate the Sprint 7 universal-stack change. `ACTIVATE_ABILITY` now only pushes to `s.stack`; the effect runs on `RESOLVE_STACK`. AL-01 failed; **AL-02 was passing vacuously** -- nothing had resolved, so "no charge" was true either way. |
+| `aladdins-lamp` | AL-01, AL-02, AL-14 | `PHASE` was never imported -- `ReferenceError`. |
+| `aladdins-lamp` | AL-03 | Dispatched `{ type: 'DRAW' }`, which **is not an action type `duelReducer` handles**. It fell through to `default: return s`, so the case asserted against an untouched state and never exercised the lamp at all. Now drives the real draw step. |
+| `aladdins-lamp` | AL-04 | Asserted the chosen card was in hand *and* on top of the library -- self-contradictory. Oracle text is "...then draw a card", so it ends in hand. The two unchosen cards go to the bottom "in a random order", so their order is not assertable; now asserts membership. |
+| `guardian-angel` | GA-01, GA-03 | Never gave `p` mana, so `CAST_SPELL` was refused outright (silently -- no log line) and the stack stayed empty, making the `RESOLVE_STACK` below a no-op. |
+| `guardian-angel` | GA-01 | Also built its target with `makeCreature('c1')`, which defaults to `controller: 'o'` (see `_factory.js`), while placing it on p's battlefield. The handler writes to `ns[tgtC.controller].bf`, so p's copy was never touched. The engine is right to trust `card.controller`; the fixture was inconsistent. |
+| `coral-helm` | HELM-02 | Started *at* `PHASE.CLEANUP` and advanced, stepping *out* of cleanup. EOT buffs expire in advPhase's `if (next === PHASE.CLEANUP)` branch, i.e. on the transition *into* cleanup. Now advances END -> CLEANUP, the idiom the other cleanup scenarios use. |
+| `raging-river` | RR-17 | Identical shape: started at `PHASE.COMBAT_END` and advanced out, while the strip runs on the transition *into* combat end. |
+| `animate-artifact` | AA-23 | Stub-count tripwire expecting 1. The lowercase `effect:"stub"` bucket (untriaged; distinct from the uppercase `effect:"STUB"` bucket) has been fully drained. Now expects 0 -- a stricter invariant, and the one the tripwire is actually for. |
+| `gloom` | GLOOM-22 | Same tripwire expecting 2. Same resolution. |
+| `ring-of-maruf` | RM-22 | `expect(stubs).toContain('blaze_of_glory')` was a control proving the STUB filter selects something. `blaze_of_glory` has since been implemented. Pinning a card id there just re-breaks the test the next time that card ships; now asserts the filter is non-empty. |
+| `creature-damage-centralization` | CDMG-12 | Migration tripwire expecting 3 raw `damage: c.damage +` sites, found 4. The 4th is Whippoorwill's `cantPreventOrRedirectDamage` early return **inside `dmgWithShield`** -- the function the migration centralized on, so not a violation. Rewritten to scope the assertion (any number inside `dmgWithShield`, exactly one elsewhere) rather than bump a total. |
+| `enemy-deck-audit-missing-cards` | ID audit | Three apostrophe-named cards added after the hand-written allowlist was last touched: `hells_caretaker`, `al_abaras_carpet`, `solkanar_the_swamp_king`. `validateCardIds` derives its expected id by replacing an apostrophe with the letter `s` (`Hell's` -> `hellss_`), while the project's actual convention drops it. Neither the ids nor CARD_DB is wrong -- the validator's normalizer is a poor fit for apostrophes. |
+
+**A note on the tripwires.** Four of the thirteen were source-shape assertions
+guarding a completed migration, and all four had gone stale as the code moved on
+legitimately. A bare count is a weak guard: it re-breaks on every allowed
+addition, and a real violation can hide behind a count bump. All four were
+rewritten to assert *scope or identity* instead. The card-id allowlist was made
+rule-based for the same reason -- a hand-maintained per-id list re-breaks the
+whole `@engine` suite every time an apostrophe-named card is added, which is how
+those three sat red.
+
+**Never done, per the prompt's constraint:** no test was skipped, disabled,
+deleted or quarantined, and no assertion was changed purely to make it pass.
+
+### Finding 3 (BASELINE ESTABLISHED): Playwright `@engine`/`@mobile`
+
+**Command:** `npx playwright test --grep "@engine|@mobile"`
+**Tree:** clean `origin/main` at `0fb0ecd`, in a detached `git worktree` -- no
+branch work present.
+**Result: 261 failed | 709 passed | 2 skipped, 1.3h.**
+
+**The 261 are confirmed pre-existing.** These are the same counts the L3 branch
+run produced (261/709/2), on a tree with none of the L3 or triage work in it.
+The provenance the previous entry could not establish is now established. The
+33 failing spec files are the same 33 the L3 entry listed.
+
+Run conditions: `workers: 1`, `retries: 0` (the repo's own config, unmodified).
+
+**The baseline is not exact -- treat 261 as 261 +/- ~3.** An earlier draft of
+this entry claimed the failures were deterministic and that the list would not
+shift. That was wrong, and measuring the branch disproved it. Most of the 261
+are stable (assertion errors and `beforeEach` timeouts that reproduce every
+run), but a handful of specs are genuinely nondeterministic, on clean
+`origin/main`, with `retries: 0`:
+
+| Spec | Evidence on clean `0fb0ecd` |
+|---|---|
+| `overworld-sprites.spec.ts` (mobile-chrome) | Fails a **different test on each run**: run 1 "tap-to-move sets direction", run 2 "each arrow key sets the matching direction". This closes the open follow-up in the 2026-07-21 entry below, which asked whether this spec fails deterministically or is environment flake. **It is not deterministic.** It is the same frame-timing / keyboard-race class that entry diagnosed -- but note its "container running slow" theory is only half right: these failures also occur *fast* (2.6s, 1.4s), so it is a genuine race, not merely a slow box. Per that entry's own follow-up, it now warrants its own investigation rather than being re-logged indefinitely. |
+| `duel-controller.spec.ts` E2E-CAST-05 (mobile-chrome) | Run 1 fails on a 30s timeout; run 2 passes in 1.5s. |
+| `henchman-visibility.spec.ts`, `sandbox-targeting-modals.spec.ts` | Each flipped state between two full runs. |
+
+So a diff against this list will normally show a few tests of churn in **both**
+directions. Only a consistent, repeatable delta -- or a new failure in a spec
+your change actually touches -- is a regression. Re-run a suspect spec two or
+three times before reporting it.
+
+#### Branch delta (this prompt's own engine changes)
+
+Same command, same box, on `claude/engine-test-triage-8tb2ig` (the MCTS rollout
+fix plus the two `tapPermanent` routings): **263 failed | 707 passed | 2
+skipped, 1.3h** -- nominally +2 against the 261 baseline.
+
+That +2 is flake noise, not a regression. Diffed at test level: 3 newly failing,
+2 newly passing. All three "new" failures were then reproduced as flaky on clean
+`origin/main` (the table above). Two of the three are in
+`overworld-sprites.spec.ts`, which this change cannot reach at all -- the diff
+touches `MCTS.js` and two card-effect handlers.
+
+Cross-check on the four churning spec files run in isolation: **branch 35 failed
+/ 74 passed, clean main 36 failed / 73 passed** -- main one *worse* than the
+branch on the same specs, the opposite direction from the full-run delta. That
+is the signature of noise, not of a regression.
+
+#### Failures grouped by cause
+
+Four root causes were confirmed by direct probe against a running dev server,
+not inferred from the messages.
+
+**1. The title screen's entry control is unreachable to specs (~40 failures,
+4 files).** The landing page carries **zero `data-testid` attributes**; its
+entry button reads `BEGIN YOUR JOURNEY`. `overworld-visual.spec.ts` clicks
+`[data-testid="start-game"]`, which exists nowhere in `src/` at all;
+`plaque-visibility.spec.ts` clicks a button matching `/start|new game/i`,
+which that label does not match either. Every affected spec dies in
+`beforeEach` before asserting anything. One missing testid accounts for the
+single largest block of "overworld" failures -- which is also why they look
+like overworld regressions when nothing about the overworld is broken.
+
+**2. The mulligan modal is open on sandbox boot and some specs never dismiss
+it (~24 failures).** Probe: on `/?duel=sandbox`, `mulligan-keep` is visible;
+clicking it dismisses the modal and the hand becomes clickable
+(`clickErr: ''`). 49 spec files already handle this; `tutor-modal.spec.ts` and
+`lotus-cancel-undo.spec.js` do not, and both time out in `beforeEach` trying to
+click a card underneath the modal.
+
+**3. `window.__duelState()` returns a stale render-time snapshot (the largest
+residual bucket).** `useDuelController.ts:739` sets
+`__duelState = () => state`, closing over the render's `state`. A dispatch is a
+React state update, so the closure is not refreshed until React re-renders and
+the effect re-runs. Probe, on `ability-stack-bugs`'s exact sequence:
+
+| point | `p.hand.length` | card present |
+|---|---|---|
+| before dispatch | 7 | - |
+| immediately after `SANDBOX_FORCE_HAND`, separate `page.evaluate` | 7 | no |
+| after `waitForTimeout(500)` | 8 | yes |
+
+Specs that dispatch and then read without waiting see the pre-dispatch state.
+This produces the `Cannot read properties of undefined (reading 'iid')` cluster
+(19) and the `"<card> not in o hand"` cluster (12) directly, and cascades into
+much of the `waitForFunction` timeout cluster (30): a stale read sends a
+malformed follow-up dispatch, so the awaited condition never arrives.
+**Confidence note:** the mechanism is confirmed; the precise share of the 187
+residual failures attributable to it is not individually verified.
+
+**4. `.tap()` used in the no-touch `chromium` project (8 failures, 3 files).**
+`playwright.config.js` sets `hasTouch: true` only on `mobile-chrome`. Specs
+calling `locator.tap()` fail deterministically on `chromium` with "The page does
+not support tap."
+
+**Smaller, individually diagnosed causes:**
+
+| Count | Cause |
+|---|---|
+| 8 | **Environment, not product.** `ERR_CERT_AUTHORITY_INVALID` / `ERR_TUNNEL_CONNECTION_FAILED` on Scryfall art fetches, asserted against by `console errors` checks. This is the agent proxy on this box. **These 8 may not reproduce on Chris's machine** and should not be treated as product failures. |
+| 3 | `ReferenceError: setPendingConditionalCounter is not defined` -- a test helper the spec expects and `src/` does not define. |
+| 2 | `test.use()` called in the wrong scope (`aladdins-lamp.spec.ts`, `guardian-angel.spec.ts`) -- a Playwright authoring error; those specs cannot run at all. |
+| 2 | `window.__duelDispatch is not a function` -- the sandbox hatch was absent when the spec ran. |
+
+#### Reference baseline: failing spec files
+
+Dominant signature per file. Anything not on this list passed on `0fb0ecd`.
+
+| Spec file | Failures | In hook | Dominant signature |
+|---|---|---|---|
+| `sandbox-combat-ai-parity.spec.ts` | 28 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `overworld-visual.spec.ts` | 24 | 24 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `sandbox-targeting-modals.spec.ts` | 24 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `batch1b-wall-destruction-sacrifice.spec.ts` | 20 | - | Error: page.evaluate: Error: wall_of_stone not in o hand / at eval (eval |
+| `batch1a-desert-landwalk.spec.ts` | 15 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `power-sink-x-select.spec.js` | 14 | - | TimeoutError: page.waitForFunction: Timeout 5000ms exceeded. |
+| `ability-stack-bugs.spec.ts` | 12 | - | Error: page.evaluate: TypeError: Cannot read properties of undefined (re |
+| `deferral-sweep-1.spec.ts` | 12 | - | TimeoutError: page.waitForFunction: Timeout 20000ms exceeded. |
+| `lotus-cancel-undo.spec.js` | 12 | 12 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `tutor-modal.spec.ts` | 12 | 10 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `mobile-targeting.spec.ts` | 10 | - | Error: locator.tap: The page does not support tap. Use hasTouch context  |
+| `sandbox-boot-stack.spec.ts` | 9 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `duel-controller.spec.ts` | 8 | - | Error: locator.tap: The page does not support tap. Use hasTouch context  |
+| `plaque-visibility.spec.ts` | 8 | 8 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `henchman-visibility.spec.ts` | 5 | - | Error: enemy at dist=N should chase toward player / / expect(received).t |
+| `ai-creature-evaluation-smoke.spec.ts` | 4 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `card-type-line.spec.ts` | 4 | - | Test timeout of 30000ms exceeded. |
+| `overworld-map-centering.spec.ts` | 4 | - | Test timeout of 30000ms exceeded. |
+| `overworld-tileset.spec.ts` | 4 | - | Error: expect(received).toContain(expected) // indexOf / / Expected subs |
+| `preduel-sandbox.spec.ts` | 4 | - | TimeoutError: page.waitForSelector: Timeout 8000ms exceeded. / Call log: |
+| `ruins.spec.js` | 4 | - | Error: expect(locator).toBeVisible() failed / / Locator: locator('.ow-pl |
+| `lava-axe-targeting.spec.ts` | 3 | - | Error: opponent should take N damage from Lava Axe / / expect(received). |
+| `ai-banding-smoke.spec.ts` | 2 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `aladdins-lamp.spec.ts` | 2 | - | Error: Playwright Test did not expect test.use() to be called here. / Mo |
+| `ancestral-recall-targeting.spec.ts` | 2 | - | Test timeout of 30000ms exceeded. |
+| `banding-cards-batch.spec.ts` | 2 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `batch-a4-sphere-cycle.spec.ts` | 2 | - | Test timeout of 30000ms exceeded. |
+| `coral-helm.spec.ts` | 2 | - | Error: expect(received).toHaveLength(expected) / / Expected length: N |
+| `disintegrate.spec.js` | 2 | - | Error: expect(received).toBeUndefined() / / Received: {"...": {"...": ". |
+| `hooded-figure-sprites.spec.ts` | 2 | - | Error: hoodedFigure black canvas DOM present / / expect(received).toBeGr |
+| `layer-engine.spec.js` | 2 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `undo-tap-activate.spec.js` | 2 | - | Error: page.evaluate: TypeError: window.__duelDispatch is not a function |
+| `guardian-angel.spec.ts` | 1 | - | Error: Playwright Test did not expect test.use() to be called here. / Mo |
+
+#### This is a structural cost, not a flaky-run cost
+
+The two halves of `npm run test:targeted -- @engine` are wildly asymmetric:
+
+| Half | Wall time | State |
+|---|---|---|
+| Vitest | **~15 s** | green (1350 passed) |
+| Playwright | **~78 min** | 261 failing, all pre-existing |
+
+An 80-minute gate with 261 known failures cannot function as the per-prompt gate
+CLAUDE.md mandates for every `src/engine/` change. A prompt cannot distinguish
+its own regression from the standing 261 without diffing against this list, and
+will not spend 80 minutes to do so. In practice prompts will skip it, which is
+how it drifted this far. See the policy note added to `CLAUDE.md`.
+
+The encouraging part: the failure count is concentrated, not diffuse. Causes 1
+and 2 are single-point fixes (one `data-testid`, one modal dismissal in two
+specs) worth roughly 64 failures between them. Cause 4 is a config/spec
+mismatch worth 8. Cause 3 is the real work -- it is an architectural mismatch
+between the escape hatch's React-snapshot semantics and the synchronous
+semantics ~20 spec files assume.
+
+---
+
+### Finding 4 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**Every Vitest run dirties two tracked files.**
+`tests/scenarios/enemy-deck-audit-stub-batch.test.js:83` shells out to
+`tools/enemy-deck-audit/analyze.mjs` with `execFileSync`, and that script writes
+`report.json` and `report.md` back into `tools/enemy-deck-audit/` via
+`writeFileSync(join(__dirname, ...))`. The committed copies were generated
+2026-07-23 against a 709-card `CARD_DB`; the current one is 744, so the rewrite
+is not a no-op and `git status` is dirty after any run that includes this file.
+
+Consequence: any prompt that runs the test suite and then commits will either
+sweep an unrelated regenerated report into its commit or have to remember to
+revert it. That is the same class of problem as the rest of this entry -- the
+gate interfering with the work it is supposed to guard -- so it is recorded
+here rather than left to be rediscovered.
+
+**Not fixed here.** It is outside this prompt's three declared findings and
+CLAUDE.md forbids unsolicited work. The minimal fix would be an output-directory
+override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
+pointing it at a temp dir, leaving the committed reports alone. Two small edits,
+neither in a protected file. Needs Chris's go-ahead.
+
+### Finding 5 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**`test:audit` is partly blind: one of the four tags has no Vitest coverage at
+all.** Running `npm run test:audit -- @engine` at the end of this work selected
+`@mobile` as the untouched tag, and its Vitest half reported
+`130 skipped | 1607 skipped` -- it ran nothing.
+
+Counted across every Vitest file:
+
+| `@module-tag` | Files carrying it |
+|---|---|
+| `engine` | 115 |
+| `overworld` | 5 |
+| `learn` | 5 |
+| `premodern` | 1 |
+| **`mobile`** | **0** |
+
+`mobile` is declared in `vite.config.js`'s `tags` array and documented in
+CLAUDE.md's tag taxonomy and file-path lookup table, but no Vitest file uses it.
+Checked whether mobile tests exist but are mistagged -- they do not. The four
+Vitest files that mention "mobile" at all are incidental and correctly tagged
+`engine`. Mobile coverage in this repo is Playwright-only, which is a legitimate
+design outcome.
+
+The consequence is not: when `test:audit` randomly selects `@mobile`, its Vitest
+half is vacuous and its Playwright half is the slow, 261-failure suite. The
+audit then reports either nothing useful or a hard stop that is really just the
+known baseline. `@premodern`, with one file, is thin for the same reason.
+
+**Not fixed here.** Either outcome (tagging files `mobile`, or removing the tag
+from the audit's selection pool) is a change to the tag taxonomy, which CLAUDE.md
+puts behind an explicit decision. Needs Chris's call.
+
+### Finding 6 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**`test:audit` raises a false hard STOP on `@premodern`.** The final
+`npm run test:audit -- @engine` of this prompt selected `@premodern` and
+reported:
+
+```
+[audit] FAILURE in untouched area "@premodern". This change has a side effect
+        outside its declared scope.
+[audit] STOP. Do not proceed with the current task.
+```
+
+**This is not a regression.** The Vitest half passed outright --
+`1 passed | 129 skipped`, `16 passed`. The Playwright half failed with
+`Error: No tests found`, because **zero Playwright specs carry `@premodern`**
+in their titles (verified: `grep -rl "@premodern" tests/e2e/` returns nothing,
+and `playwright test --grep "@premodern"` reports `Total: 0 tests in 0 files`).
+Playwright exits non-zero on an empty match, and `scripts/run-audit.js` reads
+any non-zero Playwright exit as a failure.
+
+So `@premodern` can never pass an audit, whatever the change under test. Any
+prompt unlucky enough to draw it gets a hard STOP that means nothing, and
+CLAUDE.md's protocol then sends it to Chris for permission to run the full
+suite -- over an empty grep.
+
+Together with Finding 5, **two of the four audit-selectable tags are broken in
+the audit mechanism**: `@mobile` runs zero Vitest tests, `@premodern` always
+fails Playwright. Only `@engine` and `@overworld` audit meaningfully.
+
+**Not fixed here.** The fix is a few lines in `scripts/run-audit.js` (treat "no
+tests found" for a tag as a skip, not a failure) but that script decides whether
+prompts are allowed to proceed, so changing it needs Chris's call.
+
 ## 2026-09-18 -- `npm run test:targeted -- @engine` (Learn Mode L3, scenario mode)
 
 Not a `test:audit` failure. Logged here anyway because it is exactly what this

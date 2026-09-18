@@ -204,9 +204,25 @@ describe('@engine-core-mechanics-2 Scenario: tap centralization Phase 1', () => 
     lines.forEach((line, idx) => {
       if (/tapped:\s*true/.test(line)) matches.push({ line: idx + 1, text: line.trim() });
     });
-    // Expect exactly 2: tapPermanent's own mutation, and the confirmed untap-step
-    // "stays tapped" computation (not a "becomes tapped" event).
-    expect(matches.length).toBe(2);
+    // 2026-09-18: this expected exactly 2 and found 5. Three of the five were
+    // new sites added after the migration. Two were genuine bypasses and have
+    // been routed through tapPermanent (Feint's feintTapBlockersPreventDamage
+    // and Telekinesis's telekinesisTapPreventUntapSkip -- both tap a permanent
+    // already on the battlefield, a real untapped->tapped transition that owes
+    // an ON_TAP event per CR 603.2e). The third is legitimate and is now
+    // enumerated below: Tawnos's Coffin returns/phases its creature in ALREADY
+    // tapped, and CR 603.2e is explicit that a permanent entering in that state
+    // never "becomes tapped" -- routing it through tapPermanent would emit a
+    // spurious ON_TAP.
+    //
+    // Expect exactly 3, each individually accounted for. Assert identity rather
+    // than a bare count so a future bypass cannot hide behind a number bump.
+    expect(matches.length).toBe(3);
+    // 1. tapPermanent's own mutation -- the choke point itself.
+    expect(matches.some(m => m.text.includes('c.iid === iid ? { ...c, tapped: true }'))).toBe(true);
+    // 2. Untap-step "stays tapped" computation (not a "becomes tapped" event).
     expect(matches.some(m => m.text.includes('paralyzed || c.enchantments'))).toBe(true);
+    // 3. Tawnos's Coffin: the creature ENTERS the battlefield tapped (CR 603.2e).
+    expect(matches.some(m => m.text.includes('enchantments: embeddedAuras'))).toBe(true);
   });
 });

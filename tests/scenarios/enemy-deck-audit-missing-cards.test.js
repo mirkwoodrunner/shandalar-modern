@@ -68,15 +68,40 @@ const KNOWN_DIACRITIC_OR_APOSTROPHE_WARNING_IDS = new Set([
   'will_o_the_wisp', 'ifh_biff_efreet',
 ]);
 
+// 2026-09-18: this test was failing on three cards added after the allowlist
+// above was last touched -- hells_caretaker, al_abaras_carpet and
+// solkanar_the_swamp_king. All three are the same benign class as several
+// entries already on the list: validateCardIds derives its expected id by
+// replacing an apostrophe with the letter "s" (Hell's -> hellss_), whereas the
+// project's actual id convention is to DROP the apostrophe (hells_caretaker).
+// Neither the ids nor CARD_DB is wrong; the validator's normalizer is simply a
+// poor fit for apostrophes.
+//
+// A hand-maintained per-id allowlist re-breaks the @engine suite every time an
+// apostrophe-named card is added, which is how these three sat red. Recognise
+// that class by rule instead, so it stays self-maintaining, and keep the
+// explicit allowlist for the rest (diacritics, plus the "Gaea's -> gaea"
+// possessive-dropping variants, which no single rule covers).
+const APOSTROPHE_CONVENTION_IDS = new Set(
+  CARD_DB
+    .filter(c => c.id === c.name
+      .toLowerCase()
+      .replace(/['\u2019]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, ''))
+    .map(c => c.id),
+);
+
 describe('@engine @premodern Scenario: enemy-deck-audit missing-cards batch', () => {
-  it('validateCardIds(CARD_DB) raises no new warnings beyond the known pre-existing diacritic/apostrophe set', () => {
+  it('validateCardIds(CARD_DB) raises no new warnings beyond the known diacritic set and the apostrophe-dropping id convention', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     validateCardIds(CARD_DB);
     const unexpected = warnSpy.mock.calls
       .map(args => args.join(' '))
       .filter(msg => {
         const isKnown = [...KNOWN_DIACRITIC_OR_APOSTROPHE_WARNING_IDS].some(id => msg.includes(`"${id}"`));
-        return !isKnown;
+        const isApostropheConvention = [...APOSTROPHE_CONVENTION_IDS].some(id => msg.includes(`"${id}"`));
+        return !isKnown && !isApostropheConvention;
       });
     warnSpy.mockRestore();
     expect(unexpected).toEqual([]);

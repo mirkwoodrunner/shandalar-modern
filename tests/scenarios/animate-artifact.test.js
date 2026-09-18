@@ -354,11 +354,17 @@ describe('@engine-card-scenarios-3 Scenario: Animate Artifact', () => {
     expect(s.log.some(e => (e.text ?? '').includes('Animate Artifact enchants'))).toBe(false);
   });
 
-  it('AA-23: untriaged stub count is exactly 1 (Tawnos\'s Coffin only)', () => {
+  // 2026-09-18: was `toBe(1)` ("Tawnos's Coffin only"). The lowercase
+  // effect:"stub" bucket -- the untriaged bucket, distinct from the uppercase
+  // effect:"STUB" implemented-later bucket -- has since been fully drained, so
+  // the count is 0. Expecting 0 is the stricter forward invariant and is what
+  // this tripwire is actually for: a new lowercase "stub" means an untriaged
+  // card slipped into cards.js.
+  it('AA-23: the untriaged lowercase stub bucket is empty', () => {
     const cardsPath = fileURLToPath(new URL('../../src/data/cards.js', import.meta.url));
     const src = readFileSync(cardsPath, 'utf8');
     const stubCount = (src.match(/effect:"stub"/g) || []).length;
-    expect(stubCount).toBe(1);
+    expect(stubCount).toBe(0);
   });
 
   it('AA-24: Animate Artifact reuses manaValueCDA unchanged -- no new CDA evaluator was added', () => {
