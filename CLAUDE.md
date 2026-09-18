@@ -409,6 +409,10 @@ baseline is repaired:
   spec files your change plausibly touches, and compare any failure against the
   reference baseline in `docs/TEST_AUDIT_LOG.md` (2026-09-18, Finding 3) before
   reporting it as a regression. A failure already on that list is not yours.
+- **That baseline is 261 +/- ~3, not exactly 261.** A few specs are genuinely
+  flaky on clean `origin/main` with `retries: 0` -- `overworld-sprites.spec.ts`
+  fails a different test on each run. Expect churn in both directions. Re-run a
+  suspect spec two or three times before calling it a regression.
 - A prompt that cannot clear the Playwright half is not thereby blocked. Say
   which specs you ran and what they did.
 

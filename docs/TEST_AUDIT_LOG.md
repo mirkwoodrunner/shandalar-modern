@@ -173,9 +173,41 @@ The provenance the previous entry could not establish is now established. The
 33 failing spec files are the same 33 the L3 entry listed.
 
 Run conditions: `workers: 1`, `retries: 0` (the repo's own config, unmodified).
-Failures are fast and deterministic -- assertion errors and `beforeEach`
-timeouts, not load-sensitive flakes -- so the list does not shift with machine
-speed.
+
+**The baseline is not exact -- treat 261 as 261 +/- ~3.** An earlier draft of
+this entry claimed the failures were deterministic and that the list would not
+shift. That was wrong, and measuring the branch disproved it. Most of the 261
+are stable (assertion errors and `beforeEach` timeouts that reproduce every
+run), but a handful of specs are genuinely nondeterministic, on clean
+`origin/main`, with `retries: 0`:
+
+| Spec | Evidence on clean `0fb0ecd` |
+|---|---|
+| `overworld-sprites.spec.ts` (mobile-chrome) | Fails a **different test on each run**: run 1 "tap-to-move sets direction", run 2 "each arrow key sets the matching direction". |
+| `duel-controller.spec.ts` E2E-CAST-05 (mobile-chrome) | Run 1 fails on a 30s timeout; run 2 passes in 1.5s. |
+| `henchman-visibility.spec.ts`, `sandbox-targeting-modals.spec.ts` | Each flipped state between two full runs. |
+
+So a diff against this list will normally show a few tests of churn in **both**
+directions. Only a consistent, repeatable delta -- or a new failure in a spec
+your change actually touches -- is a regression. Re-run a suspect spec two or
+three times before reporting it.
+
+#### Branch delta (this prompt's own engine changes)
+
+Same command, same box, on `claude/engine-test-triage-8tb2ig` (the MCTS rollout
+fix plus the two `tapPermanent` routings): **263 failed | 707 passed | 2
+skipped, 1.3h** -- nominally +2 against the 261 baseline.
+
+That +2 is flake noise, not a regression. Diffed at test level: 3 newly failing,
+2 newly passing. All three "new" failures were then reproduced as flaky on clean
+`origin/main` (the table above). Two of the three are in
+`overworld-sprites.spec.ts`, which this change cannot reach at all -- the diff
+touches `MCTS.js` and two card-effect handlers.
+
+Cross-check on the four churning spec files run in isolation: **branch 35 failed
+/ 74 passed, clean main 36 failed / 73 passed** -- main one *worse* than the
+branch on the same specs, the opposite direction from the full-run delta. That
+is the signature of noise, not of a regression.
 
 #### Failures grouped by cause
 

@@ -35,6 +35,12 @@
     `docs/TEST_AUDIT_LOG.md` with a per-file table and four probe-confirmed root causes.
     Two are single-point fixes worth ~64 failures between them (one missing
     `data-testid` on the title screen; an undismissed mulligan modal in two specs).
+    **The baseline is 261 +/- ~3, not exactly 261** -- a handful of specs are genuinely
+    flaky on clean main with `retries: 0` (`overworld-sprites.spec.ts` fails a different
+    test each run). The branch's own run came in at 263; diffed at test level all three
+    new failures reproduce as flaky on clean main, and on the churning specs in isolation
+    main scored one *worse* than the branch. No regression from this prompt's engine
+    changes.
   - **Policy gap raised in `CLAUDE.md`, not left for prompts to discover:** the Vitest
     half of the `@engine` gate is 15s and green; the Playwright half is 80 minutes with
     261 known failures. The second cannot serve as the per-prompt gate CLAUDE.md mandates
