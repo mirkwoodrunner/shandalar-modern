@@ -62,6 +62,19 @@ Recorded in `docs/DECISIONS.md`. Restated here for context:
 - **Paper is the canonical model** at every tier. Digital-client behavior is taught as a
   mapping layer, not as the default. See section 4.4.
 
+- **Hosting:** Learn Mode and Shandalar deploy together. One repo, one build, two Vite
+  entries, one origin. Hosted off GitHub so code and live site do not sit behind one
+  company's takedown process, on a domain the project owns so a host change does not orphan
+  PWA installations. Subdomains from day one so the two can be split later at the cost of a
+  DNS change. Accepted consequence: shared origin couples their takedown risk, and Learn Mode
+  carries the higher risk of the two.
+- **Card pool (reverses an earlier decision):** one card database, cards tagged by pool,
+  parameterized lookup defaulting to the Shandalar set. Not a separate database. No format
+  targeting. See L4a.
+- **Tiers 1 to 3 contain no ungraded content.** Every exercise produces an attempt record.
+  Physical handling content is cut from the curriculum. Mulligan decisions become a Tier 3
+  skill gated on L5. See 4.4.
+
 ## 4. Curriculum tiers
 
 Five tiers. The grading substrate column is the load-bearing part of this table.
@@ -133,11 +146,22 @@ digital client does for you" covering auto-tapping, auto-passing priority, and s
 teaches the mapping between the two rather than picking a side. Place it late in Tier 1 or
 early in Tier 3, decided during L2 drafting.
 
-**Consequence for physical handling content.** Shuffling, randomization, mulligan procedure,
-and card handling have no representation in the runner and cannot be graded by it. They are
-real Tier 1 material under a paper north star, so Learn Mode needs either a read-only
-explainer exercise type or an explicit decision to defer them. That is open decision 3 in
-section 8.
+**Consequence for physical handling content, resolved 2026-09-16.** Shuffling, randomization,
+and card handling are cut from the curriculum entirely, not deferred. They are reference
+material, not lessons. A text quiz about shuffling etiquette is the least engaging content this
+product could ship, and a boring first unit costs more than the missing content does. If this
+material ever appears it belongs in a static help page outside the lesson tree.
+
+Mulligan decisions are the exception and are separated out deliberately, because the original
+framing bundled two unlike things. Mulligan *procedure* (draw seven, put N on the bottom) is
+mechanical trivia and is cut with the rest. Mulligan *decisions* (keep this hand or ship it) is
+judgment, is one of the most engaging lessons in Magic, and is heavily deck-dependent. It
+becomes a Tier 3 skill gated on L5, since grading it needs library manipulation the runner does
+not have and a brand-new player has no frame for evaluating a hand.
+
+**Rule this establishes.** Tiers 1 to 3 contain no ungraded content. Every exercise produces an
+attempt record, because L8 computes mastery from attempt records and ungraded content is
+invisible to spaced review. Content that cannot be graded is not a lesson.
 
 ## 5. Milestones
 
@@ -192,9 +216,9 @@ nowhere in the repo. May run in parallel with L1.
   differently, that difference is its own skill, not a caveat inside another skill.
 - Place the "what a digital client does for you" skill. Late Tier 1 or early Tier 3.
   Decide during drafting, record the choice in `docs/LEARN_CURRICULUM.md`.
-- Decide whether physical handling content (shuffling, randomization, mulligan procedure)
-  is in Tier 1 or deferred. If in, it needs a read-only explainer exercise type, which is
-  a new type and belongs in its own slice, not inside L2b. See open decision 3.
+- Place mulligan decisions as a Tier 3 skill, gated on L5 library manipulation. Physical
+  handling content (shuffling, randomization, card handling, mulligan procedure) is cut,
+  not deferred. See 4.4.
 
 Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
 current runner. Tiers 2 to 5 have named skills tagged by substrate.
@@ -229,9 +253,9 @@ Paper constraint. Every exercise teaches paper behavior (see 4.4). No exercise a
 auto-tapping, auto-passing, or any other client convenience. If the "what a digital client
 does for you" skill lands in Tier 1 per L2, it ships in this fill.
 
-Scope guard. If L2 places physical handling content in Tier 1, that content needs a new
-read-only exercise type and is explicitly **out of scope for L2b**. It ships as its own
-slice. L2b authors engine-gradable exercises only, using the two existing types.
+Scope guard. Two exercise types only, `engine` and `multiSelect`. No third type. Every
+exercise is graded and produces an attempt record, per the rule in 4.4. Physical handling
+content is cut from the curriculum and does not appear here.
 
 ### L2c. Fan content notice and first public release
 
@@ -282,11 +306,36 @@ both viewports from slice one, not later.
 
 Blocks Tier 3 onward. The Shandalar 901-card pool cannot teach modern Magic.
 
-Decision, confirmed: a separate Learn card database satisfying the same contract, not a pool
-flag on `CARD_DB`. A flag is cheaper to write and more expensive to own, because every
-`CARD_DB` consumer becomes pool-aware. Deck generation, ante, shops, `MAGE_ARCHS`, and the AI
-archetype logic all read that database and all assume Alpha and Beta. A missed call site means
-Learn cards leaking into campaign decks.
+**Decision reversed 2026-09-16.** The earlier decision called for a separate Learn card
+database. The current decision is one database with cards tagged by pool and a parameterized
+lookup that defaults to the Shandalar set.
+
+The original rejection of a pool flag rested on every `CARD_DB` consumer becoming pool-aware.
+That holds only if consumers do the filtering. With a parameterized lookup defaulting to
+Shandalar, no consumer changes and the objection does not apply. The original decision was
+arguably wrong.
+
+What this means concretely: expand the existing card data with the cards lessons need, tagged
+so Shandalar's deck generation, ante, shops, `MAGE_ARCHS`, and AI archetype logic continue to
+see exactly what they see today. Learn passes a different pool argument.
+
+**No format targeting.** Not Standard, not any format's legality. Standard rotation would
+invalidate exercises on a schedule outside your control and the audit cost recurs forever.
+Cards are selected for pedagogy: current oracle templating, evergreen keywords only, one clean
+example per concept, frequently reprinted.
+
+**Bounded by the engine.** Only cards the engine can execute. No planeswalkers, no mechanics
+DuelCore lacks. Tiers 1 to 3 need clean simple cards, which the engine already handles, so
+expect a modest addition rather than a modern pool.
+
+**Oracle drift is the risk nobody plans for.** A frozen pool still drifts, because Wizards
+issues errata and templating updates. Pin the Scryfall data locally with a version stamp and
+gate `learn:check` on a mismatch between a pooled card's current and stored oracle text. Use
+the same version-stamping mechanism L7 builds for policy documents. One mechanism, not two.
+
+**Consequence beyond L4a.** The pool determines which art assets exist, which sets the L4b
+caching scope and the L9 offline payload size. A bounded pool has a knowable art footprint. A
+rotating one does not.
 
 - Engine prompt. Parameterize `makeCardInstance` and the lookup path so the pool is an
   argument, not a module-level constant. Shandalar passes the existing pool and behaves
@@ -470,14 +519,17 @@ _Decision 1 (which tiers ship publicly first) was resolved 2026-09-16. See secti
 _Decision 2 (paper versus digital client as the canonical model) was resolved 2026-09-16.
 Paper. See section 4.4._
 
-1. Whether the Learn card pool tracks Standard, a fixed evergreen subset, or something else.
-   Tracking Standard means recurring content maintenance forever. Gates L4a, not the first
-   release.
-2. Hosting. Affects the PWA story in L9 and the takedown-resilience plan in section 6.
-   **Gating L2c**, since the first public release needs somewhere to live.
-3. Whether physical handling content (shuffling, randomization, mulligan procedure, card
-   handling) ships in Tier 1 or is deferred. Raised by the paper decision in 4.4. It is
-   genuine Tier 1 material under a paper north star, but the runner cannot grade it, so
-   including it means building a read-only explainer exercise type. That is a third
-   exercise type and a new `puzzleChecker` code path. **Gating L2**, and if answered yes,
-   it adds a slice between L2 and L2c that L2b does not absorb.
+_Decision 3 (physical handling content) was resolved 2026-09-16. Cut, not deferred. Mulligan
+decisions separated out as a Tier 3 skill. See section 4.4._
+
+_Card pool and hosting were resolved 2026-09-16. See section 3 and L4a._
+
+No open decisions currently gate any milestone. Add new ones here as they arise, with the
+milestone they gate stated explicitly.
+
+Decisions left inside milestones rather than listed here, because they are drafting choices
+rather than gates:
+
+- Placement of the "what a digital client does for you" skill. Late Tier 1 or early Tier 3.
+  Decided during L2 drafting.
+- Placement of mulligan decisions within Tier 3. Decided during the L5 curriculum pass.
