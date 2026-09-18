@@ -36,8 +36,7 @@ The status is authorability against the runner **as it exists today**:
 Roadmap L2 exit criterion: every Tier 1 skill must be green, and a Tier 1 skill that
 needs a new action kind is a scoping error that belongs in Tier 2. Section 3 applies
 that rule literally, which moves several things a beginner tutorial would normally
-contain out of Tier 1. Section 6 records that consequence as an open decision rather
-than burying it.
+contain out of Tier 1. Section 6 records that consequence and the decision taken on it.
 
 ---
 
@@ -382,40 +381,55 @@ New units 1.2 and 1.3 are new numbers, so they collide with nothing.
 
 ---
 
-## 6. Open decision: what Tier 1 ships without
+## 6. Closed decision: what Tier 1 ships without
+
+**Decided by Chris, 2026-09-18: leave it as is.** `multiSelect` keeps its cost-shaped
+`{lands, options, answer}` form. Card types are taught implicitly, not tested. Recorded in
+`docs/DECISIONS.md`.
 
 Applying L2's exit criterion strictly removes three things a beginner tutorial would
-normally contain. This is recorded rather than decided, because it changes what the first
-public release *is*.
+normally contain.
 
-**What falls out of Tier 1:**
+| Content | Why it falls out | Where it lives now |
+|---|---|---|
+| Card types (creature vs instant vs land) | `multiSelect` is cost-shaped and cannot ask it. | Taught implicitly in Tier 1 (below). Tested in Tier 2 unit 2.3. |
+| Turn structure | No phase-advance action in the runner. | Tier 2 unit 2.2, gated on L5. |
+| Blocking | The runner models the learner as the attacker only. | Tier 2 unit 2.1, gated on L5. |
 
-| Content | Why it falls out |
-|---|---|
-| Card types (creature vs instant vs land) | `multiSelect` is cost-shaped and cannot ask it. |
-| Turn structure | No phase-advance action in the runner. |
-| Blocking | The runner models the learner as the attacker only. |
+So Tier 1 ships as **mana, casting, and attacking**, and never names a card type or walks a
+turn.
 
-The roadmap's own rule sends all three to Tier 2, and section 4 places them there. The
-consequence is that Tier 1 ships as **mana, casting, and attacking** and never names a
-card type or walks a turn.
+### Why implicit is enough here
 
-**The option not taken, and the recommendation.**
+Unit 1.2 casts an artifact (`1.2-04` Howling Mine), an enchantment (`1.2-05` Crusade), a
+second artifact at a different cost (`1.2-06` Jayemdae Tome), and creatures in three colours,
+all with the type line rendered on every card by `LearnCard`. A learner finishing Tier 1 has
+paid a cost for a Creature, an Artifact, and an Enchantment, and seen each labelled, without
+the distinction ever being named or graded.
 
-Generalizing `multiSelect` from its current `{lands, options, answer}` shape to a general
-`{stem, options, answer}` pick-the-right-answers type would recover card types and the
-digital-client skill without adding a third exercise type, and so without breaching L2b's
-scope guard. It is a small change to `types.ts`, one renderer, and one theme-check family.
-It does not touch the engine.
+That is weaker than teaching it outright, and the trade is deliberate: what this project has
+that a quiz app does not is that the engine computes the answer. Every Tier 1 exercise is
+graded by `duelReducer`. Buying "card types" by adding a question type whose answer is
+authored rather than derived would spend that property on the first content that could not
+use it.
 
-Recommendation: **do it, but not before the first release.** Tier 1 as scoped is coherent
-and demonstrably shippable, and the DuelCore grading path is the thing the release exists
-to validate. A general question type is content tooling, which is L6's business, and
-pulling it forward trades a shippable release for a better one later. If it is pulled
-forward anyway, it belongs in its own prompt before L2b authoring starts, not during.
+### The options that were weighed and not taken
 
-What must not happen is Tier 1 shipping with an ungraded text page explaining card types.
-Roadmap 4.4 is explicit: content that cannot be graded is not a lesson.
+**Generalize `multiSelect` to `{stem, options, answer}`.** Recovers card types, turn
+structure, and the digital-client skill at once, inside `src/learn/`, without adding a third
+exercise type. Rejected for now: `MULTI_THEME_CHECKS` currently derives the expected answer
+from `castableWith`, so the engine proves it. A free-text stem cannot be engine-verified, and
+correctness becomes authorial. This is the option to build if Tiers 4 and 5 are ever brought
+forward, since that substrate is question-bank-graded anyway and would want the general type.
+
+**Add a narrow `cardQuiz` type with a fixed stem enum and a computed answer.** Keeps the
+engine-proves-it property, unlocks card types but not turn structure, and technically breaches
+L2b's two-type scope guard. Rejected for now as cost without a forcing need.
+
+**The rule that still binds either way.** Tier 1 must not ship an ungraded text page
+explaining card types. Roadmap 4.4 is explicit: content that cannot be graded is not a lesson.
+Implicit exposure through graded casting exercises is not such a page; a "here are the card
+types" screen would be.
 
 ---
 
@@ -466,6 +480,7 @@ to 1.4 were authored under it and are unaffected; new content is free of it.
 
 | Date | Change |
 |---|---|
+| 2026-09-18 | Section 6 closed. Chris's call: leave `multiSelect` cost-shaped, teach card types implicitly, test them in Tier 2. Options weighed and rejected are kept in the section so the reasoning is not re-derived. |
 | 2026-09-18 | LC-1 and LC-2 resolved in `puzzleRunner.ts`, inside the Learn Mode boundary, with no engine change. LC-1's original diagnosis was wrong (player targeting always worked; the probe was buggy) -- the real defect was missing target validation. LC-2 was real. Section 2 and section 7 rewritten; the "basic lands only, no player-targeted spells" constraint is lifted. |
 | 2026-09-18 | **Tier 1 content complete at 45 exercises.** Unit 1.4 filled (9 exercises, 2 new tags) and Unit 1.1 filled (4 exercises, no new tags). `tap-for-mana` fixed at one exercise, with the reasoning recorded. L2b exit criteria met. |
 | 2026-09-18 | Unit 1.3 authored and built (9 exercises, 2 new tags). `1.4-04` moved to `1.3-01`, keeping `stableId` `3.1-04`. Unit 1.4 rescoped to 4 skills / 12 exercises. Fixed a false positive in the `units.test.ts` phantom-card check: card names that are whole-word substrings of longer names (Savannah inside Savannah Lions) flagged the shorter card every time. |

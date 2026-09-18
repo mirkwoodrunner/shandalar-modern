@@ -619,6 +619,14 @@ decisions separated out as a Tier 3 skill. See section 4.4._
 
 _Card pool and hosting were resolved 2026-09-16. See section 3 and L4a._
 
+_Decision 4 (whether to generalize `multiSelect` so Tier 1 can teach card types) was resolved
+2026-09-18. **No.** `multiSelect` stays cost-shaped, card types are taught implicitly in Tier 1
+and tested in Tier 2 unit 2.3, and no third exercise type is added. Revisit only if Tiers 4 and
+5 are brought forward. See `docs/LEARN_CURRICULUM.md` section 6 and `docs/DECISIONS.md`._
+
+_Decision 5 (Fan Content Policy verification as a release gate) was resolved 2026-09-18. **Not
+a gate.** No intention to publish or monetise. See L2c above._
+
 No open decisions currently gate any milestone. Add new ones here as they arise, with the
 milestone they gate stated explicitly.
 

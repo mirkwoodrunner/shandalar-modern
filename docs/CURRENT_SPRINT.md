@@ -3,6 +3,30 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode decision closed: `multiSelect` stays cost-shaped** -- Chris's call. Card types
+  are taught implicitly in Tier 1 and tested in Tier 2 unit 2.3. No generalization to a
+  `{stem, options, answer}` type, no third exercise type, no code change.
+  - **Why it holds up:** `MULTI_THEME_CHECKS` derives every expected answer from
+    `castableWith`, so the engine proves it. A free-text stem cannot be engine-verified and
+    makes correctness authorial -- spending the one property this project has over a quiz app
+    on the first content that could not use it. Unit 1.2 already casts an Artifact, an
+    Enchantment and creatures in three colours with the type line rendered on every card, so a
+    learner meets the distinction repeatedly without it being named.
+  - **Accepted consequence, stated plainly:** Tier 1 ships as mana, casting and attacking, and
+    never names or tests a card type. Turn structure and blocking were already Tier 2 (units
+    2.2 and 2.1), gated on L5.
+  - **Revisit trigger recorded:** if Tiers 4 and 5 are brought forward, build the general
+    question type once rather than twice, since that substrate is question-bank-graded anyway.
+  - **Still binding:** Tier 1 must not ship an ungraded text page explaining card types
+    (roadmap 4.4 -- content that cannot be graded is not a lesson). Implicit exposure through
+    graded casting exercises is not such a page.
+  - Also recorded: Fan Content Policy verification is not a release gate (no intent to publish
+    or monetise).
+  - Doc-only change; per `CLAUDE.md` no test run is required. Nothing under `src/` touched.
+  - Edited: `docs/DECISIONS.md` (both decisions), `docs/LEARN_CURRICULUM.md` (section 6 closed,
+    rejected options kept so the reasoning is not re-derived),
+    `docs/LEARN_MODE_ROADMAP.md` (section 8, decisions 4 and 5).
+
 - **Learn Mode: LC-1 and LC-2 resolved** -- both fixed inside `src/learn/` with no engine
   change, so the `CLAUDE.md` Learn Mode boundary rule did not need an exception.
   - **LC-1's original diagnosis was wrong, and is corrected.** It was logged as
