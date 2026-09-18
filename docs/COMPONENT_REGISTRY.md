@@ -102,6 +102,42 @@
   Update these if ActionBar heights change.
 - **data-testid inventory**: `stack-display` (root, both states), `stack-top-card` (full top card), `stack-title-bar` (title bars), `stack-pill` (collapsed pill span), `stack-collapse-btn` (expanded collapse button)
 
+### `ScenarioOverlay`
+- **File**: `src/ui/duel/ScenarioOverlay.tsx` (styles: `ScenarioOverlay.module.css`)
+- **Added**: Learn Mode L3, duel UI scenario mode.
+- **Props**: `title`, `prompt`, `hint?`, `rejection?`, `feedback?` (`{ tone, text }`),
+  `buttons: { id, label, onClick, disabled?, primary? }[]`, `isMobile`
+- **What it is**: the lesson-chrome shell laid over a scenario duel board. Deliberately
+  content-agnostic -- it knows nothing about exercises, goals or grading, and takes strings
+  and callbacks. This is what keeps the dependency one-way: the duel UI never imports from
+  `src/learn/`. `src/learn/ui/ScenarioChrome.tsx` supplies the content.
+- **Mounted only** by a duel screen whose `config.scenario` is true, via the
+  `scenarioPanel` render prop. No campaign or sandbox duel reaches it.
+- **Mobile behavior**: full-width band docked below the topbar, with a show/hide toggle.
+  Top-docked on purpose -- every mobile HUD control (action bar, hand, land pips) sits at
+  the bottom of the compact layout, so the chrome cannot cover any of them.
+- **Desktop behavior**: panel docked top-left, clear of the right sidebar, capped at
+  `min(320px, 30vw)`. The collapse toggle does not render.
+- **Layering**: `z-index: 40` -- above the battlefield, below the mobile log sheet (50)
+  and every modal.
+- **data-testid inventory**: `scenario-overlay` (root), `scenario-title`,
+  `scenario-prompt`, `scenario-hint`, `scenario-rejection`, `scenario-feedback` (carries
+  `data-outcome`), `scenario-<id>-button` (one per button: hint/check/retry/exit),
+  `scenario-collapse-toggle` (mobile only)
+
+### `ScenarioLesson` and `ScenarioChrome`
+- **Files**: `src/learn/ui/ScenarioLesson.tsx`, `src/learn/ui/ScenarioChrome.tsx`
+- **Added**: Learn Mode L3.
+- **ScenarioLesson**: the scenario-mode host. Builds the `DuelConfig`, picks the screen by
+  `useIsMobile()`, and keys it on the lifecycle machine's mount key so a retry remounts.
+  This is the **only** file under `src/learn/` permitted to import the duel screens; the
+  full import allowance is in `CLAUDE.md`, "Learn Mode <-> duel UI boundary".
+- **ScenarioChrome**: the lesson content. Reads the live GameState from the render prop,
+  grades with `checkGoal`, and drives `useScenarioMachine`. Renders through
+  `ScenarioOverlay`.
+- **data-testid inventory**: `scenario-shell`, `scenario-loading`, `scenario-load-error`
+  (ScenarioLesson's pre-mount states)
+
 ---
 
 ## TutorModal (`src/ui/duel/TutorModal.tsx`)

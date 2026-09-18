@@ -371,7 +371,40 @@ decided with completion and return data rather than in the abstract. Note the li
 data: a 40-exercise release shows whether people finish, not whether they return over six
 weeks. Do not over-read it when designing L8 and L9.
 
-### L3. Duel UI scenario mode
+### L3. Duel UI scenario mode (done, 2026-09-18)
+
+Shipped. The built-state spec is `docs/LEARN_MODE.md` section 8; the engine-side contract
+change is `docs/ENGINE_CONTRACT_SPEC.md` S6.3; the revised Learn Mode <-> duel UI import
+boundary is in `CLAUDE.md`, which replaced the rule this milestone made false.
+
+What landed:
+
+- **State injection seam.** `useDuel.js` takes an optional pre-built GameState and
+  short-circuits `buildDuelState` when one is supplied. Reached from the UI as
+  `DuelConfig.initialState`. This was the core blocker; nothing else was possible without it.
+- **Lifecycle machine.** `src/learn/engine/scenarioMachine.ts` -- one discriminated union,
+  a complete `TRANSITIONS` table, and a reducer that refuses any pair not in it. It holds the
+  mount `seed`, never the live GameState, so there is no second source to disagree with
+  DuelCore. Retry resets by remounting on a changed key rather than un-doing state by hand.
+- **Action restriction in the controller.** `useDuelController.ts` wraps the player-facing
+  dispatchers and exposes `isActionAllowed(kind)`; the screens consume the boolean and never
+  make the decision. The AI loop, priority responder, stall watchdog, mulligan modal and
+  game-over auto-exit are all suppressed in scenario mode.
+- **Both viewports together.** `DuelScreen.tsx` and `src/ui/Mobile/DuelScreenMobile.tsx`
+  take the same `scenarioPanel` render prop, handed the live state. The overlay is
+  top-docked on mobile, where every HUD control lives at the bottom, and collapsible.
+- **Playwright at both viewports, in the same prompt.** `tests/e2e/learn-scenario.spec.ts`,
+  13 cases, registered in the `mobile-chrome` project. This is the mitigation named under
+  "Risk" below, delivered with slice one rather than deferred.
+
+Not done, and deliberately: **best-defense grading**. Scenario mode grades with `checkGoal`,
+a snapshot test, which covers Units 1.1 and 1.2 end to end. Unit 1.4's
+`OPPONENT_DEAD_THIS_TURN` exercises need `resolveAttack`'s every-legal-block analysis, which
+asks a different question than "has combat resolved lethally on this board." Porting it is
+its own slice. Until then every shipped exercise still runs on the bespoke lesson player,
+which is untouched. See `docs/LEARN_MODE.md` section 8, "Known limitation."
+
+Original scope, for reference:
 
 Moved ahead of content work. Authoring Tier 2 content against the current bespoke Learn UI
 would mean reworking it twice.
@@ -388,14 +421,15 @@ missing is a duel screen mode that renders an arbitrary mid-game state.
 - Mobile parity from the first slice. The lesson overlay must not collide with the existing
   mobile HUD.
 
-**Boundary change.** `CLAUDE.md` currently forbids Learn Mode prompts from touching UI files
-outside `src/learn/`. This milestone revises that rule and the revision must land in
-`CLAUDE.md` in the same prompt, defining exactly what Learn Mode may import from the duel UI
-and what stays forbidden.
+**Boundary change.** (Done.) `CLAUDE.md` forbade Learn Mode prompts from touching UI files
+outside `src/learn/`. That rule is retired and replaced, in the same prompt, by an explicit
+table of what Learn Mode may import from the duel UI and what stays forbidden. See
+`CLAUDE.md`, "Learn Mode <-> duel UI boundary".
 
-**Risk.** This is the first coupling between Learn Mode and Shandalar's UI. Once it exists,
-every duel UI change can break lessons. Mitigate with Playwright coverage on scenario mode at
-both viewports from slice one, not later.
+**Risk.** (Mitigated.) This is the first coupling between Learn Mode and Shandalar's UI.
+Once it exists, every duel UI change can break lessons. `tests/e2e/learn-scenario.spec.ts`
+landed with slice one and runs at both viewports; two of its cases exist specifically to
+fail if a duel UI change breaks Shandalar or the old lesson player instead.
 
 ### L4a. Learn card pool
 
