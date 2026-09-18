@@ -28,9 +28,22 @@ import { duelReducer, buildDuelState } from '../engine/DuelCore.js';
 - @param {boolean}   [anteEnabled] - Whether ante is active
 - @param {number}    [oppLife]     - Opponent starting life (overrides ruleset.startingLife)
 - @param {string[]}  [binderIds]   - Snapshot of the player's binder card IDs (Ring of Ma'ruf's "outside the game")
+- @param {object}    [prebuiltState] - A fully-formed GameState to start from (Learn Mode
+-                                    scenario mode). When supplied, buildDuelState is NOT
+-                                    called at all: a scenario state has an empty library and
+-                                    buildDuelState's deck handling must never run against it.
+-                                    Absent (the campaign/sandbox default), behaviour is
+-                                    unchanged.
   */
-  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false, oppLife = null, binderIds = []) {
-  const initialState = buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife, binderIds);
+  export function useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled = false, oppLife = null, binderIds = [], prebuiltState = null) {
+  // Short-circuit, not call-then-discard: the ternary's else branch is the only
+  // path that reaches buildDuelState, so a scenario duel never constructs a
+  // deck-derived state. This hook still builds nothing itself and resolves no
+  // rules -- it hands the reducer an initial value and dispatches from there
+  // (ENGINE_CONTRACT_SPEC.md S6).
+  const initialState = (prebuiltState !== null && prebuiltState !== undefined)
+  ? prebuiltState
+  : buildDuelState(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod, anteEnabled, oppLife, binderIds);
   const [state, dispatch] = useReducer(duelReducer, initialState);
 
 // -- Action dispatchers -----------------------------------------------------

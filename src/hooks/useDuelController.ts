@@ -430,6 +430,15 @@ function scoreLibCard(card: any, _state: any): number {
 // turn can go without any state progression before it's treated as a hang.
 const AI_STALL_TIMEOUT_MS = 10000;
 
+/**
+ * Scenario mode (Learn Mode L3) opt-in for an opponent turn. A scenario's
+ * `allowedActions` list is otherwise made of player action kinds; listing this
+ * sentinel is how a scenario says "this exercise needs the AI to act." Absent,
+ * the AI loop, the AI priority-window responder, and the AI stall watchdog are
+ * all suppressed for that duel. Non-scenario duels never consult it.
+ */
+export const SCENARIO_AI_ACTION = 'AI_TURN';
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useDuelController(
@@ -440,19 +449,23 @@ export function useDuelController(
   const {
     state,
     dispatch,
-    tapLand,
-    tapArtifactMana,
-    playLand,
-    castSpell,
+    // The dispatchers renamed to `raw*` here are re-exposed further down under
+    // their original names, wrapped by the scenario action gate. Every other
+    // consumer -- inside this hook and in both screens -- keeps calling the
+    // original name and is unaffected outside scenario mode.
+    tapLand: rawTapLand,
+    tapArtifactMana: rawTapArtifactMana,
+    playLand: rawPlayLand,
+    castSpell: rawCastSpell,
     resolveStack,
-    declareAttacker,
-    declareBlocker,
+    declareAttacker: rawDeclareAttacker,
+    declareBlocker: rawDeclareBlocker,
     advancePhase,
     selectCard,
     selectTarget,
     setX,
-    mulligan,
-    activateAbility,
+    mulligan: rawMulligan,
+    activateAbility: rawActivateAbility,
     chooseLotusColor,
     cancelLotus,
     applyAiActions,
@@ -462,8 +475,8 @@ export function useDuelController(
     resolveTriggerTarget,
     resolveUpkeepChoice,
     resolveConditionalCounter,
-    useChannel,
-    undoManaTaps,
+    useChannel: rawUseChannel,
+    undoManaTaps: rawUndoManaTaps,
     chooseTutor,
     declineTutor,
     chooseTutorTransmute,
@@ -483,9 +496,84 @@ export function useDuelController(
     config.anteEnabled ?? false,
     config.oppLife ?? null,
     config.binderIds ?? [],
+    // Scenario mode (Learn Mode L3): a pre-built GameState from
+    // buildPuzzleState. Absent on every campaign/sandbox path, where useDuel
+    // builds the state from the deck exactly as before.
+    config.initialState ?? null,
   );
 
   const s = state;
+
+  // ── Scenario mode: action restriction ──────────────────────────────────────
+  // Learn Mode L3. This hook is the ONLY place action restriction lives -- the
+  // screens consume `isActionAllowed` to decide what to render and never make
+  // the decision themselves (CLAUDE.md, engine architecture boundaries).
+  //
+  // Restriction is about what the UI OFFERS and performs on the player's
+  // behalf. It is not a legality check: DuelCore remains the sole authority on
+  // whether an action is legal and on every outcome it produces.
+  //
+  // Outside scenario mode (`config.scenario` unset, which is every campaign and
+  // sandbox duel), `isActionAllowed` returns true for everything and every
+  // gated dispatcher below is a pass-through.
+  const scenarioMode = config.scenario === true;
+
+  const allowedActionSet = useMemo(
+    () => (config.allowedActions ? new Set(config.allowedActions) : null),
+    [config.allowedActions],
+  );
+
+  const isActionAllowed = useCallback((kind: string): boolean => {
+    if (!scenarioMode) return true;
+    // No list supplied in scenario mode means nothing is restricted.
+    if (allowedActionSet === null) return true;
+    return allowedActionSet.has(kind);
+  }, [scenarioMode, allowedActionSet]);
+
+  // The AI is opt-IN in scenario mode, not opt-out: a lesson board is a fixed
+  // position and an opponent taking its turn would move it out from under the
+  // learner. A scenario that genuinely needs an opponent turn lists
+  // SCENARIO_AI_ACTION in `allowedActions`.
+  const scenarioAiSuppressed =
+    scenarioMode && !(allowedActionSet?.has(SCENARIO_AI_ACTION) ?? false);
+
+  // Wraps a dispatcher so a scenario that does not offer this action kind
+  // cannot perform it. `useMemo` keeps every wrapper referentially stable, so
+  // effects and callbacks that list them as dependencies behave as before.
+  const onActionRefused = config.onActionRefused;
+  const gated = useMemo(() => {
+    function gate<T extends (...args: any[]) => void>(kind: string, fn: T): T {
+      return ((...args: any[]) => {
+        if (!isActionAllowed(kind)) {
+          onActionRefused?.(kind);
+          return;
+        }
+        fn(...args);
+      }) as T;
+    }
+    return {
+      tapLand: gate('TAP_LAND', rawTapLand),
+      tapArtifactMana: gate('TAP_ART_MANA', rawTapArtifactMana),
+      playLand: gate('PLAY_LAND', rawPlayLand),
+      castSpell: gate('CAST_SPELL', rawCastSpell),
+      declareAttacker: gate('DECLARE_ATTACKER', rawDeclareAttacker),
+      declareBlocker: gate('DECLARE_BLOCKER', rawDeclareBlocker),
+      activateAbility: gate('ACTIVATE_ABILITY', rawActivateAbility),
+      undoManaTaps: gate('UNDO_MANA_TAPS', rawUndoManaTaps),
+      useChannel: gate('USE_CHANNEL', rawUseChannel),
+      mulligan: gate('MULLIGAN', rawMulligan),
+    };
+  }, [
+    isActionAllowed, onActionRefused, rawTapLand, rawTapArtifactMana, rawPlayLand, rawCastSpell,
+    rawDeclareAttacker, rawDeclareBlocker, rawActivateAbility, rawUndoManaTaps,
+    rawUseChannel, rawMulligan,
+  ]);
+
+  const {
+    tapLand, tapArtifactMana, playLand, castSpell,
+    declareAttacker, declareBlocker, activateAbility,
+    undoManaTaps, useChannel, mulligan,
+  } = gated;
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const aiRef = useRef(false);
@@ -496,7 +584,9 @@ export function useDuelController(
   const sandboxHandFired = useRef(false);
 
   // ── UI state ───────────────────────────────────────────────────────────────
-  const [showMulligan, setShowMulligan] = useState(true);
+  // A scenario state is dealt by buildPuzzleState, not drawn from a library --
+  // there is nothing to mulligan and the modal would cover the lesson board.
+  const [showMulligan, setShowMulligan] = useState(config.scenario !== true);
   const [mulliganCount, setMulliganCount] = useState(0);
   const [showLotus, setShowLotus] = useState(false);
   const [showBop, setShowBop] = useState(false);
@@ -559,7 +649,15 @@ export function useDuelController(
   }
 
   // ── Phase advance ──────────────────────────────────────────────────────────
-  const requestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
+  const rawRequestPhaseAdvance = usePhaseAdvance(s, advancePhase, openPriorityWindow);
+
+  // Gated under ADVANCE_PHASE. A scenario that enables the opponent turn
+  // (SCENARIO_AI_ACTION) must therefore also list ADVANCE_PHASE, or the AI
+  // loop's own phase step is refused along with the player's.
+  const requestPhaseAdvance = useCallback(() => {
+    if (!isActionAllowed('ADVANCE_PHASE')) return;
+    rawRequestPhaseAdvance();
+  }, [isActionAllowed, rawRequestPhaseAdvance]);
 
   // ── End Turn (skip-ahead) ───────────────────────────────────────────────────
   // Repeatedly drives the duel forward on the player's behalf: auto-passes the
@@ -569,9 +667,10 @@ export function useDuelController(
   // or phases.js -- it only calls dispatchers that already exist.
   const endTurn = useCallback(() => {
     if (endTurnPending) return;
+    if (!isActionAllowed('ADVANCE_PHASE')) return;
     endTurnStartTurn.current = s.turn;
     setEndTurnPending(true);
-  }, [endTurnPending, s.turn]);
+  }, [endTurnPending, s.turn, isActionAllowed]);
 
   useEffect(() => {
     if (fatalError) return;
@@ -712,6 +811,8 @@ export function useDuelController(
   // Guard on priorityPasser prevents re-firing after the AI has already passed.
   useEffect(() => {
     if (fatalError) return;
+    // Scenario mode: no opponent unless the scenario asked for one.
+    if (scenarioAiSuppressed) return;
     if (!s.priorityWindow || s.priorityPasser === 'o' || s.over) return;
     if (s.active !== 'p') {
       const timer = setTimeout(() => {
@@ -782,6 +883,9 @@ export function useDuelController(
   // ── AI main loop ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (fatalError) return;
+    // Scenario mode: the lesson board is a fixed position. Suppressing this
+    // loop is what keeps it from moving out from under the learner.
+    if (scenarioAiSuppressed) return;
     if (s.over) return;
     if (s.pendingUpkeepChoice) return;
 
@@ -1008,6 +1112,9 @@ export function useDuelController(
   // "Opp thinking..." spinning forever with no diagnosis.
   useEffect(() => {
     if (fatalError || s.over || s.active !== 'o') return;
+    // Nothing is driving the opponent in a scenario with the AI suppressed, so
+    // "the opponent has not yielded priority" is the expected state, not a hang.
+    if (scenarioAiSuppressed) return;
     const timer = setTimeout(() => {
       reportFatalAiError(
         new Error(`AI turn watchdog: opponent has not yielded priority in ${AI_STALL_TIMEOUT_MS}ms`),
@@ -1020,11 +1127,16 @@ export function useDuelController(
   // ── Game-over effect ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!s.over) return;
+    // Scenario mode owns its own ending: a lethal-attack lesson reaching
+    // s.over is the SUCCESS condition, and bouncing the learner out of the
+    // screen three seconds later would throw away the feedback step. The
+    // lesson chrome decides what happens next.
+    if (scenarioMode) return;
     const timer = setTimeout(() => {
       onDuelEnd(s.over.winner === 'p' ? 'win' : 'lose', s);
     }, 3000);
     return () => clearTimeout(timer);
-  }, [s.over]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s.over, scenarioMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mulligan suppression ───────────────────────────────────────────────────
   useEffect(() => {
@@ -1572,6 +1684,13 @@ export function useDuelController(
     // Raw engine state and dispatch
     state,
     dispatch,
+
+    // Scenario mode (Learn Mode L3). `scenarioMode` is false and
+    // `isActionAllowed` returns true for every kind on campaign/sandbox duels.
+    // The screens use these to decide what to RENDER; performing a restricted
+    // action is already blocked by the gated dispatchers above.
+    scenarioMode,
+    isActionAllowed,
 
     // All useDuel action functions
     tapLand,
