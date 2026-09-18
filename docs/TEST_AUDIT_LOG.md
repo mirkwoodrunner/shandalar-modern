@@ -25,6 +25,15 @@ commits behind).
 green: **1350 passed | 0 failed | 257 skipped**, in about 15 seconds. The
 Playwright half is red and its baseline is recorded under Finding 3 below.
 
+`npm run test:audit -- @engine` was run twice at the end of this work. It drew
+`@mobile` once and `@premodern` once, and **neither draw produced a usable
+audit** -- see Findings 5 and 6. The side-effect question the audit exists to
+answer was instead answered directly, and far more thoroughly, by running the
+full Playwright `@engine|@mobile` suite on both this branch and clean
+`origin/main` and diffing at test level (Finding 3, "Branch delta"): no
+regression. No further full-suite diagnostics were run off the back of the
+false `@premodern` STOP.
+
 ### Finding 1 (RESOLVED): `AI.sim.test.js` hang -- an engine bug, not a test bug
 
 **Root cause.** `rollout()` in `src/engine/MCTS.js` looped forever whenever a
@@ -138,61 +147,6 @@ those three sat red.
 **Never done, per the prompt's constraint:** no test was skipped, disabled,
 deleted or quarantined, and no assertion was changed purely to make it pass.
 
-### Finding 4 (NOT in the prompt's scope -- reported, deliberately not fixed)
-
-**Every Vitest run dirties two tracked files.**
-`tests/scenarios/enemy-deck-audit-stub-batch.test.js:83` shells out to
-`tools/enemy-deck-audit/analyze.mjs` with `execFileSync`, and that script writes
-`report.json` and `report.md` back into `tools/enemy-deck-audit/` via
-`writeFileSync(join(__dirname, ...))`. The committed copies were generated
-2026-07-23 against a 709-card `CARD_DB`; the current one is 744, so the rewrite
-is not a no-op and `git status` is dirty after any run that includes this file.
-
-Consequence: any prompt that runs the test suite and then commits will either
-sweep an unrelated regenerated report into its commit or have to remember to
-revert it. That is the same class of problem as the rest of this entry -- the
-gate interfering with the work it is supposed to guard -- so it is recorded
-here rather than left to be rediscovered.
-
-**Not fixed here.** It is outside this prompt's three declared findings and
-CLAUDE.md forbids unsolicited work. The minimal fix would be an output-directory
-override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
-pointing it at a temp dir, leaving the committed reports alone. Two small edits,
-neither in a protected file. Needs Chris's go-ahead.
-
-### Finding 5 (NOT in the prompt's scope -- reported, deliberately not fixed)
-
-**`test:audit` is partly blind: one of the four tags has no Vitest coverage at
-all.** Running `npm run test:audit -- @engine` at the end of this work selected
-`@mobile` as the untouched tag, and its Vitest half reported
-`130 skipped | 1607 skipped` -- it ran nothing.
-
-Counted across every Vitest file:
-
-| `@module-tag` | Files carrying it |
-|---|---|
-| `engine` | 115 |
-| `overworld` | 5 |
-| `learn` | 5 |
-| `premodern` | 1 |
-| **`mobile`** | **0** |
-
-`mobile` is declared in `vite.config.js`'s `tags` array and documented in
-CLAUDE.md's tag taxonomy and file-path lookup table, but no Vitest file uses it.
-Checked whether mobile tests exist but are mistagged -- they do not. The four
-Vitest files that mention "mobile" at all are incidental and correctly tagged
-`engine`. Mobile coverage in this repo is Playwright-only, which is a legitimate
-design outcome.
-
-The consequence is not: when `test:audit` randomly selects `@mobile`, its Vitest
-half is vacuous and its Playwright half is the slow, 261-failure suite. The
-audit then reports either nothing useful or a hard stop that is really just the
-known baseline. `@premodern`, with one file, is thin for the same reason.
-
-**Not fixed here.** Either outcome (tagging files `mobile`, or removing the tag
-from the audit's selection pool) is a change to the tag taxonomy, which CLAUDE.md
-puts behind an explicit decision. Needs Chris's call.
-
 ### Finding 3 (BASELINE ESTABLISHED): Playwright `@engine`/`@mobile`
 
 **Command:** `npx playwright test --grep "@engine|@mobile"`
@@ -216,7 +170,7 @@ run), but a handful of specs are genuinely nondeterministic, on clean
 
 | Spec | Evidence on clean `0fb0ecd` |
 |---|---|
-| `overworld-sprites.spec.ts` (mobile-chrome) | Fails a **different test on each run**: run 1 "tap-to-move sets direction", run 2 "each arrow key sets the matching direction". |
+| `overworld-sprites.spec.ts` (mobile-chrome) | Fails a **different test on each run**: run 1 "tap-to-move sets direction", run 2 "each arrow key sets the matching direction". This closes the open follow-up in the 2026-07-21 entry below, which asked whether this spec fails deterministically or is environment flake. **It is not deterministic.** It is the same frame-timing / keyboard-race class that entry diagnosed -- but note its "container running slow" theory is only half right: these failures also occur *fast* (2.6s, 1.4s), so it is a genuine race, not merely a slow box. Per that entry's own follow-up, it now warrants its own investigation rather than being re-logged indefinitely. |
 | `duel-controller.spec.ts` E2E-CAST-05 (mobile-chrome) | Run 1 fails on a 30s timeout; run 2 passes in 1.5s. |
 | `henchman-visibility.spec.ts`, `sandbox-targeting-modals.spec.ts` | Each flipped state between two full runs. |
 
@@ -361,6 +315,94 @@ between the escape hatch's React-snapshot semantics and the synchronous
 semantics ~20 spec files assume.
 
 ---
+
+### Finding 4 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**Every Vitest run dirties two tracked files.**
+`tests/scenarios/enemy-deck-audit-stub-batch.test.js:83` shells out to
+`tools/enemy-deck-audit/analyze.mjs` with `execFileSync`, and that script writes
+`report.json` and `report.md` back into `tools/enemy-deck-audit/` via
+`writeFileSync(join(__dirname, ...))`. The committed copies were generated
+2026-07-23 against a 709-card `CARD_DB`; the current one is 744, so the rewrite
+is not a no-op and `git status` is dirty after any run that includes this file.
+
+Consequence: any prompt that runs the test suite and then commits will either
+sweep an unrelated regenerated report into its commit or have to remember to
+revert it. That is the same class of problem as the rest of this entry -- the
+gate interfering with the work it is supposed to guard -- so it is recorded
+here rather than left to be rediscovered.
+
+**Not fixed here.** It is outside this prompt's three declared findings and
+CLAUDE.md forbids unsolicited work. The minimal fix would be an output-directory
+override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
+pointing it at a temp dir, leaving the committed reports alone. Two small edits,
+neither in a protected file. Needs Chris's go-ahead.
+
+### Finding 5 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**`test:audit` is partly blind: one of the four tags has no Vitest coverage at
+all.** Running `npm run test:audit -- @engine` at the end of this work selected
+`@mobile` as the untouched tag, and its Vitest half reported
+`130 skipped | 1607 skipped` -- it ran nothing.
+
+Counted across every Vitest file:
+
+| `@module-tag` | Files carrying it |
+|---|---|
+| `engine` | 115 |
+| `overworld` | 5 |
+| `learn` | 5 |
+| `premodern` | 1 |
+| **`mobile`** | **0** |
+
+`mobile` is declared in `vite.config.js`'s `tags` array and documented in
+CLAUDE.md's tag taxonomy and file-path lookup table, but no Vitest file uses it.
+Checked whether mobile tests exist but are mistagged -- they do not. The four
+Vitest files that mention "mobile" at all are incidental and correctly tagged
+`engine`. Mobile coverage in this repo is Playwright-only, which is a legitimate
+design outcome.
+
+The consequence is not: when `test:audit` randomly selects `@mobile`, its Vitest
+half is vacuous and its Playwright half is the slow, 261-failure suite. The
+audit then reports either nothing useful or a hard stop that is really just the
+known baseline. `@premodern`, with one file, is thin for the same reason.
+
+**Not fixed here.** Either outcome (tagging files `mobile`, or removing the tag
+from the audit's selection pool) is a change to the tag taxonomy, which CLAUDE.md
+puts behind an explicit decision. Needs Chris's call.
+
+### Finding 6 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**`test:audit` raises a false hard STOP on `@premodern`.** The final
+`npm run test:audit -- @engine` of this prompt selected `@premodern` and
+reported:
+
+```
+[audit] FAILURE in untouched area "@premodern". This change has a side effect
+        outside its declared scope.
+[audit] STOP. Do not proceed with the current task.
+```
+
+**This is not a regression.** The Vitest half passed outright --
+`1 passed | 129 skipped`, `16 passed`. The Playwright half failed with
+`Error: No tests found`, because **zero Playwright specs carry `@premodern`**
+in their titles (verified: `grep -rl "@premodern" tests/e2e/` returns nothing,
+and `playwright test --grep "@premodern"` reports `Total: 0 tests in 0 files`).
+Playwright exits non-zero on an empty match, and `scripts/run-audit.js` reads
+any non-zero Playwright exit as a failure.
+
+So `@premodern` can never pass an audit, whatever the change under test. Any
+prompt unlucky enough to draw it gets a hard STOP that means nothing, and
+CLAUDE.md's protocol then sends it to Chris for permission to run the full
+suite -- over an empty grep.
+
+Together with Finding 5, **two of the four audit-selectable tags are broken in
+the audit mechanism**: `@mobile` runs zero Vitest tests, `@premodern` always
+fails Playwright. Only `@engine` and `@overworld` audit meaningfully.
+
+**Not fixed here.** The fix is a few lines in `scripts/run-audit.js` (treat "no
+tests found" for a tag as a skip, not a failure) but that script decides whether
+prompts are allowed to proceed, so changing it needs Chris's call.
 
 ## 2026-09-18 -- `npm run test:targeted -- @engine` (Learn Mode L3, scenario mode)
 

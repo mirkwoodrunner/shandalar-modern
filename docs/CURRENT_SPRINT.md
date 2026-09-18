@@ -45,6 +45,13 @@
     half of the `@engine` gate is 15s and green; the Playwright half is 80 minutes with
     261 known failures. The second cannot serve as the per-prompt gate CLAUDE.md mandates
     until the baseline is repaired. Repairing it is its own prompt.
+  - **The audit mechanism itself is partly broken** (found by running it, reported not
+    fixed). Two of its four selectable tags cannot produce a usable audit: `@mobile` has
+    **zero** Vitest files tagged for it, so its Vitest half runs nothing; `@premodern` has
+    **zero** Playwright specs, so Playwright exits non-zero on an empty grep and
+    `run-audit.js` reads that as a **false hard STOP**. Only `@engine` and `@overworld`
+    audit meaningfully. The side-effect question was answered instead by the full
+    two-tree Playwright diff.
   - **Reported, not fixed (outside scope):** every Vitest run rewrites
     `tools/enemy-deck-audit/report.json` and `report.md`, because
     `enemy-deck-audit-stub-batch.test.js` shells out to `analyze.mjs`. Any prompt that
