@@ -189,14 +189,15 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
   engine fix lands for both of the above.
 - The card pool currently used by Learn Mode has no deathtouch, lifelink, or menace
   cards available as a workaround.
-- **LC-1. Player-targeted spells silently do nothing.** Casting a burn spell at the
-  opponent is accepted by `tryAction`, the card leaves hand, and opponent life is
-  unchanged. There is no rejection, which makes this a content trap rather than a
-  missing capability. No exercise at any tier may use a player-targeted spell until it
-  is fixed. Full write-up in `docs/LEARN_CURRICULUM.md` section 7.
-- **LC-2. `TAP_LAND` cannot choose a colour.** `tryAction` passes `produces[0]`, so a
-  dual land always makes its first listed colour. Dual lands must not appear in
-  exercises. Same write-up.
+- ~~**LC-1**~~ and ~~**LC-2**~~ are **resolved** (2026-09-18), both inside `src/learn/` with
+  no engine change. LC-1's original diagnosis was wrong: player targeting always worked, and
+  the probe that "found" the defect returned on its first accepted result without ever testing
+  `tgt: 'o'`. The real defect was that `tryAction` did no target validation, so a targeted
+  spell cast with no target resolved as a silent no-op; it now rejects with `MSG.needsTarget`.
+  LC-2 was real: `TAP_LAND` now takes an optional `color`, validated against the land's
+  `produces`. Burn-for-lethal and dual-land content are both authorable, and the "basic lands
+  only, no player-targeted spells" constraint is lifted. Full write-up in
+  `docs/LEARN_CURRICULUM.md` section 7.
 
 ## 7. Slice history
 
@@ -269,9 +270,10 @@ decisions. Do not duplicate roadmap content here.
   icon, so there is no Wizards logo, set symbol, or lifted mana symbol art to remove. Mana
   renders as the plain cost string. `src/learn/` imports neither `scryfallArt.js` nor
   `useCardArt.js`. Playwright: 28 -> 30.
-  **One open item blocks an actual release:** the notice string could not be verified against
-  the live Fan Content Policy page, because the build environment blocks egress to
-  `company.wizards.com`. See the roadmap's L2c entry.
+  The notice string could not be verified against the live Fan Content Policy page (the build
+  environment blocks egress to `company.wizards.com`). Chris's call, 2026-09-18: this is a fan
+  project with no intent to publish or monetise, so policy exactness is not a gate. Revisit if
+  that changes.
 
 Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L3
 (duel UI scenario mode). Tier 1 is content-complete and release-framed; publishing is a

@@ -3,6 +3,41 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode: LC-1 and LC-2 resolved** -- both fixed inside `src/learn/` with no engine
+  change, so the `CLAUDE.md` Learn Mode boundary rule did not need an exception.
+  - **LC-1's original diagnosis was wrong, and is corrected.** It was logged as
+    "player-targeted spells silently do nothing." Player targeting always worked:
+    `CAST_SPELL` with `tgt: 'o'` deals damage to the opponent and can be lethal, and
+    `tgt: '<iid>'` kills a creature. The probe that "found" the defect returned on its first
+    accepted result, and `tgt: null` is accepted, so it never tested `'o'`. The conclusion came
+    from a control-flow bug in the probe, not from the runner.
+  - **The real LC-1 defect, now fixed:** `tryAction` did no target validation, so a spell
+    requiring a target, cast with none, was accepted, left hand, resolved, and changed nothing.
+    It now rejects with `MSG.needsTarget`. The guard is scoped to instants and sorceries whose
+    text says "target", because several permanents in this pool say "target" in an activated
+    ability they are not cast with -- a Circle of Protection must still cast with no target,
+    and a regression test covers exactly that.
+  - **LC-2 was real, and is fixed.** `TAP_LAND` passed `produces[0]`, so a dual land always
+    made its first colour. The `TAP_LAND` step now takes an optional `color`, validated against
+    the land's `produces` and rejected with `MSG.wrongColor` otherwise. Omitting it preserves
+    the old behaviour, so all 45 existing exercises are untouched. `puzzleChecker`'s
+    enumeration branches over each colour a land produces, so a dual-land exercise explores
+    both options rather than half its search space; a basic produces one colour and costs no
+    extra enumeration.
+  - **Authoring constraint lifted.** "Basic lands only, no player-targeted spells" no longer
+    applies. Burn-for-lethal (Tier 2 `burn-for-lethal`) and dual-land colour content are both
+    authorable now.
+  - **Policy framing softened** per Chris: this is a fan project with no intent to publish or
+    monetise, so the unverified Fan Content Policy string is not a gate. Recorded in the
+    roadmap's L2c entry and `LEARN_MODE.md` rather than left as a standing blocker.
+  - 5 new Vitest cases in `puzzleRunner.test.ts` covering both fixes and the
+    permanent-says-target false-positive guard. `learn:check`: 0 errors, 1 warning (unchanged).
+    Vitest `@learn`: 155 -> 160. Playwright: 30, unchanged.
+  - Edited: `src/learn/engine/puzzleRunner.ts`, `src/learn/engine/types.ts`,
+    `src/learn/engine/puzzleChecker.ts`, `src/learn/__tests__/puzzleRunner.test.ts`,
+    `docs/LEARN_CURRICULUM.md`, `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`,
+    `CLAUDE.md` (pinned `@learn` baseline 155 -> 160).
+
 - **Learn Mode L2c -- fan content notice and release framing** -- the last gate before Tier 1
   can ship. All four roadmap items closed and asserted by new Playwright case `Learn-10` at
   both viewports, so they survive a refactor.

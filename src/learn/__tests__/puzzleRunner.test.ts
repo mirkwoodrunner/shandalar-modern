@@ -176,3 +176,72 @@ describe('@learn-runner-3 combat grading', () => {
     expect(checkGoal(s, { kind: 'OPPONENT_DEAD_THIS_TURN' })).toBe(true);
   });
 });
+
+describe('@learn-runner-tgt targeted casts and land colour choice', () => {
+  const A: any = ['TAP_LAND', 'CAST_SPELL'];
+
+  // LC-2. A dual land used to make produces[0] and nothing else.
+  it('a dual land makes either colour it produces, and refuses one it does not', () => {
+    const base = buildPuzzleState(MAIN({ bf: ['taiga'] }));
+    const dflt = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0' }, A);
+    expect(dflt.ok && dflt.state.p.mana.R).toBe(1);
+
+    const green = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0', color: 'G' }, A);
+    expect(green.ok && green.state.p.mana.G).toBe(1);
+    expect(green.ok && green.state.p.mana.R).toBe(0);
+
+    const white = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0', color: 'W' }, A);
+    expect(white.ok).toBe(false);
+    if (!white.ok) expect(white.reason).toBe(MSG.wrongColor('Taiga', 'W'));
+  });
+
+  it('a basic land ignores a colour it already makes and still rejects a wrong one', () => {
+    const base = buildPuzzleState(MAIN({ bf: ['forest'] }));
+    const ok = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0', color: 'G' }, A);
+    expect(ok.ok && ok.state.p.mana.G).toBe(1);
+    const bad = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0', color: 'U' }, A);
+    expect(bad.ok).toBe(false);
+  });
+
+  // LC-1. A targeted spell with no target used to be accepted, leave hand,
+  // resolve, and change nothing at all.
+  it('a targeted instant with no target is rejected rather than silently fizzling', () => {
+    const base = buildPuzzleState(MAIN({ bf: ['mountain'], hand: ['lightning_bolt'] }, { life: 3, bf: [] }));
+    const tapped = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0' }, A);
+    expect(tapped.ok).toBe(true);
+    if (!tapped.ok) return;
+
+    const noTgt = tryAction(tapped.state, { type: 'CAST_SPELL', iid: 'p-hand-0' }, A);
+    expect(noTgt.ok).toBe(false);
+    if (!noTgt.ok) expect(noTgt.reason).toBe(MSG.needsTarget('Lightning Bolt'));
+  });
+
+  it('a targeted instant aimed at the opponent deals its damage and can be lethal', () => {
+    const base = buildPuzzleState(MAIN({ bf: ['mountain'], hand: ['lightning_bolt'] }, { life: 3, bf: [] }));
+    const tapped = tryAction(base, { type: 'TAP_LAND', iid: 'p-bf-0' }, A);
+    expect(tapped.ok).toBe(true);
+    if (!tapped.ok) return;
+
+    const cast = tryAction(tapped.state, { type: 'CAST_SPELL', iid: 'p-hand-0', tgt: 'o' }, A);
+    expect(cast.ok).toBe(true);
+    if (!cast.ok) return;
+    expect(cast.state.o.life).toBe(0);
+    expect(checkGoal(cast.state, { kind: 'OPPONENT_DEAD_THIS_TURN' })).toBe(true);
+  });
+
+  // The guard is scoped to instants and sorceries on purpose. A permanent whose
+  // rules text says "target" is cast without one.
+  it('a permanent whose text says "target" still casts with no target', () => {
+    let s = buildPuzzleState(MAIN({ bf: ['plains', 'plains'], hand: ['circle_of_protection_red'] }));
+    for (const i of [0, 1]) {
+      const r = tryAction(s, { type: 'TAP_LAND', iid: `p-bf-${i}` }, A);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      s = r.state;
+    }
+    const cast = tryAction(s, { type: 'CAST_SPELL', iid: 'p-hand-0' }, A);
+    expect(cast.ok).toBe(true);
+    if (!cast.ok) return;
+    expect(checkGoal(cast.state, { kind: 'CARD_ON_BATTLEFIELD', cardId: 'circle_of_protection_red' })).toBe(true);
+  });
+});

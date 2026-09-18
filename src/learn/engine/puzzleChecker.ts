@@ -54,6 +54,15 @@ function subsets<T>(items: T[]): T[][] {
   return items.reduce<T[][]>((acc, item) => [...acc, ...acc.map(s => [...s, item])], [[]]);
 }
 
+// Every TAP_LAND step a land offers. A basic makes one colour so this is one
+// step; a dual makes two, and both must be explored or half the search space is
+// invisible to the checker.
+function tapStepsFor(land: any): Step[] {
+  const produces: string[] = land.produces ?? [];
+  if (produces.length <= 1) return [{ type: 'TAP_LAND', iid: land.iid } as Step];
+  return produces.map(color => ({ type: 'TAP_LAND', iid: land.iid, color }) as Step);
+}
+
 // Every legal attacker set, graded. Combat exercises only.
 export function enumerateAttacks(ex: EngineExercise): Line[] {
   const base = buildPuzzleState(ex.setup);
@@ -83,7 +92,7 @@ export function enumerateMainLines(ex: EngineExercise): Line[] {
     const next: { state: any; steps: Step[] }[] = [];
     for (const node of frontier) {
       const candidates: Step[] = [
-        ...node.state.p.bf.filter((c: any) => !c.tapped).map((c: any) => ({ type: 'TAP_LAND', iid: c.iid }) as Step),
+        ...node.state.p.bf.filter((c: any) => !c.tapped).flatMap(tapStepsFor),
         ...node.state.p.hand.map((c: any) => ({ type: 'PLAY_LAND', iid: c.iid }) as Step),
         ...node.state.p.hand.map((c: any) => ({ type: 'CAST_SPELL', iid: c.iid }) as Step),
       ];
@@ -130,7 +139,7 @@ export function countRejectableMoves(ex: EngineExercise): number {
     const next: any[] = [];
     for (const state of frontier) {
       const candidates: Step[] = [
-        ...state.p.bf.filter((c: any) => !c.tapped).map((c: any) => ({ type: 'TAP_LAND', iid: c.iid }) as Step),
+        ...state.p.bf.filter((c: any) => !c.tapped).flatMap(tapStepsFor),
         ...state.p.hand.map((c: any) => ({ type: 'PLAY_LAND', iid: c.iid }) as Step),
         ...state.p.hand.map((c: any) => ({ type: 'CAST_SPELL', iid: c.iid }) as Step),
       ];

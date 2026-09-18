@@ -39,7 +39,19 @@ export const MSG = {
   sick: (name: string) => `${name} came into play this turn. It can't attack yet.`,
   tappedAttacker: (name: string) => `${name} is tapped. It can't attack.`,
   cantAttack: (name: string) => `${name} can't attack.`,
+  wrongColor: (name: string, color: string) => `${name} can't make ${color} mana.`,
+  needsTarget: (name: string) => `${name} needs a target. Choose one.`,
 };
+
+// A spell that must be pointed at something before it does anything. Scoped to
+// instants and sorceries on purpose: permanents in this pool are cast without a
+// target even when their rules text says "target" -- a Circle of Protection's
+// activated ability targets, its casting does not.
+function needsTargetOnCast(card: any): boolean {
+  const type: string = card.type ?? '';
+  if (!/^(Instant|Sorcery)$/.test(type)) return false;
+  return /\btarget\b/i.test(card.text ?? '');
+}
 
 export const MAX_BLOCK_OUTCOMES = 5000;
 const MAX_RESOLVE_STACK = 5;
@@ -139,7 +151,12 @@ export function tryAction(state: any, step: Exclude<Step, { type: 'ATTACK' }>, a
       const land = findIn(state, 'bf', step.iid);
       if (!land || !isLand(land)) return { ok: false, reason: MSG.GENERIC };
       if (land.tapped) return { ok: false, reason: MSG.LAND_TAPPED };
-      const next = duelReducer(state, { type: 'TAP_LAND', who: 'p', iid: step.iid, mana: land.produces?.[0] });
+      const produces: string[] = land.produces ?? [];
+      if (step.color && !produces.includes(step.color)) {
+        return { ok: false, reason: MSG.wrongColor(land.name, step.color) };
+      }
+      const mana = step.color ?? produces[0];
+      const next = duelReducer(state, { type: 'TAP_LAND', who: 'p', iid: step.iid, mana });
       return findIn(next, 'bf', step.iid)?.tapped ? { ok: true, state: next } : { ok: false, reason: MSG.GENERIC };
     }
     case 'PLAY_LAND': {
@@ -153,6 +170,10 @@ export function tryAction(state: any, step: Exclude<Step, { type: 'ATTACK' }>, a
       const card = findIn(state, 'hand', step.iid);
       if (!card || isLand(card)) return { ok: false, reason: MSG.GENERIC };
       if (!canPay(state.p.mana, card.cost)) return { ok: false, reason: MSG.noMana(card.name, card.cost) };
+      // Without this, a targeted spell cast with no target is accepted, leaves
+      // hand, resolves, and changes nothing. Silent no-ops are the worst thing
+      // an authoring tool can do, so reject instead.
+      if (needsTargetOnCast(card) && !step.tgt) return { ok: false, reason: MSG.needsTarget(card.name) };
       const cast = duelReducer(state, { type: 'CAST_SPELL', who: 'p', iid: step.iid, tgt: step.tgt ?? null });
       if (findIn(cast, 'hand', step.iid)) return { ok: false, reason: MSG.GENERIC };
       return { ok: true, state: resolveStack(cast) };

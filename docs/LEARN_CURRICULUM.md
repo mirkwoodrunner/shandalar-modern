@@ -55,6 +55,9 @@ This section is the binding constraint on Tier 1. It was established by probing
 | `PLAY_LAND` | One per puzzle; the second is rejected with `MSG.LAND_LIMIT`. |
 | `CAST_SPELL` | Any nonland card the player can pay for. Resolves through the stack. |
 | `UNDO_MANA_TAPS` | Untaps everything tapped for mana. |
+| `CAST_SPELL` with `tgt: 'o'` or `'p'` | Targets a player. Burn to the face works and can be lethal. |
+| `CAST_SPELL` with `tgt: '<iid>'` | Targets a permanent. |
+| `TAP_LAND` with `color` | Picks which colour a multi-colour land makes. |
 | `DECLARE_ATTACKER` | Committed as a set, then graded against every legal block assignment. |
 | Goal `MANA_IN_POOL` | Colour and amount. |
 | Goal `CARD_ON_BATTLEFIELD` | Matches on `card.id`. Creatures, artifacts, enchantments. |
@@ -71,15 +74,15 @@ real teaching rather than a quiz.
 
 | Gap | Consequence | Evidence |
 |---|---|---|
-| **Player-targeted spells silently no-op.** | No burn-for-lethal content at any tier until fixed. | Lightning Bolt cast at an opponent on 3 life: the cast is accepted, the card leaves hand, `o.life` stays 3. There is no failure, which makes this a content trap, not just a gap. Logged in section 7. |
-| **`TAP_LAND` takes no colour.** | Dual and filter lands always make `produces[0]`. No "choose a colour" content. | Taiga taps for `{R:1}` with no way to ask for G. |
 | **No phase-advance action.** | Turn structure is not gradeable. | `ActionKind` has no advance; `advanceTo` is internal to combat resolution. |
 | **Player is always the attacker.** | Blocking is not gradeable from the player's seat. | `resolveAttack` enumerates the *opponent's* blocks. |
 | **`multiSelect` is cost-shaped.** | It cannot host a question that is not "given these lands, which of these cards can you cast". | Its fields are `lands`, `options`, `answer`. |
 | **No library or graveyard zones in setup.** | No draw, mill, tutor, or mulligan content. | `SideSetup` is `life`, `hand`, `bf`. |
 | **No instants at priority.** | No stack content. | No priority window is exposed to the learner. |
 
-The first two rows are new findings from this pass and were not in the roadmap.
+**Correction, 2026-09-18.** Two rows previously sat in this table claiming that
+player-targeted spells silently no-op and that `TAP_LAND` could not choose a colour. The
+first was a misdiagnosis and the second was real; both are now resolved. See section 7.
 
 ### Policy constraint, which is separate from capability
 
@@ -416,43 +419,54 @@ Roadmap 4.4 is explicit: content that cannot be graded is not a lesson.
 
 ---
 
-## 7. Runner defects found while drafting
+## 7. Runner defects found while drafting (both resolved)
 
-Logged here because they are curriculum blockers, not bugs found during a bug hunt. Neither
-is fixed by this document.
+**LC-1. Corrected diagnosis, then fixed.**
 
-**LC-1. Player-targeted spells silently do nothing.**
-Casting Lightning Bolt with no legal creature target, against an opponent at 3 life, is
-accepted by `tryAction`. The card leaves hand, the stack resolves, and `o.life` is
-unchanged. No rejection, no error.
+This was first logged as "player-targeted spells silently do nothing," which was **wrong**.
+Player targeting works and always did: `CAST_SPELL` with `tgt: 'o'` deals damage to the
+opponent and can be lethal, and `tgt: '<iid>'` kills a creature. The original probe returned
+on the first accepted result, and `tgt: null` is accepted, so it never tested `'o'` at all and
+the conclusion was drawn from a control-flow bug in the probe rather than from the runner.
 
-Severity: this is worse than a missing capability. An author can write a burn-for-lethal
-exercise, and `puzzleChecker` will correctly report `solvable: no legal line reaches the
-goal` — but an author who writes it as a `wrongLines` entry gets a pass for the wrong
-reason. Blocks Tier 2 unit 2.4 (`burn-for-lethal`).
+The real defect was narrower and still worth fixing: `tryAction` did no target validation, so
+a spell that requires a target, cast with no target, was accepted, left hand, resolved, and
+changed nothing. No rejection, no error.
 
-Fix belongs in an L5 targeting slice, alongside the player-target work already noted in
-`CLAUDE.md` under Player Targeting. Until then, no exercise at any tier may use a
-player-targeted spell.
+Fixed in `puzzleRunner.ts`. A cast is now rejected with `MSG.needsTarget` when the card is an
+instant or sorcery whose rules text says "target" and no `tgt` was supplied. The guard is
+scoped to instants and sorceries deliberately: several permanents in this pool say "target" in
+an activated ability they are not cast with, and a Circle of Protection must still cast with
+no target. That case is covered by a regression test.
 
-**LC-2. `TAP_LAND` cannot choose a colour.**
-`tryAction` passes `mana: land.produces?.[0]`, so a dual land always produces its first
-listed colour. Blocks any "which colour do you need" content and means dual lands must not
-appear in Tier 1 exercises at all, since a learner tapping a Taiga expecting green would be
-told they are wrong by an implementation detail.
+**Consequence:** burn-for-lethal content is authorable at any tier. The Tier 2 skill
+`burn-for-lethal` is unblocked.
 
-Fix: `Step` gains an optional colour on `TAP_LAND`. Small, but it is runner work and
-belongs in an L5 slice, not a content slice.
+**LC-2. Real, and fixed.**
 
-**Constraint on L2b authoring, until both are fixed:** basic lands only, no player-targeted
-spells.
+`tryAction` passed `mana: land.produces?.[0]`, so a dual land always made its first listed
+colour and a learner tapping a Taiga for green would have been told they were wrong by an
+implementation detail.
 
----
+Fixed in `puzzleRunner.ts` and `types.ts`. The `TAP_LAND` step takes an optional `color`,
+validated against that land's `produces` and rejected with `MSG.wrongColor` if the land cannot
+make it. Omitting `color` keeps the old behaviour, so every existing exercise is unchanged.
+`puzzleChecker`'s enumeration branches over each colour a land produces, so a dual-land
+exercise explores both options instead of half the search space. A basic produces one colour
+and therefore costs no extra enumeration.
+
+**Consequence:** dual lands are usable in exercises, and "which colour do you need" is
+authorable.
+
+**The authoring constraint these imposed is lifted.** Earlier units were written under
+"basic lands only, no player-targeted spells." That restriction no longer applies. Units 1.1
+to 1.4 were authored under it and are unaffected; new content is free of it.
 
 ## 8. Change log
 
 | Date | Change |
 |---|---|
+| 2026-09-18 | LC-1 and LC-2 resolved in `puzzleRunner.ts`, inside the Learn Mode boundary, with no engine change. LC-1's original diagnosis was wrong (player targeting always worked; the probe was buggy) -- the real defect was missing target validation. LC-2 was real. Section 2 and section 7 rewritten; the "basic lands only, no player-targeted spells" constraint is lifted. |
 | 2026-09-18 | **Tier 1 content complete at 45 exercises.** Unit 1.4 filled (9 exercises, 2 new tags) and Unit 1.1 filled (4 exercises, no new tags). `tap-for-mana` fixed at one exercise, with the reasoning recorded. L2b exit criteria met. |
 | 2026-09-18 | Unit 1.3 authored and built (9 exercises, 2 new tags). `1.4-04` moved to `1.3-01`, keeping `stableId` `3.1-04`. Unit 1.4 rescoped to 4 skills / 12 exercises. Fixed a false positive in the `units.test.ts` phantom-card check: card names that are whole-word substrings of longer names (Savannah inside Savannah Lions) flagged the shorter card every time. |
 | 2026-09-18 | Unit 1.2 authored and built (12 exercises, 3 new tags). `cast-sequencing` dropped for overlapping `land-per-turn`; `pay-exact-mana` replaced it. **Correction:** `lethal-first-strike` and `lethal-trample` were wrongly marked green -- `units.test.ts` `BLOCKED_KEYWORDS` bans both. Moved to Tier 2; `lethal-flying-defender` replaces them in Unit 1.4. Section 2 gains the policy-constraint subsection. |

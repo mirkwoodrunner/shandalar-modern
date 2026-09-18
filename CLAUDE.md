@@ -371,7 +371,7 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 155 passing |
+| `npm run test:targeted -- @learn` | 160 passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 

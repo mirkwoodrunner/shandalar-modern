@@ -217,7 +217,10 @@ Two runner defects surfaced during drafting and are logged as LC-1 and LC-2 in
 `LEARN_CURRICULUM.md` section 7. LC-1 (player-targeted spells silently no-op) is the
 more serious: it is a content trap, not a missing capability, and it blocks
 burn-for-lethal content at every tier. Both fixes belong in L5 slices. Until they land,
-L2b authors basic lands only and no player-targeted spells.
+L2b authored basic lands only and no player-targeted spells. **Both defects were resolved on
+2026-09-18** inside `src/learn/`, and that constraint is lifted -- see
+`docs/LEARN_CURRICULUM.md` section 7. LC-1's original diagnosis was also wrong; the write-up
+explains why.
 
 One open decision was raised rather than settled: applying L2's own exit criterion
 strictly pushes card types, turn structure, and blocking out of Tier 1, so the first
@@ -318,12 +321,12 @@ form: unofficial Fan Content permitted under the Fan Content Policy, not approve
 Wizards, portions of the materials used are property of Wizards of the Coast, copyright
 Wizards of the Coast LLC.
 
-> **Open item for Chris, and the one thing blocking an actual release.** The notice string
-> was written from the policy's long-standing wording and **could not be verified against the
-> live page**: the build environment blocks egress to `company.wizards.com`. Policy text
-> changes. Check it against the current Fan Content Policy before publishing. This is the one
-> string in the app where approximately right is not good enough, and it is flagged in a
-> comment above the constant as well as here.
+> **Verification status, and Chris's call.** The notice was written from the policy's
+> long-standing wording and could not be checked against the live page: the build environment
+> blocks egress to `company.wizards.com`. **Chris, 2026-09-18: not a gate.** This is a fan
+> project with no intention to publish or monetise, and policy questions get addressed if and
+> when they become real. The notice is present and accurate to the best available knowledge;
+> verify it only if publishing ever becomes the plan.
 
 **2. Asset audit: clean.** Nothing under `src/learn/` references an image, stylesheet
 background, or icon of any kind -- no `<img>`, no `.png`/`.jpg`/`.svg`/`.webp`, no
@@ -348,7 +351,7 @@ nothing to buy, which is the Fan Content Policy's core condition and Scryfall's,
 the product rather than only in a doc.
 
 **Not done here, and deliberately:** nothing was published. Deciding to release is Chris's
-call, not a milestone checkbox, and the notice above must be verified first.
+call, not a milestone checkbox.
 
 Original scope, for reference:
 
