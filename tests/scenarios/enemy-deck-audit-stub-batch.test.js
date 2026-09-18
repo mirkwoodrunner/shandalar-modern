@@ -18,7 +18,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { CARD_DB, validateCardIds } from '../../src/data/cards.js';
@@ -80,16 +81,24 @@ describe('@engine @premodern Scenario: enemy-deck-audit stub batch (mana batteri
   });
 
   it('running the audit tool reports 100% coverage on both enemy deck packs', () => {
-    execFileSync(process.execPath, [join(ROOT, 'tools', 'enemy-deck-audit', 'analyze.mjs')], {
-      cwd: ROOT,
-      stdio: 'pipe',
-    });
-    const report = JSON.parse(
-      readFileSync(join(ROOT, 'tools', 'enemy-deck-audit', 'report.json'), 'utf8')
-    );
-    expect(report.rollups.original.coveragePct).toBe(100);
-    expect(report.rollups['spells-of-the-ancients'].coveragePct).toBe(100);
-    expect(report.rollups.original.missingCardFrequency).toEqual([]);
-    expect(report.rollups['spells-of-the-ancients'].missingCardFrequency).toEqual([]);
+    // The analyzer is run for real, end to end -- but into a throwaway directory
+    // via ENEMY_DECK_AUDIT_OUT_DIR, so a test run never rewrites the committed
+    // tools/enemy-deck-audit/report.{json,md}. See docs/TEST_AUDIT_LOG.md,
+    // 2026-09-18, Finding 4.
+    const outDir = mkdtempSync(join(tmpdir(), 'enemy-deck-audit-'));
+    try {
+      execFileSync(process.execPath, [join(ROOT, 'tools', 'enemy-deck-audit', 'analyze.mjs')], {
+        cwd: ROOT,
+        stdio: 'pipe',
+        env: { ...process.env, ENEMY_DECK_AUDIT_OUT_DIR: outDir },
+      });
+      const report = JSON.parse(readFileSync(join(outDir, 'report.json'), 'utf8'));
+      expect(report.rollups.original.coveragePct).toBe(100);
+      expect(report.rollups['spells-of-the-ancients'].coveragePct).toBe(100);
+      expect(report.rollups.original.missingCardFrequency).toEqual([]);
+      expect(report.rollups['spells-of-the-ancients'].missingCardFrequency).toEqual([]);
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
   });
 });
