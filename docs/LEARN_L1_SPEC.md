@@ -1,7 +1,9 @@
 # Learn Mode L1 Spec — Persistence, Profile, and Onboarding Survey
 
-_Written 2026-09-18. Specification only. Nothing in this document is implemented. It is the
-direct input to the implementation prompt for `docs/LEARN_MODE_ROADMAP.md` milestone L1._
+_Written 2026-09-18. Implemented 2026-09-18, with four corrections (C1-C4) applied during
+implementation and folded into this document below. Each correction is marked inline where it
+supersedes the original text, with a short note on why. Sections not touched by a correction are
+unchanged from the original spec that shipped as the direct input to this milestone._
 
 Prerequisite context: `src/learn/hooks/useLessonPlayer.ts` currently holds all lesson state in
 `useState` (`index`, `state`, `selectedAttackers`, `selectedOptions`, `feedback`, `hintShown`).
@@ -29,6 +31,12 @@ interface LearnSaveV1 {
   };
   exercises: Record<string, ExerciseRecord>;      // keyed by stableId, see below
   dailyActivity: Record<string, DailyActivityRecord>; // keyed by "YYYY-MM-DD", device-local date
+  // Reserved for L9's streak roll-up. C3 (below): L1 writes empty/zero
+  // defaults and never modifies them. When L9 lands, days in dailyActivity
+  // older than 400 collapse into monthly totals here, with longestStreak
+  // computed before day granularity is discarded.
+  monthlyActivity: Record<string, MonthlyActivityRecord>; // "YYYY-MM", empty in L1
+  longestStreak: number;                                   // 0 in L1
 }
 
 interface ExerciseRecord {
@@ -42,11 +50,30 @@ interface ExerciseRecord {
                                 // content-quality diagnostic (an exercise most users need a hint
                                 // for is a badly written exercise), never as a score input.
   lastCompletedAt?: string;    // ISO 8601 timestamp of the most recent SUCCESS. Absent if the
-                                // exercise has never been completed successfully.
+                                // exercise has never been completed successfully. This is also
+                                // the field the L1 implementation uses to derive resume position
+                                // (section 4, correction C4) -- NOT firstTrySuccess, since an
+                                // exercise that failed once and then succeeded on retry has
+                                // firstTrySuccess === false forever but is genuinely complete.
 }
 
+// CORRECTION C2 (implementation). The original spec defined this record as
+// successful completions only ("exercisesCompleted"). That credits nothing
+// to a learner who works for an hour and fails everything -- exactly the
+// learner who most needs encouragement, not zero credit. Revised shape:
 interface DailyActivityRecord {
-  exercisesCompleted: number;  // count of successful completions on that calendar day
+  attemptsCompleted: number;      // arrivals at FEEDBACK_SUCCESS or FEEDBACK_FAIL
+  successfulCompletions: number;  // arrivals at FEEDBACK_SUCCESS only
+}
+
+// CORRECTION C3 (implementation). New in L1's shipped shape. Reserving
+// these fields now costs nothing and is impossible to reconstruct later
+// (see decision 5's "cheap now, impossible retroactively" reasoning, which
+// this reuses). L1 does not implement the roll-up itself -- no pruner, no
+// streak computation -- only the shape.
+interface MonthlyActivityRecord {
+  attemptsCompleted: number;
+  successfulCompletions: number;
 }
 ```
 
@@ -97,12 +124,15 @@ function isValidLearnSave(value: unknown): value is LearnSaveV1 {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   if (v.schemaVersion !== SCHEMA_VERSION) return false;
-  for (const key of ['createdAt', 'updatedAt', 'onboarding', 'exercises', 'dailyActivity']) {
+  // Includes monthlyActivity and longestStreak per correction C3.
+  for (const key of ['createdAt', 'updatedAt', 'onboarding', 'exercises', 'dailyActivity', 'monthlyActivity', 'longestStreak']) {
     if (!(key in v)) return false;
   }
   if (typeof v.onboarding !== 'object' || v.onboarding === null) return false;
   if (typeof v.exercises !== 'object' || v.exercises === null) return false;
   if (typeof v.dailyActivity !== 'object' || v.dailyActivity === null) return false;
+  if (typeof v.monthlyActivity !== 'object' || v.monthlyActivity === null) return false;
+  if (typeof v.longestStreak !== 'number') return false;
   return true;
 }
 ```
@@ -180,11 +210,27 @@ Legal transitions:
 4. `FEEDBACK_FAIL -> EXERCISE_ACTIVE` (via `retry()`): reloads the same exercise id, fresh puzzle
    state. **This is the other half of the ghost-state trap.** `retry()` must not re-fire the
    write from transition 3 -- the write happens once, at the moment `FEEDBACK_FAIL` is entered,
-   not again when leaving it. A React-state implementation must write on the transition
-   (in the setter that produces the fail feedback), not in an effect keyed on `feedback` that
-   could re-run on unrelated re-renders.
+   not again when leaving it.
+
+   **CORRECTION C1 (implementation, blocking).** The original text here said to write "in the
+   setter that produces the fail feedback" and separately warned against an effect keyed on
+   `feedback`. Both are wrong, for the same underlying reason: `src/learn/main.tsx` wraps
+   `LearnApp` in `React.StrictMode`, which double-invokes state updater FUNCTIONS
+   (`setFoo(prev => ...)`) in development. A `localStorage` write placed inside such an updater
+   fires twice, so `attempts` increments by 2 in dev and 1 in production -- a flaky-looking bug
+   that only shows up against the dev server Playwright runs against. The correct placement is
+   the event handler that causes the transition (`tapCard`, `attack`, `checkMultiSelect` in
+   `useLessonPlayer.ts`), calling `recordAttemptAndPersist` as a direct statement alongside (not
+   inside) the `setFeedback({...})` call, which is itself a plain object argument, not a
+   functional updater. The handler runs exactly once per real user action regardless of
+   StrictMode.
 5. `FEEDBACK_SUCCESS -> EXERCISE_ACTIVE` (via `next()`, `index + 1 < total`): loads the next
-   exercise in the unit. Also updates the app-level resume position (section 4).
+   exercise in the unit.
+
+   **CORRECTION C4 (implementation).** The original text here said `next()` "updates the
+   app-level resume position." `LearnSaveV1` has no field for a resume position and never
+   gains one -- see section 4's correction below. `next()` writes nothing; the transition-2/3
+   write into `exercises` already recorded everything resume derivation needs.
 6. `FEEDBACK_SUCCESS -> UNIT_COMPLETE` (via `next()`, `index + 1 >= total`).
 7. `UNIT_COMPLETE -> UNIT_LIST` (`onExit()`), or `EXERCISE_ACTIVE`/`FEEDBACK_SUCCESS`/
    `FEEDBACK_FAIL -> UNIT_LIST` (`onExit()` at any point).
@@ -222,13 +268,35 @@ from picking an answer, since every answer including "never played" is valid inp
 survey, `onboarding = { completed: true, startingTier }` is written and the user lands on
 `UNIT_LIST`.
 
-**Save present.** On mount, `LearnApp` resumes the app-level position it last held: if the user
-was `IN_LESSON`, the resumed `LessonPlayer` starts at `EXERCISE_ACTIVE` for the first
-not-yet-`firstTrySuccess`-completed exercise in that unit's `exercises` array walked in order,
-falling back to `UNIT_COMPLETE` if every exercise in the unit already has a success record. This
-is "resume at the correct exercise," not "resume mid-puzzle-click" -- the puzzle state itself
-(`buildPuzzleState`) is always rebuilt fresh for that exercise; there was never a mechanism to
-resume a half-tapped board, and this spec does not add one.
+**Implementation note: the survey is an overlay, and a deep link bypasses it entirely.** The
+shipped `OnboardingSurvey` renders as a full-screen modal overlay on top of the (always-rendered)
+unit list rather than replacing it -- this keeps `Learn-01`'s assertion that the unit buttons are
+present and visible on a bare `/learn.html` load true regardless of onboarding state, while the
+overlay's `position: fixed` backdrop still blocks real pointer interaction with anything under it
+until the survey is answered, satisfying "before the unit list is usable." Separately, an explicit
+`?exercise=` deep link bypasses the survey gate unconditionally, even for a first-time visitor:
+without this, `Learn-02` through `Learn-07` (which deep-link straight into a lesson on fresh
+storage) would have the overlay intercept their first click. This is a necessary extension of the
+"deep link wins" precedence rule below to the survey gate itself, made to keep the existing
+Playwright regression suite passing unmodified; it was not one of the four corrections but follows
+directly from the same precedence reasoning.
+
+**CORRECTION C4 (implementation, replaces this subsection's "Save present" case below and the
+subsection after it).** The original text below described `LearnApp` resuming "the app-level
+position it last held" if the user was `IN_LESSON` on last save. `LearnSaveV1` has no field
+recording that position and never gains one. **Resolution: store nothing.** On every load,
+`LearnApp` always starts at `UNIT_LIST` -- there is no mid-lesson resume across a page reload, by
+design, not as a gap. What resumes is the *position within a unit* once the user re-enters it:
+
+**Save present, unit re-entered.** When the user clicks a unit button, `LessonPlayer` starts at
+`EXERCISE_ACTIVE` for the first exercise (by `stableId`) in that unit's `exercises` array, walked
+in order, that lacks a `lastCompletedAt` (i.e., has never been completed successfully) -- not the
+first exercise lacking `firstTrySuccess`, since an exercise that failed once and then succeeded on
+retry has `firstTrySuccess === false` forever but is genuinely done and must not block resume.
+Falls back to `UNIT_COMPLETE` if every exercise in the unit already has `lastCompletedAt` set.
+This is "resume at the correct exercise on re-entry," not "resume mid-puzzle-click" or "resume
+straight into the lesson on page load" -- the puzzle state itself (`buildPuzzleState`) is always
+rebuilt fresh for that exercise, and re-entry always goes back through `UNIT_LIST` first.
 
 **What happens to the current `useState` progress in `useLessonPlayer.ts`.** Nothing needs
 migrating, because there is nothing durable to migrate: today, a refresh already wipes `index`,
@@ -236,9 +304,9 @@ migrating, because there is nothing durable to migrate: today, a refresh already
 none of it has ever survived a reload. L1 does not change that for the *in-flight* UI state
 (tapped lands, current selection, current feedback); those remain plain `useState`, reset on
 every mount, exactly as today. What changes is that the *durable facts* (which exercises have a
-completed attempt, and the unit-level position derived from them) now come from `localStorage` on
-mount instead of always starting at `startIndex`. In short: in-flight progress is **discarded**
-(as it always was); only completion records go forward.
+completed attempt) now come from `localStorage` and are consulted the moment a unit is (re-)entered
+instead of always starting at index 0. In short: in-flight progress is **discarded** (as it always
+was); only completion records go forward, and only a unit's own entry point consults them.
 
 ---
 
@@ -341,34 +409,63 @@ Vitest, `@module-tag learn`, alongside the existing `puzzleRunner.test.ts` /
 - **Stable ids survive renumbering.** Given two exercise objects with the same `stableId` but
   different `id` (simulating a post-renumber state), a save recorded under the old `id`'s exercise
   is still found via `stableId` after the objects' `id` fields change.
-- **Resume position.** Given a save where unit `"1.1"`'s first N exercises (by `stableId`) have
-  `firstTrySuccess` records and the rest do not, `LearnApp`'s resume logic picks the first
-  exercise in that unit without a success record, not the deep-link default of index 0.
 - **Reset.** `resetProgress()` clears `learn:progress` and a subsequent `load()` returns "no
   save" (i.e., the app's next mount behaves as a first-load visitor).
-- **Daily activity.** Two successful completions on the same device-local date produce one
-  `dailyActivity` entry with `exercisesCompleted === 2`. Completions straddling a date boundary
-  (mock the clock) produce two separate date-keyed entries.
 - **Onboarding mapping.** Each of the documented Q1/Q2/Q3 combinations in section 5 maps to the
   stated `startingTier`. Calling the override setter changes `startingTier` without touching
   `onboarding.completed` or requiring the survey again.
 
+**Added during implementation, per corrections C1-C4** (shipped in
+`src/learn/__tests__/persistence.test.ts`):
+
+- **C1 regression.** A direct call to the write path increments `attempts` by exactly one.
+  Since this suite runs Vitest under `environment: 'node'` (no jsdom/React renderer available,
+  and none was added for this milestone), full `React.StrictMode` double-invocation isn't
+  exercised end-to-end; instead the test simulates the double-invoked-updater mechanism directly
+  (calling a stand-in side effect twice, as StrictMode would call a functional updater) to show
+  why the write must live outside it, then asserts the real write function is called once per
+  real event.
+- **C2.** A failed attempt increments `dailyActivity[date].attemptsCompleted` and leaves
+  `successfulCompletions` unchanged. A success increments both.
+- **C3.** A newly created save has `monthlyActivity === {}` and `longestStreak === 0`.
+  `isValidLearnSave` (exercised via `loadLearnSave`) rejects a blob missing either field.
+  `recordAttempt` never touches either field.
+- **C4 (replaces the original "Resume position" case, which assumed a stored pointer).** Given a
+  save where a unit's first N exercises (by `stableId`) have `lastCompletedAt` set and the rest do
+  not, `deriveResumeIndex` returns N. An exercise that failed once and then succeeded on retry
+  (`firstTrySuccess === false`, `lastCompletedAt` set) still counts as complete for this purpose.
+  Given every exercise has `lastCompletedAt` set, the derived index equals the unit's length
+  (`UNIT_COMPLETE`). With no save at all, the derived index is 0. `LearnSaveV1` has no
+  `lastUnit`/`resumePosition` field of any kind.
+- **Daily activity date boundary.** Two successful completions on the same device-local date
+  produce one `dailyActivity` entry with `successfulCompletions === 2`. Completions straddling a
+  date boundary (mocked via `vi.setSystemTime`) produce two separate date-keyed entries.
+
 Playwright, `@learn-` prefix, both `chromium` and `mobile-chrome` projects (per section 6, no
 viewport-specific assertions are expected to differ, but both run per the project's existing
-`testMatch` convention), added to `tests/e2e/learn-slice.spec.ts` or a new
-`tests/e2e/learn-persistence.spec.ts`:
+`testMatch` convention), shipped as `tests/e2e/learn-persistence.spec.ts` (`learn-slice.spec.ts`
+itself is untouched, per the STOP condition against editing it):
 
-- **First-load survey.** A fresh browser context (`storageState` cleared) visiting `/learn.html`
-  sees the onboarding survey before the unit list is interactive; answering it lands on
-  `UNIT_LIST` and a subsequent reload does not show the survey again.
-- **Refresh mid-unit resumes at the right exercise.** Complete exercise 1 of a unit, refresh,
-  assert the lesson player shows exercise 2, not exercise 1 -- this is the L1 exit criterion
-  ("Refresh mid-unit and resume exactly") made concrete.
+- **First-load survey.** A fresh browser context (Playwright's per-test default, no
+  `storageState` configured) visiting `/learn.html` sees the onboarding survey overlay;
+  answering it lands on `UNIT_LIST` and a subsequent reload does not show the survey again.
+- **Refresh mid-unit, re-entry resumes at the right exercise (C4).** Complete exercise 1 of a
+  unit, reload the page (which always lands on `UNIT_LIST` per C4 -- there is no automatic
+  re-entry into the lesson), then click the same unit again and assert the lesson player opens on
+  exercise 2, not exercise 1. This is the L1 exit criterion ("Refresh mid-unit and resume
+  exactly") made concrete under the derivation rather than a stored pointer.
 - **Reset progress.** Trigger the reset control, assert the next `/learn.html` visit shows the
   onboarding survey again (equivalent to a first-load visitor).
+- **Deep link wins over derivation.** Complete exercise 1 of a unit (so the derivation would now
+  resume at exercise 2), then navigate directly to `?exercise=<exercise-1-id>` and assert it opens
+  exercise 1, confirming the precedence rule in section 3 holds under the C4 derivation too.
+- **Storage disabled.** With every `localStorage` method made to throw (via
+  `page.addInitScript`), a deep-linked lesson still loads and an exercise is completable, with no
+  page error and no crash.
 - **Regression: existing slice-1 flows unaffected.** `Learn-01` through `Learn-08` in
   `tests/e2e/learn-slice.spec.ts` continue to pass unmodified with persistence wired in --
-  confirms a visitor who is mid-survey or has no save yet doesn't get a broken lesson player.
+  confirms a visitor who is mid-survey or has no save yet doesn't get a broken lesson player, and
+  that a `?exercise=` deep link bypasses the survey overlay (see section 4's implementation note).
 
 ---
 

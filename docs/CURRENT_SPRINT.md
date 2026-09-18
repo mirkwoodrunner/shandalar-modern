@@ -2,6 +2,33 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-18)
+- **Learn Mode L1 -- persistence, profile, onboarding survey** -- new save layer
+  (`src/learn/persistence.ts`, `learn:progress` key, mirrors `usePersistence.ts`'s
+  shape-validation pattern), an onboarding survey gating the unit list until answered
+  (bypassed by a `?exercise=` deep link), and a derived (not stored) per-unit resume position.
+  Four corrections applied to `docs/LEARN_L1_SPEC.md` during implementation: **C1** -- the
+  attempt write fires in the event handler (`tapCard`/`attack`/`checkMultiSelect`), never inside
+  a `setState` updater, since `React.StrictMode` double-invokes those in dev and would double
+  `attempts`. **C2** -- `dailyActivity` now records `attemptsCompleted` and
+  `successfulCompletions` separately, crediting every completed attempt, not only successes.
+  **C3** -- `monthlyActivity` and `longestStreak` are reserved in the save shape for L9's future
+  roll-up; L1 writes empty/zero defaults and implements no roll-up or pruning logic. **C4** -- no
+  stored resume position exists; a unit's start index is derived from `exercises` records
+  (`lastCompletedAt` presence, not `firstTrySuccess`) every time that unit is re-entered.
+  `learn-slice.spec.ts` Learn-01 through Learn-08 pass unmodified. Vitest `@learn`: 57 -> 90.
+  Playwright: `learn-slice.spec.ts` unchanged at 16 passing; new `learn-persistence.spec.ts` at
+  10 passing.
+  - New: `src/learn/persistence.ts`, `src/learn/hooks/useLearnProgress.ts`,
+    `src/learn/ui/OnboardingSurvey.tsx`, `src/learn/__tests__/persistence.test.ts`,
+    `tests/e2e/learn-persistence.spec.ts`.
+  - Edited: `src/learn/engine/types.ts` (`stableId`), `src/learn/data/units.ts` (`stableId` on
+    all 12 exercises), `src/learn/hooks/useLessonPlayer.ts`, `src/learn/LearnApp.tsx`,
+    `src/learn/ui/learn.css`, `playwright.config.js` (registered the new spec in the
+    `mobile-chrome` project's `testMatch`), `CLAUDE.md` (baseline table, Learn Mode section),
+    `docs/LEARN_L1_SPEC.md`, `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`,
+    `docs/COMPONENT_REGISTRY.md`.
+
 ## Completed (2026-09-16)
 - **Learn Mode decision closure and process fixes** -- audited Learn Mode for doc-to-code
   drift, added a base-freshness rule and a pinned Learn Mode test baseline to `CLAUDE.md`,

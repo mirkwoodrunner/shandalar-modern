@@ -11,6 +11,7 @@ import {
   resolveAttack,
   tryAction,
 } from '../engine/puzzleRunner';
+import { recordAttemptAndPersist } from '../persistence';
 import type { EngineExercise, Exercise, Unit } from '../engine/types';
 
 export type CardView = { id: string } & ReturnType<typeof cardInfo>;
@@ -95,6 +96,10 @@ export function useLessonPlayer(unit: Unit, startIndex = 0) {
         setFeedback(null);
         if (checkGoal(result.state, ex.goal)) {
           setFeedback({ result: 'success', text: ex.explanation });
+          // Write happens here, in the event handler, never inside a
+          // setState updater -- see docs/LEARN_L1_SPEC.md section 3,
+          // correction C1.
+          recordAttemptAndPersist(ex.stableId, 'success', hintShown);
         }
       } else if (state.phase === 'COMBAT_ATTACKERS') {
         const bfCard = state.p.bf.find((c: any) => c.iid === iid);
@@ -119,7 +124,7 @@ export function useLessonPlayer(unit: Unit, startIndex = 0) {
         throw e;
       }
     }
-  }, [exercise, state, feedback, selectedAttackers]);
+  }, [exercise, state, feedback, selectedAttackers, hintShown]);
 
   const undoTaps = useCallback(() => {
     if (!exercise || exercise.kind !== 'engine' || !state) return;
@@ -154,8 +159,10 @@ export function useLessonPlayer(unit: Unit, startIndex = 0) {
       setState(result.worstCase.finalState);
       if (result.lethal) {
         setFeedback({ result: 'success', text: ex.explanation });
+        recordAttemptAndPersist(ex.stableId, 'success', hintShown);
       } else {
         setFeedback({ result: 'fail', text: result.summary });
+        recordAttemptAndPersist(ex.stableId, 'fail', hintShown);
       }
     } catch (e) {
       if (isLearnError(e)) {
@@ -165,7 +172,7 @@ export function useLessonPlayer(unit: Unit, startIndex = 0) {
         throw e;
       }
     }
-  }, [exercise, state, selectedAttackers]);
+  }, [exercise, state, selectedAttackers, hintShown]);
 
   const toggleOption = useCallback((cardId: string) => {
     if (feedback?.result === 'success' || feedback?.result === 'fail') return;
@@ -178,7 +185,8 @@ export function useLessonPlayer(unit: Unit, startIndex = 0) {
     const b = [...exercise.answer].sort();
     const match = a.length === b.length && a.every((x, i) => x === b[i]);
     setFeedback({ result: match ? 'success' : 'fail', text: exercise.explanation });
-  }, [exercise, selectedOptions]);
+    recordAttemptAndPersist(exercise.stableId, match ? 'success' : 'fail', hintShown);
+  }, [exercise, selectedOptions, hintShown]);
 
   const showHint = useCallback(() => setHintShown(true), []);
 
