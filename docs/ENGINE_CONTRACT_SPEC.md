@@ -313,6 +313,55 @@ useDuel.js must NEVER:
 
 ---
 
+## 6.3 Caller-Supplied Initial State (added at Learn Mode L3)
+
+**Contract change.** Before L3, `useDuel.js` always derived its initial
+GameState by calling `buildDuelState(...)`. A caller may now supply one instead.
+
+```
+useDuel(pDeckIds, oppArchKey, ruleset, overworldHP, castleMod,
+        anteEnabled, oppLife, binderIds, prebuiltState?)
+```
+
+When `prebuiltState` is supplied (non-null, non-undefined), `buildDuelState` is
+**not called at all** -- the seam short-circuits rather than calling and
+discarding. This is required, not an optimization: a supplied scenario state
+has an empty library, and `buildDuelState`'s deck handling must never run
+against it.
+
+Reached from the UI as `DuelConfig.initialState`, which `useDuelController.ts`
+passes through unchanged. Absent on every campaign and sandbox path, where
+behaviour is identical to before this clause existed.
+
+### What this does NOT change
+
+- `useDuel.js` still builds nothing, validates nothing, and mutates nothing. It
+  hands the reducer an initial value and dispatches from there. S6.1 and S6.2
+  are unaffected.
+- **DuelCore remains the sole authority over GameState.** Supplying an initial
+  value is not mutation: from the first dispatch onward every change goes
+  through `duelReducer`, exactly as before.
+- The supplied state must be a real GameState of the shape `buildDuelState`
+  produces. `duelReducer` is not defensive about a malformed one, and validating
+  it is not this hook's job. The only sanctioned producer today is
+  `buildPuzzleState` in `src/learn/engine/puzzleRunner.ts`, which builds on top
+  of `buildDuelState`.
+
+### Companion clause: action restriction
+
+`DuelConfig.scenario` and `DuelConfig.allowedActions` let a caller restrict
+which actions the UI offers. The restriction lives entirely in
+`useDuelController.ts`, which wraps the player-facing dispatchers and exposes
+`isActionAllowed(kind)` for screens to render against.
+
+This restricts what the UI **offers**. It is not a legality check and never
+becomes one: DuelCore still decides whether a dispatched action is legal and
+what it does. A screen that skipped the gate and dispatched a restricted action
+would get the same result it always would have. Restriction is pedagogy;
+legality is DuelCore's.
+
+---
+
 # 7. DuelCore Execution Contract
 
 ## 7.1 Responsibilities

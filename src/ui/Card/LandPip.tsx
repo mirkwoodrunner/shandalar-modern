@@ -42,6 +42,7 @@ function LandPipInner({ card, tapped, selected, flashing, isPlayer = false, onCl
     <div
       onClick={onClick}
       data-iid={card.iid}
+      data-testid={`bf-card-${card.iid}`}
       title={`${card.name}${tapped ? ' (tapped)' : ''}`}
       style={{
         width: 32,

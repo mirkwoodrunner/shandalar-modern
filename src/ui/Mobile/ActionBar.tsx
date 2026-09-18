@@ -26,9 +26,19 @@ interface ActionBarProps {
   pendingBlocker?: string | null;
   blockers?: Record<string, string>;
   endTurnPending?: boolean;
+  /**
+   * Scenario mode (Learn Mode L3). Default true, so every campaign and sandbox
+   * duel renders exactly the bar it rendered before these existed. A scenario
+   * passes false to stop OFFERING an action its exercise does not allow; the
+   * decision is made by useDuelController's `isActionAllowed`, never here.
+   * Desktop's ActionBar carries the same four props -- keep them in step.
+   */
+  showUndo?: boolean;
+  showPassPriority?: boolean;
+  showEndTurn?: boolean;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers, endTurnPending = false }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers, endTurnPending = false, showUndo = true, showPassPriority = true, showEndTurn = true }: ActionBarProps) {
   const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
   const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
 
@@ -207,7 +217,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
   if (!sel) {
     return (
       <div data-testid="action-bar" className={s.actionBar} style={{ borderTop: '1px solid rgba(180,140,70,.3)' }}>
-        {canUndo && (
+        {showUndo && canUndo && (
           <button
             className={s.actionBtn}
             onClick={onUndo}
@@ -221,10 +231,12 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
             {'↩'} Undo Taps
           </button>
         )}
+        {showPassPriority && (
         <button
           className={s.actionBtn}
           onClick={ppDisabled ? undefined : onPass}
           disabled={ppDisabled}
+          data-testid="pass-priority-button"
           style={{
             background: ppDisabled
               ? 'rgba(30,30,30,.6)'
@@ -238,6 +250,8 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
         >
           {ppLabel}
         </button>
+        )}
+        {showEndTurn && (
         <button
           className={s.actionBtn}
           onClick={!isPlayerTurn ? undefined : onEnd}
@@ -254,6 +268,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
         >
           End Turn ▸
         </button>
+        )}
       </div>
     );
   }

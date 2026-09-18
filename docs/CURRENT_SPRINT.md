@@ -3,6 +3,77 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L3: duel UI scenario mode** -- an engine exercise now renders on the real duel
+  screen, with legal actions restricted to the exercise's `allowed` list, campaign chrome
+  suppressed and lesson chrome as an overlay. Both viewports, from slice one.
+  - **State injection seam.** `useDuel.js` takes an optional pre-built GameState and
+    **short-circuits** `buildDuelState` when one is supplied -- it is never called and its
+    result discarded, because a scenario state has an empty library and the deck handling
+    must not run against it. Surfaced as `DuelConfig.initialState`, passed through unchanged
+    by `useDuelController.ts`. This was the core blocker: there was no seam before.
+  - **Lifecycle machine.** `src/learn/engine/scenarioMachine.ts` -- one discriminated union,
+    a complete `TRANSITIONS` table, a reducer that returns the same object for any pair not
+    in it. `scenarioLoad -> playerActing -> evaluating -> feedback -> (retry | exit)`.
+    Deliberately NOT modelled on `useLessonPlayer.ts`'s four loose `useState` calls.
+    It holds the mount `seed`, never the live GameState, so nothing can disagree with
+    DuelCore about what is on the board. Retry resets by remounting on a changed key.
+  - **Action restriction in the controller only.** `useDuelController.ts` wraps the
+    player-facing dispatchers behind `isActionAllowed(kind)` and exposes the predicate; the
+    screens consume a boolean and decide nothing. Also suppressed in scenario mode: the AI
+    main loop, AI priority responder and AI stall watchdog (opt back in with `'AI_TURN'`),
+    the mulligan modal, and the game-over auto-exit.
+  - **Restriction is not legality.** It governs what the UI offers. DuelCore remains the sole
+    authority on whether an action is legal and on every outcome.
+  - **Both screens, same contract.** `DuelScreen.tsx` and `src/ui/Mobile/DuelScreenMobile.tsx`
+    take a `scenarioPanel` render prop handed the live state. The overlay is top-docked on
+    mobile (every HUD control is at the bottom) and collapsible; a Playwright case asserts the
+    two bounding boxes do not overlap.
+  - **Non-breaking.** With `scenario` unset and `initialState` absent, every path behaves as
+    before: the new `show*` props on both ActionBars and `showCampaignChrome` on both Topbars
+    all default to true, and `isActionAllowed` returns true for every kind. Two Playwright
+    cases exist to catch a regression here -- one boots the sandbox duel and asserts its
+    chrome is intact, one drives the old lesson player to a success.
+  - **Entry point:** `learn.html?scenario=<exercise id>` (engine exercises only).
+  - **Known limitation, not a regression:** scenario mode grades with `checkGoal`, a snapshot
+    test, which covers Units 1.1 and 1.2 end to end. Unit 1.4's `OPPONENT_DEAD_THIS_TURN`
+    exercises need `resolveAttack`'s every-legal-block analysis, which asks a different
+    question than "has combat resolved lethally." Porting that is its own slice; until then
+    every shipped exercise still runs on the untouched bespoke lesson player. Written up in
+    `docs/LEARN_MODE.md` section 8.
+  - **Design choice recorded** (the alternative, per the unattended-run rule): the machine
+    could have carried a copy of the live GameState and had the chrome dispatch into it
+    directly. Rejected -- it recreates the two-sources-of-truth problem, and the render-prop
+    route keeps DuelCore the only owner. The cost is that the chrome cannot observe an action
+    it did not cause; with the AI suppressed nothing else moves the board, so nothing is lost
+    today. Revisit if a scenario ever opts the AI back in.
+  - **Boundary revised, not left standing.** `CLAUDE.md`'s "Learn Mode prompts never edit
+    engine, data, hook, or UI files outside `src/learn/`" was made false by this milestone and
+    is replaced by an explicit table of what Learn Mode may import and what stays forbidden.
+  - **Baseline moved** (recorded in `CLAUDE.md`, not silently): `@learn` Vitest 160 -> 177
+    (`scenarioMachine.test.ts`, 17 cases); `@learn` Playwright 30 -> 55
+    (`learn-scenario.spec.ts`, 13 cases at both viewports, one mobile-only).
+    `npm run learn:check` unchanged at 0 errors / 1 warning.
+  - **Pre-existing failures found, not caused here:** `npm run test:targeted -- @engine`
+    surfaces 15 Vitest failures across 10 `tests/scenarios/` files. Verified identical on a
+    clean `origin/main` checkout (15 failed / 133 passed both with and without this change).
+    Logged in `docs/TEST_AUDIT_LOG.md`. Not fixed here -- out of scope, and several are in
+    protected engine files.
+  - Added: `src/learn/engine/scenarioMachine.ts`, `src/learn/hooks/useScenarioMachine.ts`,
+    `src/learn/ui/ScenarioLesson.tsx`, `src/learn/ui/ScenarioChrome.tsx`,
+    `src/ui/duel/ScenarioOverlay.tsx` + `.module.css`,
+    `src/learn/__tests__/scenarioMachine.test.ts`, `tests/e2e/learn-scenario.spec.ts`.
+  - Edited: `src/types/duel.ts`, `src/hooks/useDuel.js`, `src/hooks/useDuelController.ts`,
+    `src/DuelScreen.tsx`, `src/ui/Mobile/DuelScreenMobile.tsx`, `src/ui/ActionBar/ActionBar.tsx`,
+    `src/ui/Mobile/ActionBar.tsx`, `src/ui/Topbar/Topbar.tsx`, `src/ui/Mobile/Topbar.tsx`,
+    `src/ui/Mobile/PhaseBar.tsx`, `src/ui/Card/FieldCard.tsx`, `src/ui/Card/LandPip.tsx`,
+    `src/ui/Mobile/FieldCard.tsx`, `src/ui/Mobile/LandPip.tsx`,
+    `src/learn/LearnApp.tsx`, `src/learn/engine/puzzleRunner.ts`, `playwright.config.js`.
+  - Docs: `CLAUDE.md` (boundary revision, testid inventory, pinned baseline),
+    `docs/ENGINE_CONTRACT_SPEC.md` (S6.3), `docs/LEARN_MODE.md` (section 8),
+    `docs/LEARN_MODE_ROADMAP.md` (L3 status), `docs/COMPONENT_REGISTRY.md`,
+    `docs/TEST_AUDIT_LOG.md`. `docs/MECHANICS_INDEX.md` deliberately NOT updated -- no
+    mechanic, handler or card group was added, so the Tier 2 trigger is not met.
+
 - **Learn Mode decision closed: `multiSelect` stays cost-shaped** -- Chris's call. Card types
   are taught implicitly in Tier 1 and tested in Tier 2 unit 2.3. No generalization to a
   `{stem, options, answer}` type, no third exercise type, no code change.

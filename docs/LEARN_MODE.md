@@ -20,9 +20,13 @@ src/learn/
   LearnApp.tsx                      unit list, survey gate, ?exercise= deep link
   engine/types.ts                   exercise data types (stableId, see section 4)
   engine/puzzleRunner.ts            the only file here that touches src/engine or src/data
+  engine/scenarioMachine.ts         lesson lifecycle machine (section 8) -- imports nothing
   data/units.ts                     authored exercise content
   hooks/useLessonPlayer.ts          orchestration hook, wires attempt recording
   hooks/useLearnProgress.ts         React binding for persistence.ts (onboarding, reset)
+  hooks/useScenarioMachine.ts       React binding for scenarioMachine.ts
+  ui/ScenarioLesson.tsx             scenario-mode host: the ONLY file importing the duel UI
+  ui/ScenarioChrome.tsx             lesson chrome contents, rendered via ScenarioOverlay
   ui/LessonPlayer.tsx
   ui/EngineExercise.tsx
   ui/MultiSelectExercise.tsx
@@ -36,6 +40,7 @@ src/learn/
   __tests__/persistence.test.ts
 tests/e2e/learn-slice.spec.ts
 tests/e2e/learn-persistence.spec.ts
+tests/e2e/learn-scenario.spec.ts
 ```
 
 Boundaries, mirroring the engine table in `CLAUDE.md`:
@@ -57,6 +62,10 @@ Boundaries, mirroring the engine table in `CLAUDE.md`:
 - No `Math.random()` anywhere in `src/learn/`. Card iids are deterministic:
   `<side>-<zone>-<index>` (for example `p-bf-0`, `p-hand-2`, `o-bf-0`). A land keeps its
   hand iid after `PLAY_LAND`.
+- `ui/ScenarioLesson.tsx` is the single point where Learn Mode reaches into the duel UI,
+  and the exact import list it is allowed is in `CLAUDE.md` under "Learn Mode <-> duel UI
+  boundary". The dependency runs one way: no duel screen, duel UI component or hook may
+  import from `src/learn/`.
 
 ## 3. Grading model
 
@@ -275,9 +284,125 @@ decisions. Do not duplicate roadmap content here.
   project with no intent to publish or monetise, so policy exactness is not a gate. Revisit if
   that changes.
 
-Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L3
+- **L3** (done, 2026-09-18): duel UI scenario mode. See section 8 below for the built-state
+  spec. Vitest `@learn`: 160 -> 177. Playwright `@learn`: 30 -> 55.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now past milestone L3
 (duel UI scenario mode). Tier 1 is content-complete and release-framed; publishing is a
 decision, not a milestone. The post-release reassessment gate in L2c decides whether Tier 2 or
 Tiers 4 and 5 come next, using completion data rather than argument.. The previously-listed "Slice 4: checkpoint duel" is
 now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
 depends on.
+
+
+## 8. Scenario mode (L3): the built-state spec
+
+Scenario mode renders an engine exercise on the real duel screen instead of the bespoke
+Learn board. It is additive: the existing lesson player (`ui/LessonPlayer.tsx`,
+`hooks/useLessonPlayer.ts`) is untouched and remains the path every shipped Tier 1 exercise
+takes. Nothing in `data/units.ts` changed for L3.
+
+### How a built state reaches the screen
+
+```
+buildPuzzleState(ex.setup)        -> a real GameState (unchanged, section 3)
+  |
+useScenarioMachine               -> holds it as `seed` on the lifecycle machine
+  |
+ScenarioLesson                   -> DuelConfig { scenario: true, initialState: seed,
+  |                                              allowedActions: ex.allowed }
+DuelScreen / DuelScreenMobile    -> useDuelController -> useDuel(..., prebuiltState)
+  |
+useDuel                          -> SHORT-CIRCUITS buildDuelState; seeds the reducer
+  |
+duelReducer (DuelCore)           -> sole authority from the first dispatch onward
+```
+
+`useDuel` must not call `buildDuelState` when a state is supplied: a scenario state has an
+empty library and the deck handling must never run against it. The contract is
+`docs/ENGINE_CONTRACT_SPEC.md` S6.3.
+
+### Entry point
+
+`learn.html?scenario=<exercise id>`, e.g. `/learn.html?scenario=1.1-02`. Engine exercises
+only -- a `multiSelect` exercise has no GameState to render and the route ignores it.
+Checked before the onboarding survey gate, like `?exercise=`, so e2e specs and shared links
+both work.
+
+### The lifecycle machine
+
+`engine/scenarioMachine.ts` is a pure reducer over one discriminated union. It imports
+nothing at all, so it is testable without React, a DOM, or a GameState.
+
+```
+scenarioLoad --SCENARIO_READY--------> playerActing --CHECK_REQUESTED--> evaluating
+     |                                     |  ^                              |
+     |                                     |  | PLAYER_ACTED                 | EVALUATED
+     |                                     |  | PLAYER_ACTION_REJECTED       v
+     |                                     |  | HINT_REVEALED             feedback
+     | SCENARIO_LOAD_FAILED                |                                  |
+     v                                     +------ RETRY_REQUESTED -----------+
+  feedback (outcome: error)                            (back to scenarioLoad, attempt + 1)
+
+  EXIT_REQUESTED from any live phase -> exited (terminal)
+```
+
+Rules the machine exists to enforce:
+
+- **One union.** The learner's phase is the only thing that says where they are. There is no
+  `isChecking` flag and no `feedback === null` inference to disagree with it.
+- **Every transition named.** `TRANSITIONS` is the complete table. A (phase, event) pair
+  absent from it returns the same state object -- a check cannot be requested from feedback,
+  the board cannot be acted on while evaluating, and a board already in play cannot be
+  re-seeded. `scenarioMachine.test.ts` asserts every refused pair by identity.
+- **The machine never holds the live GameState.** It holds `seed`: the state the screen was
+  mounted with, which does not change during an attempt. DuelCore owns the live state and the
+  chrome reads it through the `scenarioPanel` render prop, so there is exactly one answer to
+  "what is on the board."
+- **Reset is remount.** `RETRY_REQUESTED` increments `attempt`, which changes
+  `scenarioMountKey`, which is the duel screen's React `key`. The whole reducer is rebuilt
+  from a fresh seed. Nothing is un-done by hand.
+
+### Action restriction
+
+`allowedActions` is the exercise's `allowed` list. The gate lives in
+`useDuelController.ts` and nowhere else: it wraps the player-facing dispatchers and exposes
+`isActionAllowed(kind)` for the screens to render against. Restriction is about what the UI
+**offers** -- DuelCore still decides legality and every outcome.
+
+Also suppressed in scenario mode, all in the controller: the AI main loop, the AI
+priority-window responder and the AI stall watchdog (opt back in with `SCENARIO_AI_ACTION`,
+`'AI_TURN'`, in `allowedActions`); the mulligan modal, since a seeded hand was never drawn;
+and the game-over auto-exit, since reaching `s.over` is the success condition of a
+lethal-attack lesson, not a reason to leave the screen.
+
+A scenario that opts the AI back in must also list `ADVANCE_PHASE`, because the AI loop's
+own phase step goes through the same gated `requestPhaseAdvance`.
+
+### Chrome suppression
+
+Suppressed when `config.scenario` is true: the ante banner (both viewports), the castle
+modifier banner, the desktop right sidebar (ruleset flags, exile counts, sandbox debug,
+duel log), and the campaign identity row in both Topbars (wordmark, ruleset name, turn
+pill, Forfeit, log and menu buttons). The PhaseBar stays -- it is teaching material.
+
+The campaign save layer is never written (`usePersistence(s, !scenario)`) and `clearDuel()`
+is never called, so a learner with a duel in progress does not lose it. This is the same
+rule as `learn:` vs `shandalar:` key separation, applied to the duel save.
+
+### Known limitation: combat exercises
+
+Scenario mode grades with `checkGoal`, which is a snapshot test against the live state. That
+covers `MANA_IN_POOL` and `CARD_ON_BATTLEFIELD` exercises end to end -- Units 1.1 and 1.2
+work fully on the duel screen today.
+
+It does NOT yet reproduce the best-defense analysis in section 3. `OPPONENT_DEAD_THIS_TURN`
+exercises (Unit 1.4) render and restrict correctly, but a lethal attack is only graded
+`success` once combat has actually resolved on the board, whereas `resolveAttack` grades an
+attack against every legal block the opponent could make without playing any of them out.
+Those two are not the same question, and scenario mode answering the easier one would grade
+a losing attack as a win whenever the opponent happened not to block.
+
+Until a later slice ports best-defense grading into scenario mode, Unit 1.4 stays on the
+bespoke lesson player, which is where every shipped exercise still runs. Nothing regressed;
+the capability is simply not built yet.

@@ -57,6 +57,7 @@ export function FieldCard({ card, selected, attacking, density = 'creature', onC
       className={s.fieldCard}
       onClick={onClick}
       data-iid={card.iid}
+      data-testid={`bf-card-${card.iid}`}
       style={{
         width: w,
         height: h,

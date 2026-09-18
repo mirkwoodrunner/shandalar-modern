@@ -47,6 +47,7 @@ function FieldCardInner({ card, selected, attacking, tapped, casting, sm = false
       className={styles.card}
       onClick={onClick}
       data-iid={card.iid}
+      data-testid={`bf-card-${card.iid}`}
       title={`${card.name}\n${card.text ?? ''}`}
       style={{
         width: w,

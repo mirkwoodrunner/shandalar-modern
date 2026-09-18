@@ -234,7 +234,50 @@ See `docs/SYSTEMS.md` -- Section 22: Overworld Structure Types.
 
 - `src/learn/engine/puzzleRunner.ts` is the only file under `src/learn/` that may import from `src/engine/` or `src/data/`. `src/learn/engine/puzzleChecker.ts` imports only from `./types` and `./puzzleRunner`.
 - New exercise content must pass `npm run learn:check` with zero errors. Every new skill tag needs a matching entry in `THEME_CHECKS` or `MULTI_THEME_CHECKS`, written in the same prompt that introduces the tag.
-- Learn Mode prompts never edit engine, data, hook, or UI files outside `src/learn/`. A Learn Mode prompt that needs an engine change is a STOP until a separate engine prompt lands it.
+
+### Learn Mode <-> duel UI boundary (revised at L3, scenario mode)
+
+The old rule -- "Learn Mode prompts never edit engine, data, hook, or UI files
+outside `src/learn/`" -- is retired. L3 (duel UI scenario mode) made it false:
+Learn Mode now renders exercises on the real duel screen. What replaces it:
+
+**What Learn Mode MAY import from outside `src/learn/`:**
+
+| From | What | Who |
+|---|---|---|
+| `src/DuelScreen.tsx`, `src/ui/Mobile/DuelScreenMobile.tsx` | the components, as components | `src/learn/ui/ScenarioLesson.tsx` only |
+| `src/ui/duel/ScenarioOverlay.tsx` | the lesson-chrome shell | `src/learn/ui/ScenarioChrome.tsx` only |
+| `src/hooks/useIsMobile.ts` | the breakpoint hook | `src/learn/ui/ScenarioLesson.tsx` only |
+| `src/types/duel.ts` | `DuelConfig`, `ScenarioPanelContext` | type-only imports, anywhere under `src/learn/` |
+| `src/engine/`, `src/data/` | anything | `src/learn/engine/puzzleRunner.ts` only -- unchanged |
+
+**What stays forbidden, without exception:**
+
+- No Learn Mode file may import `DuelCore.js`, `AI.js`, `cardHandlers.js`,
+  `phases.js`, `layers.js`, `cards.js`, `rulesets.js` or any other
+  `src/engine/` or `src/data/` module except through `puzzleRunner.ts`. Learn
+  UI code that needs a value from there reads a constant `puzzleRunner.ts`
+  re-exports (e.g. `SCENARIO_RULESET`).
+- No Learn Mode file may import `useDuel.js` or `useDuelController.ts`
+  directly. A scenario reaches the engine only by handing a `DuelConfig` to a
+  duel screen.
+- Learn Mode never mutates GameState. Scenario mode restricts which actions the
+  UI OFFERS; DuelCore stays the sole authority on legality and every outcome.
+- No Learn Mode code reads or writes a `shandalar:` key (see below), and
+  scenario mode does not write the campaign duel save.
+- A duel screen, a duel UI component, or a hook must never import from
+  `src/learn/`. The dependency runs one way only. `ScenarioOverlay` is
+  content-agnostic for exactly this reason.
+
+**Prompt scope.** A Learn Mode prompt may now edit the duel UI files named
+above when the work is scenario mode. It still may not edit protected engine
+files (see "Protected Files") without the `ENGINE FILE EDIT APPROVED` override,
+and a Learn Mode prompt that needs a DuelCore change is still a STOP until a
+separate engine prompt lands it.
+
+Scenario mode's own contract lives in `docs/LEARN_MODE.md` and
+`docs/ENGINE_CONTRACT_SPEC.md` S6.3.
+
 - Every exercise in `src/learn/data/` must pass `src/learn/__tests__/units.test.ts`. Never edit exercise data just to make a test pass.
 - Tests use the `learn` Vitest tag and the `@learn-` Playwright title prefix. Run with `npm run test:targeted -- @learn`.
 - The save layer lives in `src/learn/persistence.ts` and uses the `learn:` key prefix (`learn:progress`). No Learn Mode code may read or write a `shandalar:` key.
@@ -371,9 +414,14 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 160 passing |
+| `npm run test:targeted -- @learn` | 177 Vitest passing, 55 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
+| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 25 passing (13 cases x mobile-chrome + 12 x chromium; Learn-S3 is mobile-only and skips on chromium) |
+
+Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
+17 cases) and Playwright 30 -> 55 (`learn-scenario.spec.ts`, 13 cases at both viewports,
+one of which is mobile-only).
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the
@@ -479,7 +527,7 @@ window.__duelState()            // read current GameState snapshot
 |---|---|
 | `duel-screen` | DuelScreen wrapper div |
 | `sandbox-loading` | loading placeholder during decklist fetch |
-| `phase-bar` | PhaseBar container |
+| `phase-bar` | PhaseBar container (both viewports) |
 | `phase-active` | currently active phase pill |
 | `phase-pip-<PHASE>` | inactive phase pill |
 | `cast-button` | Cast / Play action button |
@@ -487,7 +535,21 @@ window.__duelState()            // read current GameState snapshot
 | `undo-taps-button` | Undo Taps action button |
 | `pass-priority-button` | Pass Priority action button |
 | `end-turn-button` | End Turn action button |
-| `hand-card-<iid>` | individual card in player hand |
+| `hand-card-<iid>` | individual card in player hand (desktop) |
+| `hand-card` | individual card in player hand (mobile; carries `data-iid`) |
+| `bf-card-<iid>` | battlefield card or land pip, both viewports |
+| `action-bar` | mobile action bar container |
+| `scenario-overlay` | lesson chrome shell (scenario mode only) |
+| `scenario-title` | exercise title in the lesson chrome |
+| `scenario-prompt` | exercise prompt text |
+| `scenario-hint` | hint text, once revealed |
+| `scenario-rejection` | refused-action explanation |
+| `scenario-feedback` | graded result; `data-outcome` is success/fail/error |
+| `scenario-<id>-button` | lesson chrome button: hint, check, retry, exit |
+| `scenario-collapse-toggle` | mobile-only show/hide for the lesson chrome |
+| `scenario-shell` | pre-mount wrapper while the seed state is built |
+| `scenario-loading` | placeholder during scenario load |
+| `scenario-load-error` | shown when the seed state could not be built |
 
 ---
 

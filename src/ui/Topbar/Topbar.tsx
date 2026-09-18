@@ -6,9 +6,17 @@ interface TopbarProps {
   active: 'p' | 'o';
   phase: string;
   onForfeit?: () => void;
+  /**
+   * Scenario mode (Learn Mode L3). Default true, so every campaign and sandbox
+   * duel is unchanged. False drops the campaign identity row -- wordmark,
+   * ruleset name, turn/active pills and Forfeit -- and keeps the PhaseBar,
+   * which is teaching material, not chrome. A lesson exits through its own
+   * overlay, not a forfeit button.
+   */
+  showCampaignChrome?: boolean;
 }
 
-export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarProps) {
+export function Topbar({ rulesetName, turn, active, phase, onForfeit, showCampaignChrome = true }: TopbarProps) {
   return (
     <div style={{
       flexShrink: 0,
@@ -19,6 +27,7 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
       flexDirection: 'column',
       gap: 4,
     }}>
+      {showCampaignChrome && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
         <div style={{
           display: 'flex',
@@ -89,6 +98,7 @@ export function Topbar({ rulesetName, turn, active, phase, onForfeit }: TopbarPr
           Forfeit
         </button>
       </div>
+      )}
 
       <PhaseBar phase={phase} />
     </div>

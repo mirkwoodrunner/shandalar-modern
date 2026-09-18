@@ -14,6 +14,55 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-18 -- `npm run test:targeted -- @engine` (Learn Mode L3, scenario mode)
+
+Not a `test:audit` failure. Logged here anyway because it is exactly what this
+file exists to prevent re-diagnosing: the `@engine` targeted gate does not
+currently pass, or even terminate, on `origin/main`, and the next prompt to run
+it will otherwise lose an hour rediscovering that.
+
+**Originating change:** `claude/learn-duel-scenario-mode-mdqb5p` -- L3 duel UI
+scenario mode. Base: `74590a5` (`origin/main`).
+
+### Finding 1: `src/engine/__tests__/AI.sim.test.js` hangs indefinitely
+
+`npm run test:targeted -- @engine` never finishes. 114 of the 115 `@engine`
+Vitest files complete in about three minutes; `AI.sim.test.js` then hangs with
+the worker mostly idle and no further output. Two runs were killed at 70 minutes
+and 25 minutes.
+
+**Verified pre-existing.** Reproduced on a clean `origin/main` checkout (`git
+stash` of all L3 work), where the file alone hangs past a 240s timeout. Nothing
+in this change touches AI simulation.
+
+**Workaround for a usable signal:**
+`npx vitest run --tags-filter engine --exclude "**/AI.sim.test.js"`
+
+**Not fixed here.** Out of scope for a Learn Mode prompt, and diagnosing it means
+reading `AI.js`, which is protected. It needs its own engine prompt. Until then
+the `@engine` gate cannot be run as documented in `CLAUDE.md`.
+
+### Finding 2: 15 pre-existing Vitest failures across 10 scenario files
+
+With `AI.sim.test.js` excluded: **15 failed | 1330 passed | 257 skipped**.
+
+Failing files: `aladdins-lamp` (5), `guardian-angel` (2), and one each in
+`animate-artifact`, `coral-helm`, `creature-damage-centralization`,
+`enemy-deck-audit-missing-cards`, `gloom`, `raging-river`, `ring-of-maruf`,
+`tap-centralization`.
+
+**Verified pre-existing.** The same ten files were run against a clean
+`origin/main` checkout and against this branch: **15 failed / 133 passed in both
+cases**, identical counts and identical files.
+
+Signatures seen in `aladdins-lamp.test.js` include `ReferenceError: PHASE is not
+defined` (a test-file import problem, not an engine defect) and a library-order
+assertion mismatch. These look like at least two distinct causes; this entry
+does not claim a single diagnosis.
+
+**Not fixed here.** Unrelated to scenario mode, and the fixes would land in
+protected engine files.
+
 ## 2026-09-16 -- `npm run test:audit -- @learn` (Learn Mode Slice 3a)
 
 **Originating change:** `claude/learn-slice-3a-unit-1-1-do7la7` -- 3 new Unit

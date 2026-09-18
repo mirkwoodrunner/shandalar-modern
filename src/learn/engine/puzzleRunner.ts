@@ -53,6 +53,21 @@ function needsTargetOnCast(card: any): boolean {
   return /\btarget\b/i.test(card.text ?? '');
 }
 
+/**
+ * The ruleset a scenario duel runs under -- the same one buildPuzzleState seeds
+ * with. Re-exported from here because puzzleRunner is the only module under
+ * src/learn/ permitted to import src/data/, so the Learn UI reads this instead
+ * of importing RULESETS itself.
+ */
+export const SCENARIO_RULESET = RULESETS.CONTEMPORARY;
+
+/**
+ * The opponent archetype key a scenario duel's config carries. Inert: with a
+ * pre-built state supplied, useDuel never calls buildDuelState, so no deck is
+ * ever generated from it. It exists only because DuelConfig requires the field.
+ */
+export const SCENARIO_OPP_ARCH = 'RED_BURN';
+
 export const MAX_BLOCK_OUTCOMES = 5000;
 const MAX_RESOLVE_STACK = 5;
 const MAX_ADVANCE = 6;

@@ -5,14 +5,34 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { UNITS } from './data/units';
 import { LessonPlayer } from './ui/LessonPlayer';
+import { ScenarioLesson } from './ui/ScenarioLesson';
 import { LearnFooter } from './ui/LearnFooter';
 import { OnboardingSurvey } from './ui/OnboardingSurvey';
 import { useLearnProgress } from './hooks/useLearnProgress';
 import { EARLY_ACCESS, NO_MONEY, TAGLINE } from './content';
 import { deriveResumeIndex, loadLearnSave } from './persistence';
-import type { Unit } from './engine/types';
+import type { EngineExercise, Unit } from './engine/types';
 
 type View = { unit: Unit; startIndex: number } | null;
+
+/**
+ * Scenario mode entry (Learn Mode L3): ?scenario=<exercise id> renders that
+ * engine exercise on the real duel screen instead of the bespoke Learn board.
+ * Additive and opt-in -- without the param, every existing path, including the
+ * ?exercise= deep link, behaves exactly as before.
+ */
+function findScenarioLink(): EngineExercise | null {
+  if (typeof window === 'undefined') return null;
+  const exId = new URLSearchParams(window.location.search).get('scenario');
+  if (!exId) return null;
+  for (const unit of UNITS) {
+    const found = unit.exercises.find(e => e.id === exId);
+    // multiSelect exercises have no GameState to render, so they are not
+    // addressable this way.
+    if (found && found.kind === 'engine') return found;
+  }
+  return null;
+}
 
 function findDeepLink(): View {
   if (typeof window === 'undefined') return null;
@@ -38,6 +58,11 @@ export function LearnApp() {
   const [view, setView] = useState<View>(initial);
   const { save, refresh, completeSurvey, setStartingTier, resetProgress } = useLearnProgress();
 
+  // Checked before the survey gate for the same reason deep links are: a
+  // scenario link is used by e2e specs and for sharing one exercise.
+  const scenarioExercise = useMemo(findScenarioLink, []);
+  const [scenarioOpen, setScenarioOpen] = useState(scenarioExercise !== null);
+
   const enterUnit = useCallback((unit: Unit) => {
     const latest = loadLearnSave();
     setView({ unit, startIndex: deriveResumeIndex(unit, latest) });
@@ -48,7 +73,17 @@ export function LearnApp() {
     setView(null);
   }, [refresh]);
 
+  const exitScenario = useCallback(() => setScenarioOpen(false), []);
+
   const showSurvey = !isDeepLink && !save?.onboarding.completed;
+
+  if (scenarioExercise && scenarioOpen) {
+    return (
+      <div className="learn-app">
+        <ScenarioLesson exercise={scenarioExercise} onExit={exitScenario} />
+      </div>
+    );
+  }
 
   return (
     <div className="learn-app">

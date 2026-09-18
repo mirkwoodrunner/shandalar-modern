@@ -32,7 +32,7 @@ import { usePersistence, clearDuel } from './hooks/usePersistence';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useIsMobile } from './hooks/useIsMobile';
 import { useDuelController, resolveDefaultTarget, needsExplicitTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isArtifactOnlyTarget, isCounterEffect, isBebRebEffect, needsStackTarget, getManaShortfall, normalizeAbilityCost } from './hooks/useDuelController';
-import type { DuelConfig } from './types/duel';
+import type { DuelConfig, ScenarioPanelContext } from './types/duel';
 
 // -- Tutor / Transmute modals --------------------------------------------------
 import { TutorModal } from './ui/duel/TutorModal';
@@ -124,6 +124,14 @@ function GraveyardPopover({ graveyard, playerName, mode, onSelect, onClose }: {
 interface DuelScreenProps {
   config: DuelConfig;
   onDuelEnd: (outcome: 'win' | 'lose' | 'forfeit', state: unknown) => void;
+  /**
+   * Scenario mode (Learn Mode L3). A render prop, not a node: the screen calls
+   * it with the LIVE GameState so the lesson chrome never keeps a second copy
+   * of the board. Rendered only when `config.scenario` is true, so no campaign
+   * or sandbox duel can reach it. The screen stays presentation-only -- it
+   * renders whatever comes back and decides nothing about the lesson.
+   */
+  scenarioPanel?: (ctx: ScenarioPanelContext) => React.ReactNode;
 }
 
 // -----------------------------------------------------------------------------
@@ -208,16 +216,22 @@ function MobileActionDrawer({ s, config, ruleFlags }: {
 // DUEL SCREEN ? hooks and handlers
 // -----------------------------------------------------------------------------
 
-export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
+export default function DuelScreen({ config, onDuelEnd, scenarioPanel }: DuelScreenProps) {
+  // Scenario mode (Learn Mode L3). False on every campaign and sandbox duel,
+  // where every guard below is inert and the screen renders exactly as before.
+  const scenario = config.scenario === true;
+
   // -- Design hooks ----------------------------------------------------------
   const { flashIids, flash: _flash } = useFlash(200);
   const [tweaks, setTweak] = useTweaks();
 
   // Wrap onDuelEnd to clear the saved duel on any clean exit (win/lose/forfeit).
   const handleDuelEndWithClear = useCallback((outcome: 'win' | 'lose' | 'forfeit', s: unknown) => {
-    clearDuel();
+    // A scenario duel never wrote a `shandalar:` duel save, and must not clear
+    // the campaign's (a learner mid-campaign would lose their duel in progress).
+    if (!scenario) clearDuel();
     onDuelEnd(outcome, s);
-  }, [onDuelEnd]);
+  }, [onDuelEnd, scenario]);
 
   // -- Shared orchestration hook ---------------------------------------------
   const {
@@ -244,11 +258,14 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
     pendingActivate, setPendingActivate,
     activateCanTargetPlayer, handleActivate, handleActivateWithPlayerTarget,
     pendingMode, setPendingMode,
+    isActionAllowed,
   } = useDuelController(config, handleDuelEndWithClear, tweaks.aiSpeed);
 
   const s = state;
 
-  usePersistence(s, true);
+  // Campaign save layer. Scenario mode never writes it -- Learn Mode owns no
+  // `shandalar:` key (CLAUDE.md, Learn Mode save layer).
+  usePersistence(s, !scenario);
 
   const isMobile = useIsMobile();
 
@@ -511,6 +528,7 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             active={s.active}
             phase={s.phase}
             onForfeit={() => handleDuelEndWithClear('forfeit', s)}
+            showCampaignChrome={!scenario}
           />
         </div>
       ) : (
@@ -520,11 +538,13 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           active={s.active}
           phase={s.phase}
           onForfeit={() => handleDuelEndWithClear('forfeit', s)}
+          showCampaignChrome={!scenario}
         />
       )}
 
       {/* -- CASTLE MODIFIER BANNER ------------------------------------------ */}
-      {s.castleMod && (
+      {/* Campaign chrome: suppressed in scenario mode. */}
+      {!scenario && s.castleMod && (
         <div style={{
           background: 'rgba(100,20,0,.4)', borderBottom: '1px solid rgba(200,60,20,.3)',
           padding: isMobile ? '2px 8px' : '4px 14px',
@@ -538,7 +558,8 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
       )}
 
       {/* -- ANTE BANNER ----------------------------------------------------- */}
-      {s.anteEnabled && (s.anteP || s.anteO || (s.anteExtraP?.length ?? 0) > 0 || (s.anteExtraO?.length ?? 0) > 0) && (() => {
+      {/* Campaign chrome: suppressed in scenario mode. A lesson has no stakes. */}
+      {!scenario && s.anteEnabled && (s.anteP || s.anteO || (s.anteExtraP?.length ?? 0) > 0 || (s.anteExtraO?.length ?? 0) > 0) && (() => {
         const stakeP = [...(s.anteP ? [s.anteP] : []), ...(s.anteExtraP ?? [])];
         const stakeO = [...(s.anteO ? [s.anteO] : []), ...(s.anteExtraO ?? [])];
         return (
@@ -760,6 +781,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
             onCancel={() => { if (castFlow) { cancelCastFlow(); } else { setPendingActivate(null); selectCard(null); selectTarget(null); setPendingMode(null); } }}
             onEndTurn={endTurn}
             endTurnPending={endTurnPending}
+            /* Scenario mode only. isActionAllowed returns true for every kind
+               outside scenario mode, so all four stay true on campaign duels. */
+            showCast={isActionAllowed('CAST_SPELL') || isActionAllowed('PLAY_LAND')}
+            showUndo={isActionAllowed('UNDO_MANA_TAPS')}
+            showPassPriority={isActionAllowed('ADVANCE_PHASE')}
+            showEndTurn={isActionAllowed('ADVANCE_PHASE')}
           />
 
           {/* Player hand */}
@@ -773,7 +800,10 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
         </div>
 
         {/* -- RIGHT SIDEBAR ----------------------------------------------- */}
-        {!isMobile && (
+        {/* Ruleset flags, exile counts, sandbox debug and the duel log are all
+            campaign chrome. Scenario mode drops the whole column, which also
+            gives the lesson board the full width. */}
+        {!isMobile && !scenario && (
         <div className="duel-sidebar" style={{
           width: 'clamp(160px,22vw,210px)',
           borderLeft: '2px solid rgba(180,140,60,.25)',
@@ -1208,6 +1238,12 @@ export default function DuelScreen({ config, onDuelEnd }: DuelScreenProps) {
           }
         />
       )}
+
+      {/* -- LESSON CHROME (scenario mode only) ------------------------------ */}
+      {/* Last child so it layers over the board. The screen decides nothing
+          about the lesson -- it hands the live state to the caller's render
+          prop and renders whatever comes back. */}
+      {scenario && scenarioPanel?.({ state: s, isActionAllowed, isMobile })}
     </div>
   );
 }
