@@ -237,6 +237,7 @@ See `docs/SYSTEMS.md` -- Section 22: Overworld Structure Types.
 - Learn Mode prompts never edit engine, data, hook, or UI files outside `src/learn/`. A Learn Mode prompt that needs an engine change is a STOP until a separate engine prompt lands it.
 - Every exercise in `src/learn/data/` must pass `src/learn/__tests__/units.test.ts`. Never edit exercise data just to make a test pass.
 - Tests use the `learn` Vitest tag and the `@learn-` Playwright title prefix. Run with `npm run test:targeted -- @learn`.
+- The save layer lives in `src/learn/persistence.ts` and uses the `learn:` key prefix (`learn:progress`). No Learn Mode code may read or write a `shandalar:` key.
 
 ## Documentation — Tiered Update Policy
 
@@ -364,14 +365,15 @@ Doc-only changes (nothing under `src/` touched) need no test run at all. Verific
 doc-only prompt is `git status --porcelain` plus whatever content greps the prompt specifies.
 A doc-only prompt that demands a test run is over-specified -- follow this rule, not the prompt.
 
-**Learn Mode pinned baseline (as of 2026-09-16).** When a prompt says "same as main," it means
+**Learn Mode pinned baseline (as of 2026-09-18).** When a prompt says "same as main," it means
 these numbers:
 
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 57 passing |
+| `npm run test:targeted -- @learn` | 90 passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 16 passing (8 cases x chromium + mobile-chrome) |
+| `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

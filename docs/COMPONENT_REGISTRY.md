@@ -177,6 +177,19 @@ Renders the fan-content disclaimer on every Learn Mode screen.
 
 data-testid: `learn-disclaimer`.
 
+### `OnboardingSurvey` (`src/learn/ui/OnboardingSurvey.tsx`)
+
+Full-screen modal overlay shown on `LearnApp`'s unit list until `onboarding.completed` is true in
+the save (`src/learn/persistence.ts`). Three single-select questions (played before, played in an
+organized event, studying for judge certification); `Continue` is disabled until all three are
+answered. Bypassed entirely by an explicit `?exercise=` deep link. See `docs/LEARN_L1_SPEC.md`
+sections 4-5.
+
+Key props: `onComplete(answers)`, called with the three raw answers -- `LearnApp` computes and
+persists `startingTier` from them.
+data-testid: `onboarding-survey` (root), `survey-played-before-never` / `-few` / `-regularly`,
+`survey-organized-yes` / `-no`, `survey-judge-yes` / `-no`, `survey-submit`.
+
 ### `useLessonPlayer` hook (`src/learn/hooks/useLessonPlayer.ts`)
 
 Orchestration hook for `LessonPlayer`. Builds puzzle state via `puzzleRunner.buildPuzzleState`, routes taps to `TAP_LAND`/`PLAY_LAND`/`CAST_SPELL`/attacker-selection depending on phase, and tracks feedback/hint/progress state. Holds no rules logic itself -- every state change goes through the puzzle runner's `duelReducer` calls.

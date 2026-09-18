@@ -32,10 +32,14 @@ Built and verified on `main`:
   worst-case block enumeration, deterministic iids, fail-fast `LEARN_*` throws.
 - `src/learn/engine/puzzleChecker.ts` plus `npm run learn:check`. Five content-quality
   gates. Currently 0 errors, 1 intended warning.
-- 8 Playwright cases at both viewports, 57 Vitest tests, `learn` tag wired into both runners.
+- 18 Playwright cases at both viewports (8 slice-1 + 5 L1 persistence x 2 spec files), 90 Vitest
+  tests, `learn` tag wired into both runners.
 - Separate Vite entry (`learn.html`), strict import boundary enforced in `CLAUDE.md`.
+- **L1 (done):** local save layer (`src/learn/persistence.ts`, `learn:progress` key),
+  onboarding survey with a derived `startingTier`, and derived (not stored) per-unit resume
+  position. See `docs/LEARN_L1_SPEC.md` and section 5 below.
 
-Roughly 1,816 lines under `src/learn/`. That covers about the first third of Tier 1 below.
+Roughly 2,928 lines under `src/learn/`. That covers about the first third of Tier 1 below.
 
 ## 3. Confirmed scope decisions
 
@@ -177,10 +181,17 @@ that needs no new runner capability, no card pool, and no duel-UI work, so it is
 in two milestones instead of six, and it is the only tier that validates the DuelCore
 grading path the project is built on.
 
-### L1. Persistence, profile, and onboarding survey
+### L1. Persistence, profile, and onboarding survey (done)
 
 Prerequisite for L8, L9, and L10. Nothing retention-flavored can ship before this. Progress
-currently lives in `useState` in `useLessonPlayer.ts` and a refresh wipes it.
+previously lived in `useState` in `useLessonPlayer.ts` and a refresh wiped it.
+
+Shipped as specified in `docs/LEARN_L1_SPEC.md`, with four corrections (C1-C4) applied during
+implementation: attempt writes fire from the event handler, never a `setState` updater (C1);
+`dailyActivity` now credits every completed attempt, not only successes (C2); `monthlyActivity`
+and `longestStreak` are reserved in the save shape for this milestone, with no roll-up logic (C3);
+and there is no stored resume position -- a unit's start index is derived from `exercises`
+records on every re-entry (C4).
 
 - Local save layer under `src/learn/`, mirroring the existing shape-validation pattern used
   by Shandalar's save/load rather than inventing a second one.

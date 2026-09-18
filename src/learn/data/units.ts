@@ -9,7 +9,7 @@ export const UNITS: Unit[] = [
     title: 'Lands and mana',
     exercises: [
       {
-        kind: 'engine', id: '1.1-01', unit: '1.1', skill: 'tap-for-mana', title: 'Tap a land', guided: true,
+        kind: 'engine', id: '1.1-01', stableId: '1.1-01', unit: '1.1', skill: 'tap-for-mana', title: 'Tap a land', guided: true,
         prompt: 'Tap the Forest to make green mana.',
         hint: 'Tap the Forest card.',
         explanation: 'Tapping a land adds one mana to your mana pool. A Forest makes green mana, shown as G.',
@@ -20,7 +20,7 @@ export const UNITS: Unit[] = [
         solutions: [[{ type: 'TAP_LAND', iid: 'p-bf-0' }]],
       },
       {
-        kind: 'engine', id: '1.1-02', unit: '1.1', skill: 'cast-creature', title: 'Cast a creature',
+        kind: 'engine', id: '1.1-02', stableId: '1.1-02', unit: '1.1', skill: 'cast-creature', title: 'Cast a creature',
         prompt: 'Grizzly Bears costs 1G. Tap both Forests, then cast it from your hand.',
         hint: 'Tap both Forests first. Then tap Grizzly Bears in your hand.',
         explanation: 'The G means one green mana. The 1 means one mana of any color. Two Forests pay for both.',
@@ -31,7 +31,7 @@ export const UNITS: Unit[] = [
         solutions: [[{ type: 'TAP_LAND', iid: 'p-bf-0' }, { type: 'TAP_LAND', iid: 'p-bf-1' }, { type: 'CAST_SPELL', iid: 'p-hand-0' }]],
       },
       {
-        kind: 'engine', id: '1.1-03', unit: '1.1', skill: 'colored-vs-generic', title: 'Colored mana matters',
+        kind: 'engine', id: '1.1-03', stableId: '1.1-03', unit: '1.1', skill: 'colored-vs-generic', title: 'Colored mana matters',
         prompt: 'Hurloon Minotaur costs 1RR. Tap the right lands and cast it.',
         hint: 'Each R needs a Mountain. The 1 can come from any land.',
         explanation: 'Colored symbols must be paid with that color. Two Mountains cover RR, and any third land covers the 1.',
@@ -47,7 +47,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'multiSelect', id: '1.1-04', unit: '1.1', skill: 'read-costs', title: 'What can you cast?',
+        kind: 'multiSelect', id: '1.1-04', stableId: '1.1-04', unit: '1.1', skill: 'read-costs', title: 'What can you cast?',
         prompt: 'These three lands are untapped. Pick every spell you could cast right now.',
         hint: 'Count the total mana first. Then check the colored symbols.',
         explanation: 'Grizzly Bears (1G), Llanowar Elves (G), and Gray Ogre (2R) all fit. Hill Giant needs four mana. Hurloon Minotaur needs two red.',
@@ -56,7 +56,7 @@ export const UNITS: Unit[] = [
         answer: ['grizzly_bears', 'llanowar_elves', 'gray_ogre'],
       },
       {
-        kind: 'engine', id: '1.1-05', unit: '1.1', skill: 'land-per-turn', title: 'One land per turn',
+        kind: 'engine', id: '1.1-05', stableId: '1.1-05', unit: '1.1', skill: 'land-per-turn', title: 'One land per turn',
         prompt: 'Play a land from your hand, then cast Grizzly Bears.',
         hint: 'You can play one land each turn. Play a Forest, then tap two Forests.',
         explanation: 'Each turn you may play one land. That second Forest gives you enough mana for Grizzly Bears.',
@@ -69,7 +69,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '1.1-06', unit: '1.1', skill: 'colored-vs-generic', title: 'White mana too',
+        kind: 'engine', id: '1.1-06', stableId: '1.1-06', unit: '1.1', skill: 'colored-vs-generic', title: 'White mana too',
         prompt: 'Keepers of the Faith costs 1WW. Tap the right lands and cast it.',
         hint: 'Each W needs a Plains. The 1 can come from any land.',
         explanation: 'Colored mana rules work the same in every color. Two Plains cover WW, and any third land covers the 1.',
@@ -85,7 +85,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '1.1-07', unit: '1.1', skill: 'land-per-turn', title: 'One land per turn, again',
+        kind: 'engine', id: '1.1-07', stableId: '1.1-07', unit: '1.1', skill: 'land-per-turn', title: 'One land per turn, again',
         prompt: 'Play a land from your hand, then cast Squire.',
         hint: 'You can play one land each turn. Play a Plains, then tap two Plains.',
         explanation: 'Each turn you may play one land. That second Plains gives you enough mana for Squire.',
@@ -98,7 +98,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'multiSelect', id: '1.1-08', unit: '1.1', skill: 'read-costs', title: 'What can you cast? (white and black)',
+        kind: 'multiSelect', id: '1.1-08', stableId: '1.1-08', unit: '1.1', skill: 'read-costs', title: 'What can you cast? (white and black)',
         prompt: 'These three lands are untapped. Pick every spell you could cast right now.',
         hint: 'Count the total mana first. Then check the colored symbols.',
         explanation: 'Miracle Worker (W), Squire (1W), and Keepers of the Faith (1WW) all fit. Cuombajj Witches needs two black. Hill Giant needs four mana.',
@@ -113,7 +113,7 @@ export const UNITS: Unit[] = [
     title: 'Lethal this turn',
     exercises: [
       {
-        kind: 'engine', id: '3.1-01', unit: '3.1', skill: 'lethal-evasion', title: 'Fly over',
+        kind: 'engine', id: '3.1-01', stableId: '3.1-01', unit: '3.1', skill: 'lethal-evasion', title: 'Fly over',
         prompt: 'Win this turn. The opponent is at 4 life. Pick your attackers.',
         hint: 'Their creatures can\'t block a creature with flying.',
         explanation: 'Wall of Wood and Scathe Zombies can\'t block flyers. Air Elemental\'s 4 damage gets through no matter what.',
@@ -126,7 +126,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-02', unit: '3.1', skill: 'lethal-outnumber', title: 'More attackers than blockers',
+        kind: 'engine', id: '3.1-02', stableId: '3.1-02', unit: '3.1', skill: 'lethal-outnumber', title: 'More attackers than blockers',
         prompt: 'Win this turn. The opponent is at 3 life. Pick your attackers.',
         hint: 'Wall of Wood can only block one attacker.',
         explanation: 'Send everything. Wall of Wood stops one creature, and the other two still deal at least 4.',
@@ -139,7 +139,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-03', unit: '3.1', skill: 'lethal-outnumber', title: 'Every point counts',
+        kind: 'engine', id: '3.1-03', stableId: '3.1-03', unit: '3.1', skill: 'lethal-outnumber', title: 'Every point counts',
         prompt: 'Win this turn. The opponent is at 3 life. Pick your attackers.',
         hint: 'Pearled Unicorn can block one attacker, and it can\'t block Scryb Sprites.',
         explanation: 'Attack with all three. Whatever Pearled Unicorn blocks, at least 3 damage gets through.',
@@ -152,7 +152,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-04', unit: '3.1', skill: 'summoning-sickness', title: 'Fresh arrivals',
+        kind: 'engine', id: '3.1-04', stableId: '3.1-04', unit: '3.1', skill: 'summoning-sickness', title: 'Fresh arrivals',
         prompt: 'Win this turn. The opponent is at 4 life. Pick your attackers.',
         hint: 'Hill Giant came into play this turn.',
         explanation: 'Creatures can\'t attack the turn they arrive. Grizzly Bears and Gray Ogre deal exactly 4.',

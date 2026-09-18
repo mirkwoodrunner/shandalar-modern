@@ -16,21 +16,26 @@ learn.html                          Vite entry
 src/learn/
   main.tsx                          mounts LearnApp into #learn-root
   content.ts                        DISCLAIMER constant
-  LearnApp.tsx                      unit list, ?exercise= deep link
-  engine/types.ts                   exercise data types
+  persistence.ts                    save layer (learn:progress) -- see section 2a
+  LearnApp.tsx                      unit list, survey gate, ?exercise= deep link
+  engine/types.ts                   exercise data types (stableId, see section 4)
   engine/puzzleRunner.ts            the only file here that touches src/engine or src/data
   data/units.ts                     authored exercise content
-  hooks/useLessonPlayer.ts          orchestration hook
+  hooks/useLessonPlayer.ts          orchestration hook, wires attempt recording
+  hooks/useLearnProgress.ts         React binding for persistence.ts (onboarding, reset)
   ui/LessonPlayer.tsx
   ui/EngineExercise.tsx
   ui/MultiSelectExercise.tsx
   ui/LearnCard.tsx
   ui/FeedbackPanel.tsx
+  ui/OnboardingSurvey.tsx
   ui/LearnFooter.tsx
   ui/learn.css
   __tests__/puzzleRunner.test.ts
   __tests__/units.test.ts
+  __tests__/persistence.test.ts
 tests/e2e/learn-slice.spec.ts
+tests/e2e/learn-persistence.spec.ts
 ```
 
 Boundaries, mirroring the engine table in `CLAUDE.md`:
@@ -39,6 +44,15 @@ Boundaries, mirroring the engine table in `CLAUDE.md`:
   or `src/data/`. It never mutates GameState directly -- every change goes through
   `duelReducer`.
 - `hooks/useLessonPlayer.ts` holds React state and calls runner functions. No rules logic.
+  Attempt writes (`recordAttemptAndPersist`) fire directly in its event handlers
+  (`tapCard`/`attack`/`checkMultiSelect`), never inside a `setState` updater callback --
+  `React.StrictMode` (`main.tsx`) double-invokes those in development, which would double-count
+  `attempts`. See `docs/LEARN_L1_SPEC.md` section 3, correction C1.
+- `persistence.ts` is the save layer: pure load/save/clear functions plus pure record-update
+  functions (`recordAttempt`, `completeOnboarding`, `overrideStartingTier`,
+  `deriveResumeIndex`), all operating on a `LearnSaveV1` value. It owns the `learn:progress`
+  `localStorage` key and never reads or writes a `shandalar:` key. `hooks/useLearnProgress.ts`
+  is its React binding, used by `LearnApp.tsx` for the onboarding gate and reset control.
 - `ui/*` is presentation only. Components call hook callbacks.
 - No `Math.random()` anywhere in `src/learn/`. Card iids are deterministic:
   `<side>-<zone>-<index>` (for example `p-bf-0`, `p-hand-2`, `o-bf-0`). A land keeps its
@@ -148,6 +162,10 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
   not authored by hand.
 - Card iids are deterministic per side and zone: `p-bf-0`, `p-hand-1`, `o-bf-2`, etc.,
   assigned in setup order by `buildPuzzleState`.
+- Every exercise also carries a `stableId`, required (not optional) on `ExerciseBase`. It is the
+  save layer's permanent key into `LearnSaveV1.exercises` (see `docs/LEARN_L1_SPEC.md` section 1)
+  and is set once at authoring time to that exercise's `id` at the moment it ships, then frozen.
+  `id` may be renumbered later (L2); `stableId` never is.
 
 ## 5. Content rules (enforced by `units.test.ts`)
 
@@ -185,8 +203,13 @@ decisions. Do not duplicate roadmap content here.
   section 3a above.
 - **Slice 3a** (done): remaining Unit 1.1 content -- `1.1-06` through `1.1-08`,
   all reusing existing skill tags.
+- **L1** (done): persistence, profile, and onboarding survey. `src/learn/persistence.ts` (save
+  layer, `learn:progress` key), `hooks/useLearnProgress.ts`, `ui/OnboardingSurvey.tsx`, `stableId`
+  on every exercise. Four corrections (C1-C4) applied during implementation; see
+  `docs/LEARN_L1_SPEC.md`. Vitest: 57 -> 90. Playwright: `learn-slice.spec.ts` unchanged at 16
+  passing, plus a new `learn-persistence.spec.ts` at 10 passing (5 cases x chromium +
+  mobile-chrome).
 
 Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, starting at
-milestone L1 (persistence, profile, onboarding survey). The previously-listed
-"Slice 4: checkpoint duel" is now milestone L10 there, deliberately resequenced
-behind the duel-UI scenario mode it depends on.
+milestone L2 (curriculum spine). The previously-listed "Slice 4: checkpoint duel" is now
+milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it depends on.

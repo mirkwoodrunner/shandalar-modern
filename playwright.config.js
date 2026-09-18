@@ -48,6 +48,7 @@ export default defineConfig({
         'tests/e2e/henchman-visibility.spec.ts',
         'tests/e2e/hooded-figure-sprites.spec.ts',
         'tests/e2e/learn-slice.spec.ts',
+        'tests/e2e/learn-persistence.spec.ts',
         'tests/e2e/legend-rule.spec.js',
         'tests/e2e/legendary-creatures-batch-1-2.spec.js',
         'tests/e2e/legendary-creatures-bugfixes.spec.js',

@@ -29,6 +29,10 @@ export type Goal =
 
 type ExerciseBase = {
   id: string;
+  // Permanent save key. Set once at authoring time to the exercise's id at
+  // that moment, then frozen -- id may be renumbered (L2), stableId never
+  // is. See docs/LEARN_L1_SPEC.md section 1.
+  stableId: string;
   unit: string;
   skill: string;
   title: string;
