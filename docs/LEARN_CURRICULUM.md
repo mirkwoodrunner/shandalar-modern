@@ -125,12 +125,20 @@ Teaches: mana exists, lands make it, colours are not interchangeable, one land p
 
 | Skill tag | Substrate | Exercises | Teaches | Status |
 |---|---|---|---|---|
-| `tap-for-mana` | engine | 2 | Tapping a land adds mana to your pool. | green (built) |
-| `land-per-turn` | engine | 3 | One land drop per turn, and the drop is load-bearing. | green (built) |
-| `colored-vs-generic` | engine | 4 | `{1}` takes anything, `{G}` does not. | green (built) |
-| `read-costs` | multiSelect | 3 | Read a cost and decide affordability. | green (built) |
+| `tap-for-mana` | engine | 1 | Tapping a land adds mana to your pool. | **built** (`1.1-01`) |
+| `cast-creature` | engine | 1 | The unit's payoff: spend what you made. | **built** (`1.1-02`) |
+| `colored-vs-generic` | engine | 4 | `{1}` takes anything, `{G}` does not. | **built** (`1.1-03/06/09/10`) |
+| `land-per-turn` | engine | 3 | One land drop per turn, and the drop is load-bearing. | **built** (`1.1-05/07/11`) |
+| `read-costs` | multiSelect | 3 | Read a cost and decide affordability. | **built** (`1.1-04/08/12`) |
 
-Built today: 8 exercises. Fill to 12.
+Unit 1.1 is complete at 12 exercises.
+
+**`tap-for-mana` stays at one exercise, on purpose.** With only `TAP_LAND` allowed and an
+empty hand there is no losing line and no rejectable move, so the checker cannot make such
+an exercise discriminating -- which is why `1.1-01` carries `guided: true` and the file's one
+standing warning. A second one would buy a second warning and no teaching. The colour
+coverage that a second `tap-for-mana` would have given is carried by `colored-vs-generic`
+instead, which spans red, white, blue, and black.
 
 **Authoring note.** `colored-vs-generic` has the strictest theme check in the file: some
 land subset with enough total mana must still be unable to pay. An exercise where every
@@ -203,11 +211,20 @@ Teaches: count the damage, and count it against the *best* defence.
 
 | Skill tag | Substrate | Exercises | Teaches | Status |
 |---|---|---|---|---|
-| `lethal-outnumber` | engine | 3 | More attackers than blockers means damage gets through. | green (2 built) |
-| `lethal-evasion` | engine | 3 | Flying goes over ground creatures. | green (1 built) |
-| `summoning-sickness` | -- | -- | Moved to Unit 1.3, where the tag belongs. | moved |
-| `lethal-tapped-defender` | engine | 3 | A tapped creature cannot block, so count untapped ones. | green (new tag) |
-| `lethal-flying-defender` | engine | 3 | Flying stops being evasion when they fly too. | green (new tag) |
+| `lethal-outnumber` | engine | 3 | More attackers than blockers means damage gets through. | **built** (`1.4-02/03/04`) |
+| `lethal-evasion` | engine | 3 | Flying goes over ground creatures. | **built** (`1.4-01/05/06`) |
+| `lethal-tapped-defender` | engine | 3 | A tapped creature cannot block, so count untapped ones. | **built** (`1.4-07..09`) |
+| `lethal-flying-defender` | engine | 3 | Flying stops being evasion when they fly too. | **built** (`1.4-10..12`) |
+
+Unit 1.4 is complete at 12 exercises. `summoning-sickness` moved to Unit 1.3, where the tag
+belongs.
+
+**`lethal-flying-defender`'s check reads blockability out of the engine rather than out of
+card text.** Attacking alone with one creature, each defender that can legally block it
+doubles the number of assignments `resolveAttack` enumerates, so `log2(outcomes)` is exactly
+how many defenders can block that attacker. The check then demands one attacker blockable by
+some defenders and not others, and no attacker blockable by none -- the second half is what
+keeps it from being a `lethal-evasion` puzzle wearing a different tag.
 
 **Correction, 2026-09-18.** This table previously listed `lethal-first-strike` and
 `lethal-trample` as green on the strength of a runner probe showing both resolve correctly.
@@ -232,19 +249,23 @@ is visible to the learner, so the feedback text should say *what the best block 
 
 | Unit | Skills | Target exercises | Built | To author |
 |---|---|---|---|---|
-| 1.1 Lands and mana | 4 | 12 | 8 | 4 |
+| 1.1 Lands and mana | 5 | 12 | **12** | 0 |
 | 1.2 Casting spells | 4 | 12 | **12** | 0 |
 | 1.3 Who can attack | 3 | 9 | **9** | 0 |
-| 1.4 Winning this turn | 4 | 12 | 3 | 9 |
-| **Total** | **15** | **45** | **32** | **13** |
+| 1.4 Winning this turn | 4 | 12 | **12** | 0 |
+| **Total** | **16** | **45** | **45** | **0** |
 
-Unit 1.4 drops to 4 skills and 12 exercises: `summoning-sickness` moved to Unit 1.3, and
-`lethal-first-strike` and `lethal-trample` moved to Tier 2 (see the correction above).
+**Tier 1 content is complete.** 45 exercises, 16 skills, `learn:check` at 0 errors and the
+one standing `1.1-01` warning.
 
-Eight new skill tags were planned. Five have landed: `cast-noncreature`, `pay-exact-mana`,
-`choose-what-to-cast` (Unit 1.2), `defender-cant-attack`, `tapped-cant-attack` (Unit 1.3).
-Two remain, both in Unit 1.4: `lethal-tapped-defender` and `lethal-flying-defender`.
-Unit 1.1's fill needs no new tags -- its four all exist.
+All seven new skill tags planned across L2b have landed with their `THEME_CHECKS` entries:
+`cast-noncreature`, `pay-exact-mana`, `choose-what-to-cast` (Unit 1.2),
+`defender-cant-attack`, `tapped-cant-attack` (Unit 1.3), `lethal-tapped-defender`,
+`lethal-flying-defender` (Unit 1.4).
+
+Colour coverage across the tier: white, blue, black, red, and green all appear as both the
+colour a cost demands and the colour a wrong tap supplies. Keywords used are FLYING and
+DEFENDER only, which is the whole set Tier 1 is permitted.
 
 Card pool: the existing Shandalar pool covers all of it. Verified availability for the new
 units: 25 vanilla creatures across five colours, 53 flyers, 12 first strikers, 7 tramplers,
@@ -432,6 +453,7 @@ spells.
 
 | Date | Change |
 |---|---|
+| 2026-09-18 | **Tier 1 content complete at 45 exercises.** Unit 1.4 filled (9 exercises, 2 new tags) and Unit 1.1 filled (4 exercises, no new tags). `tap-for-mana` fixed at one exercise, with the reasoning recorded. L2b exit criteria met. |
 | 2026-09-18 | Unit 1.3 authored and built (9 exercises, 2 new tags). `1.4-04` moved to `1.3-01`, keeping `stableId` `3.1-04`. Unit 1.4 rescoped to 4 skills / 12 exercises. Fixed a false positive in the `units.test.ts` phantom-card check: card names that are whole-word substrings of longer names (Savannah inside Savannah Lions) flagged the shorter card every time. |
 | 2026-09-18 | Unit 1.2 authored and built (12 exercises, 3 new tags). `cast-sequencing` dropped for overlapping `land-per-turn`; `pay-exact-mana` replaced it. **Correction:** `lethal-first-strike` and `lethal-trample` were wrongly marked green -- `units.test.ts` `BLOCKED_KEYWORDS` bans both. Moved to Tier 2; `lethal-flying-defender` replaces them in Unit 1.4. Section 2 gains the policy-constraint subsection. |
 | 2026-09-18 | Created. L2 deliverable. Tier 1 fully specified at 16 skills / 48 exercises, all verified green. Tiers 2 to 5 named and substrate-tagged. Unit 2.8 placement decided. Renumber specified. LC-1 and LC-2 logged. |

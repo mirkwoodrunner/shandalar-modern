@@ -254,15 +254,23 @@ nowhere in the repo. May run in parallel with L1.
 Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
 current runner. Tiers 2 to 5 have named skills tagged by substrate.
 
-### L2b. Tier 1 content fill (in progress)
+### L2b. Tier 1 content fill (done)
 
 Depends on L2. Target 40 to 50 exercises covering the full Tier 1 skill list.
 
-**Progress.** Tier 1 stands at 32 of 45 exercises. Units 1.2 (12/12) and 1.3 (9/9) are
-complete; Unit 1.1 (8/12) and Unit 1.4 (3/12) remain. The tier target dropped from 48 to 45
-when `summoning-sickness` moved from Unit 1.4 to Unit 1.3 and the two banned keyword skills
-left for Tier 2. Running tally and the authoritative skill list live in
-`docs/LEARN_CURRICULUM.md` section 3, not here.
+**Done 2026-09-18.** Tier 1 is complete at 45 exercises across 4 units and 16 skills, inside
+the 40 to 50 target. Seven new skill tags landed, each with its `THEME_CHECKS` entry in the
+prompt that introduced it. The authoritative skill list lives in `docs/LEARN_CURRICULUM.md`
+section 3, not here.
+
+Exit criteria, checked: Tier 1 skill list fully covered; `npm run learn:check` at 0 errors
+(one standing warning on `1.1-01`, which is `guided` by design); `units.test.ts` green at 155
+Vitest cases; and Playwright Learn-09 walks every Tier 1 unit from the unit list at both
+viewports, which is the "a first-time player can complete Tier 1 end to end" criterion.
+
+Held to the scope guard: two exercise types only, every exercise graded and producing an
+attempt record, no physical-handling content, basic lands only and no player-targeted spells
+per LC-1 and LC-2, and FLYING and DEFENDER as the only keywords used.
 
 **Correction applied 2026-09-18.** `lethal-first-strike` and `lethal-trample`, listed green
 in L2's first draft of the curriculum, are banned by `units.test.ts` `BLOCKED_KEYWORDS`

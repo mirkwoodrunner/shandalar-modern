@@ -1,6 +1,6 @@
 // tests/e2e/learn-slice.spec.ts
-// Learn Mode slice 1: puzzle runner, lesson player, and the 9 exercises
-// across Unit 1.1 and Unit 1.4. Uses data-testid selectors only, per
+// Learn Mode: puzzle runner, lesson player, and the Tier 1 exercise tree
+// across Units 1.1 to 1.4. Uses data-testid selectors only, per
 // docs/LEARN_MODE.md and CLAUDE.md's Learn Mode boundary rules.
 
 import { test, expect } from '@playwright/test';
@@ -11,6 +11,24 @@ test.describe('@learn-slice-1 Learn Mode slice', () => {
     await expect(page.getByTestId('learn-unit-1.1')).toBeVisible();
     await expect(page.getByTestId('learn-unit-1.4')).toBeVisible();
     await expect(page.getByTestId('learn-disclaimer')).toContainText('Not approved or endorsed by Wizards of the Coast');
+  });
+
+  // L2b exit criterion: a first-time player can reach every Tier 1 unit. The
+  // whole tree is listed and each unit's first exercise opens.
+  test('Learn-09: every Tier 1 unit is listed and entered from the unit list', async ({ page }) => {
+    await page.goto('/learn.html');
+    for (const unit of ['1.1', '1.2', '1.3', '1.4']) {
+      await expect(page.getByTestId(`learn-unit-${unit}`)).toBeVisible();
+    }
+    for (const [unit, title] of [
+      ['1.1', 'Tap a land'],
+      ['1.2', 'A black creature'],
+      ['1.3', 'Fresh arrivals'],
+      ['1.4', 'Fly over'],
+    ] as const) {
+      await page.goto(`/learn.html?exercise=${unit}-01`);
+      await expect(page.getByTestId('exercise-title')).toHaveText(title);
+    }
   });
 
   test('Learn-02: tap a land, then cast a creature', async ({ page }) => {

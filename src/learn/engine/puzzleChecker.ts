@@ -261,6 +261,40 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
     const usesAll = winning.every(l => (attackersOf(l.steps) ?? []).length === legal.length);
     return usesAll ? null : 'a winning set leaves a legal attacker home, so the tapped creature was never the constraint';
   },
+  // The tap must be load-bearing: untapping their blockers must close at least
+  // one winning line. Same removal trick summoning-sickness uses, applied to the
+  // opponent's side.
+  'lethal-tapped-defender': (ex, winning) => {
+    const specs = ex.setup.o.bf ?? [];
+    if (!specs.some(c => typeof c !== 'string' && c.tapped)) return 'no tapped creature on the opponent side';
+    const woken: EngineExercise = {
+      ...ex,
+      setup: { ...ex.setup, o: { ...ex.setup.o, bf: specs.map(c => (typeof c === 'string' ? c : { ...c, tapped: false })) } },
+    };
+    const wokenWins = enumerateLines(woken).filter(l => l.wins).length;
+    return wokenWins < winning.length ? null : 'untapping their creatures removes no winning line, so the tap never mattered';
+  },
+  // The lesson is that flying stops being evasion when they fly too. Counted
+  // through resolveAttack's outcome count rather than by reading keywords:
+  // attacking alone with one creature, every defender that can block it doubles
+  // the number of legal assignments, so log2(outcomes) is how many can block it.
+  // Some attacker must be blockable by some defenders and not others (that is
+  // the flyer meeting their flyer), and none may be unblockable outright --
+  // an unblockable attacker would make this a lethal-evasion puzzle instead.
+  'lethal-flying-defender': (ex) => {
+    const base = buildPuzzleState(ex.setup);
+    const defenders = base.o.bf.filter((c: any) => !c.tapped);
+    if (defenders.length < 2) return 'needs at least two untapped defenders, or partial blocking cannot arise';
+    const blockerCount = (iid: string) => {
+      const r = resolveAttack(base, [iid]);
+      return r.ok ? Math.round(Math.log2(r.outcomes)) : -1;
+    };
+    const counts = base.p.bf.map((c: any) => blockerCount(c.iid));
+    if (counts.some((n: number) => n === 0)) return 'an attacker is unblockable by every defender, which makes this an evasion puzzle, not a flying-defender one';
+    return counts.some((n: number) => n > 0 && n < defenders.length)
+      ? null
+      : 'no attacker is blockable by some defenders and not others, so their flyer is not the lesson';
+  },
   // Sickness must be load-bearing: healing it must open a new winning set.
   'summoning-sickness': (ex, winning) => {
     const specs = ex.setup.p.bf ?? [];

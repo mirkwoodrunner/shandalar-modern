@@ -248,8 +248,19 @@ decisions. Do not duplicate roadmap content here.
   check still catches a real phantom. Vitest `@learn`: 114 -> 130. Playwright unchanged at 26.
   Tier 1 is now 32 of 45 exercises.
 
-Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2b
-(Tier 1 content fill -- Unit 1.4's fill next, then Unit 1.1's, 13 exercises remaining
-against the tree in `docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
+- **L2b** (done): Tier 1 content complete at 45 exercises across 4 units. Unit 1.4 filled to
+  12 with `lethal-tapped-defender` and `lethal-flying-defender`; Unit 1.1 filled to 12 with no
+  new tags. Seven new skill tags landed across the milestone, each with its `THEME_CHECKS`
+  entry in the prompt that introduced it. `lethal-flying-defender`'s check reads blockability
+  out of `resolveAttack`'s outcome count -- each defender that can block a lone attacker
+  doubles the enumerated assignments, so `log2(outcomes)` is how many can block it -- rather
+  than parsing card text for keywords. New Playwright case Learn-09 walks every Tier 1 unit
+  from the unit list, which is L2b's "a first-time player can complete Tier 1 end to end"
+  exit criterion. `tap-for-mana` stays at one exercise: with only `TAP_LAND` allowed and an
+  empty hand, no line loses and no move is rejected, so a second one would add a second
+  standing warning and no teaching. Vitest `@learn`: 130 -> 155. Playwright: 26 -> 28.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2c
+(fan content notice and first public release -- the last gate before Tier 1 ships). The previously-listed "Slice 4: checkpoint duel" is
 now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
 depends on.

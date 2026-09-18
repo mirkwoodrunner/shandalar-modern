@@ -3,6 +3,41 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L2b complete -- Tier 1 content fill done** -- Unit 1.4 filled to 12
+  (`1.4-04` .. `1.4-12`) and Unit 1.1 filled to 12 (`1.1-09` .. `1.1-12`). Tier 1 is now
+  **45 exercises across 4 units and 16 skills**, inside the roadmap's 40 to 50 target.
+  - Final two skill tags with matching `THEME_CHECKS`: **`lethal-tapped-defender`** (untapping
+    their creatures must close a winning line -- the same removal trick `summoning-sickness`
+    uses, applied to the opponent's side) and **`lethal-flying-defender`** (flying stops being
+    evasion when they fly too).
+  - **`lethal-flying-defender` reads blockability out of the engine, not out of card text.**
+    Attacking alone with one creature, each defender that can legally block it doubles the
+    assignments `resolveAttack` enumerates, so `log2(outcomes)` is exactly how many defenders
+    can block that attacker. The check demands one attacker blockable by some defenders and
+    not others, and no attacker blockable by none. That second half is what stops it being a
+    `lethal-evasion` puzzle wearing a different tag.
+  - **Unit 1.1's fill added no new tags.** `tap-for-mana` deliberately stays at one exercise:
+    with only `TAP_LAND` allowed and an empty hand there is no losing line and no rejectable
+    move, so the checker cannot make it discriminating. That is why `1.1-01` is `guided` and
+    carries the file's one standing warning; a second such exercise would buy a second warning
+    and no teaching. Colour coverage is carried by `colored-vs-generic` instead, now spanning
+    red, white, blue, and black.
+  - **New Playwright case Learn-09** walks every Tier 1 unit from the unit list and opens each
+    unit's first exercise, at both viewports. That is L2b's "a first-time player can complete
+    Tier 1 end to end" exit criterion, made executable rather than asserted.
+  - **Two authoring errors caught by `units.test.ts`, not by me.** `1.4-07` and `1.4-09` had
+    `reasonIncludes` set to the opponent's *starting* life, but `resolveAttack`'s summary
+    reports life *after* damage. Annotations corrected to the true output.
+  - Scope guard held: two exercise types only, every exercise graded, basic lands only and no
+    player-targeted spells per LC-1/LC-2, FLYING and DEFENDER the only keywords used.
+  - `learn:check`: 0 errors, 1 warning (unchanged). Vitest `@learn`: 130 -> 155. Playwright:
+    26 -> 28.
+  - Edited: `src/learn/data/units.ts`, `src/learn/engine/puzzleChecker.ts`,
+    `tests/e2e/learn-slice.spec.ts`, `docs/LEARN_CURRICULUM.md`, `docs/LEARN_MODE.md`,
+    `docs/LEARN_MODE_ROADMAP.md`, `CLAUDE.md` (pinned baseline 130 -> 155, learn-slice
+    16 -> 18).
+  - **Next: L2c** -- fan content notice and first public release. That is the last gate.
+
 - **Learn Mode L2b -- Unit 1.3 "Who can attack"** -- 9 exercises (`1.3-01` .. `1.3-09`),
   completing the unit. Tier 1 now stands at 32 of 45 exercises; Units 1.2 and 1.3 are done.
   - Two new skill tags with matching `THEME_CHECKS` written in the same prompt:
