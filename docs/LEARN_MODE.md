@@ -235,8 +235,21 @@ decisions. Do not duplicate roadmap content here.
   Playwright unchanged at 26. `learn:check` still 0 errors / 1 warning.
   Tier 1 is now 24 of 48 exercises.
 
+- **L2b, Unit 1.3** (done): 9 exercises, `1.3-01` through `1.3-09`, completing "Who can
+  attack". Two new skill tags with matching `THEME_CHECKS`: `defender-cant-attack` and
+  `tapped-cant-attack`. Both are enforced with a no-slack rule -- a creature barred for the
+  right reason, plus every winning attacker set using every legal attacker -- because a Wall
+  cannot be un-walled the way `summoning-sickness` un-sicks a creature. `1.4-04` moved here
+  as `1.3-01` (`stableId` `3.1-04` unchanged); Unit 1.4 is now 3 exercises.
+  Also fixed a false positive in the `units.test.ts` phantom-card check: a card name that is
+  a whole-word substring of a longer name (Savannah inside Savannah Lions, Island inside
+  Volcanic Island) was flagged as a phantom every time the longer card was legitimately
+  named. Present card names are now blanked out longest-first before scanning. Verified the
+  check still catches a real phantom. Vitest `@learn`: 114 -> 130. Playwright unchanged at 26.
+  Tier 1 is now 32 of 45 exercises.
+
 Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2b
-(Tier 1 content fill -- Unit 1.3 next, then Unit 1.4's fill and Unit 1.1's, 24 exercises
-remaining against the tree in `docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
+(Tier 1 content fill -- Unit 1.4's fill next, then Unit 1.1's, 13 exercises remaining
+against the tree in `docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
 now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
 depends on.

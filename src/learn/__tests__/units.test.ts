@@ -43,12 +43,23 @@ describe('@learn-units-1 exercise data integrity', () => {
     }
   });
 
+  // Several card names are whole-word substrings of others -- Savannah inside
+  // Savannah Lions, Island inside Volcanic Island, Tundra inside Tundra Wolves.
+  // Scanning raw text flags the shorter card as a phantom every time the longer
+  // one is legitimately named. Blank out the names that ARE present first,
+  // longest first, and scan what is left.
   it('prompt, hint, and explanation only name cards present in the exercise', () => {
     for (const e of ALL) {
       const present = new Set(cardIds(e));
+      const presentNames = [...present]
+        .map(id => (CARD_DB as any[]).find(c => c.id === id)?.name)
+        .filter((n): n is string => !!n)
+        .sort((a, b) => b.length - a.length);
       for (const field of ['prompt', 'hint', 'explanation'] as const) {
+        let rest: string = e[field];
+        for (const n of presentNames) rest = rest.split(n).join(' ');
         for (const c of CARD_DB as any[]) {
-          if (new RegExp(`\\b${escapeRe(c.name)}\\b`).test(e[field])) {
+          if (new RegExp(`\\b${escapeRe(c.name)}\\b`).test(rest)) {
             expect(present.has(c.id), `${e.id}.${field} names ${c.name}, which is not in the exercise`).toBe(true);
           }
         }
@@ -64,8 +75,8 @@ describe('@learn-units-1 exercise data integrity', () => {
     }
   });
 
-  it('Unit 1.4 exercises are combat only, with nothing in either hand', () => {
-    for (const e of ENGINE.filter(x => x.unit === '1.4')) {
+  it('Units 1.3 and 1.4 exercises are combat only, with nothing in either hand', () => {
+    for (const e of ENGINE.filter(x => x.unit === '1.3' || x.unit === '1.4')) {
       expect(e.allowed).toEqual(['DECLARE_ATTACKER']);
       expect(e.setup.p.hand ?? []).toEqual([]);
       expect(e.setup.o.hand ?? []).toEqual([]);

@@ -258,9 +258,11 @@ current runner. Tiers 2 to 5 have named skills tagged by substrate.
 
 Depends on L2. Target 40 to 50 exercises covering the full Tier 1 skill list.
 
-**Progress.** Tier 1 stands at 24 of 48 exercises. Unit 1.1 (8/12) and Unit 1.4 (3/15) are
-partial; Unit 1.2 (12/12) is complete; Unit 1.3 (1/9) is next. Running tally and the
-authoritative skill list live in `docs/LEARN_CURRICULUM.md` section 3, not here.
+**Progress.** Tier 1 stands at 32 of 45 exercises. Units 1.2 (12/12) and 1.3 (9/9) are
+complete; Unit 1.1 (8/12) and Unit 1.4 (3/12) remain. The tier target dropped from 48 to 45
+when `summoning-sickness` moved from Unit 1.4 to Unit 1.3 and the two banned keyword skills
+left for Tier 2. Running tally and the authoritative skill list live in
+`docs/LEARN_CURRICULUM.md` section 3, not here.
 
 **Correction applied 2026-09-18.** `lethal-first-strike` and `lethal-trample`, listed green
 in L2's first draft of the curriculum, are banned by `units.test.ts` `BLOCKED_KEYWORDS`

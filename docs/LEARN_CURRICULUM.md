@@ -172,18 +172,30 @@ Teaches: not every creature on your board is an attacker.
 
 | Skill tag | Substrate | Exercises | Teaches | Status |
 |---|---|---|---|---|
-| `summoning-sickness` | engine | 3 | A creature that arrived this turn cannot attack. | green (1 built) |
-| `defender-cant-attack` | engine | 3 | Walls and other defenders never attack. | green (new tag) |
-| `tapped-cant-attack` | engine | 3 | A tapped creature cannot be declared. | green (new tag) |
+| `summoning-sickness` | engine | 3 | A creature that arrived this turn cannot attack. | **built** (`1.3-01..03`) |
+| `defender-cant-attack` | engine | 3 | Walls and other defenders never attack. | **built** (`1.3-04..06`) |
+| `tapped-cant-attack` | engine | 3 | A tapped creature cannot be declared. | **built** (`1.3-07..09`) |
+
+Unit 1.3 is complete at 9 exercises.
 
 All three are taught by rejection, and the runner already returns teachable text for each
 (`MSG.sick`, `MSG.cantAttack`, `MSG.tappedAttacker`). The `wrongLines` entry carries the
 rejection; `reasonIncludes` is what the learner is meant to read.
 
-**Theme-check design for the two new tags.** Both must be load-bearing, mirroring how
-`summoning-sickness` is checked: removing the restriction must open a winning line that
-did not exist. A puzzle where the wall or the tapped creature was irrelevant anyway is an
-exercise about nothing.
+**Every goal in this unit is `OPPONENT_DEAD_THIS_TURN`, because that is the only goal a
+`COMBAT_ATTACKERS` exercise has.** So a "who can attack" lesson is still a lethal puzzle;
+what makes it Unit 1.3 rather than Unit 1.4 is that the barred creature, not the blocking
+maths, is what the learner has to notice. Both units are therefore combat-only with empty
+hands, and `units.test.ts` now asserts that for 1.3 as well as 1.4.
+
+**Theme-check design for the two new tags.** Load-bearing is enforced with a no-slack rule
+rather than by removing the restriction, because a Wall cannot be un-walled the way
+`summoning-sickness` un-sicks a creature. Both checks require (a) a creature barred for the
+right reason and (b) every winning attacker set to use *every* legal attacker. If the puzzle
+still wins with an attacker left home, the barred creature was never the constraint.
+
+**`1.3-01` is the former `1.4-04`**, moved here because it is a summoning-sickness lesson
+and this is the summoning-sickness unit. `stableId` stays `3.1-04`, so progress carries.
 
 ### Unit 1.4 — Winning this turn
 
@@ -193,6 +205,7 @@ Teaches: count the damage, and count it against the *best* defence.
 |---|---|---|---|---|
 | `lethal-outnumber` | engine | 3 | More attackers than blockers means damage gets through. | green (2 built) |
 | `lethal-evasion` | engine | 3 | Flying goes over ground creatures. | green (1 built) |
+| `summoning-sickness` | -- | -- | Moved to Unit 1.3, where the tag belongs. | moved |
 | `lethal-tapped-defender` | engine | 3 | A tapped creature cannot block, so count untapped ones. | green (new tag) |
 | `lethal-flying-defender` | engine | 3 | Flying stops being evasion when they fly too. | green (new tag) |
 
@@ -221,15 +234,17 @@ is visible to the learner, so the feedback text should say *what the best block 
 |---|---|---|---|---|
 | 1.1 Lands and mana | 4 | 12 | 8 | 4 |
 | 1.2 Casting spells | 4 | 12 | **12** | 0 |
-| 1.3 Who can attack | 3 | 9 | 1 | 8 |
-| 1.4 Winning this turn | 5 | 15 | 3 | 12 |
-| **Total** | **16** | **48** | **24** | **24** |
+| 1.3 Who can attack | 3 | 9 | **9** | 0 |
+| 1.4 Winning this turn | 4 | 12 | 3 | 9 |
+| **Total** | **15** | **45** | **32** | **13** |
 
-Eight new skill tags, each needing a `THEME_CHECKS` entry in the prompt that introduces it.
-Three landed with Unit 1.2 (`cast-noncreature`, `pay-exact-mana`, `choose-what-to-cast`);
-five remain (`defender-cant-attack`, `tapped-cant-attack`, `lethal-tapped-defender`,
-`lethal-flying-defender`, plus whatever Unit 1.1's fill needs, which is none -- its four
-tags all exist).
+Unit 1.4 drops to 4 skills and 12 exercises: `summoning-sickness` moved to Unit 1.3, and
+`lethal-first-strike` and `lethal-trample` moved to Tier 2 (see the correction above).
+
+Eight new skill tags were planned. Five have landed: `cast-noncreature`, `pay-exact-mana`,
+`choose-what-to-cast` (Unit 1.2), `defender-cant-attack`, `tapped-cant-attack` (Unit 1.3).
+Two remain, both in Unit 1.4: `lethal-tapped-defender` and `lethal-flying-defender`.
+Unit 1.1's fill needs no new tags -- its four all exist.
 
 Card pool: the existing Shandalar pool covers all of it. Verified availability for the new
 units: 25 vanilla creatures across five colours, 53 flyers, 12 first strikers, 7 tramplers,
@@ -417,5 +432,6 @@ spells.
 
 | Date | Change |
 |---|---|
+| 2026-09-18 | Unit 1.3 authored and built (9 exercises, 2 new tags). `1.4-04` moved to `1.3-01`, keeping `stableId` `3.1-04`. Unit 1.4 rescoped to 4 skills / 12 exercises. Fixed a false positive in the `units.test.ts` phantom-card check: card names that are whole-word substrings of longer names (Savannah inside Savannah Lions) flagged the shorter card every time. |
 | 2026-09-18 | Unit 1.2 authored and built (12 exercises, 3 new tags). `cast-sequencing` dropped for overlapping `land-per-turn`; `pay-exact-mana` replaced it. **Correction:** `lethal-first-strike` and `lethal-trample` were wrongly marked green -- `units.test.ts` `BLOCKED_KEYWORDS` bans both. Moved to Tier 2; `lethal-flying-defender` replaces them in Unit 1.4. Section 2 gains the policy-constraint subsection. |
 | 2026-09-18 | Created. L2 deliverable. Tier 1 fully specified at 16 skills / 48 exercises, all verified green. Tiers 2 to 5 named and substrate-tagged. Unit 2.8 placement decided. Renumber specified. LC-1 and LC-2 logged. |

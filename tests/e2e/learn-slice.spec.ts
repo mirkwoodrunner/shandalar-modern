@@ -80,7 +80,7 @@ test.describe('@learn-slice-1 Learn Mode slice', () => {
   });
 
   test('Learn-07: summoning-sick creature cannot attack', async ({ page }) => {
-    await page.goto('/learn.html?exercise=1.4-04');
+    await page.goto('/learn.html?exercise=1.3-01');
     await page.getByTestId('card-p-bf-0').click();
     await expect(page.getByTestId('feedback-panel')).toHaveAttribute('data-result', 'rejected');
     await expect(page.getByTestId('feedback-text')).toContainText("can't attack yet");

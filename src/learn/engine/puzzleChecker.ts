@@ -233,6 +233,34 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
     if (!blockerCount) return 'no untapped defenders, so outnumbering is not the lesson';
     return winning.every(l => (attackersOf(l.steps) ?? []).length > blockerCount) ? null : 'a winning line does not outnumber the blockers';
   },
+  // A defender on your own board must be the reason the sum is tight. Two
+  // conditions: some creature is barred from attacking for a reason that is
+  // neither tapping nor sickness (which is what defender looks like from here),
+  // and every winning set uses every legal attacker, so its absence is felt.
+  'defender-cant-attack': (ex, winning) => {
+    const base = buildPuzzleState(ex.setup);
+    const specs = ex.setup.p.bf ?? [];
+    const barred = base.p.bf.filter((c: any, i: number) => {
+      const spec = specs[i];
+      const tagged = typeof spec === 'string' ? {} : spec;
+      if (tagged.tapped || tagged.summoningSick) return false;
+      return canAttackReason(base, c.iid) !== null;
+    });
+    if (!barred.length) return 'no untapped, non-sick creature is barred from attacking, so there is no defender lesson here';
+    const legal = base.p.bf.filter((c: any) => canAttackReason(base, c.iid) === null).map((c: any) => c.iid);
+    const usesAll = winning.every(l => (attackersOf(l.steps) ?? []).length === legal.length);
+    return usesAll ? null : 'a winning set leaves a legal attacker home, so the defender was never the constraint';
+  },
+  // Same shape, keyed on the tapped flag in the setup rather than on the
+  // rejection reason, and with the same no-slack requirement.
+  'tapped-cant-attack': (ex, winning) => {
+    const specs = ex.setup.p.bf ?? [];
+    if (!specs.some(c => typeof c !== 'string' && c.tapped)) return 'no tapped creature in the setup';
+    const base = buildPuzzleState(ex.setup);
+    const legal = base.p.bf.filter((c: any) => canAttackReason(base, c.iid) === null).map((c: any) => c.iid);
+    const usesAll = winning.every(l => (attackersOf(l.steps) ?? []).length === legal.length);
+    return usesAll ? null : 'a winning set leaves a legal attacker home, so the tapped creature was never the constraint';
+  },
   // Sickness must be load-bearing: healing it must open a new winning set.
   'summoning-sickness': (ex, winning) => {
     const specs = ex.setup.p.bf ?? [];

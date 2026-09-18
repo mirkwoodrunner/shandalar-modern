@@ -3,6 +3,33 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L2b -- Unit 1.3 "Who can attack"** -- 9 exercises (`1.3-01` .. `1.3-09`),
+  completing the unit. Tier 1 now stands at 32 of 45 exercises; Units 1.2 and 1.3 are done.
+  - Two new skill tags with matching `THEME_CHECKS` written in the same prompt:
+    **`defender-cant-attack`** and **`tapped-cant-attack`**. Both use a no-slack rule rather
+    than the removal trick `summoning-sickness` uses -- a Wall cannot be un-walled, so the
+    check instead requires a creature barred for the right reason plus every winning attacker
+    set using every legal attacker. If the puzzle still wins with an attacker left home, the
+    barred creature was never the constraint.
+  - **`1.4-04` moved to `1.3-01`.** It is a summoning-sickness lesson and this is the
+    summoning-sickness unit. `stableId` stays `3.1-04`, so progress carries. The
+    `learn-slice.spec.ts` deep link moved with it. Unit 1.4 is now 3 exercises.
+  - **Tier 1 target dropped 48 -> 45**, from the `summoning-sickness` move plus the two
+    banned keyword skills leaving for Tier 2 last prompt.
+  - **Bug fixed in `units.test.ts` phantom-card check.** A card name that is a whole-word
+    substring of a longer name was flagged as a phantom every time the longer card was
+    legitimately named -- Savannah inside Savannah Lions, and latently Island inside Volcanic
+    Island, Tundra inside Tundra Wolves. Present card names are now blanked out longest-first
+    before the scan. Verified by injecting a real phantom ("Black Lotus") and confirming the
+    check still fails, so this is a narrowed check and not a disabled one.
+  - `learn:check`: 0 errors, 1 warning (unchanged). Vitest `@learn`: 114 -> 130. Playwright:
+    26, unchanged.
+  - Edited: `src/learn/data/units.ts`, `src/learn/engine/puzzleChecker.ts`,
+    `src/learn/__tests__/units.test.ts`, `tests/e2e/learn-slice.spec.ts`,
+    `docs/LEARN_CURRICULUM.md`, `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`,
+    `CLAUDE.md` (pinned `@learn` baseline 114 -> 130).
+  - Not edited, deliberately: `docs/MECHANICS_INDEX.md`, same reasoning as the Unit 1.2 entry.
+
 - **Learn Mode L2b -- Unit 1.2 "Casting spells"** -- 12 new exercises (`1.2-01` .. `1.2-12`),
   completing the unit. Tier 1 now stands at 24 of 48 exercises.
   - Three new skill tags, each with a matching `THEME_CHECKS` entry written in the same
