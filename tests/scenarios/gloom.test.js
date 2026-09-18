@@ -255,9 +255,12 @@ describe('@engine-card-scenarios-5 Scenario: Gloom -- client-side shortfall and 
 // ─── Meta (GLOOM-22) ────────────────────────────────────────────────────────────
 
 describe('@engine-card-scenarios-5 Scenario: Gloom -- stub count meta test', () => {
-  it('GLOOM-22: exactly 2 lowercase effect:"stub" entries remain in cards.js (Animate Artifact, Tawnos\'s Coffin) -- Gloom no longer appears in that bucket', () => {
+  // 2026-09-18: was `toHaveLength(2)` (Animate Artifact, Tawnos's Coffin). Both
+  // have since been implemented and the lowercase effect:"stub" bucket is now
+  // empty. Same stricter forward invariant as animate-artifact AA-23.
+  it('GLOOM-22: the lowercase effect:"stub" bucket in cards.js is empty -- Gloom no longer appears in it', () => {
     const src = readFileSync(new URL('../../src/data/cards.js', import.meta.url), 'utf8');
     const matches = src.match(/effect:"stub"/g) || [];
-    expect(matches).toHaveLength(2);
+    expect(matches).toHaveLength(0);
   });
 });

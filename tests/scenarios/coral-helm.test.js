@@ -65,9 +65,16 @@ describe('@engine-card-scenarios-4 Coral Helm -- discardRandom cost + pumpCreatu
     const s1 = duelReducer(state, { type: 'ACTIVATE_ABILITY', who: 'p', iid: 'helm-1', tgt: 'bear-1' });
     const s2 = duelReducer(s1, { type: 'RESOLVE_STACK' });
 
-    // Advance through CLEANUP to clear eotBuffs
-    const cleanup = { ...s2, phase: PHASE.CLEANUP };
-    const s3 = duelReducer(cleanup, { type: 'ADVANCE_PHASE' });
+    // Advance INTO CLEANUP to clear eotBuffs.
+    // 2026-09-18: this used to set phase to PHASE.CLEANUP and then advance,
+    // which steps OUT of cleanup into the next turn's untap step. EOT buffs
+    // expire in advPhase's `if (next === PHASE.CLEANUP)` branch (SYSTEMS.md
+    // S3.1), i.e. on the transition INTO cleanup, so the old setup skipped the
+    // expiry entirely. Advancing END -> CLEANUP is the idiom the other
+    // cleanup-expiry scenarios use (see aladdins-lamp AL-14).
+    const preCleanup = { ...s2, phase: PHASE.END };
+    const s3 = duelReducer(preCleanup, { type: 'ADVANCE_PHASE' });
+    expect(s3.phase).toBe(PHASE.CLEANUP);
     const bear3 = s3.p.bf.find(c => c.iid === 'bear-1') || s3.o.bf.find(c => c.iid === 'bear-1');
     expect(bear3.eotBuffs).toHaveLength(0);
   });

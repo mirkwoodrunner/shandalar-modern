@@ -7,10 +7,20 @@ import { PHASE } from '../../src/engine/phases.js';
 import { makeState, makeCreature } from '../../src/engine/__tests__/_factory.js';
 
 describe('@engine-card-scenarios-5 Guardian Angel', () => {
+  // 2026-09-18: GA-01 and GA-03 each had two test-side defects and never
+  // reached the guardianAngel handler at all.
+  //   1. Neither gave 'p' any mana, so CAST_SPELL was refused outright and the
+  //      stack stayed empty -- the RESOLVE_STACK below was a no-op.
+  //   2. GA-01 additionally built its target with makeCreature('c1'), which
+  //      defaults to controller: 'o' (see _factory.js), while placing it on p's
+  //      battlefield. The handler writes the shield to ns[tgtC.controller].bf,
+  //      i.e. o's battlefield, so p's copy was never touched. The engine is
+  //      right to trust card.controller; the fixture was inconsistent.
   it('GA-01: prevents X damage to creature', () => {
-    const tgt = makeCreature('c1');
+    const tgt = makeCreature('c1', { controller: 'p' });
     const gaCard = { iid: 'ga1', id: 'guardian_angel', name: 'Guardian Angel', type: 'Enchantment', cost: 'W', cmc: 1, effect: 'guardianAngel', requiresTarget: true };
     const state = makeState({ pBf: [tgt], pHand: [gaCard] });
+    state.p.mana = { C: 0, W: 5, U: 0, B: 0, R: 0, G: 0 };
     const s1 = duelReducer(state, {
       type: 'CAST_SPELL',
       who: 'p',
@@ -26,6 +36,7 @@ describe('@engine-card-scenarios-5 Guardian Angel', () => {
   it('GA-03: creates tempAbilities entry on resolution', () => {
     const gaCard = { iid: 'ga1', id: 'guardian_angel', name: 'Guardian Angel', type: 'Enchantment', cost: 'W', cmc: 1, effect: 'guardianAngel' };
     const state = makeState({ pHand: [gaCard] });
+    state.p.mana = { C: 0, W: 5, U: 0, B: 0, R: 0, G: 0 };
     const s1 = duelReducer(state, {
       type: 'CAST_SPELL',
       who: 'p',

@@ -4506,9 +4506,18 @@ case "feintTapBlockersPreventDamage": {
   for (const w of ['p', 'o']) {
     ns = { ...ns, [w]: { ...ns[w], bf: ns[w].bf.map(c => {
       if (c.iid === tgtC.iid) return { ...c, preventCombatDamageDealt: true };
-      if (blockerIids.includes(c.iid)) return { ...c, tapped: true, preventCombatDamageDealt: true };
+      if (blockerIids.includes(c.iid)) return { ...c, preventCombatDamageDealt: true };
       return c;
     }) } };
+  }
+  // Tap centralization: the blockers are already on the battlefield, so this is
+  // a real untapped->tapped transition and must emit ON_TAP (CR 603.2e). This
+  // used to set the tapped flag inline above, bypassing tapPermanent entirely.
+  // tapPermanent no-ops on an already-tapped permanent, which is why the
+  // preventCombatDamageDealt flags are applied separately just above.
+  for (const blId of blockerIids) {
+    const bw = ['p', 'o'].find(x => ns[x].bf.some(c => c.iid === blId));
+    if (bw) ns = tapPermanent(ns, bw, blId);
   }
   ns = dlog(ns, `${card.name}: taps ${tgtC.name}'s blockers; combat damage between them is prevented this turn.`, "effect");
   break;
@@ -4660,8 +4669,14 @@ case "novaPentacleRedirect": {
 case "telekinesisTapPreventUntapSkip": {
   if (!tgtC || !isCre(tgtC)) { ns = dlog(ns, `${card.name} fizzles -- no legal creature target.`, "effect"); break; }
   ns = { ...ns, [tgtC.controller]: { ...ns[tgtC.controller], bf: ns[tgtC.controller].bf.map(c =>
-    c.iid === tgtC.iid ? { ...c, tapped: true, preventCombatDamageDealt: true, untapStepsSkipRemaining: 2 } : c
+    c.iid === tgtC.iid ? { ...c, preventCombatDamageDealt: true, untapStepsSkipRemaining: 2 } : c
   ) } };
+  // Tap centralization: "Tap target creature" on a permanent already on the
+  // battlefield is a real untapped->tapped transition and must emit ON_TAP
+  // (CR 603.2e). This used to set the tapped flag inline above, bypassing
+  // tapPermanent. tapPermanent no-ops if the target is already tapped, so the
+  // two flags above are applied separately.
+  ns = tapPermanent(ns, tgtC.controller, tgtC.iid);
   ns = dlog(ns, `${card.name}: taps ${tgtC.name}; its combat damage is prevented this turn and it won't untap for its controller's next two untap steps.`, "effect");
   break;
 }
