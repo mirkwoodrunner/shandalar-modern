@@ -3,6 +3,31 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Test infrastructure cleanup** -- the three out-of-scope defects the `@engine` triage
+  logged rather than fixed (`docs/TEST_AUDIT_LOG.md`, 2026-09-18, Findings 4, 5 and 6).
+  All three made the tooling actively misleading. No engine or `src/` file was touched.
+  - **"No tests matched" is now a third outcome, not a pass and not a failure.** It was
+    being miscounted in both directions: Playwright exits non-zero on an empty `--grep`,
+    so `@premodern` could never pass an audit whatever the change under test; Vitest
+    exits zero after skipping everything, so `@mobile` was silently counted as a pass
+    while verifying nothing. `scripts/run-targeted.js` had the same Playwright
+    vulnerability, confirmed by reproducing it. Both scripts now probe each half first
+    (new shared `scripts/lib/test-scope.js`) and label it `PASSED`, `FAILED` or
+    `NO TESTS MATCHED`, naming the tag. A skipped half never touches the exit code, and
+    the run ends `PARTIAL` or `NOTHING AUDITED` rather than "Audit passed".
+    **The STOP path is unchanged and was re-proved with deliberate failures in both
+    halves** -- a no-tests skip in one half cannot mask a real failure in the other.
+    `--pass-with-no-tests` was rejected on its own: it turns a typo'd tag into a pass.
+  - **Vitest runs no longer dirty the working tree.** `tools/enemy-deck-audit/analyze.mjs`
+    took an `ENEMY_DECK_AUDIT_OUT_DIR` override (defaulting to `__dirname`, so CLI use is
+    unchanged) and `enemy-deck-audit-stub-batch.test.js` now points it at a temp dir. The
+    analyzer still runs for real end to end; no assertion was weakened. A full
+    `npx vitest run` followed by `git status --porcelain` is now clean.
+  - **Deliberately not done:** the tag taxonomy is unchanged (no file was tagged `mobile`
+    to inflate a count, no tag removed from the pool), and the committed enemy-deck
+    reports were left stale rather than regenerated as a side effect of the fix.
+  - **Flagged, not fixed:** whether mobile logic warrants Vitest coverage at all, and the
+    now-unsignalled staleness of the committed enemy-deck reports.
 - **@engine test infrastructure triage** -- the `@engine` gate now terminates, and the
   Vitest half of it is green for the first time in an unknown number of sprints.
   - **The AI.sim hang was an engine bug, not a slow test.** `rollout()` in `MCTS.js`

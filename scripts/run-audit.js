@@ -10,6 +10,12 @@
 //   3. Runs that tag's full suite via Vitest + Playwright
 //   4. Exits non-zero with a STOP message if audit fails
 //
+// Each half reports one of THREE outcomes, never two: PASSED, FAILED, or
+// NO TESTS MATCHED. The third means the tag has no tests of that kind, so
+// nothing was verified by that half -- it is not a pass and not a failure, and
+// it does not affect the exit code. See docs/TEST_AUDIT_LOG.md, 2026-09-18,
+// Findings 5 and 6.
+//
 // --files mode:
 //   1. Accepts the TARGETED files as CLI args (same ones just tested via test:targeted --files)
 //   2. Auto-discovers the full candidate pool of Vitest/Playwright files, excludes the targeted ones
@@ -20,6 +26,11 @@
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import {
+  countVitestFilesForTags,
+  countPlaywrightTestsForGrep,
+  reportNoTestsMatched,
+} from './lib/test-scope.js';
 
 const ALL_TAGS = ['@engine', '@overworld', '@mobile', '@premodern', '@learn'];
 
@@ -137,24 +148,44 @@ function runTagMode(argv) {
   console.log(`[audit] Running audit for tag: ${auditTag}`);
 
   // --- Vitest ------------------------------------------------------------------
-  console.log('\n[audit] Running Vitest...');
-  const vitestResult = spawnSync(
-    'npx',
-    ['vitest', 'run', '--tags-filter', auditTag.slice(1)],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
+  let vitestFailed = false;
+  let vitestNoTests = false;
 
-  const vitestFailed = vitestResult.status !== 0;
+  const vitestFileCount = countVitestFilesForTags([auditTag.slice(1)]);
+  if (vitestFileCount === 0) {
+    vitestNoTests = true;
+    console.log('');
+    reportNoTestsMatched('[audit]', 'Vitest', auditTag);
+  } else {
+    console.log('\n[audit] Running Vitest...');
+    const vitestResult = spawnSync(
+      'npx',
+      ['vitest', 'run', '--tags-filter', auditTag.slice(1)],
+      { stdio: 'inherit', shell: true, cwd: process.cwd() }
+    );
+    vitestFailed = vitestResult.status !== 0;
+    console.log(`[audit] ${auditTag} Vitest: ${vitestFailed ? 'FAILED' : 'PASSED'}`);
+  }
 
   // --- Playwright --------------------------------------------------------------
-  console.log('\n[audit] Running Playwright...');
-  const pwResult = spawnSync(
-    'npm',
-    ['run', 'test:e2e', '--', '--grep', auditTag],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
+  let pwFailed = false;
+  let pwNoTests = false;
 
-  const pwFailed = pwResult.status !== 0;
+  const pwTestCount = countPlaywrightTestsForGrep(auditTag);
+  if (pwTestCount === 0) {
+    pwNoTests = true;
+    console.log('');
+    reportNoTestsMatched('[audit]', 'Playwright', auditTag);
+  } else {
+    console.log('\n[audit] Running Playwright...');
+    const pwResult = spawnSync(
+      'npm',
+      ['run', 'test:e2e', '--', '--grep', auditTag],
+      { stdio: 'inherit', shell: true, cwd: process.cwd() }
+    );
+    pwFailed = pwResult.status !== 0;
+    console.log(`[audit] ${auditTag} Playwright: ${pwFailed ? 'FAILED' : 'PASSED'}`);
+  }
 
   if (vitestFailed || pwFailed) {
     console.error(`\n[audit] FAILURE in untouched area "${auditTag}". This change has a side effect outside its declared scope.`);
@@ -164,6 +195,20 @@ function runTagMode(argv) {
     console.error('[audit]   2. Diagnose and fix the regression');
     console.error('[audit]   3. Only then resume the original task');
     process.exit(1);
+  }
+
+  if (vitestNoTests && pwNoTests) {
+    console.log(`\n[audit] NOTHING AUDITED for tag: ${auditTag}. Neither half had any tests to run.`);
+    console.log('[audit] This is not a pass. The tag verified nothing about the current change.');
+    process.exit(0);
+  }
+
+  if (vitestNoTests || pwNoTests) {
+    const ran = vitestNoTests ? 'Playwright' : 'Vitest';
+    const missing = vitestNoTests ? 'Vitest' : 'Playwright';
+    console.log(`\n[audit] PARTIAL audit for tag: ${auditTag}. ${ran} passed; ${missing} had no tests to run.`);
+    console.log(`[audit] ${missing} coverage for ${auditTag} was not verified.`);
+    process.exit(0);
   }
 
   console.log(`\n[audit] Audit passed for tag: ${auditTag}`);

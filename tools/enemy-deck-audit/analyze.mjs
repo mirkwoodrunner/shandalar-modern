@@ -4,7 +4,12 @@
 // public/enemy-decks/. Parses both packs, matches card names against this repo's
 // CARD_DB, and reports per-deck / per-pack / global coverage so a later prompt can
 // decide how (or whether) to build these into the game. Read-only against src/ and
-// public/ -- writes only report.json and report.md into this directory.
+// public/ -- writes only report.json and report.md into its output directory.
+//
+// Output directory: this script's own directory by default. Set the env var
+// ENEMY_DECK_AUDIT_OUT_DIR to redirect both reports somewhere else (used by
+// tests/scenarios/enemy-deck-audit-stub-batch.test.js so that running the test
+// suite does not rewrite the committed reports). Normal CLI use is unchanged.
 //
 // Run: node tools/enemy-deck-audit/analyze.mjs
 
@@ -15,6 +20,7 @@ import { CARD_DB } from '../../src/data/cards.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..');
+const OUT_DIR = process.env.ENEMY_DECK_AUDIT_OUT_DIR || __dirname;
 
 const PACKS = [
   { key: 'original', dir: join(ROOT, 'public', 'enemy-decks', 'original'), ext: '.DCK', hasSideboards: true },
@@ -257,7 +263,7 @@ const report = {
   contentMismatches,
   deckResults,
 };
-writeFileSync(join(__dirname, 'report.json'), JSON.stringify(report, null, 2));
+writeFileSync(join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
 
 // --- Write Markdown summary --------------------------------------------------
 function fmtRollup(key, r) {
@@ -335,10 +341,10 @@ for (const pack of PACKS) {
   md.push('');
 }
 
-writeFileSync(join(__dirname, 'report.md'), md.join('\n'));
+writeFileSync(join(OUT_DIR, 'report.md'), md.join('\n'));
 
 console.log(`Analyzed ${allFileIds.size} deck IDs across ${PACKS.length} packs.`);
 console.log(`original: ${rollups.original.coveragePct}% coverage (${rollups.original.matchedCards}/${rollups.original.totalCards})`);
 console.log(`spells-of-the-ancients: ${rollups['spells-of-the-ancients'].coveragePct}% coverage (${rollups['spells-of-the-ancients'].matchedCards}/${rollups['spells-of-the-ancients'].totalCards})`);
 console.log(`Flagged content mismatches: ${contentMismatches.length}`);
-console.log('Wrote tools/enemy-deck-audit/report.json and report.md');
+console.log(`Wrote report.json and report.md to ${OUT_DIR}`);

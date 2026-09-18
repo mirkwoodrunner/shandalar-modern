@@ -4,11 +4,22 @@
 // Tags are passed as CLI args. Both Vitest and Playwright are run for each set.
 // Multiple tags are OR-combined so any test matching any tag is included.
 //
+// Each half reports one of THREE outcomes, never two: PASSED, FAILED, or
+// NO TESTS MATCHED. The third means the requested tag(s) have no tests of that
+// kind, so nothing was verified by that half -- it is not a pass and not a
+// failure, and it does not affect the exit code. See docs/TEST_AUDIT_LOG.md,
+// 2026-09-18, Findings 5 and 6.
+//
 // Alternative --files mode: npm run test:targeted -- --files <vitest files...> --pw-files <pw files...> --declared-vitest <N> --declared-pw-files <M>
 // Runs Vitest directly against specific files (bypassing --testNamePattern, which
 // does not reliably scope Vitest in this repo) and Playwright against specific spec files.
 
 import { spawnSync } from 'child_process';
+import {
+  countVitestFilesForTags,
+  countPlaywrightTestsForGrep,
+  reportNoTestsMatched,
+} from './lib/test-scope.js';
 
 const VALID_TAGS = ['@engine', '@overworld', '@mobile', '@premodern', '@learn'];
 
@@ -152,29 +163,65 @@ function runTagMode(argv) {
   console.log(`[targeted] Vitest --tags-filter: "${tagsFilterExpr}"`);
   console.log(`[targeted] Playwright --grep: "${grepPattern}"`);
 
-  // --- Vitest ------------------------------------------------------------------
-  console.log('\n[targeted] Running Vitest...');
-  const vitestResult = spawnSync(
-    'npx',
-    ['vitest', 'run', '--tags-filter', tagsFilterExpr],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
+  const tagLabel = tags.join(', ');
 
-  const vitestFailed = vitestResult.status !== 0;
+  // --- Vitest ------------------------------------------------------------------
+  let vitestFailed = false;
+  let vitestNoTests = false;
+
+  const vitestFileCount = countVitestFilesForTags(tags.map(t => t.slice(1)));
+  if (vitestFileCount === 0) {
+    vitestNoTests = true;
+    console.log('');
+    reportNoTestsMatched('[targeted]', 'Vitest', tagLabel);
+  } else {
+    console.log('\n[targeted] Running Vitest...');
+    const vitestResult = spawnSync(
+      'npx',
+      ['vitest', 'run', '--tags-filter', tagsFilterExpr],
+      { stdio: 'inherit', shell: true, cwd: process.cwd() }
+    );
+    vitestFailed = vitestResult.status !== 0;
+    console.log(`[targeted] ${tagLabel} Vitest: ${vitestFailed ? 'FAILED' : 'PASSED'}`);
+  }
 
   // --- Playwright --------------------------------------------------------------
-  console.log('\n[targeted] Running Playwright...');
-  const pwResult = spawnSync(
-    'npm',
-    ['run', 'test:e2e', '--', '--grep', grepPattern],
-    { stdio: 'inherit', shell: true, cwd: process.cwd() }
-  );
+  let pwFailed = false;
+  let pwNoTests = false;
 
-  const pwFailed = pwResult.status !== 0;
+  const pwTestCount = countPlaywrightTestsForGrep(grepPattern);
+  if (pwTestCount === 0) {
+    pwNoTests = true;
+    console.log('');
+    reportNoTestsMatched('[targeted]', 'Playwright', tagLabel);
+  } else {
+    console.log('\n[targeted] Running Playwright...');
+    const pwResult = spawnSync(
+      'npm',
+      ['run', 'test:e2e', '--', '--grep', grepPattern],
+      { stdio: 'inherit', shell: true, cwd: process.cwd() }
+    );
+    pwFailed = pwResult.status !== 0;
+    console.log(`[targeted] ${tagLabel} Playwright: ${pwFailed ? 'FAILED' : 'PASSED'}`);
+  }
 
   if (vitestFailed || pwFailed) {
     console.error('\n[targeted] One or more targeted test suites failed.');
     process.exit(1);
+  }
+
+  if (vitestNoTests && pwNoTests) {
+    console.log(`\n[targeted] NOTHING RAN for: ${tagLabel}. Neither half had any tests to run.`);
+    console.log('[targeted] This is not a pass. Nothing was verified.');
+    process.exit(0);
+  }
+
+  if (vitestNoTests || pwNoTests) {
+    const ran = vitestNoTests ? 'Playwright' : 'Vitest';
+    const missing = vitestNoTests ? 'Vitest' : 'Playwright';
+    console.log(`\n[targeted] PARTIAL run for: ${tagLabel}. ${ran} passed; ${missing} had no tests to run.`);
+    console.log(`[targeted] ${missing} coverage for ${tagLabel} was not verified.`);
+    process.exit(0);
   }
 
   console.log('\n[targeted] All targeted tests passed.');

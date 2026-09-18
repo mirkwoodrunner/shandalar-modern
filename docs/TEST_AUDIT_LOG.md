@@ -316,7 +316,7 @@ semantics ~20 spec files assume.
 
 ---
 
-### Finding 4 (NOT in the prompt's scope -- reported, deliberately not fixed)
+### Finding 4 (RESOLVED): every Vitest run rewrites two tracked files
 
 **Every Vitest run dirties two tracked files.**
 `tests/scenarios/enemy-deck-audit-stub-batch.test.js:83` shells out to
@@ -332,13 +332,34 @@ revert it. That is the same class of problem as the rest of this entry -- the
 gate interfering with the work it is supposed to guard -- so it is recorded
 here rather than left to be rediscovered.
 
-**Not fixed here.** It is outside this prompt's three declared findings and
-CLAUDE.md forbids unsolicited work. The minimal fix would be an output-directory
-override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
-pointing it at a temp dir, leaving the committed reports alone. Two small edits,
-neither in a protected file. Needs Chris's go-ahead.
+**Diagnosis above is unchanged and was confirmed before fixing.**
 
-### Finding 5 (NOT in the prompt's scope -- reported, deliberately not fixed)
+**RESOLVED 2026-09-18 (test-infra-cleanup).** Fixed as proposed:
+
+- `tools/enemy-deck-audit/analyze.mjs` now resolves its output directory from
+  `OUT_DIR = process.env.ENEMY_DECK_AUDIT_OUT_DIR || __dirname`, used at both
+  `writeFileSync` sites. Normal CLI use (`node tools/enemy-deck-audit/analyze.mjs`)
+  is unchanged and still writes into the tool's own directory -- verified.
+- `tests/scenarios/enemy-deck-audit-stub-batch.test.js` creates a `mkdtempSync`
+  directory, passes it as `ENEMY_DECK_AUDIT_OUT_DIR`, reads `report.json` back
+  from there, and removes it in a `finally`. The analyzer is still run for real
+  end to end via `execFileSync` -- not stubbed -- and all four coverage
+  assertions are unchanged.
+
+Verified: `npx vitest run` (full, 130 files / 1607 passed) followed immediately
+by `git status --porcelain` no longer lists `tools/enemy-deck-audit/report.json`
+or `report.md`.
+
+**Deliberately not done: the committed reports were left stale.** They are still
+the 2026-07-23 / 709-card snapshot. Regenerating them is a content change, not
+part of removing the side effect, and doing it here would be the exact
+incidental rewrite being removed. Note the consequence: the accidental drift
+signal (a dirty `git status` after a test run) is now gone, so nothing will
+flag the staleness on its own. Regenerating them is a deliberate, separate
+call. The *correctness* claim is not at risk either way -- the test recomputes
+coverage from the live `CARD_DB` on every run and still asserts 100%.
+
+### Finding 5 (RESOLVED): `test:audit` runs zero Vitest tests for `@mobile`
 
 **`test:audit` is partly blind: one of the four tags has no Vitest coverage at
 all.** Running `npm run test:audit -- @engine` at the end of this work selected
@@ -367,11 +388,31 @@ half is vacuous and its Playwright half is the slow, 261-failure suite. The
 audit then reports either nothing useful or a hard stop that is really just the
 known baseline. `@premodern`, with one file, is thin for the same reason.
 
-**Not fixed here.** Either outcome (tagging files `mobile`, or removing the tag
-from the audit's selection pool) is a change to the tag taxonomy, which CLAUDE.md
-puts behind an explicit decision. Needs Chris's call.
+**Diagnosis above is unchanged and was re-confirmed before fixing:**
+`npx vitest run --tags-filter mobile` still reports
+`130 skipped | 1607 skipped` and **exits 0**. A `@module-tag` scan across every
+Vitest file still gives engine 115, overworld 5, learn 5, premodern 1,
+mobile 0 -- exactly the counts recorded above.
 
-### Finding 6 (NOT in the prompt's scope -- reported, deliberately not fixed)
+**RESOLVED 2026-09-18 (test-infra-cleanup)** -- by the Finding 6 fix, which
+handles both halves symmetrically rather than special-casing either tag. The
+audit's Vitest half now reports `NO TESTS MATCHED` for `@mobile` instead of
+counting a vacuous skip-everything run as a pass. See Finding 6 for the
+mechanism.
+
+**Deliberately not done, per instruction:** no file was given
+`@module-tag mobile` to make the count non-zero, and neither `@mobile` nor
+`@premodern` was removed from the tag list. Both remain load-bearing for
+Playwright and for CLAUDE.md's path-to-tag lookup table. The taxonomy is
+unchanged.
+
+**Still open, flagged not fixed:** whether mobile logic deserves Vitest
+coverage at all (`src/hooks/useIsMobile.ts`, the `src/ui/Mobile/*` components)
+is a testing-strategy question, not a script fix. It is now visible rather than
+hidden -- every audit that draws `@mobile` says out loud that its Vitest half
+verified nothing.
+
+### Finding 6 (RESOLVED): `test:audit` raises a false hard STOP on `@premodern`
 
 **`test:audit` raises a false hard STOP on `@premodern`.** The final
 `npm run test:audit -- @engine` of this prompt selected `@premodern` and
@@ -399,10 +440,57 @@ suite -- over an empty grep.
 Together with Finding 5, **two of the four audit-selectable tags are broken in
 the audit mechanism**: `@mobile` runs zero Vitest tests, `@premodern` always
 fails Playwright. Only `@engine` and `@overworld` audit meaningfully.
+(As originally reported. Both are now reported honestly rather than
+miscounted -- see the resolution below.)
 
-**Not fixed here.** The fix is a few lines in `scripts/run-audit.js` (treat "no
-tests found" for a tag as a skip, not a failure) but that script decides whether
-prompts are allowed to proceed, so changing it needs Chris's call.
+**Diagnosis above is unchanged and was re-confirmed before fixing.** Also
+confirmed, and not in the original report: **`scripts/run-targeted.js` had the
+identical vulnerability.** `npm run test:targeted -- @premodern` passed Vitest
+(16 passed), then failed Playwright with `Error: No tests found` and exited 1.
+
+**RESOLVED 2026-09-18 (test-infra-cleanup).** "Zero tests matched" is now an
+explicit **third outcome**, distinct from pass and from fail, in **both**
+scripts and in **both** halves:
+
+- New `scripts/lib/test-scope.js` holds two probes, shared by both scripts so
+  they cannot drift apart. `countVitestFilesForTags()` scans the Vitest include
+  dirs for `@module-tag` headers (instant; its counts reproduce the Finding 5
+  table exactly). `countPlaywrightTestsForGrep()` shells out to
+  `playwright test --list --grep <pattern>`, which is authoritative because it
+  applies the real config, projects and title matching.
+- A half whose probe returns 0 is not run. It prints
+  `NO TESTS MATCHED -- this tag has no <half> coverage. Not a failure, and not
+  a pass. Nothing was verified here.`, naming the tag. A half that does run
+  prints `PASSED` or `FAILED`, also naming the tag.
+- Exit codes: a no-tests half never contributes to the exit code. A run where
+  one half was skipped ends `PARTIAL audit for tag: <tag>` and says which
+  half's coverage went unverified; a run where both were skipped ends
+  `NOTHING AUDITED for tag: <tag>` and says plainly that it is not a pass.
+  Neither prints "Audit passed".
+- **The STOP path is untouched and still loud.** Any `FAILED` half still exits
+  1 with the full STOP block, including when the *other* half was a no-tests
+  skip -- a skipped half cannot mask a real failure.
+
+`--pass-with-no-tests` was deliberately **not** used on its own: a bare flag
+turns a typo'd tag into a silent pass, which is the same class of bug in the
+other direction. Tag validity in `run-targeted.js` is still checked against
+`VALID_TAGS` before anything runs.
+
+**Verified by hand, all four branches:**
+
+| Case | Command | Result |
+|---|---|---|
+| Playwright half empty | `node scripts/run-audit.js @engine @overworld @learn @mobile` (forces `@premodern`) | Vitest PASSED (16); Playwright NO TESTS MATCHED; `PARTIAL audit`; **exit 0** (was a false STOP) |
+| Vitest half empty | `node scripts/run-audit.js @engine @overworld @learn @premodern` (forces `@mobile`) | Vitest NO TESTS MATCHED (was a silent false pass); Playwright half then entered the known-red 724-test suite and was stopped by hand, per CLAUDE.md |
+| Real pass, both halves | `node scripts/run-audit.js @engine @overworld @mobile @premodern` (forces `@learn`) | Vitest PASSED 177; Playwright PASSED 55; `Audit passed for tag: @learn`; **exit 0** |
+| Real failure, Vitest | same as row 1, with a deliberate failing case appended to `cardsPremodern.test.js` | `@premodern Vitest: FAILED` -> full STOP block, **exit 1**; the Playwright no-tests skip did not mask it. Probe reverted. |
+| Real failure, Playwright | same as row 3, with a deliberate failing spec appended to `learn-persistence.spec.ts` | `@learn Playwright: FAILED` -> full STOP block, **exit 1**. Probe reverted. |
+
+The audit tags are no longer "two of four broken": `@engine`, `@overworld` and
+`@learn` audit fully, and `@premodern` and `@mobile` now audit honestly on the
+half they have while stating that the other half verified nothing. The
+underlying coverage gaps are unchanged -- they are now reported instead of
+being miscounted in either direction.
 
 ## 2026-09-18 -- `npm run test:targeted -- @engine` (Learn Mode L3, scenario mode)
 

@@ -524,6 +524,26 @@ covered here, fall back to the tag taxonomy table above.
 5. Only resume the original task once Chris has responded.
 ```
 
+**Three outcomes per half, not two.** Both scripts report each half (Vitest,
+Playwright) as exactly one of **PASSED**, **FAILED**, or **NO TESTS MATCHED**.
+The third is neither of the other two: it means the tag has no tests of that
+kind, so that half verified nothing. It does not fail the run and does not make
+it a pass.
+
+Read it as a coverage gap, not a green light. A run ending in
+`PARTIAL audit for tag: <tag>` checked only one half; a run ending in
+`NOTHING AUDITED for tag: <tag>` checked nothing at all and tells you nothing
+about your change. Neither is grounds for a STOP, and neither is grounds for
+claiming the tag audited clean.
+
+Two tags are in this state today: `@premodern` has no Playwright specs, and
+`@mobile` has no Vitest files (mobile coverage here is Playwright-only). Before
+this was reported, `@premodern` produced a false hard STOP on every audit and
+`@mobile` produced a silent false pass. See `docs/TEST_AUDIT_LOG.md`,
+2026-09-18, Findings 5 and 6.
+
+A **FAILED** half is still a hard stop, and the protocol above is unchanged.
+
 ### Playwright setup (one-time)
 ```
 npx playwright install chromium
