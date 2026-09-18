@@ -14,6 +14,137 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-18 -- `@engine` test infrastructure triage (engine-test-triage)
+
+Not a `test:audit` failure. This entry resolves the three findings recorded in
+the entry immediately below it. Base: `0fb0ecd` (`origin/main`, which now
+includes the merged L3 branch -- the L3 entry's base of `74590a5` is two
+commits behind).
+
+**Outcome:** `npm run test:targeted -- @engine` terminates. The Vitest half is
+green: **1350 passed | 0 failed | 257 skipped**, in about 15 seconds. The
+Playwright half is red and its baseline is recorded under Finding 3 below.
+
+### Finding 1 (RESOLVED): `AI.sim.test.js` hang -- an engine bug, not a test bug
+
+**Root cause.** `rollout()` in `src/engine/MCTS.js` looped forever whenever a
+simulated state reached `CLEANUP` with `pendingCleanupDiscard` set for the human
+player. DuelCore's `ADVANCE_PHASE` returns the state unchanged while that prompt
+is open (`DuelCore.js`, the `if (s.pendingCleanupDiscard) return s;` guard), and
+nothing inside a rollout dispatches `RESOLVE_CLEANUP_DISCARD`. So `s.turn` never
+advanced, `s.over` stayed null, and the loop's only bound --
+`(s.turn - startTurn) < depthLimit` -- never fired.
+
+**Correcting the earlier diagnosis.** The L3 entry below reports the worker as
+"mostly idle", which suggested waiting. It is not waiting. Sampling
+`/proc/<pid>/status` during a reproduction shows the Vitest worker at **98% CPU,
+State R (running)** -- a synchronous spin. The parent `vitest` process is the
+idle one, which is what the earlier observation caught. This matters: because
+the spin is synchronous it blocks the worker's event loop, so the file's own
+30-second per-test timeouts can never fire. That is why the suite hangs rather
+than failing.
+
+**Why it looked flaky.** The engine shuffles with `Math.random()` (a known,
+already-flagged determinism violation -- see the `OBSERVED` comments in
+`DuelCore.js`), so every run is a different game. Roughly two runs in three hit
+a state that triggers the spin; the third passes in about 7 seconds. Seeding
+`Math.random` with a mulberry32 PRNG made it deterministic and reproducible at
+seed 0.
+
+**This was a live bug, not only a test bug.** `AI.js` reaches `rollout()`
+through `getBestMove()` at two call sites (planAttack and planMain), so any AI
+turn whose rollout reached a `CLEANUP` with `p` over hand size would spin the
+browser tab.
+
+**Already predicted.** The `A4 -- PRIORITY WINDOW INTERACTION` note in
+`MCTS.js`'s header (dated 2026-05-23) describes this exact failure mode for
+`priorityWindow`, concludes rollouts are "immune in practice", and leaves the
+latent risk standing. Adding `pendingCleanupDiscard` (SYSTEMS.md S29) later made
+it reachable. That note is now marked closed.
+
+**Fix (`src/engine/MCTS.js`, two changes).**
+1. `stepOnce()` resolves a pending cleanup discard itself, using the same
+   deterministic "discard the last N" policy DuelCore already applies on the
+   AI's own side of that branch, and which `AI.sim.test.js`'s own `runSimGame`
+   helper had already been given for the same reason.
+2. `rollout()` carries an absolute step cap (`depthLimit * 40`; a turn is 14
+   phases, so a progressing game never approaches it). Seven distinct `pending*`
+   states block `ADVANCE_PHASE` and a rollout can only answer one of them; the
+   rest now degrade to the heuristic evaluation instead of hanging the caller.
+
+**Verification.** 150 consecutive seeded games terminate with a winner. The real
+test file passes 5/5 in 5-9 seconds across 5 consecutive runs (previously: hung
+on 2 of 3).
+
+**Deliberately not done.** No timeout was bolted onto the suite, because the
+root cause turned out to be in scope. The `Math.random()` determinism violation
+in `DuelCore.js` is untouched -- it is a separate, already-flagged issue, and
+`AI.sim.test.js`'s "is deterministic" case only compares two clones of one
+already-shuffled state, so it does not depend on the fix.
+
+### Finding 2 (RESOLVED): 15 Vitest failures across 10 scenario files
+
+Two were real engine defects. Thirteen were stale tests. Each is listed with its
+verdict; every test edit carries a dated comment in the file saying why.
+
+**Real engine bugs (2)** -- both caught by the tap-centralization tripwire,
+which is exactly what it exists for:
+
+| Site | Card | Defect |
+|---|---|---|
+| `DuelCore.js` `feintTapBlockersPreventDamage` | Feint | set the tapped flag inline, bypassing `tapPermanent`, so no `ON_TAP` event |
+| `DuelCore.js` `telekinesisTapPreventUntapSkip` | Telekinesis | same |
+
+Both tap a permanent already on the battlefield, which is a genuine
+untapped->tapped transition and owes an `ON_TAP` event. Verified against
+`docs/MagicCompRules 20260417.pdf` **CR 603.2e**: an ability triggering on
+"becomes tapped" fires only when a permanent already on the battlefield changes
+from untapped to tapped. Both now route through `tapPermanent`. Because
+`tapPermanent` no-ops on an already-tapped permanent, the accompanying flags
+(`preventCombatDamageDealt`, `untapStepsSkipRemaining`) are applied separately.
+
+A third inline site, in `tawnosCoffinReturn`, is **left alone deliberately**:
+that creature *enters* the battlefield tapped (or phases in tapped), and CR
+603.2e is explicit that entering in that state never counts as becoming tapped.
+Routing it through `tapPermanent` would emit a spurious `ON_TAP`.
+
+**Stale tests (13):**
+
+| File | Case(s) | Verdict |
+|---|---|---|
+| `aladdins-lamp` | AL-01, AL-02 | Predate the Sprint 7 universal-stack change. `ACTIVATE_ABILITY` now only pushes to `s.stack`; the effect runs on `RESOLVE_STACK`. AL-01 failed; **AL-02 was passing vacuously** -- nothing had resolved, so "no charge" was true either way. |
+| `aladdins-lamp` | AL-01, AL-02, AL-14 | `PHASE` was never imported -- `ReferenceError`. |
+| `aladdins-lamp` | AL-03 | Dispatched `{ type: 'DRAW' }`, which **is not an action type `duelReducer` handles**. It fell through to `default: return s`, so the case asserted against an untouched state and never exercised the lamp at all. Now drives the real draw step. |
+| `aladdins-lamp` | AL-04 | Asserted the chosen card was in hand *and* on top of the library -- self-contradictory. Oracle text is "...then draw a card", so it ends in hand. The two unchosen cards go to the bottom "in a random order", so their order is not assertable; now asserts membership. |
+| `guardian-angel` | GA-01, GA-03 | Never gave `p` mana, so `CAST_SPELL` was refused outright (silently -- no log line) and the stack stayed empty, making the `RESOLVE_STACK` below a no-op. |
+| `guardian-angel` | GA-01 | Also built its target with `makeCreature('c1')`, which defaults to `controller: 'o'` (see `_factory.js`), while placing it on p's battlefield. The handler writes to `ns[tgtC.controller].bf`, so p's copy was never touched. The engine is right to trust `card.controller`; the fixture was inconsistent. |
+| `coral-helm` | HELM-02 | Started *at* `PHASE.CLEANUP` and advanced, stepping *out* of cleanup. EOT buffs expire in advPhase's `if (next === PHASE.CLEANUP)` branch, i.e. on the transition *into* cleanup. Now advances END -> CLEANUP, the idiom the other cleanup scenarios use. |
+| `raging-river` | RR-17 | Identical shape: started at `PHASE.COMBAT_END` and advanced out, while the strip runs on the transition *into* combat end. |
+| `animate-artifact` | AA-23 | Stub-count tripwire expecting 1. The lowercase `effect:"stub"` bucket (untriaged; distinct from the uppercase `effect:"STUB"` bucket) has been fully drained. Now expects 0 -- a stricter invariant, and the one the tripwire is actually for. |
+| `gloom` | GLOOM-22 | Same tripwire expecting 2. Same resolution. |
+| `ring-of-maruf` | RM-22 | `expect(stubs).toContain('blaze_of_glory')` was a control proving the STUB filter selects something. `blaze_of_glory` has since been implemented. Pinning a card id there just re-breaks the test the next time that card ships; now asserts the filter is non-empty. |
+| `creature-damage-centralization` | CDMG-12 | Migration tripwire expecting 3 raw `damage: c.damage +` sites, found 4. The 4th is Whippoorwill's `cantPreventOrRedirectDamage` early return **inside `dmgWithShield`** -- the function the migration centralized on, so not a violation. Rewritten to scope the assertion (any number inside `dmgWithShield`, exactly one elsewhere) rather than bump a total. |
+| `enemy-deck-audit-missing-cards` | ID audit | Three apostrophe-named cards added after the hand-written allowlist was last touched: `hells_caretaker`, `al_abaras_carpet`, `solkanar_the_swamp_king`. `validateCardIds` derives its expected id by replacing an apostrophe with the letter `s` (`Hell's` -> `hellss_`), while the project's actual convention drops it. Neither the ids nor CARD_DB is wrong -- the validator's normalizer is a poor fit for apostrophes. |
+
+**A note on the tripwires.** Four of the thirteen were source-shape assertions
+guarding a completed migration, and all four had gone stale as the code moved on
+legitimately. A bare count is a weak guard: it re-breaks on every allowed
+addition, and a real violation can hide behind a count bump. All four were
+rewritten to assert *scope or identity* instead. The card-id allowlist was made
+rule-based for the same reason -- a hand-maintained per-id list re-breaks the
+whole `@engine` suite every time an apostrophe-named card is added, which is how
+those three sat red.
+
+**Never done, per the prompt's constraint:** no test was skipped, disabled,
+deleted or quarantined, and no assertion was changed purely to make it pass.
+
+### Finding 3: Playwright `@engine`/`@mobile` baseline
+
+See the dedicated section below (`2026-09-18 -- Playwright @engine/@mobile
+reference baseline`).
+
+---
+
 ## 2026-09-18 -- `npm run test:targeted -- @engine` (Learn Mode L3, scenario mode)
 
 Not a `test:audit` failure. Logged here anyway because it is exactly what this
