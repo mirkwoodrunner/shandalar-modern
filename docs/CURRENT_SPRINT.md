@@ -3,6 +3,11 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-16)
+- **Learn Mode canonical model** -- resolved open decision 2. Paper Magic is the canonical
+  model at every tier. Digital-client behavior becomes its own mapping skill. Added
+  roadmap section 4.4, constrained L2 drafting and L2b authoring, and raised physical
+  handling content as a new open decision gating L2. Documents-only change, no code touched.
+  - Edited: `docs/LEARN_MODE_ROADMAP.md`, `docs/DECISIONS.md`.
 - **Learn Mode release order** -- resolved open decision 1. Tier 1 ships publicly on its
   own, first. Added milestones L2b (Tier 1 content fill, 40-50 exercises, hand-authored)
   and L2c (fan content notice and first public release, pulled forward from L11). Scoped
