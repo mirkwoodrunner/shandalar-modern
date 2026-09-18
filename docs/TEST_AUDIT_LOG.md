@@ -138,6 +138,28 @@ those three sat red.
 **Never done, per the prompt's constraint:** no test was skipped, disabled,
 deleted or quarantined, and no assertion was changed purely to make it pass.
 
+### Finding 4 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**Every Vitest run dirties two tracked files.**
+`tests/scenarios/enemy-deck-audit-stub-batch.test.js:83` shells out to
+`tools/enemy-deck-audit/analyze.mjs` with `execFileSync`, and that script writes
+`report.json` and `report.md` back into `tools/enemy-deck-audit/` via
+`writeFileSync(join(__dirname, ...))`. The committed copies were generated
+2026-07-23 against a 709-card `CARD_DB`; the current one is 744, so the rewrite
+is not a no-op and `git status` is dirty after any run that includes this file.
+
+Consequence: any prompt that runs the test suite and then commits will either
+sweep an unrelated regenerated report into its commit or have to remember to
+revert it. That is the same class of problem as the rest of this entry -- the
+gate interfering with the work it is supposed to guard -- so it is recorded
+here rather than left to be rediscovered.
+
+**Not fixed here.** It is outside this prompt's three declared findings and
+CLAUDE.md forbids unsolicited work. The minimal fix would be an output-directory
+override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
+pointing it at a temp dir, leaving the committed reports alone. Two small edits,
+neither in a protected file. Needs Chris's go-ahead.
+
 ### Finding 3: Playwright `@engine`/`@mobile` baseline
 
 See the dedicated section below (`2026-09-18 -- Playwright @engine/@mobile
