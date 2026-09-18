@@ -3,6 +3,40 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L2b -- Unit 1.2 "Casting spells"** -- 12 new exercises (`1.2-01` .. `1.2-12`),
+  completing the unit. Tier 1 now stands at 24 of 48 exercises.
+  - Three new skill tags, each with a matching `THEME_CHECKS` entry written in the same
+    prompt per `CLAUDE.md`: **`cast-noncreature`** (goal permanent must not be a creature,
+    so an "artifacts are spells too" lesson cannot quietly cast a creature),
+    **`pay-exact-mana`** (every winning line must tap every land on the battlefield),
+    **`choose-what-to-cast`** (some other card in hand must be affordable from the opening
+    board, or there is no choice to make).
+  - **`cast-sequencing` drafted then dropped.** It would have required the played land to be
+    tapped for the cast, which `land-per-turn` already covers in `1.1-05`/`1.1-07`. Two tags
+    for one behaviour splits that skill's evidence across two mastery scores in L8.
+    `pay-exact-mana` replaced it.
+  - **Correction to L2's curriculum output.** `lethal-first-strike` and `lethal-trample` were
+    marked green last prompt on the strength of a runner probe. The probe was right and the
+    conclusion was wrong: `units.test.ts` `BLOCKED_KEYWORDS` fails any exercise referencing
+    TRAMPLE, BANDING, FIRST_STRIKE, DOUBLE_STRIKE, or DEATHTOUCH, pending the
+    damage-assignment gap in `LEARN_MODE.md` section 6. Both tags moved to Tier 2;
+    `lethal-flying-defender` replaces them in Unit 1.4 and is the better lesson anyway, since
+    it stops `lethal-evasion` teaching "flying always gets through". `LEARN_CURRICULUM.md`
+    section 2 gains a policy-constraint subsection so the next author does not repeat this.
+  - Cards used are all clear of `BLOCKED_KEYWORDS`: Scathe Zombies, Gray Ogre, Azure Drake,
+    Howling Mine, Crusade, Jayemdae Tome, Hill Giant, Keepers of the Faith, Squire, Bog Imp.
+    Basic lands only, per the LC-1/LC-2 constraint.
+  - `learn:check`: 0 errors, 1 warning (unchanged). Vitest `@learn`: 90 -> 114 (data-driven,
+    no test-file edit needed). Playwright: 26, unchanged.
+  - Edited: `src/learn/data/units.ts`, `src/learn/engine/puzzleChecker.ts`,
+    `docs/LEARN_CURRICULUM.md`, `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`,
+    `CLAUDE.md` (pinned `@learn` baseline 90 -> 114, per the "never silently" rule).
+  - Not edited, deliberately: `docs/MECHANICS_INDEX.md`. Its Tier 2 trigger is a new
+    mechanic, card effect handler, or card group. Learn Mode exercises and their theme
+    checks are content and content-validation code, not game mechanics, so the trigger is
+    not met. Flagging rather than assuming -- say the word and I will add a Learn Mode
+    traceability section instead.
+
 - **Learn Mode L2 -- curriculum spine** -- new `docs/LEARN_CURRICULUM.md`, now the authority
   on Learn Mode content. Tier 1 fully specified: 16 skills across 4 units (1.1 Lands and mana,
   1.2 Casting spells, 1.3 Who can attack, 1.4 Winning this turn), 48 target exercises, 13 built,

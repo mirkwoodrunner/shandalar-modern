@@ -225,8 +225,18 @@ decisions. Do not duplicate roadmap content here.
   so saved progress is unaffected. Runner defects LC-1 and LC-2 logged in section 6 above.
   Baseline unchanged: 90 Vitest, 26 Playwright, `learn:check` at 0 errors / 1 warning.
 
+- **L2b, Unit 1.2** (done): 12 new exercises, `1.2-01` through `1.2-12`, completing
+  "Casting spells". Three new skill tags with matching `THEME_CHECKS` written in the same
+  prompt: `cast-noncreature` (the goal permanent must not be a creature),
+  `pay-exact-mana` (every winning line taps every land), `choose-what-to-cast` (some other
+  card in hand must be affordable, or there was no choice). A fourth drafted tag,
+  `cast-sequencing`, was dropped for overlapping `land-per-turn` -- overlapping tags split
+  one skill's evidence across two mastery scores in L8. Vitest `@learn`: 90 -> 114.
+  Playwright unchanged at 26. `learn:check` still 0 errors / 1 warning.
+  Tier 1 is now 24 of 48 exercises.
+
 Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2b
-(Tier 1 content fill -- 35 exercises to author against the tree in
-`docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
+(Tier 1 content fill -- Unit 1.3 next, then Unit 1.4's fill and Unit 1.1's, 24 exercises
+remaining against the tree in `docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
 now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
 depends on.

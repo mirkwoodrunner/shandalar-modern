@@ -59,7 +59,8 @@ This section is the binding constraint on Tier 1. It was established by probing
 | Goal `MANA_IN_POOL` | Colour and amount. |
 | Goal `CARD_ON_BATTLEFIELD` | Matches on `card.id`. Creatures, artifacts, enchantments. |
 | Goal `OPPONENT_DEAD_THIS_TURN` | `checkWinConditions`. Evaluated in either phase. |
-| Flying, first strike, trample, defender | Honoured by `canBlockDuel` and by combat damage. |
+| Flying and defender | Honoured by `canBlockDuel`. The only two keywords Tier 1 may use. |
+| First strike, trample, banding, deathtouch | Resolve correctly in the runner, but banned by project policy. See below. |
 | Summoning sickness, tapped attackers | Rejected with specific, teachable messages. |
 
 Worst-case block enumeration is the asset here. `resolveAttack` marks a line lethal only
@@ -80,6 +81,17 @@ real teaching rather than a quiz.
 
 The first two rows are new findings from this pass and were not in the roadmap.
 
+### Policy constraint, which is separate from capability
+
+`src/learn/__tests__/units.test.ts` fails any exercise referencing a card whose `keywords`
+include TRAMPLE, BANDING, FIRST_STRIKE, DOUBLE_STRIKE, or DEATHTOUCH. Those keywords work
+in the runner. They are banned anyway, because the damage-assignment and deathtouch gaps in
+`docs/LEARN_MODE.md` section 6 make the *reasoning* the exercise would teach unreliable
+even where the single case resolves correctly.
+
+Treat that list as binding when picking cards. FLYING and DEFENDER are not on it and are
+the two keywords Tier 1 may use.
+
 ---
 
 ## 3. Tier 1 — Zero
@@ -88,7 +100,7 @@ The first two rows are new findings from this pass and were not in the roadmap.
 **Release:** this tier ships publicly on its own, first, after L2c.
 
 Every skill below is **green**. Target 3 exercises per skill unless noted, which puts the
-tier at 45 exercises against L2b's 40 to 50 target.
+tier at 48 exercises against L2b's 40 to 50 target.
 
 ### Prerequisite graph
 
@@ -130,18 +142,29 @@ Teaches: spells come from hand, cost gets paid first, sequencing matters, and yo
 
 | Skill tag | Substrate | Exercises | Teaches | Status |
 |---|---|---|---|---|
-| `cast-creature` | engine | 3 | Pay the cost, the creature arrives. | green (1 built) |
-| `cast-noncreature` | engine | 3 | Artifacts and enchantments cast the same way. | green (new tag) |
-| `cast-sequencing` | engine | 3 | Land drop, then taps, then cast, in that order. | green (new tag) |
-| `choose-what-to-cast` | engine | 3 | Limited mana forces a choice between two castable spells. | green (new tag) |
+| `cast-creature` | engine | 3 | Pay the cost, the creature arrives. | **built** (`1.2-01..03`) |
+| `cast-noncreature` | engine | 3 | Artifacts and enchantments cast the same way. | **built** (`1.2-04..06`) |
+| `pay-exact-mana` | engine | 3 | Lands that add up to exactly the cost, with nothing spare. | **built** (`1.2-07..09`) |
+| `choose-what-to-cast` | engine | 3 | Limited mana forces a choice between two affordable spells. | **built** (`1.2-10..12`) |
+
+Unit 1.2 is complete at 12 exercises. `cast-creature` is introduced in Unit 1.1 by
+`1.1-02` as that unit's payoff beat ("you made mana, now spend it") and reinforced here in
+three further colours. That is deliberate spaced practice, not a misfiled exercise.
+
+**`cast-sequencing` was dropped during authoring.** As drafted it would have required the
+played land to be tapped for the cast, which is what `land-per-turn` already exercises in
+`1.1-05` and `1.1-07`. Two tags covering one behaviour is worse than one, because L8
+computes mastery per skill and overlapping tags split the same evidence across two scores.
+`pay-exact-mana` replaced it: distinct behaviour, distinct check, no overlap.
 
 **`cast-noncreature` matters more than it looks.** The learner's model after Unit 1.1 is
-"spells are creatures". One unit that casts an Ornithopter and a Wall next to a Grizzly
-Bears is what separates "cast" from "summon" before Unit 1.3 tells them creatures attack.
+"spells are creatures". Casting Howling Mine, Crusade, and Jayemdae Tome is what separates
+"cast" from "summon" before Unit 1.3 tells them creatures attack.
 
 **`choose-what-to-cast` needs `wrongLines`, not just solutions.** The lesson is the
-exclusion. An exercise where both spells are castable teaches nothing; the goal names one
-card and the other must be unaffordable once the first is paid for.
+exclusion, and the theme check enforces it: some *other* card in hand must be affordable
+from the opening board, or there was never a choice. Each of `1.2-10..12` enumerates to
+`1/2 lines win`, the losing line being "cast the cheap one first".
 
 ### Unit 1.3 — Who can attack
 
@@ -170,9 +193,21 @@ Teaches: count the damage, and count it against the *best* defence.
 |---|---|---|---|---|
 | `lethal-outnumber` | engine | 3 | More attackers than blockers means damage gets through. | green (2 built) |
 | `lethal-evasion` | engine | 3 | Flying goes over ground creatures. | green (1 built) |
-| `lethal-first-strike` | engine | 3 | First strike kills the blocker before it deals damage. | green (new tag) |
-| `lethal-trample` | engine | 3 | Excess damage over a blocker hits the player. | green (new tag) |
 | `lethal-tapped-defender` | engine | 3 | A tapped creature cannot block, so count untapped ones. | green (new tag) |
+| `lethal-flying-defender` | engine | 3 | Flying stops being evasion when they fly too. | green (new tag) |
+
+**Correction, 2026-09-18.** This table previously listed `lethal-first-strike` and
+`lethal-trample` as green on the strength of a runner probe showing both resolve correctly.
+That probe was right and the conclusion was wrong. `src/learn/__tests__/units.test.ts`
+carries a `BLOCKED_KEYWORDS` list -- TRAMPLE, BANDING, FIRST_STRIKE, DOUBLE_STRIKE,
+DEATHTOUCH -- that fails any exercise referencing a card with those keywords, because of
+the damage-assignment and deathtouch gaps in `docs/LEARN_MODE.md` section 6. Runner
+capability is necessary but not sufficient; project policy is the binding constraint. Both
+tags move to Tier 2, gated on that engine fix rather than on L5.
+
+`lethal-flying-defender` replaces them and is the more useful lesson anyway: it stops
+`lethal-evasion` from teaching "flying always gets through", which is the exact
+overgeneralisation a beginner makes.
 
 This unit is the tier's payoff. It is also the only place the worst-case block enumeration
 is visible to the learner, so the feedback text should say *what the best block was*, which
@@ -185,12 +220,16 @@ is visible to the learner, so the feedback text should say *what the best block 
 | Unit | Skills | Target exercises | Built | To author |
 |---|---|---|---|---|
 | 1.1 Lands and mana | 4 | 12 | 8 | 4 |
-| 1.2 Casting spells | 4 | 12 | 1 | 11 |
+| 1.2 Casting spells | 4 | 12 | **12** | 0 |
 | 1.3 Who can attack | 3 | 9 | 1 | 8 |
 | 1.4 Winning this turn | 5 | 15 | 3 | 12 |
-| **Total** | **16** | **48** | **13** | **35** |
+| **Total** | **16** | **48** | **24** | **24** |
 
-Nine new skill tags, each needing a `THEME_CHECKS` entry in the prompt that introduces it.
+Eight new skill tags, each needing a `THEME_CHECKS` entry in the prompt that introduces it.
+Three landed with Unit 1.2 (`cast-noncreature`, `pay-exact-mana`, `choose-what-to-cast`);
+five remain (`defender-cant-attack`, `tapped-cant-attack`, `lethal-tapped-defender`,
+`lethal-flying-defender`, plus whatever Unit 1.1's fill needs, which is none -- its four
+tags all exist).
 
 Card pool: the existing Shandalar pool covers all of it. Verified availability for the new
 units: 25 vanilla creatures across five colours, 53 flyers, 12 first strikers, 7 tramplers,
@@ -378,4 +417,5 @@ spells.
 
 | Date | Change |
 |---|---|
+| 2026-09-18 | Unit 1.2 authored and built (12 exercises, 3 new tags). `cast-sequencing` dropped for overlapping `land-per-turn`; `pay-exact-mana` replaced it. **Correction:** `lethal-first-strike` and `lethal-trample` were wrongly marked green -- `units.test.ts` `BLOCKED_KEYWORDS` bans both. Moved to Tier 2; `lethal-flying-defender` replaces them in Unit 1.4. Section 2 gains the policy-constraint subsection. |
 | 2026-09-18 | Created. L2 deliverable. Tier 1 fully specified at 16 skills / 48 exercises, all verified green. Tiers 2 to 5 named and substrate-tagged. Unit 2.8 placement decided. Renumber specified. LC-1 and LC-2 logged. |

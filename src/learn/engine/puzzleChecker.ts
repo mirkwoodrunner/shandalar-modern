@@ -183,6 +183,33 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
     const wrongColorSet = subsets(lands).some(set => set.length >= cmc && !castableWith(set, ex.goal.kind === 'CARD_ON_BATTLEFIELD' ? ex.goal.cardId : ''));
     return wrongColorSet ? null : 'every land set with enough total mana can also pay the colors, so color never matters';
   },
+  // Noncreature permanents are the point, so the goal card must not be a
+  // creature. Guards against an "artifacts are spells too" exercise that
+  // quietly casts a creature.
+  'cast-noncreature': (ex) => {
+    if (ex.goal.kind !== 'CARD_ON_BATTLEFIELD') return 'goal is not CARD_ON_BATTLEFIELD';
+    const type = cardInfo(ex.goal.cardId).type ?? '';
+    return /Creature/.test(type) ? `the goal card is a ${type}, so nothing here is a noncreature spell` : null;
+  },
+  // Exact mana means no spare: every land on the battlefield must be tapped in
+  // every winning line. One untapped land left over and the lesson is gone.
+  'pay-exact-mana': (ex, winning) => {
+    const untapped = (ex.setup.p.bf ?? []).filter(c => typeof c === 'string' || !c.tapped).length;
+    if (!untapped) return 'no untapped lands in the setup';
+    const short = winning.find(l => l.steps.filter(s => s.type === 'TAP_LAND').length < untapped);
+    return short ? `a winning line taps only ${short.steps.filter(s => s.type === 'TAP_LAND').length} of ${untapped} lands, so the mana is not exact` : null;
+  },
+  // There must be a real alternative: another spell in hand that the player can
+  // afford right now. Without one there is no choice, only a single play.
+  'choose-what-to-cast': (ex) => {
+    if (ex.goal.kind !== 'CARD_ON_BATTLEFIELD') return 'goal is not CARD_ON_BATTLEFIELD';
+    const lands = (ex.setup.p.bf ?? []).map(c => (typeof c === 'string' ? c : c.id));
+    const others = (ex.setup.p.hand ?? [])
+      .map(c => (typeof c === 'string' ? c : c.id))
+      .filter(id => id !== ex.goal.cardId && !/Land/.test(cardInfo(id).type));
+    if (!others.length) return 'nothing else in hand, so there is no choice to make';
+    return others.some(id => castableWith(lands, id)) ? null : 'no alternative in hand is affordable, so there is no choice to make';
+  },
   // The land drop must be load-bearing: no line wins without one.
   'land-per-turn': (_ex, winning) =>
     winning.every(l => l.steps.some(s => s.type === 'PLAY_LAND')) ? null : 'a winning line never plays a land, so the land drop is not required',

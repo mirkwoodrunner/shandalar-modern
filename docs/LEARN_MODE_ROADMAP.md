@@ -254,9 +254,18 @@ nowhere in the repo. May run in parallel with L1.
 Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
 current runner. Tiers 2 to 5 have named skills tagged by substrate.
 
-### L2b. Tier 1 content fill
+### L2b. Tier 1 content fill (in progress)
 
 Depends on L2. Target 40 to 50 exercises covering the full Tier 1 skill list.
+
+**Progress.** Tier 1 stands at 24 of 48 exercises. Unit 1.1 (8/12) and Unit 1.4 (3/15) are
+partial; Unit 1.2 (12/12) is complete; Unit 1.3 (1/9) is next. Running tally and the
+authoritative skill list live in `docs/LEARN_CURRICULUM.md` section 3, not here.
+
+**Correction applied 2026-09-18.** `lethal-first-strike` and `lethal-trample`, listed green
+in L2's first draft of the curriculum, are banned by `units.test.ts` `BLOCKED_KEYWORDS`
+pending the damage-assignment fix. Both moved to Tier 2. Runner capability is necessary but
+not sufficient for authorability; project policy binds too.
 
 Constraints that make this cheap:
 
