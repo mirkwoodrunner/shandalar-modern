@@ -205,7 +205,30 @@ records on every re-entry (C4).
 Exit criteria. Refresh mid-unit and resume exactly. Vitest on the save shape. Playwright at
 both viewports.
 
-### L2. Curriculum spine
+### L2. Curriculum spine (done)
+
+Shipped 2026-09-18 as `docs/LEARN_CURRICULUM.md`. Tier 1 fully specified at 16 skills
+across 4 units, every one verified green against the runner rather than assumed. Tiers 2
+to 5 named and substrate-tagged. Unit 3.1 renumbered to Unit 1.4 per 4.3. The
+"what a digital client does for you" skill placed in early Tier 2, not late Tier 1;
+reasoning in `LEARN_CURRICULUM.md` section 4.
+
+Two runner defects surfaced during drafting and are logged as LC-1 and LC-2 in
+`LEARN_CURRICULUM.md` section 7. LC-1 (player-targeted spells silently no-op) is the
+more serious: it is a content trap, not a missing capability, and it blocks
+burn-for-lethal content at every tier. Both fixes belong in L5 slices. Until they land,
+L2b authored basic lands only and no player-targeted spells. **Both defects were resolved on
+2026-09-18** inside `src/learn/`, and that constraint is lifted -- see
+`docs/LEARN_CURRICULUM.md` section 7. LC-1's original diagnosis was also wrong; the write-up
+explains why.
+
+One open decision was raised rather than settled: applying L2's own exit criterion
+strictly pushes card types, turn structure, and blocking out of Tier 1, so the first
+public release teaches mana, casting, and attacking and never names a card type. See
+`LEARN_CURRICULUM.md` section 6, which recommends generalizing `multiSelect` after the
+first release rather than before it.
+
+Original scope, for reference:
 
 Do this before authoring more exercises. The unit numbering implies a tree that exists
 nowhere in the repo. May run in parallel with L1.
@@ -234,9 +257,28 @@ nowhere in the repo. May run in parallel with L1.
 Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
 current runner. Tiers 2 to 5 have named skills tagged by substrate.
 
-### L2b. Tier 1 content fill
+### L2b. Tier 1 content fill (done)
 
 Depends on L2. Target 40 to 50 exercises covering the full Tier 1 skill list.
+
+**Done 2026-09-18.** Tier 1 is complete at 45 exercises across 4 units and 16 skills, inside
+the 40 to 50 target. Seven new skill tags landed, each with its `THEME_CHECKS` entry in the
+prompt that introduced it. The authoritative skill list lives in `docs/LEARN_CURRICULUM.md`
+section 3, not here.
+
+Exit criteria, checked: Tier 1 skill list fully covered; `npm run learn:check` at 0 errors
+(one standing warning on `1.1-01`, which is `guided` by design); `units.test.ts` green at 155
+Vitest cases; and Playwright Learn-09 walks every Tier 1 unit from the unit list at both
+viewports, which is the "a first-time player can complete Tier 1 end to end" criterion.
+
+Held to the scope guard: two exercise types only, every exercise graded and producing an
+attempt record, no physical-handling content, basic lands only and no player-targeted spells
+per LC-1 and LC-2, and FLYING and DEFENDER as the only keywords used.
+
+**Correction applied 2026-09-18.** `lethal-first-strike` and `lethal-trample`, listed green
+in L2's first draft of the curriculum, are banned by `units.test.ts` `BLOCKED_KEYWORDS`
+pending the damage-assignment fix. Both moved to Tier 2. Runner capability is necessary but
+not sufficient for authorability; project policy binds too.
 
 Constraints that make this cheap:
 
@@ -268,11 +310,53 @@ Scope guard. Two exercise types only, `engine` and `multiSelect`. No third type.
 exercise is graded and produces an attempt record, per the rule in 4.4. Physical handling
 content is cut from the curriculum and does not appear here.
 
-### L2c. Fan content notice and first public release
+### L2c. Fan content notice and release framing (done)
 
-**Pulled forward from L11.** The fan content notice in `src/learn/content.ts` is currently
-placeholder wording. It is a release gate, not a launch-polish item, and it was mis-scoped
-in the original roadmap.
+**Shipped 2026-09-18.** All four gate items are closed and asserted by Playwright
+`Learn-10` at both viewports, so they survive a refactor rather than relying on nobody
+touching them.
+
+**1. Notice replaced.** `src/learn/content.ts` now carries the Fan Content Policy's standard
+form: unofficial Fan Content permitted under the Fan Content Policy, not approved/endorsed by
+Wizards, portions of the materials used are property of Wizards of the Coast, copyright
+Wizards of the Coast LLC.
+
+> **Verification status, and Chris's call.** The notice was written from the policy's
+> long-standing wording and could not be checked against the live page: the build environment
+> blocks egress to `company.wizards.com`. **Chris, 2026-09-18: not a gate.** This is a fan
+> project with no intention to publish or monetise, and policy questions get addressed if and
+> when they become real. The notice is present and accurate to the best available knowledge;
+> verify it only if publishing ever becomes the plan.
+
+**2. Asset audit: clean.** Nothing under `src/learn/` references an image, stylesheet
+background, or icon of any kind -- no `<img>`, no `.png`/`.jpg`/`.svg`/`.webp`, no
+`background-image`, no `url(`. No Wizards logo, no set symbols, no lifted mana symbol art.
+Mana is rendered as the plain cost string (`1G`, `2B`) in project CSS, which satisfies the
+"project-owned glyphs" requirement by not using glyph art at all. `src/learn/` does not import
+`scryfallArt.js` or `useCardArt.js`, so no card images are fetched. `learn.html` declares no
+favicon.
+
+What Learn Mode does use of Wizards' IP is card names and oracle text, from
+`src/data/cards.js`. That is the known tension recorded in section 6, covered by the notice's
+"portions of the materials used" clause, and unchanged by this milestone.
+
+**3. Tutorial framing.** The unit list now states, under the title, that Learn Mode is a free
+unofficial tutorial for learning the rules and *not a place to play games*. This is the point
+where Tier 1 comes closest to Wizards' own new-player funnel, so the disclaimer is a
+positioning statement and not only a legal one.
+
+**4. Early and incomplete.** The unit list says so in as many words, and names what is
+actually there: Tier 1 only, four units. A fourth line states that it is free with no ads and
+nothing to buy, which is the Fan Content Policy's core condition and Scryfall's, promised in
+the product rather than only in a doc.
+
+**Not done here, and deliberately:** nothing was published. Deciding to release is Chris's
+call, not a milestone checkbox.
+
+Original scope, for reference:
+
+The fan content notice in `src/learn/content.ts` was placeholder wording. It is a release
+gate, not a launch-polish item, and it was mis-scoped in the original roadmap.
 
 - Replace the placeholder with the standard notice. See section 6.
 - Audit for Wizards logos, set symbols, and lifted official mana symbol art. Render mana as
@@ -534,6 +618,14 @@ _Decision 3 (physical handling content) was resolved 2026-09-16. Cut, not deferr
 decisions separated out as a Tier 3 skill. See section 4.4._
 
 _Card pool and hosting were resolved 2026-09-16. See section 3 and L4a._
+
+_Decision 4 (whether to generalize `multiSelect` so Tier 1 can teach card types) was resolved
+2026-09-18. **No.** `multiSelect` stays cost-shaped, card types are taught implicitly in Tier 1
+and tested in Tier 2 unit 2.3, and no third exercise type is added. Revisit only if Tiers 4 and
+5 are brought forward. See `docs/LEARN_CURRICULUM.md` section 6 and `docs/DECISIONS.md`._
+
+_Decision 5 (Fan Content Policy verification as a release gate) was resolved 2026-09-18. **Not
+a gate.** No intention to publish or monetise. See L2c above._
 
 No open decisions currently gate any milestone. Add new ones here as they arise, with the
 milestone they gate stated explicitly.

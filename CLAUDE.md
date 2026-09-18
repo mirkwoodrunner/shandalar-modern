@@ -365,14 +365,14 @@ Doc-only changes (nothing under `src/` touched) need no test run at all. Verific
 doc-only prompt is `git status --porcelain` plus whatever content greps the prompt specifies.
 A doc-only prompt that demands a test run is over-specified -- follow this rule, not the prompt.
 
-**Learn Mode pinned baseline (as of 2026-09-18).** When a prompt says "same as main," it means
+**Learn Mode pinned baseline (as of 2026-09-18, Tier 1 release-ready).** When a prompt says "same as main," it means
 these numbers:
 
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 90 passing |
-| `npx playwright test tests/e2e/learn-slice.spec.ts` | 16 passing (8 cases x chromium + mobile-chrome) |
+| `npm run test:targeted -- @learn` | 160 passing |
+| `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports

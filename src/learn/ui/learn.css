@@ -357,3 +357,26 @@ body {
   outline: 3px solid #d4af37;
   outline-offset: 2px;
 }
+
+/* Release framing: tutorial, not a place to play. See src/learn/content.ts. */
+.learn-tagline {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.learn-early-access {
+  margin: 0 0 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 3px solid currentColor;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.learn-no-money {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}

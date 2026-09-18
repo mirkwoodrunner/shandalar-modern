@@ -140,11 +140,11 @@ Slice 3a:
   [ ok ] 1.1-07   land-per-turn        2/2 lines win
   [ ok ] 1.1-08   read-costs           multiSelect
 
-3.1  Lethal this turn
-  [ ok ] 3.1-01   lethal-evasion       2/3 lines win
-  [ ok ] 3.1-02   lethal-outnumber     1/7 lines win
-  [ ok ] 3.1-03   lethal-outnumber     1/7 lines win
-  [ ok ] 3.1-04   summoning-sickness   1/3 lines win
+1.4  Winning this turn
+  [ ok ] 1.4-01   lethal-evasion       2/3 lines win
+  [ ok ] 1.4-02   lethal-outnumber     1/7 lines win
+  [ ok ] 1.4-03   lethal-outnumber     1/7 lines win
+  [ ok ] 1.4-04   summoning-sickness   1/3 lines win
 
 0 error(s), 1 warning(s).
 ```
@@ -189,6 +189,15 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
   engine fix lands for both of the above.
 - The card pool currently used by Learn Mode has no deathtouch, lifelink, or menace
   cards available as a workaround.
+- ~~**LC-1**~~ and ~~**LC-2**~~ are **resolved** (2026-09-18), both inside `src/learn/` with
+  no engine change. LC-1's original diagnosis was wrong: player targeting always worked, and
+  the probe that "found" the defect returned on its first accepted result without ever testing
+  `tgt: 'o'`. The real defect was that `tryAction` did no target validation, so a targeted
+  spell cast with no target resolved as a silent no-op; it now rejects with `MSG.needsTarget`.
+  LC-2 was real: `TAP_LAND` now takes an optional `color`, validated against the land's
+  `produces`. Burn-for-lethal and dual-land content are both authorable, and the "basic lands
+  only, no player-targeted spells" constraint is lifted. Full write-up in
+  `docs/LEARN_CURRICULUM.md` section 7.
 
 ## 7. Slice history
 
@@ -197,7 +206,7 @@ This section records what shipped. Forward planning lives in
 decisions. Do not duplicate roadmap content here.
 
 - **Slice 1** (done): puzzle runner, lesson player, 9 exercises across Unit 1.1
-  (lands and mana) and Unit 3.1 (lethal this turn).
+  (lands and mana) and Unit 3.1 (lethal this turn, renumbered to Unit 1.4 in L2).
 - **Slice 2** (done): puzzle checker (`src/learn/engine/puzzleChecker.ts`,
   `npm run learn:check`) for authoring new content outside the test suite. See
   section 3a above.
@@ -210,6 +219,65 @@ decisions. Do not duplicate roadmap content here.
   passing, plus a new `learn-persistence.spec.ts` at 10 passing (5 cases x chromium +
   mobile-chrome).
 
-Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, starting at
-milestone L2 (curriculum spine). The previously-listed "Slice 4: checkpoint duel" is now
-milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it depends on.
+- **L2** (done): curriculum spine. `docs/LEARN_CURRICULUM.md` is now the skill tree and
+  the authority on content. Tier 1 specified at 16 skills / 48 exercises across 4 units,
+  every skill verified green against the runner. Tiers 2 to 5 named and substrate-tagged.
+  Unit 3.1 renumbered to Unit 1.4 ("Winning this turn"); `id` changed, `stableId` did not,
+  so saved progress is unaffected. Runner defects LC-1 and LC-2 logged in section 6 above.
+  Baseline unchanged: 90 Vitest, 26 Playwright, `learn:check` at 0 errors / 1 warning.
+
+- **L2b, Unit 1.2** (done): 12 new exercises, `1.2-01` through `1.2-12`, completing
+  "Casting spells". Three new skill tags with matching `THEME_CHECKS` written in the same
+  prompt: `cast-noncreature` (the goal permanent must not be a creature),
+  `pay-exact-mana` (every winning line taps every land), `choose-what-to-cast` (some other
+  card in hand must be affordable, or there was no choice). A fourth drafted tag,
+  `cast-sequencing`, was dropped for overlapping `land-per-turn` -- overlapping tags split
+  one skill's evidence across two mastery scores in L8. Vitest `@learn`: 90 -> 114.
+  Playwright unchanged at 26. `learn:check` still 0 errors / 1 warning.
+  Tier 1 is now 24 of 48 exercises.
+
+- **L2b, Unit 1.3** (done): 9 exercises, `1.3-01` through `1.3-09`, completing "Who can
+  attack". Two new skill tags with matching `THEME_CHECKS`: `defender-cant-attack` and
+  `tapped-cant-attack`. Both are enforced with a no-slack rule -- a creature barred for the
+  right reason, plus every winning attacker set using every legal attacker -- because a Wall
+  cannot be un-walled the way `summoning-sickness` un-sicks a creature. `1.4-04` moved here
+  as `1.3-01` (`stableId` `3.1-04` unchanged); Unit 1.4 is now 3 exercises.
+  Also fixed a false positive in the `units.test.ts` phantom-card check: a card name that is
+  a whole-word substring of a longer name (Savannah inside Savannah Lions, Island inside
+  Volcanic Island) was flagged as a phantom every time the longer card was legitimately
+  named. Present card names are now blanked out longest-first before scanning. Verified the
+  check still catches a real phantom. Vitest `@learn`: 114 -> 130. Playwright unchanged at 26.
+  Tier 1 is now 32 of 45 exercises.
+
+- **L2b** (done): Tier 1 content complete at 45 exercises across 4 units. Unit 1.4 filled to
+  12 with `lethal-tapped-defender` and `lethal-flying-defender`; Unit 1.1 filled to 12 with no
+  new tags. Seven new skill tags landed across the milestone, each with its `THEME_CHECKS`
+  entry in the prompt that introduced it. `lethal-flying-defender`'s check reads blockability
+  out of `resolveAttack`'s outcome count -- each defender that can block a lone attacker
+  doubles the enumerated assignments, so `log2(outcomes)` is how many can block it -- rather
+  than parsing card text for keywords. New Playwright case Learn-09 walks every Tier 1 unit
+  from the unit list, which is L2b's "a first-time player can complete Tier 1 end to end"
+  exit criterion. `tap-for-mana` stays at one exercise: with only `TAP_LAND` allowed and an
+  empty hand, no line loses and no move is rejected, so a second one would add a second
+  standing warning and no teaching. Vitest `@learn`: 130 -> 155. Playwright: 26 -> 28.
+
+- **L2c** (done): fan content notice and release framing. `src/learn/content.ts` carries the
+  Fan Content Policy's standard notice in place of the placeholder, plus three framing strings
+  rendered on the unit list: a tutorial tagline that says explicitly this is not a place to
+  play games, an early-and-incomplete statement naming Tier 1 as all that exists, and a
+  free-with-no-ads line. Playwright `Learn-10` asserts all four at both viewports.
+  Asset audit came back clean: nothing under `src/learn/` references any image, background, or
+  icon, so there is no Wizards logo, set symbol, or lifted mana symbol art to remove. Mana
+  renders as the plain cost string. `src/learn/` imports neither `scryfallArt.js` nor
+  `useCardArt.js`. Playwright: 28 -> 30.
+  The notice string could not be verified against the live Fan Content Policy page (the build
+  environment blocks egress to `company.wizards.com`). Chris's call, 2026-09-18: this is a fan
+  project with no intent to publish or monetise, so policy exactness is not a gate. Revisit if
+  that changes.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L3
+(duel UI scenario mode). Tier 1 is content-complete and release-framed; publishing is a
+decision, not a milestone. The post-release reassessment gate in L2c decides whether Tier 2 or
+Tiers 4 and 5 come next, using completion data rather than argument.. The previously-listed "Slice 4: checkpoint duel" is
+now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
+depends on.

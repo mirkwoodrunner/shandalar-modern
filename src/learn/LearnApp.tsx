@@ -8,6 +8,7 @@ import { LessonPlayer } from './ui/LessonPlayer';
 import { LearnFooter } from './ui/LearnFooter';
 import { OnboardingSurvey } from './ui/OnboardingSurvey';
 import { useLearnProgress } from './hooks/useLearnProgress';
+import { EARLY_ACCESS, NO_MONEY, TAGLINE } from './content';
 import { deriveResumeIndex, loadLearnSave } from './persistence';
 import type { Unit } from './engine/types';
 
@@ -56,6 +57,9 @@ export function LearnApp() {
       ) : (
         <div className="learn-unit-list">
           <h1>Learn Mode</h1>
+          <p data-testid="learn-tagline" className="learn-tagline">{TAGLINE}</p>
+          <p data-testid="learn-early-access" className="learn-early-access">{EARLY_ACCESS}</p>
+          <p data-testid="learn-no-money" className="learn-no-money">{NO_MONEY}</p>
           {UNITS.map(unit => (
             <button
               key={unit.id}

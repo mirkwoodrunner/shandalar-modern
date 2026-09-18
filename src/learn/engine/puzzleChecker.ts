@@ -54,6 +54,15 @@ function subsets<T>(items: T[]): T[][] {
   return items.reduce<T[][]>((acc, item) => [...acc, ...acc.map(s => [...s, item])], [[]]);
 }
 
+// Every TAP_LAND step a land offers. A basic makes one colour so this is one
+// step; a dual makes two, and both must be explored or half the search space is
+// invisible to the checker.
+function tapStepsFor(land: any): Step[] {
+  const produces: string[] = land.produces ?? [];
+  if (produces.length <= 1) return [{ type: 'TAP_LAND', iid: land.iid } as Step];
+  return produces.map(color => ({ type: 'TAP_LAND', iid: land.iid, color }) as Step);
+}
+
 // Every legal attacker set, graded. Combat exercises only.
 export function enumerateAttacks(ex: EngineExercise): Line[] {
   const base = buildPuzzleState(ex.setup);
@@ -83,7 +92,7 @@ export function enumerateMainLines(ex: EngineExercise): Line[] {
     const next: { state: any; steps: Step[] }[] = [];
     for (const node of frontier) {
       const candidates: Step[] = [
-        ...node.state.p.bf.filter((c: any) => !c.tapped).map((c: any) => ({ type: 'TAP_LAND', iid: c.iid }) as Step),
+        ...node.state.p.bf.filter((c: any) => !c.tapped).flatMap(tapStepsFor),
         ...node.state.p.hand.map((c: any) => ({ type: 'PLAY_LAND', iid: c.iid }) as Step),
         ...node.state.p.hand.map((c: any) => ({ type: 'CAST_SPELL', iid: c.iid }) as Step),
       ];
@@ -130,7 +139,7 @@ export function countRejectableMoves(ex: EngineExercise): number {
     const next: any[] = [];
     for (const state of frontier) {
       const candidates: Step[] = [
-        ...state.p.bf.filter((c: any) => !c.tapped).map((c: any) => ({ type: 'TAP_LAND', iid: c.iid }) as Step),
+        ...state.p.bf.filter((c: any) => !c.tapped).flatMap(tapStepsFor),
         ...state.p.hand.map((c: any) => ({ type: 'PLAY_LAND', iid: c.iid }) as Step),
         ...state.p.hand.map((c: any) => ({ type: 'CAST_SPELL', iid: c.iid }) as Step),
       ];
@@ -183,6 +192,33 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
     const wrongColorSet = subsets(lands).some(set => set.length >= cmc && !castableWith(set, ex.goal.kind === 'CARD_ON_BATTLEFIELD' ? ex.goal.cardId : ''));
     return wrongColorSet ? null : 'every land set with enough total mana can also pay the colors, so color never matters';
   },
+  // Noncreature permanents are the point, so the goal card must not be a
+  // creature. Guards against an "artifacts are spells too" exercise that
+  // quietly casts a creature.
+  'cast-noncreature': (ex) => {
+    if (ex.goal.kind !== 'CARD_ON_BATTLEFIELD') return 'goal is not CARD_ON_BATTLEFIELD';
+    const type = cardInfo(ex.goal.cardId).type ?? '';
+    return /Creature/.test(type) ? `the goal card is a ${type}, so nothing here is a noncreature spell` : null;
+  },
+  // Exact mana means no spare: every land on the battlefield must be tapped in
+  // every winning line. One untapped land left over and the lesson is gone.
+  'pay-exact-mana': (ex, winning) => {
+    const untapped = (ex.setup.p.bf ?? []).filter(c => typeof c === 'string' || !c.tapped).length;
+    if (!untapped) return 'no untapped lands in the setup';
+    const short = winning.find(l => l.steps.filter(s => s.type === 'TAP_LAND').length < untapped);
+    return short ? `a winning line taps only ${short.steps.filter(s => s.type === 'TAP_LAND').length} of ${untapped} lands, so the mana is not exact` : null;
+  },
+  // There must be a real alternative: another spell in hand that the player can
+  // afford right now. Without one there is no choice, only a single play.
+  'choose-what-to-cast': (ex) => {
+    if (ex.goal.kind !== 'CARD_ON_BATTLEFIELD') return 'goal is not CARD_ON_BATTLEFIELD';
+    const lands = (ex.setup.p.bf ?? []).map(c => (typeof c === 'string' ? c : c.id));
+    const others = (ex.setup.p.hand ?? [])
+      .map(c => (typeof c === 'string' ? c : c.id))
+      .filter(id => id !== ex.goal.cardId && !/Land/.test(cardInfo(id).type));
+    if (!others.length) return 'nothing else in hand, so there is no choice to make';
+    return others.some(id => castableWith(lands, id)) ? null : 'no alternative in hand is affordable, so there is no choice to make';
+  },
   // The land drop must be load-bearing: no line wins without one.
   'land-per-turn': (_ex, winning) =>
     winning.every(l => l.steps.some(s => s.type === 'PLAY_LAND')) ? null : 'a winning line never plays a land, so the land drop is not required',
@@ -205,6 +241,68 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
     const blockerCount = base.o.bf.filter((c: any) => !c.tapped).length;
     if (!blockerCount) return 'no untapped defenders, so outnumbering is not the lesson';
     return winning.every(l => (attackersOf(l.steps) ?? []).length > blockerCount) ? null : 'a winning line does not outnumber the blockers';
+  },
+  // A defender on your own board must be the reason the sum is tight. Two
+  // conditions: some creature is barred from attacking for a reason that is
+  // neither tapping nor sickness (which is what defender looks like from here),
+  // and every winning set uses every legal attacker, so its absence is felt.
+  'defender-cant-attack': (ex, winning) => {
+    const base = buildPuzzleState(ex.setup);
+    const specs = ex.setup.p.bf ?? [];
+    const barred = base.p.bf.filter((c: any, i: number) => {
+      const spec = specs[i];
+      const tagged = typeof spec === 'string' ? {} : spec;
+      if (tagged.tapped || tagged.summoningSick) return false;
+      return canAttackReason(base, c.iid) !== null;
+    });
+    if (!barred.length) return 'no untapped, non-sick creature is barred from attacking, so there is no defender lesson here';
+    const legal = base.p.bf.filter((c: any) => canAttackReason(base, c.iid) === null).map((c: any) => c.iid);
+    const usesAll = winning.every(l => (attackersOf(l.steps) ?? []).length === legal.length);
+    return usesAll ? null : 'a winning set leaves a legal attacker home, so the defender was never the constraint';
+  },
+  // Same shape, keyed on the tapped flag in the setup rather than on the
+  // rejection reason, and with the same no-slack requirement.
+  'tapped-cant-attack': (ex, winning) => {
+    const specs = ex.setup.p.bf ?? [];
+    if (!specs.some(c => typeof c !== 'string' && c.tapped)) return 'no tapped creature in the setup';
+    const base = buildPuzzleState(ex.setup);
+    const legal = base.p.bf.filter((c: any) => canAttackReason(base, c.iid) === null).map((c: any) => c.iid);
+    const usesAll = winning.every(l => (attackersOf(l.steps) ?? []).length === legal.length);
+    return usesAll ? null : 'a winning set leaves a legal attacker home, so the tapped creature was never the constraint';
+  },
+  // The tap must be load-bearing: untapping their blockers must close at least
+  // one winning line. Same removal trick summoning-sickness uses, applied to the
+  // opponent's side.
+  'lethal-tapped-defender': (ex, winning) => {
+    const specs = ex.setup.o.bf ?? [];
+    if (!specs.some(c => typeof c !== 'string' && c.tapped)) return 'no tapped creature on the opponent side';
+    const woken: EngineExercise = {
+      ...ex,
+      setup: { ...ex.setup, o: { ...ex.setup.o, bf: specs.map(c => (typeof c === 'string' ? c : { ...c, tapped: false })) } },
+    };
+    const wokenWins = enumerateLines(woken).filter(l => l.wins).length;
+    return wokenWins < winning.length ? null : 'untapping their creatures removes no winning line, so the tap never mattered';
+  },
+  // The lesson is that flying stops being evasion when they fly too. Counted
+  // through resolveAttack's outcome count rather than by reading keywords:
+  // attacking alone with one creature, every defender that can block it doubles
+  // the number of legal assignments, so log2(outcomes) is how many can block it.
+  // Some attacker must be blockable by some defenders and not others (that is
+  // the flyer meeting their flyer), and none may be unblockable outright --
+  // an unblockable attacker would make this a lethal-evasion puzzle instead.
+  'lethal-flying-defender': (ex) => {
+    const base = buildPuzzleState(ex.setup);
+    const defenders = base.o.bf.filter((c: any) => !c.tapped);
+    if (defenders.length < 2) return 'needs at least two untapped defenders, or partial blocking cannot arise';
+    const blockerCount = (iid: string) => {
+      const r = resolveAttack(base, [iid]);
+      return r.ok ? Math.round(Math.log2(r.outcomes)) : -1;
+    };
+    const counts = base.p.bf.map((c: any) => blockerCount(c.iid));
+    if (counts.some((n: number) => n === 0)) return 'an attacker is unblockable by every defender, which makes this an evasion puzzle, not a flying-defender one';
+    return counts.some((n: number) => n > 0 && n < defenders.length)
+      ? null
+      : 'no attacker is blockable by some defenders and not others, so their flyer is not the lesson';
   },
   // Sickness must be load-bearing: healing it must open a new winning set.
   'summoning-sickness': (ex, winning) => {

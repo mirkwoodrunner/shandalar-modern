@@ -208,3 +208,25 @@ The Group A life assertion (`next.o.life === 20`) is the primary regression guar
 - **Hosting (2026-09-16):** Learn Mode and Shandalar deploy together as one build to one
   origin, off GitHub, on a project-owned domain, with subdomains from day one. Splitting
   them later costs a DNS change. Accepted consequence: shared takedown risk.
+- **`multiSelect` stays cost-shaped; card types are taught implicitly (2026-09-18).**
+  `multiSelect` keeps its `{lands, options, answer}` form. It is not generalized to a
+  `{stem, options, answer}` question type, and no third exercise type is added. Consequence,
+  accepted: Tier 1 ships as mana, casting and attacking, and never names or tests a card type.
+  Card types move to Tier 2 unit 2.3, turn structure to 2.2, blocking to 2.1.
+
+  Reasoning: `MULTI_THEME_CHECKS` derives the expected answer from `castableWith`, so the
+  engine proves every answer. A free-text stem cannot be engine-verified and makes correctness
+  authorial, which spends the one property this project has over a quiz app on the first
+  content that could not use it. Tier 1 already exposes Creature, Artifact and Enchantment
+  across Unit 1.2's graded casting exercises with the type line visible, so the distinction is
+  seen repeatedly without being named.
+
+  Revisit only if Tiers 4 and 5 are brought forward: that substrate is question-bank-graded
+  anyway and would want the general type, in which case build it once rather than twice.
+  Unchanged either way: Tier 1 must not ship an ungraded text page explaining card types.
+  Full options analysis in `docs/LEARN_CURRICULUM.md` section 6.
+- **Fan content policy exactness is not a release gate (2026-09-18).** The Fan Content Policy
+  notice in `src/learn/content.ts` could not be verified against the live policy page (blocked
+  egress). Chris's call: this is a fan project with no intention to publish or monetise, so
+  policy questions are addressed if and when they become real. The notice stays in place and
+  accurate to the best available knowledge. Revisit if publishing ever becomes the plan.

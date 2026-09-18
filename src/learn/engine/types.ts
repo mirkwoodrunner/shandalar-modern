@@ -16,7 +16,9 @@ export type PuzzleSetup = {
 export type ActionKind = 'TAP_LAND' | 'PLAY_LAND' | 'CAST_SPELL' | 'UNDO_MANA_TAPS' | 'DECLARE_ATTACKER';
 
 export type Step =
-  | { type: 'TAP_LAND'; iid: string }
+  // color picks which mana a multi-colour land makes. Omitted, the land makes
+  // its first listed colour, which is the only option for a basic.
+  | { type: 'TAP_LAND'; iid: string; color?: Color }
   | { type: 'PLAY_LAND'; iid: string }
   | { type: 'CAST_SPELL'; iid: string; tgt?: string }
   | { type: 'UNDO_MANA_TAPS' }
