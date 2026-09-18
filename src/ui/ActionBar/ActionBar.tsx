@@ -22,6 +22,17 @@ interface ActionBarProps {
   onUndo?: () => void;
   blockerHint?: string | null;
   endTurnPending?: boolean;
+  /**
+   * Scenario mode (Learn Mode L3). Each defaults to true, so every campaign and
+   * sandbox duel renders exactly the bar it rendered before these existed.
+   * A scenario passes false to stop OFFERING an action its exercise does not
+   * allow. The decision lives in useDuelController's `isActionAllowed`; this
+   * component only takes the booleans.
+   */
+  showCast?: boolean;
+  showUndo?: boolean;
+  showPassPriority?: boolean;
+  showEndTurn?: boolean;
 }
 
 export function ActionBar({
@@ -43,6 +54,10 @@ export function ActionBar({
   onUndo,
   blockerHint,
   endTurnPending = false,
+  showCast = true,
+  showUndo = true,
+  showPassPriority = true,
+  showEndTurn = true,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
@@ -89,7 +104,7 @@ export function ActionBar({
         background: 'linear-gradient(90deg, transparent, var(--brass), transparent)',
       }} />
 
-      {hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))) && (
+      {showCast && hasSelection && isPlayerTurn && (inMain || (priorityWindowOpen && selectedCard && isInst(selectedCard))) && (
         <ActionButton variant="primary" onClick={onCast} disabled={castDisabled} data-testid="cast-button">
           {selectedCard && isLand(selectedCard) ? '⧁ Play' : '✦ Cast'}{selectedCard ? ` ${selectedCard.name}` : ' Spell'}
         </ActionButton>
@@ -100,20 +115,22 @@ export function ActionBar({
         </ActionButton>
       )}
 
-      {canUndo && (
+      {showUndo && canUndo && (
         <ActionButton variant="ghost" onClick={onUndo} data-testid="undo-taps-button">
           {'↩'} Undo Taps
         </ActionButton>
       )}
 
-      <ActionButton
-        variant="default"
-        onClick={passPriorityDisabled ? undefined : onPassPriority}
-        disabled={passPriorityDisabled}
-        data-testid="pass-priority-button"
-      >
-        {passPriorityLabel}
-      </ActionButton>
+      {showPassPriority && (
+        <ActionButton
+          variant="default"
+          onClick={passPriorityDisabled ? undefined : onPassPriority}
+          disabled={passPriorityDisabled}
+          data-testid="pass-priority-button"
+        >
+          {passPriorityLabel}
+        </ActionButton>
+      )}
 
       {blockerHint && (
         <span
@@ -147,14 +164,16 @@ export function ActionBar({
         </ActionButton>
       )}
 
-      <ActionButton
-        variant="end"
-        onClick={!isPlayerTurn ? undefined : onEndTurn}
-        disabled={!isPlayerTurn}
-        data-testid="end-turn-button"
-      >
-        End Turn {'→'}
-      </ActionButton>
+      {showEndTurn && (
+        <ActionButton
+          variant="end"
+          onClick={!isPlayerTurn ? undefined : onEndTurn}
+          disabled={!isPlayerTurn}
+          data-testid="end-turn-button"
+        >
+          End Turn {'→'}
+        </ActionButton>
+      )}
     </div>
   );
 }

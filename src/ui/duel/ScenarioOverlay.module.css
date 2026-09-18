@@ -1,0 +1,193 @@
+/* src/ui/duel/ScenarioOverlay.module.css
+   Lesson chrome overlay for scenario mode (Learn Mode L3).
+
+   Rendered ONLY when DuelConfig.scenario is true. No campaign or sandbox duel
+   mounts this component, so nothing here can reach Shandalar's layout.
+
+   Layering: 40 sits above the battlefield and below the mobile log sheet (50)
+   and every modal, so a tutor/mulligan/game-over dialog still wins. */
+
+.overlay {
+  position: fixed;
+  z-index: 40;
+  /* The shell itself is click-through; only the panel below takes pointer
+     events, so the board stays reachable around the chrome. */
+  pointer-events: none;
+}
+
+.panel {
+  pointer-events: auto;
+  background: linear-gradient(180deg, rgba(16, 12, 8, 0.96), rgba(10, 8, 6, 0.94));
+  border: 1px solid rgba(180, 140, 70, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55);
+  color: var(--ink-parchment);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+/* ── Desktop: docked top-left, clear of the right sidebar ─────────────────── */
+
+.desktop {
+  top: 76px;
+  left: 14px;
+  max-width: min(320px, 30vw);
+}
+
+.desktop .panel {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* ── Mobile: full-width band under the topbar ─────────────────────────────── */
+/* Anchored to the TOP on purpose. Every mobile control the learner needs -- the
+   action bar, the hand, the land pips -- lives at the BOTTOM of the compact
+   layout, so a top-docked band cannot cover any of them. Collapsing shrinks it
+   to a single line when the board underneath matters more than the prompt. */
+
+.mobile {
+  top: 44px;
+  left: 6px;
+  right: 6px;
+  max-width: none;
+}
+
+.mobile .panel {
+  padding: 7px 9px;
+  gap: 6px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+.mobile.collapsed .panel {
+  max-height: none;
+  overflow: visible;
+}
+
+@media (max-width: 640px) {
+  /* Belt and braces: even if a caller passes isMobile={false} at a phone
+     width, the overlay must not sit on top of the desktop-sized sidebar gap. */
+  .overlay {
+    left: 6px;
+    right: 6px;
+    max-width: none;
+  }
+}
+
+/* ── Contents ─────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--brass, #c0a040);
+  text-transform: uppercase;
+}
+
+.prompt {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.mobile .prompt {
+  font-size: 12px;
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  color: #d8c088;
+  border-left: 2px solid rgba(200, 160, 64, 0.6);
+  padding-left: 8px;
+}
+
+.rejection {
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+  color: #e8a071;
+}
+
+.feedback {
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 7px 8px;
+  border-radius: 4px;
+}
+
+.success {
+  color: #9ee08a;
+  background: rgba(40, 90, 40, 0.28);
+  border: 1px solid rgba(110, 200, 110, 0.35);
+}
+
+.fail {
+  color: #e8a071;
+  background: rgba(90, 45, 25, 0.28);
+  border: 1px solid rgba(210, 130, 80, 0.35);
+}
+
+.error {
+  color: #e87171;
+  background: rgba(90, 25, 25, 0.28);
+  border: 1px solid rgba(210, 90, 90, 0.35);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.button {
+  flex: 1 1 auto;
+  min-width: 78px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(180, 140, 70, 0.5);
+  background: linear-gradient(180deg, rgba(50, 38, 20, 0.9), rgba(24, 18, 10, 0.9));
+  color: var(--ink-parchment, #e8dcc0);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: rgba(220, 180, 90, 0.8);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.primary {
+  border-color: rgba(220, 180, 90, 0.8);
+  background: linear-gradient(180deg, rgba(86, 64, 26, 0.95), rgba(40, 30, 14, 0.95));
+}
+
+.collapseToggle {
+  pointer-events: auto;
+  background: none;
+  border: none;
+  color: var(--brass, #c0a040);
+  font-family: var(--font-display);
+  font-size: 11px;
+  padding: 0 2px;
+  cursor: pointer;
+}

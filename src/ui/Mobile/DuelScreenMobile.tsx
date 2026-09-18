@@ -9,7 +9,7 @@ import { PHASE } from '../../engine/phases.js';
 import KEYWORDS from '../../data/keywords.js';
 import type { CardData } from '../Card/types';
 import { useDuelController, isBebRebEffect, isCounterEffect, needsStackTarget, isPlayerOnlyTarget, isCreatureOnlyTarget, isLandOnlyTarget, isArtifactOnlyTarget, getManaShortfall, normalizeAbilityCost } from '../../hooks/useDuelController';
-import type { DuelConfig } from '../../types/duel';
+import type { DuelConfig, ScenarioPanelContext } from '../../types/duel';
 
 import { MulliganModal } from '../Mulligan/MulliganModal';
 import { LotusColorPicker, DualLandColorPicker, BebRebModePicker, BopColorPicker } from '../duel/TargetingOverlay.jsx';
@@ -50,15 +50,28 @@ import s from './styles.module.css';
 interface DuelScreenMobileProps {
   config: DuelConfig;
   onDuelEnd: (outcome: 'win' | 'lose' | 'forfeit', state: unknown) => void;
+  /**
+   * Scenario mode (Learn Mode L3). Same contract as DuelScreen.tsx: a render
+   * prop handed the LIVE GameState, rendered only when `config.scenario` is
+   * true, so the lesson chrome keeps no second copy of the board and no
+   * campaign or sandbox duel can reach it.
+   */
+  scenarioPanel?: (ctx: ScenarioPanelContext) => React.ReactNode;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobileProps) {
+export default function DuelScreenMobile({ config, onDuelEnd, scenarioPanel }: DuelScreenMobileProps) {
+  // Scenario mode (Learn Mode L3). False on every campaign and sandbox duel,
+  // where every guard below is inert and the screen renders as before.
+  const scenario = config.scenario === true;
+
   const handleDuelEndWithClear = useCallback((outcome: 'win' | 'lose' | 'forfeit', st: unknown) => {
-    clearDuel();
+    // A scenario duel never wrote a `shandalar:` duel save, and must not clear
+    // the campaign's.
+    if (!scenario) clearDuel();
     onDuelEnd(outcome, st);
-  }, [onDuelEnd]);
+  }, [onDuelEnd, scenario]);
 
   const {
     state, dispatch,
@@ -88,11 +101,14 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
     castFlow, beginCastFlow, beginActivateFlow,
     selectCastTarget, selectAdditionalCost, confirmCastTargets, cancelCastFlow,
     adjustCastX, confirmCastX,
+    isActionAllowed,
   } = useDuelController(config, handleDuelEndWithClear);
 
   const s_state = state;
 
-  usePersistence(s_state, true);
+  // Campaign save layer. Scenario mode never writes it -- Learn Mode owns no
+  // `shandalar:` key (CLAUDE.md, Learn Mode save layer).
+  usePersistence(s_state, !scenario);
 
   // ── Local UI state ────────────────────────────────────────────────────────
   const [sel, setSel] = useState<Selection | null>(null);
@@ -522,6 +538,7 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         active={s_state.active}
         onOpenLog={() => setLogOpen(true)}
         onOpenMenu={() => {}}
+        showCampaignChrome={!scenario}
       />
 
       <Banner side="opp" player={oData} onLifeClick={
@@ -530,7 +547,8 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
           : undefined
       } />
 
-      {s_state.anteEnabled && (() => {
+      {/* Campaign chrome: suppressed in scenario mode. A lesson has no stakes. */}
+      {!scenario && s_state.anteEnabled && (() => {
         const anteExtraP = (s_state as any).anteExtraP ?? [];
         const anteExtraO = (s_state as any).anteExtraO ?? [];
         const stakeP = [...((s_state as any).anteP ? [(s_state as any).anteP] : []), ...anteExtraP];
@@ -767,6 +785,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
         phase={s_state.phase}
         pendingBlocker={pendingBlockerIid}
         blockers={s_state.blockers ?? {}}
+        /* Scenario mode only. isActionAllowed returns true for every kind
+           outside scenario mode, so all three stay true on campaign duels.
+           Desktop DuelScreen.tsx passes the same set -- keep them in step. */
+        showUndo={isActionAllowed('UNDO_MANA_TAPS')}
+        showPassPriority={isActionAllowed('ADVANCE_PHASE')}
+        showEndTurn={isActionAllowed('ADVANCE_PHASE')}
       />
 
       {/* Hand strip */}
@@ -792,6 +816,12 @@ export default function DuelScreenMobile({ config, onDuelEnd }: DuelScreenMobile
       </div>
 
       <LogSheet open={logOpen} onClose={() => setLogOpen(false)} log={adaptedLog} />
+
+      {/* -- LESSON CHROME (scenario mode only) ------------------------------ */}
+      {/* Last child so it layers over the board. isMobile is hard-true here:
+          this component IS the mobile layout, so the chrome sizes itself for
+          the compact HUD without consulting the breakpoint hook again. */}
+      {scenario && scenarioPanel?.({ state: s_state, isActionAllowed, isMobile: true })}
     </div>
   );
 }

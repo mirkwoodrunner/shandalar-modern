@@ -27,7 +27,7 @@ export function PhaseBar({ phase }: PhaseBarProps) {
   }, [phase]);
 
   return (
-    <div ref={barRef} className={s.phaseBar}>
+    <div ref={barRef} className={s.phaseBar} data-testid="phase-bar">
       {PHASE_SEQUENCE.map((p: string) => {
         const active = p === phase;
         const combat = p.startsWith('COMBAT');

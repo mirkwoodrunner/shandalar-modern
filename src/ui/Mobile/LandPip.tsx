@@ -35,6 +35,7 @@ export function LandPip({ card, tapped, selected, isPlayer = false, onClick }: L
       className={s.landPip}
       onClick={onClick}
       data-iid={card.iid}
+      data-testid={`bf-card-${card.iid}`}
       title={`${card.name}${tapped ? ' (tapped)' : ''}`}
       style={{
         background: tapped ? `${bg}55` : `linear-gradient(155deg, ${bg}dd, ${bg}77)`,
