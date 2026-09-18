@@ -160,6 +160,39 @@ override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
 pointing it at a temp dir, leaving the committed reports alone. Two small edits,
 neither in a protected file. Needs Chris's go-ahead.
 
+### Finding 5 (NOT in the prompt's scope -- reported, deliberately not fixed)
+
+**`test:audit` is partly blind: one of the four tags has no Vitest coverage at
+all.** Running `npm run test:audit -- @engine` at the end of this work selected
+`@mobile` as the untouched tag, and its Vitest half reported
+`130 skipped | 1607 skipped` -- it ran nothing.
+
+Counted across every Vitest file:
+
+| `@module-tag` | Files carrying it |
+|---|---|
+| `engine` | 115 |
+| `overworld` | 5 |
+| `learn` | 5 |
+| `premodern` | 1 |
+| **`mobile`** | **0** |
+
+`mobile` is declared in `vite.config.js`'s `tags` array and documented in
+CLAUDE.md's tag taxonomy and file-path lookup table, but no Vitest file uses it.
+Checked whether mobile tests exist but are mistagged -- they do not. The four
+Vitest files that mention "mobile" at all are incidental and correctly tagged
+`engine`. Mobile coverage in this repo is Playwright-only, which is a legitimate
+design outcome.
+
+The consequence is not: when `test:audit` randomly selects `@mobile`, its Vitest
+half is vacuous and its Playwright half is the slow, 261-failure suite. The
+audit then reports either nothing useful or a hard stop that is really just the
+known baseline. `@premodern`, with one file, is thin for the same reason.
+
+**Not fixed here.** Either outcome (tagging files `mobile`, or removing the tag
+from the audit's selection pool) is a change to the tag taxonomy, which CLAUDE.md
+puts behind an explicit decision. Needs Chris's call.
+
 ### Finding 3 (BASELINE ESTABLISHED): Playwright `@engine`/`@mobile`
 
 **Command:** `npx playwright test --grep "@engine|@mobile"`
