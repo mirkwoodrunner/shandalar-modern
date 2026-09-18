@@ -307,11 +307,53 @@ Scope guard. Two exercise types only, `engine` and `multiSelect`. No third type.
 exercise is graded and produces an attempt record, per the rule in 4.4. Physical handling
 content is cut from the curriculum and does not appear here.
 
-### L2c. Fan content notice and first public release
+### L2c. Fan content notice and release framing (done)
 
-**Pulled forward from L11.** The fan content notice in `src/learn/content.ts` is currently
-placeholder wording. It is a release gate, not a launch-polish item, and it was mis-scoped
-in the original roadmap.
+**Shipped 2026-09-18.** All four gate items are closed and asserted by Playwright
+`Learn-10` at both viewports, so they survive a refactor rather than relying on nobody
+touching them.
+
+**1. Notice replaced.** `src/learn/content.ts` now carries the Fan Content Policy's standard
+form: unofficial Fan Content permitted under the Fan Content Policy, not approved/endorsed by
+Wizards, portions of the materials used are property of Wizards of the Coast, copyright
+Wizards of the Coast LLC.
+
+> **Open item for Chris, and the one thing blocking an actual release.** The notice string
+> was written from the policy's long-standing wording and **could not be verified against the
+> live page**: the build environment blocks egress to `company.wizards.com`. Policy text
+> changes. Check it against the current Fan Content Policy before publishing. This is the one
+> string in the app where approximately right is not good enough, and it is flagged in a
+> comment above the constant as well as here.
+
+**2. Asset audit: clean.** Nothing under `src/learn/` references an image, stylesheet
+background, or icon of any kind -- no `<img>`, no `.png`/`.jpg`/`.svg`/`.webp`, no
+`background-image`, no `url(`. No Wizards logo, no set symbols, no lifted mana symbol art.
+Mana is rendered as the plain cost string (`1G`, `2B`) in project CSS, which satisfies the
+"project-owned glyphs" requirement by not using glyph art at all. `src/learn/` does not import
+`scryfallArt.js` or `useCardArt.js`, so no card images are fetched. `learn.html` declares no
+favicon.
+
+What Learn Mode does use of Wizards' IP is card names and oracle text, from
+`src/data/cards.js`. That is the known tension recorded in section 6, covered by the notice's
+"portions of the materials used" clause, and unchanged by this milestone.
+
+**3. Tutorial framing.** The unit list now states, under the title, that Learn Mode is a free
+unofficial tutorial for learning the rules and *not a place to play games*. This is the point
+where Tier 1 comes closest to Wizards' own new-player funnel, so the disclaimer is a
+positioning statement and not only a legal one.
+
+**4. Early and incomplete.** The unit list says so in as many words, and names what is
+actually there: Tier 1 only, four units. A fourth line states that it is free with no ads and
+nothing to buy, which is the Fan Content Policy's core condition and Scryfall's, promised in
+the product rather than only in a doc.
+
+**Not done here, and deliberately:** nothing was published. Deciding to release is Chris's
+call, not a milestone checkbox, and the notice above must be verified first.
+
+Original scope, for reference:
+
+The fan content notice in `src/learn/content.ts` was placeholder wording. It is a release
+gate, not a launch-polish item, and it was mis-scoped in the original roadmap.
 
 - Replace the placeholder with the standard notice. See section 6.
 - Audit for Wizards logos, set symbols, and lifted official mana symbol art. Render mana as

@@ -3,6 +3,37 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L2c -- fan content notice and release framing** -- the last gate before Tier 1
+  can ship. All four roadmap items closed and asserted by new Playwright case `Learn-10` at
+  both viewports, so they survive a refactor.
+  - **Notice replaced.** `src/learn/content.ts` placeholder is gone, replaced with the Fan
+    Content Policy's standard form. The copyright sign is written as `\u00A9` so the source
+    stays ASCII.
+  - **OPEN ITEM FOR CHRIS, and the one thing blocking an actual release:** the notice string
+    could not be verified against the live policy page -- the build environment blocks egress
+    to `company.wizards.com`. It was written from the policy's long-standing wording, which is
+    not the same as confirmed. Check it before publishing. Flagged in a comment above the
+    constant and in the roadmap's L2c entry, not just here.
+  - **Asset audit: clean.** Nothing under `src/learn/` references an image, background, or
+    icon of any kind -- no `<img>`, no image file extensions, no `background-image`, no
+    `url(`. So there is no Wizards logo, set symbol, or lifted mana symbol art to remove.
+    Mana renders as the plain cost string (`1G`, `2B`) in project CSS, which meets the
+    "project-owned glyphs" requirement by using no glyph art at all. `src/learn/` imports
+    neither `scryfallArt.js` nor `useCardArt.js`. `learn.html` declares no favicon.
+  - **Framing added to the unit list:** a tutorial tagline stating this is not a place to play
+    games, an early-and-incomplete line naming Tier 1 as all that exists, and a
+    free-with-no-ads-and-nothing-to-buy line (the Fan Content Policy's core condition and
+    Scryfall's, now promised in the product rather than only in a doc).
+  - **Nothing was published, deliberately.** Deciding to release is Chris's call, not a
+    milestone checkbox, and the notice needs verifying first.
+  - `learn:check`: 0 errors, 1 warning (unchanged). Vitest `@learn`: 155, unchanged.
+    Playwright: 28 -> 30.
+  - Edited: `src/learn/content.ts`, `src/learn/LearnApp.tsx`, `src/learn/ui/learn.css`,
+    `tests/e2e/learn-slice.spec.ts`, `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`,
+    `CLAUDE.md` (learn-slice baseline 18 -> 20).
+  - Not edited: `docs/COMPONENT_REGISTRY.md` -- no component was added, renamed, or removed,
+    only strings and markup inside `LearnApp`. Trigger not met.
+
 - **Learn Mode L2b complete -- Tier 1 content fill done** -- Unit 1.4 filled to 12
   (`1.4-04` .. `1.4-12`) and Unit 1.1 filled to 12 (`1.1-09` .. `1.1-12`). Tier 1 is now
   **45 exercises across 4 units and 16 skills**, inside the roadmap's 40 to 50 target.

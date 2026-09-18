@@ -260,7 +260,22 @@ decisions. Do not duplicate roadmap content here.
   empty hand, no line loses and no move is rejected, so a second one would add a second
   standing warning and no teaching. Vitest `@learn`: 130 -> 155. Playwright: 26 -> 28.
 
-Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2c
-(fan content notice and first public release -- the last gate before Tier 1 ships). The previously-listed "Slice 4: checkpoint duel" is
+- **L2c** (done): fan content notice and release framing. `src/learn/content.ts` carries the
+  Fan Content Policy's standard notice in place of the placeholder, plus three framing strings
+  rendered on the unit list: a tutorial tagline that says explicitly this is not a place to
+  play games, an early-and-incomplete statement naming Tier 1 as all that exists, and a
+  free-with-no-ads line. Playwright `Learn-10` asserts all four at both viewports.
+  Asset audit came back clean: nothing under `src/learn/` references any image, background, or
+  icon, so there is no Wizards logo, set symbol, or lifted mana symbol art to remove. Mana
+  renders as the plain cost string. `src/learn/` imports neither `scryfallArt.js` nor
+  `useCardArt.js`. Playwright: 28 -> 30.
+  **One open item blocks an actual release:** the notice string could not be verified against
+  the live Fan Content Policy page, because the build environment blocks egress to
+  `company.wizards.com`. See the roadmap's L2c entry.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L3
+(duel UI scenario mode). Tier 1 is content-complete and release-framed; publishing is a
+decision, not a milestone. The post-release reassessment gate in L2c decides whether Tier 2 or
+Tiers 4 and 5 come next, using completion data rather than argument.. The previously-listed "Slice 4: checkpoint duel" is
 now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
 depends on.

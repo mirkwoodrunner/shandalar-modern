@@ -10,7 +10,26 @@ test.describe('@learn-slice-1 Learn Mode slice', () => {
     await page.goto('/learn.html');
     await expect(page.getByTestId('learn-unit-1.1')).toBeVisible();
     await expect(page.getByTestId('learn-unit-1.4')).toBeVisible();
-    await expect(page.getByTestId('learn-disclaimer')).toContainText('Not approved or endorsed by Wizards of the Coast');
+    await expect(page.getByTestId('learn-disclaimer')).toContainText('Not approved/endorsed by Wizards');
+  });
+
+  // L2c release gate. The fan content notice, the tutorial framing, and the
+  // early-and-incomplete statement are all release conditions, so they are
+  // asserted rather than trusted to survive a refactor.
+  test('Learn-10: fan content notice and release framing are present', async ({ page }) => {
+    await page.goto('/learn.html');
+
+    const notice = page.getByTestId('learn-disclaimer');
+    await expect(notice).toContainText('unofficial Fan Content permitted under the Fan Content Policy');
+    await expect(notice).toContainText('Not approved/endorsed by Wizards');
+    await expect(notice).toContainText('Portions of the materials used are property of Wizards of the Coast');
+
+    // Framed as a tutorial, explicitly not as a place to play.
+    await expect(page.getByTestId('learn-tagline')).toContainText('not a place to play games');
+    // Framed as early and incomplete.
+    await expect(page.getByTestId('learn-early-access')).toContainText('Early and incomplete');
+    // Free, which the Fan Content Policy and Scryfall's terms both depend on.
+    await expect(page.getByTestId('learn-no-money')).toContainText('no ads and nothing to buy');
   });
 
   // L2b exit criterion: a first-time player can reach every Tier 1 unit. The
