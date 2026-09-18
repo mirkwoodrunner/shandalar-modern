@@ -160,10 +160,140 @@ override in `analyze.mjs` (env var, defaulting to `__dirname`) with the test
 pointing it at a temp dir, leaving the committed reports alone. Two small edits,
 neither in a protected file. Needs Chris's go-ahead.
 
-### Finding 3: Playwright `@engine`/`@mobile` baseline
+### Finding 3 (BASELINE ESTABLISHED): Playwright `@engine`/`@mobile`
 
-See the dedicated section below (`2026-09-18 -- Playwright @engine/@mobile
-reference baseline`).
+**Command:** `npx playwright test --grep "@engine|@mobile"`
+**Tree:** clean `origin/main` at `0fb0ecd`, in a detached `git worktree` -- no
+branch work present.
+**Result: 261 failed | 709 passed | 2 skipped, 1.3h.**
+
+**The 261 are confirmed pre-existing.** These are the same counts the L3 branch
+run produced (261/709/2), on a tree with none of the L3 or triage work in it.
+The provenance the previous entry could not establish is now established. The
+33 failing spec files are the same 33 the L3 entry listed.
+
+Run conditions: `workers: 1`, `retries: 0` (the repo's own config, unmodified).
+Failures are fast and deterministic -- assertion errors and `beforeEach`
+timeouts, not load-sensitive flakes -- so the list does not shift with machine
+speed.
+
+#### Failures grouped by cause
+
+Four root causes were confirmed by direct probe against a running dev server,
+not inferred from the messages.
+
+**1. The title screen's entry control is unreachable to specs (~40 failures,
+4 files).** The landing page carries **zero `data-testid` attributes**; its
+entry button reads `BEGIN YOUR JOURNEY`. `overworld-visual.spec.ts` clicks
+`[data-testid="start-game"]`, which exists nowhere in `src/` at all;
+`plaque-visibility.spec.ts` clicks a button matching `/start|new game/i`,
+which that label does not match either. Every affected spec dies in
+`beforeEach` before asserting anything. One missing testid accounts for the
+single largest block of "overworld" failures -- which is also why they look
+like overworld regressions when nothing about the overworld is broken.
+
+**2. The mulligan modal is open on sandbox boot and some specs never dismiss
+it (~24 failures).** Probe: on `/?duel=sandbox`, `mulligan-keep` is visible;
+clicking it dismisses the modal and the hand becomes clickable
+(`clickErr: ''`). 49 spec files already handle this; `tutor-modal.spec.ts` and
+`lotus-cancel-undo.spec.js` do not, and both time out in `beforeEach` trying to
+click a card underneath the modal.
+
+**3. `window.__duelState()` returns a stale render-time snapshot (the largest
+residual bucket).** `useDuelController.ts:739` sets
+`__duelState = () => state`, closing over the render's `state`. A dispatch is a
+React state update, so the closure is not refreshed until React re-renders and
+the effect re-runs. Probe, on `ability-stack-bugs`'s exact sequence:
+
+| point | `p.hand.length` | card present |
+|---|---|---|
+| before dispatch | 7 | - |
+| immediately after `SANDBOX_FORCE_HAND`, separate `page.evaluate` | 7 | no |
+| after `waitForTimeout(500)` | 8 | yes |
+
+Specs that dispatch and then read without waiting see the pre-dispatch state.
+This produces the `Cannot read properties of undefined (reading 'iid')` cluster
+(19) and the `"<card> not in o hand"` cluster (12) directly, and cascades into
+much of the `waitForFunction` timeout cluster (30): a stale read sends a
+malformed follow-up dispatch, so the awaited condition never arrives.
+**Confidence note:** the mechanism is confirmed; the precise share of the 187
+residual failures attributable to it is not individually verified.
+
+**4. `.tap()` used in the no-touch `chromium` project (8 failures, 3 files).**
+`playwright.config.js` sets `hasTouch: true` only on `mobile-chrome`. Specs
+calling `locator.tap()` fail deterministically on `chromium` with "The page does
+not support tap."
+
+**Smaller, individually diagnosed causes:**
+
+| Count | Cause |
+|---|---|
+| 8 | **Environment, not product.** `ERR_CERT_AUTHORITY_INVALID` / `ERR_TUNNEL_CONNECTION_FAILED` on Scryfall art fetches, asserted against by `console errors` checks. This is the agent proxy on this box. **These 8 may not reproduce on Chris's machine** and should not be treated as product failures. |
+| 3 | `ReferenceError: setPendingConditionalCounter is not defined` -- a test helper the spec expects and `src/` does not define. |
+| 2 | `test.use()` called in the wrong scope (`aladdins-lamp.spec.ts`, `guardian-angel.spec.ts`) -- a Playwright authoring error; those specs cannot run at all. |
+| 2 | `window.__duelDispatch is not a function` -- the sandbox hatch was absent when the spec ran. |
+
+#### Reference baseline: failing spec files
+
+Dominant signature per file. Anything not on this list passed on `0fb0ecd`.
+
+| Spec file | Failures | In hook | Dominant signature |
+|---|---|---|---|
+| `sandbox-combat-ai-parity.spec.ts` | 28 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `overworld-visual.spec.ts` | 24 | 24 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `sandbox-targeting-modals.spec.ts` | 24 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `batch1b-wall-destruction-sacrifice.spec.ts` | 20 | - | Error: page.evaluate: Error: wall_of_stone not in o hand / at eval (eval |
+| `batch1a-desert-landwalk.spec.ts` | 15 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `power-sink-x-select.spec.js` | 14 | - | TimeoutError: page.waitForFunction: Timeout 5000ms exceeded. |
+| `ability-stack-bugs.spec.ts` | 12 | - | Error: page.evaluate: TypeError: Cannot read properties of undefined (re |
+| `deferral-sweep-1.spec.ts` | 12 | - | TimeoutError: page.waitForFunction: Timeout 20000ms exceeded. |
+| `lotus-cancel-undo.spec.js` | 12 | 12 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `tutor-modal.spec.ts` | 12 | 10 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `mobile-targeting.spec.ts` | 10 | - | Error: locator.tap: The page does not support tap. Use hasTouch context  |
+| `sandbox-boot-stack.spec.ts` | 9 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `duel-controller.spec.ts` | 8 | - | Error: locator.tap: The page does not support tap. Use hasTouch context  |
+| `plaque-visibility.spec.ts` | 8 | 8 in hook | Test timeout of 30000ms exceeded while running "..." hook. |
+| `henchman-visibility.spec.ts` | 5 | - | Error: enemy at dist=N should chase toward player / / expect(received).t |
+| `ai-creature-evaluation-smoke.spec.ts` | 4 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `card-type-line.spec.ts` | 4 | - | Test timeout of 30000ms exceeded. |
+| `overworld-map-centering.spec.ts` | 4 | - | Test timeout of 30000ms exceeded. |
+| `overworld-tileset.spec.ts` | 4 | - | Error: expect(received).toContain(expected) // indexOf / / Expected subs |
+| `preduel-sandbox.spec.ts` | 4 | - | TimeoutError: page.waitForSelector: Timeout 8000ms exceeded. / Call log: |
+| `ruins.spec.js` | 4 | - | Error: expect(locator).toBeVisible() failed / / Locator: locator('.ow-pl |
+| `lava-axe-targeting.spec.ts` | 3 | - | Error: opponent should take N damage from Lava Axe / / expect(received). |
+| `ai-banding-smoke.spec.ts` | 2 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `aladdins-lamp.spec.ts` | 2 | - | Error: Playwright Test did not expect test.use() to be called here. / Mo |
+| `ancestral-recall-targeting.spec.ts` | 2 | - | Test timeout of 30000ms exceeded. |
+| `banding-cards-batch.spec.ts` | 2 | - | Error: console errors: Failed to load resource: net::ERR_CERT_AUTHORITY_ |
+| `batch-a4-sphere-cycle.spec.ts` | 2 | - | Test timeout of 30000ms exceeded. |
+| `coral-helm.spec.ts` | 2 | - | Error: expect(received).toHaveLength(expected) / / Expected length: N |
+| `disintegrate.spec.js` | 2 | - | Error: expect(received).toBeUndefined() / / Received: {"...": {"...": ". |
+| `hooded-figure-sprites.spec.ts` | 2 | - | Error: hoodedFigure black canvas DOM present / / expect(received).toBeGr |
+| `layer-engine.spec.js` | 2 | - | Error: expect(received).toBe(expected) // Object.is equality / / Expecte |
+| `undo-tap-activate.spec.js` | 2 | - | Error: page.evaluate: TypeError: window.__duelDispatch is not a function |
+| `guardian-angel.spec.ts` | 1 | - | Error: Playwright Test did not expect test.use() to be called here. / Mo |
+
+#### This is a structural cost, not a flaky-run cost
+
+The two halves of `npm run test:targeted -- @engine` are wildly asymmetric:
+
+| Half | Wall time | State |
+|---|---|---|
+| Vitest | **~15 s** | green (1350 passed) |
+| Playwright | **~78 min** | 261 failing, all pre-existing |
+
+An 80-minute gate with 261 known failures cannot function as the per-prompt gate
+CLAUDE.md mandates for every `src/engine/` change. A prompt cannot distinguish
+its own regression from the standing 261 without diffing against this list, and
+will not spend 80 minutes to do so. In practice prompts will skip it, which is
+how it drifted this far. See the policy note added to `CLAUDE.md`.
+
+The encouraging part: the failure count is concentrated, not diffuse. Causes 1
+and 2 are single-point fixes (one `data-testid`, one modal dismissal in two
+specs) worth roughly 64 failures between them. Cause 4 is a config/spec
+mismatch worth 8. Cause 3 is the real work -- it is an architectural mismatch
+between the escape hatch's React-snapshot semantics and the synchronous
+semantics ~20 spec files assume.
 
 ---
 
