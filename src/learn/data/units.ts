@@ -1,5 +1,5 @@
 // src/learn/data/units.ts
-// Slice 1 exercise data. Authored data only. Validated by src/learn/__tests__/units.test.ts.
+// Learn Mode exercise data. Authored data only. Tree defined in docs/LEARN_CURRICULUM.md. Validated by src/learn/__tests__/units.test.ts.
 
 import type { Unit } from '../engine/types';
 
@@ -109,11 +109,11 @@ export const UNITS: Unit[] = [
     ],
   },
   {
-    id: '3.1',
-    title: 'Lethal this turn',
+    id: '1.4',
+    title: 'Winning this turn',
     exercises: [
       {
-        kind: 'engine', id: '3.1-01', stableId: '3.1-01', unit: '3.1', skill: 'lethal-evasion', title: 'Fly over',
+        kind: 'engine', id: '1.4-01', stableId: '3.1-01', unit: '1.4', skill: 'lethal-evasion', title: 'Fly over',
         prompt: 'Win this turn. The opponent is at 4 life. Pick your attackers.',
         hint: 'Their creatures can\'t block a creature with flying.',
         explanation: 'Wall of Wood and Scathe Zombies can\'t block flyers. Air Elemental\'s 4 damage gets through no matter what.',
@@ -126,7 +126,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-02', stableId: '3.1-02', unit: '3.1', skill: 'lethal-outnumber', title: 'More attackers than blockers',
+        kind: 'engine', id: '1.4-02', stableId: '3.1-02', unit: '1.4', skill: 'lethal-outnumber', title: 'More attackers than blockers',
         prompt: 'Win this turn. The opponent is at 3 life. Pick your attackers.',
         hint: 'Wall of Wood can only block one attacker.',
         explanation: 'Send everything. Wall of Wood stops one creature, and the other two still deal at least 4.',
@@ -139,7 +139,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-03', stableId: '3.1-03', unit: '3.1', skill: 'lethal-outnumber', title: 'Every point counts',
+        kind: 'engine', id: '1.4-03', stableId: '3.1-03', unit: '1.4', skill: 'lethal-outnumber', title: 'Every point counts',
         prompt: 'Win this turn. The opponent is at 3 life. Pick your attackers.',
         hint: 'Pearled Unicorn can block one attacker, and it can\'t block Scryb Sprites.',
         explanation: 'Attack with all three. Whatever Pearled Unicorn blocks, at least 3 damage gets through.',
@@ -152,7 +152,7 @@ export const UNITS: Unit[] = [
         ],
       },
       {
-        kind: 'engine', id: '3.1-04', stableId: '3.1-04', unit: '3.1', skill: 'summoning-sickness', title: 'Fresh arrivals',
+        kind: 'engine', id: '1.4-04', stableId: '3.1-04', unit: '1.4', skill: 'summoning-sickness', title: 'Fresh arrivals',
         prompt: 'Win this turn. The opponent is at 4 life. Pick your attackers.',
         hint: 'Hill Giant came into play this turn.',
         explanation: 'Creatures can\'t attack the turn they arrive. Grizzly Bears and Gray Ogre deal exactly 4.',

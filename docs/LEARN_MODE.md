@@ -140,11 +140,11 @@ Slice 3a:
   [ ok ] 1.1-07   land-per-turn        2/2 lines win
   [ ok ] 1.1-08   read-costs           multiSelect
 
-3.1  Lethal this turn
-  [ ok ] 3.1-01   lethal-evasion       2/3 lines win
-  [ ok ] 3.1-02   lethal-outnumber     1/7 lines win
-  [ ok ] 3.1-03   lethal-outnumber     1/7 lines win
-  [ ok ] 3.1-04   summoning-sickness   1/3 lines win
+1.4  Winning this turn
+  [ ok ] 1.4-01   lethal-evasion       2/3 lines win
+  [ ok ] 1.4-02   lethal-outnumber     1/7 lines win
+  [ ok ] 1.4-03   lethal-outnumber     1/7 lines win
+  [ ok ] 1.4-04   summoning-sickness   1/3 lines win
 
 0 error(s), 1 warning(s).
 ```
@@ -189,6 +189,14 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
   engine fix lands for both of the above.
 - The card pool currently used by Learn Mode has no deathtouch, lifelink, or menace
   cards available as a workaround.
+- **LC-1. Player-targeted spells silently do nothing.** Casting a burn spell at the
+  opponent is accepted by `tryAction`, the card leaves hand, and opponent life is
+  unchanged. There is no rejection, which makes this a content trap rather than a
+  missing capability. No exercise at any tier may use a player-targeted spell until it
+  is fixed. Full write-up in `docs/LEARN_CURRICULUM.md` section 7.
+- **LC-2. `TAP_LAND` cannot choose a colour.** `tryAction` passes `produces[0]`, so a
+  dual land always makes its first listed colour. Dual lands must not appear in
+  exercises. Same write-up.
 
 ## 7. Slice history
 
@@ -197,7 +205,7 @@ This section records what shipped. Forward planning lives in
 decisions. Do not duplicate roadmap content here.
 
 - **Slice 1** (done): puzzle runner, lesson player, 9 exercises across Unit 1.1
-  (lands and mana) and Unit 3.1 (lethal this turn).
+  (lands and mana) and Unit 3.1 (lethal this turn, renumbered to Unit 1.4 in L2).
 - **Slice 2** (done): puzzle checker (`src/learn/engine/puzzleChecker.ts`,
   `npm run learn:check`) for authoring new content outside the test suite. See
   section 3a above.
@@ -210,6 +218,15 @@ decisions. Do not duplicate roadmap content here.
   passing, plus a new `learn-persistence.spec.ts` at 10 passing (5 cases x chromium +
   mobile-chrome).
 
-Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, starting at
-milestone L2 (curriculum spine). The previously-listed "Slice 4: checkpoint duel" is now
-milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it depends on.
+- **L2** (done): curriculum spine. `docs/LEARN_CURRICULUM.md` is now the skill tree and
+  the authority on content. Tier 1 specified at 16 skills / 48 exercises across 4 units,
+  every skill verified green against the runner. Tiers 2 to 5 named and substrate-tagged.
+  Unit 3.1 renumbered to Unit 1.4 ("Winning this turn"); `id` changed, `stableId` did not,
+  so saved progress is unaffected. Runner defects LC-1 and LC-2 logged in section 6 above.
+  Baseline unchanged: 90 Vitest, 26 Playwright, `learn:check` at 0 errors / 1 warning.
+
+Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now at milestone L2b
+(Tier 1 content fill -- 35 exercises to author against the tree in
+`docs/LEARN_CURRICULUM.md` section 3). The previously-listed "Slice 4: checkpoint duel" is
+now milestone L10 there, deliberately resequenced behind the duel-UI scenario mode it
+depends on.

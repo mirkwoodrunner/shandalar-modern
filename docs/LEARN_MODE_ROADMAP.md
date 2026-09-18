@@ -205,7 +205,27 @@ records on every re-entry (C4).
 Exit criteria. Refresh mid-unit and resume exactly. Vitest on the save shape. Playwright at
 both viewports.
 
-### L2. Curriculum spine
+### L2. Curriculum spine (done)
+
+Shipped 2026-09-18 as `docs/LEARN_CURRICULUM.md`. Tier 1 fully specified at 16 skills
+across 4 units, every one verified green against the runner rather than assumed. Tiers 2
+to 5 named and substrate-tagged. Unit 3.1 renumbered to Unit 1.4 per 4.3. The
+"what a digital client does for you" skill placed in early Tier 2, not late Tier 1;
+reasoning in `LEARN_CURRICULUM.md` section 4.
+
+Two runner defects surfaced during drafting and are logged as LC-1 and LC-2 in
+`LEARN_CURRICULUM.md` section 7. LC-1 (player-targeted spells silently no-op) is the
+more serious: it is a content trap, not a missing capability, and it blocks
+burn-for-lethal content at every tier. Both fixes belong in L5 slices. Until they land,
+L2b authors basic lands only and no player-targeted spells.
+
+One open decision was raised rather than settled: applying L2's own exit criterion
+strictly pushes card types, turn structure, and blocking out of Tier 1, so the first
+public release teaches mana, casting, and attacking and never names a card type. See
+`LEARN_CURRICULUM.md` section 6, which recommends generalizing `multiSelect` after the
+first release rather than before it.
+
+Original scope, for reference:
 
 Do this before authoring more exercises. The unit numbering implies a tree that exists
 nowhere in the repo. May run in parallel with L1.

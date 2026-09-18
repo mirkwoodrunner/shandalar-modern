@@ -3,6 +3,39 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-18)
+- **Learn Mode L2 -- curriculum spine** -- new `docs/LEARN_CURRICULUM.md`, now the authority
+  on Learn Mode content. Tier 1 fully specified: 16 skills across 4 units (1.1 Lands and mana,
+  1.2 Casting spells, 1.3 Who can attack, 1.4 Winning this turn), 48 target exercises, 13 built,
+  35 to author. Every Tier 1 skill verified green by probing `puzzleRunner.ts` directly rather
+  than reading its types. Tiers 2 to 5 at skill-name granularity with substrate tags, which is
+  the L5 work list. Section 2 records the runner's real capability envelope.
+  - **Renumber** (roadmap 4.3): Unit 3.1 "Lethal this turn" -> Unit 1.4 "Winning this turn",
+    exercises `3.1-01..04` -> `1.4-01..04`. `id` changed, `stableId` did not, so saved progress
+    survives. Deep links `?exercise=3.1-NN` now 404 into the default exercise; no redirect layer
+    was built, deliberately, for a pre-release app.
+  - **Two runner defects found while drafting**, logged as LC-1/LC-2 in `LEARN_CURRICULUM.md`
+    section 7 and `LEARN_MODE.md` section 6. **LC-1**: player-targeted spells are accepted and
+    silently do nothing -- the card leaves hand, opponent life is unchanged, no rejection. That
+    is a content trap, not a gap, and it blocks burn-for-lethal at every tier. **LC-2**:
+    `TAP_LAND` passes `produces[0]`, so dual lands always make their first colour. Both fixes
+    belong in L5 slices. Until then L2b authors basic lands only, no player-targeted spells.
+  - **Decision made**: the "what a digital client does for you" skill goes in early Tier 2, not
+    late Tier 1 (roadmap left this open in 4.4 and section 8).
+  - **Decision raised, not made**: applying L2's exit criterion strictly pushes card types, turn
+    structure, and blocking out of Tier 1, so the first public release teaches mana, casting, and
+    attacking and never names a card type. `LEARN_CURRICULUM.md` section 6 recommends
+    generalizing `multiSelect` to a `{stem, options, answer}` shape after the first release, not
+    before it. Chris's call.
+  - Baseline unchanged: `learn:check` 0 errors / 1 warning, 90 Vitest, 26 Playwright.
+  - New: `docs/LEARN_CURRICULUM.md`.
+  - Edited: `src/learn/data/units.ts`, `src/learn/__tests__/units.test.ts`,
+    `src/learn/__tests__/puzzleChecker.test.ts`, `tests/e2e/learn-slice.spec.ts`,
+    `docs/LEARN_MODE.md`, `docs/LEARN_MODE_ROADMAP.md`.
+  - Not edited, deliberately: `docs/MECHANICS_INDEX.md`. L2 implements no mechanic, card
+    effect handler, or card group, so its Tier 2 trigger condition is not met. LC-1 and LC-2
+    are content blockers logged where content authors will read them
+    (`LEARN_CURRICULUM.md` section 7, `LEARN_MODE.md` section 6), not bug-fix records.
+
 - **Learn Mode L1 -- persistence, profile, onboarding survey** -- new save layer
   (`src/learn/persistence.ts`, `learn:progress` key, mirrors `usePersistence.ts`'s
   shape-validation pattern), an onboarding survey gating the unit list until answered

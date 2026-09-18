@@ -64,8 +64,8 @@ describe('@learn-units-1 exercise data integrity', () => {
     }
   });
 
-  it('Unit 3.1 exercises are combat only, with nothing in either hand', () => {
-    for (const e of ENGINE.filter(x => x.unit === '3.1')) {
+  it('Unit 1.4 exercises are combat only, with nothing in either hand', () => {
+    for (const e of ENGINE.filter(x => x.unit === '1.4')) {
       expect(e.allowed).toEqual(['DECLARE_ATTACKER']);
       expect(e.setup.p.hand ?? []).toEqual([]);
       expect(e.setup.o.hand ?? []).toEqual([]);

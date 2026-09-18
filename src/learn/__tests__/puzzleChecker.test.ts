@@ -30,8 +30,8 @@ describe('@learn-checker-1 shipped content passes', () => {
   });
 
   it('enumeration finds the expected shape of the solution space', () => {
-    // 3.1-02: three attackers, one blocker. Seven non-empty sets, one wins.
-    const lines = enumerateLines(byId('3.1-02'));
+    // 1.4-02: three attackers, one blocker. Seven non-empty sets, one wins.
+    const lines = enumerateLines(byId('1.4-02'));
     expect(lines).toHaveLength(7);
     expect(lines.filter(l => l.wins)).toHaveLength(1);
     // 1.1-03: four lands, so three land sets pay 1RR.
@@ -47,13 +47,13 @@ describe('@learn-checker-1 shipped content passes', () => {
 
 describe('@learn-checker-2 the checker catches broken exercises', () => {
   it('flags an unsolvable puzzle', () => {
-    const broken = { ...byId('3.1-02'), setup: { ...byId('3.1-02').setup, o: { life: 40, bf: ['wall_of_wood'] } } };
+    const broken = { ...byId('1.4-02'), setup: { ...byId('1.4-02').setup, o: { life: 40, bf: ['wall_of_wood'] } } };
     expect(checksFired(broken)).toContain('solvable');
   });
 
   it('flags a puzzle where every legal line wins', () => {
     const broken: EngineExercise = {
-      ...byId('3.1-02'),
+      ...byId('1.4-02'),
       setup: { phase: 'COMBAT_ATTACKERS', p: { bf: ['craw_wurm', 'hill_giant'] }, o: { life: 1, bf: [] } },
       solutions: [[{ type: 'ATTACK', attackers: ['p-bf-0'] }]] as any,
     };
@@ -62,20 +62,20 @@ describe('@learn-checker-2 the checker catches broken exercises', () => {
 
   it('flags a winning attacker set that the solutions list omits', () => {
     // Air Elemental alone wins and is listed; dropping that entry must be caught.
-    const ex = byId('3.1-01');
+    const ex = byId('1.4-01');
     const broken: EngineExercise = { ...ex, solutions: [ex.solutions[1]] };
     expect(checksFired(broken)).toContain('complete');
   });
 
   it('flags a skill tag with no theme check', () => {
-    const broken = { ...byId('3.1-02'), skill: 'not-a-real-skill' };
+    const broken = { ...byId('1.4-02'), skill: 'not-a-real-skill' };
     expect(checksFired(broken)).toContain('theme');
   });
 
   it('flags a lethal-evasion puzzle whose winning line needs no evasion', () => {
     // Same board tagged as evasion, but the win comes from raw numbers.
     const broken: EngineExercise = {
-      ...byId('3.1-01'),
+      ...byId('1.4-01'),
       skill: 'lethal-evasion',
       setup: { phase: 'COMBAT_ATTACKERS', p: { bf: ['craw_wurm', 'hill_giant'] }, o: { life: 3, bf: ['wall_of_wood'] } },
       solutions: [{ type: 'ATTACK', attackers: ['p-bf-0', 'p-bf-1'] }].map(s => [s]) as any,
@@ -85,7 +85,7 @@ describe('@learn-checker-2 the checker catches broken exercises', () => {
 
   it('flags a lethal-outnumber puzzle won without outnumbering', () => {
     const broken: EngineExercise = {
-      ...byId('3.1-02'),
+      ...byId('1.4-02'),
       skill: 'lethal-outnumber',
       setup: { phase: 'COMBAT_ATTACKERS', p: { bf: ['air_elemental'] }, o: { life: 3, bf: ['scathe_zombies'] } },
       solutions: [[{ type: 'ATTACK', attackers: ['p-bf-0'] }]] as any,
@@ -98,7 +98,7 @@ describe('@learn-checker-2 the checker catches broken exercises', () => {
     // two healthy creatures are already exactly lethal and adding the Giant
     // only makes the same attack bigger.
     const broken: EngineExercise = {
-      ...byId('3.1-04'),
+      ...byId('1.4-04'),
       setup: { phase: 'COMBAT_ATTACKERS', p: { bf: ['grizzly_bears', 'gray_ogre'] }, o: { life: 4, bf: [] } },
       solutions: [[{ type: 'ATTACK', attackers: ['p-bf-0', 'p-bf-1'] }]] as any,
     };
