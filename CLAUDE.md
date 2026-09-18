@@ -110,6 +110,12 @@ in a comment — do not fix it.
 
 ## Operational Rules
 
+### Base Freshness
+Before branching or editing, run `git fetch origin` and report `git log --oneline -3 origin/main`
+as the first line of the prompt's output. A prompt whose pre-flight anchors fail must state
+whether the base included the expected commits before concluding that upstream work is missing.
+A stale base and a genuinely unmerged branch produce identical symptoms and require opposite fixes.
+
 ### No Unsolicited Work
 Only modify files or implement features explicitly requested by the prompt.
 Do not refactor for cleanliness, rename variables, or restructure modules unless that work is
@@ -354,7 +360,22 @@ full suite when Chris explicitly asks for it -- a full-suite or
 pre-merge/pre-release validation request. A `test:audit` failure is NOT
 itself permission to run the full suite. See the escalation path below.
 
-Doc-only changes (nothing under `src/` touched) need no test run at all.
+Doc-only changes (nothing under `src/` touched) need no test run at all. Verification for a
+doc-only prompt is `git status --porcelain` plus whatever content greps the prompt specifies.
+A doc-only prompt that demands a test run is over-specified -- follow this rule, not the prompt.
+
+**Learn Mode pinned baseline (as of 2026-09-16).** When a prompt says "same as main," it means
+these numbers:
+
+| Command | Expected |
+|---|---|
+| `npm run learn:check` | `0 error(s), 1 warning(s).` |
+| `npm run test:targeted -- @learn` | 57 passing |
+| `npx playwright test tests/e2e/learn-slice.spec.ts` | 16 passing (8 cases x chromium + mobile-chrome) |
+
+Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
+and have already been reported two different ways for the same command. Update this table in the
+prompt that legitimately changes a number, never silently.
 
 ### Unit tests (Vitest)
 ```

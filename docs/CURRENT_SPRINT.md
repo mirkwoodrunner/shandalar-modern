@@ -3,6 +3,13 @@
 ## Focus (priority order)
 
 ## Completed (2026-09-16)
+- **Learn Mode decision closure and process fixes** -- audited Learn Mode for doc-to-code
+  drift, added a base-freshness rule and a pinned Learn Mode test baseline to `CLAUDE.md`,
+  and closed all three open roadmap decisions (physical handling cut, card pool reversed to
+  a tagged single database, hosting shared with Shandalar). Wrote `docs/LEARN_L1_SPEC.md`.
+  No application code touched.
+  - New: `docs/LEARN_L1_SPEC.md`.
+  - Edited: `CLAUDE.md`, `docs/LEARN_MODE_ROADMAP.md`, `docs/DECISIONS.md`.
 - **Learn Mode canonical model** -- resolved open decision 2. Paper Magic is the canonical
   model at every tier. Digital-client behavior becomes its own mapping skill. Added
   roadmap section 4.4, constrained L2 drafting and L2b authoring, and raised physical

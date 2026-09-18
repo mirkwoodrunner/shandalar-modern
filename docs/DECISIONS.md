@@ -186,3 +186,25 @@ The Group A life assertion (`next.o.life === 20`) is the primary regression guar
   and mulligan procedure are Tier 1 material under a paper north star but cannot be
   graded by the runner. Including them requires a third exercise type (read-only
   explainer) and a new `puzzleChecker` path. Explicitly out of scope for L2b either way.
+- **Physical handling content is cut, not deferred (2026-09-16).** Shuffling,
+  randomization, card handling, and mulligan procedure do not appear in the lesson tree.
+  Rationale: engagement. A text quiz on shuffling etiquette is the weakest content the
+  product could ship and a boring Tier 1 costs more than the missing coverage. Reference
+  material belongs in a static help page, not a lesson.
+- **Mulligan decisions are a Tier 3 skill gated on L5 (2026-09-16).** Separated from
+  mulligan procedure deliberately. Keep-or-ship is judgment, is deck-dependent, and is one
+  of the most engaging lessons available. Grading it needs library manipulation the runner
+  does not have, and a brand-new player has no frame for evaluating a hand.
+- **Tiers 1 to 3 contain no ungraded content (2026-09-16).** Every exercise produces an
+  attempt record. L8 computes mastery from attempt records, so ungraded content is
+  invisible to spaced review. Content that cannot be graded is not a lesson. Two exercise
+  types only: `engine` and `multiSelect`.
+- **Card pool decision REVERSED (2026-09-16).** Supersedes the earlier "separate Learn card
+  database, NOT a pool flag on `CARD_DB`" decision. Now: one database, cards tagged by
+  pool, parameterized lookup defaulting to the Shandalar set. The original objection (every
+  consumer becomes pool-aware) applies only if consumers do the filtering, which a
+  parameterized lookup avoids. No format targeting. Bounded by what DuelCore can execute.
+  Oracle text pinned with a version stamp, gated in `learn:check`, sharing L7's mechanism.
+- **Hosting (2026-09-16):** Learn Mode and Shandalar deploy together as one build to one
+  origin, off GitHub, on a project-owned domain, with subdomains from day one. Splitting
+  them later costs a DNS change. Accepted consequence: shared takedown risk.
