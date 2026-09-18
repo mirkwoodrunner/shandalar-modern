@@ -174,3 +174,15 @@ The Group A life assertion (`next.o.life === 20`) is the primary regression guar
   full and Tiers 2 to 5 at skill-name granularity only. Each tier gets its full pass in
   the milestone that unblocks it. Fully specifying tiers a year out produces stale
   documentation, which is worse than thin documentation.
+- **Paper is the canonical model for Learn Mode (2026-09-16).** All content at every
+  tier teaches paper Magic. Digital-client behavior (auto-tapping, auto-passing
+  priority, stops) is taught as a mapping layer in its own skill, never as the default.
+  Rationale: the curriculum terminates in judge prep, whose governing documents (MTR,
+  IPG) are paper-only, so a digital default would require an unexplained model switch
+  mid-curriculum. The runner already models paper behavior (`TAP_LAND` is explicit,
+  `UNDO_MANA_TAPS` exists because taps are manual), so paper costs nothing to teach and
+  digital would contradict the interface the lesson runs inside.
+- **Physical handling content is unresolved and gates L2.** Shuffling, randomization,
+  and mulligan procedure are Tier 1 material under a paper north star but cannot be
+  graded by the runner. Including them requires a third exercise type (read-only
+  explainer) and a new `puzzleChecker` path. Explicitly out of scope for L2b either way.

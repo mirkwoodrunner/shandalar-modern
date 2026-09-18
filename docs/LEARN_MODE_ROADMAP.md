@@ -59,6 +59,9 @@ Recorded in `docs/DECISIONS.md`. Restated here for context:
   and then stop, which is the wrong population to tune a streak and spaced-review system
   against.
 
+- **Paper is the canonical model** at every tier. Digital-client behavior is taught as a
+  mapping layer, not as the default. See section 4.4.
+
 ## 4. Curriculum tiers
 
 Five tiers. The grading substrate column is the load-bearing part of this table.
@@ -105,6 +108,36 @@ Unit 3.1 (lethal this turn) is arguably Tier 2 material and sits out of order in
 as a slice artifact. Renumber when the real tree lands in L2. Existing exercise ids are
 referenced by `tests/e2e/learn-slice.spec.ts` and by `?exercise=` deep links, so a
 renumber is a real change, not a cosmetic one.
+
+### 4.4 Paper as the canonical model
+
+Decided 2026-09-16. All content at every tier teaches paper Magic. Digital-client behavior
+is taught as a mapping layer on top of that, never as the default.
+
+Three reasons:
+
+- **The curriculum ends in paper.** The MTR and IPG are paper-only documents. Tier 5 has no
+  digital analogue. Teaching digital conventions at Tier 1 and paper conventions at Tier 5
+  would mean an unexplained model switch somewhere in the middle.
+- **The runner already models paper.** `TAP_LAND` is an explicit player action and
+  `UNDO_MANA_TAPS` exists because taps are manual. Arena auto-taps. The implementation
+  already behaves the paper way, so teaching paper costs nothing, while teaching digital
+  would mean contradicting the interface the lesson runs inside.
+- **Rules live in paper.** Digital clients are a shortcut layer over the Comprehensive
+  Rules. Teaching the shortcut first means unlearning it later.
+
+**The counterargument is real and is handled explicitly.** Most new players in 2026 arrive
+through a digital client, so paper conventions will not match what they already see. The
+answer is a dedicated skill, not a switch of model. A skill along the lines of "what a
+digital client does for you" covering auto-tapping, auto-passing priority, and stops. It
+teaches the mapping between the two rather than picking a side. Place it late in Tier 1 or
+early in Tier 3, decided during L2 drafting.
+
+**Consequence for physical handling content.** Shuffling, randomization, mulligan procedure,
+and card handling have no representation in the runner and cannot be graded by it. They are
+real Tier 1 material under a paper north star, so Learn Mode needs either a read-only
+explainer exercise type or an explicit decision to defer them. That is open decision 3 in
+section 8.
 
 ## 5. Milestones
 
@@ -155,6 +188,13 @@ nowhere in the repo. May run in parallel with L1.
 - Tag Tiers 2 through 5 skills with grading substrate only. That tagging produces the L5
   work list.
 - Renumber existing units into the real tree (see 4.3).
+- Draft every skill against the paper model (see 4.4). Where a digital client behaves
+  differently, that difference is its own skill, not a caveat inside another skill.
+- Place the "what a digital client does for you" skill. Late Tier 1 or early Tier 3.
+  Decide during drafting, record the choice in `docs/LEARN_CURRICULUM.md`.
+- Decide whether physical handling content (shuffling, randomization, mulligan procedure)
+  is in Tier 1 or deferred. If in, it needs a read-only explainer exercise type, which is
+  a new type and belongs in its own slice, not inside L2b. See open decision 3.
 
 Exit criteria. Tier 1 is fully specified and every Tier 1 skill is authorable with the
 current runner. Tiers 2 to 5 have named skills tagged by substrate.
@@ -184,6 +224,14 @@ same prompt, per `CLAUDE.md`.
 
 Exit criteria. Tier 1 skill list fully covered. `npm run learn:check` at 0 errors.
 `units.test.ts` green. A first-time player can complete Tier 1 end to end.
+
+Paper constraint. Every exercise teaches paper behavior (see 4.4). No exercise assumes
+auto-tapping, auto-passing, or any other client convenience. If the "what a digital client
+does for you" skill lands in Tier 1 per L2, it ships in this fill.
+
+Scope guard. If L2 places physical handling content in Tier 1, that content needs a new
+read-only exercise type and is explicitly **out of scope for L2b**. It ships as its own
+slice. L2b authors engine-gradable exercises only, using the two existing types.
 
 ### L2c. Fan content notice and first public release
 
@@ -419,11 +467,17 @@ truth so a hosting takedown is not a project-ending event.
 _Decision 1 (which tiers ship publicly first) was resolved 2026-09-16. See section 3 under
 "Release order" and section 5 under "Release sequence."_
 
-1. Whether Tier 1 assumes paper Magic or a digital client as the reader's context. It changes
-   how shuffling, priority, and shortcuts are taught. **Now gating L2**, since the Tier 1
-   curriculum cannot be fully specified without it.
-2. Whether the Learn card pool tracks Standard, a fixed evergreen subset, or something else.
+_Decision 2 (paper versus digital client as the canonical model) was resolved 2026-09-16.
+Paper. See section 4.4._
+
+1. Whether the Learn card pool tracks Standard, a fixed evergreen subset, or something else.
    Tracking Standard means recurring content maintenance forever. Gates L4a, not the first
    release.
-3. Hosting. Affects the PWA story in L9 and the takedown-resilience plan in section 6.
-   **Now gating L2c**, since the first public release needs somewhere to live.
+2. Hosting. Affects the PWA story in L9 and the takedown-resilience plan in section 6.
+   **Gating L2c**, since the first public release needs somewhere to live.
+3. Whether physical handling content (shuffling, randomization, mulligan procedure, card
+   handling) ships in Tier 1 or is deferred. Raised by the paper decision in 4.4. It is
+   genuine Tier 1 material under a paper north star, but the runner cannot grade it, so
+   including it means building a read-only explainer exercise type. That is a third
+   exercise type and a new `puzzleChecker` code path. **Gating L2**, and if answered yes,
+   it adds a slice between L2 and L2c that L2b does not absorb.
