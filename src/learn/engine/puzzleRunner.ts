@@ -220,18 +220,14 @@ function summarize(state: any, blocks: BlockPair[], startLife: number, lifeAfter
   return `${blockText} You deal ${startLife - lifeAfter}. They're at ${lifeAfter}.`;
 }
 
-// Commits the chosen attackers, then grades against EVERY legal block assignment.
+// Grades a state that has ALREADY reached COMBAT_BLOCKERS with its attackers
+// declared, against EVERY legal block assignment the defender could make.
 // lethal === true only if the opponent dies under all of them (best defense).
-export function resolveAttack(state: any, attackerIids: string[]): AttackResult {
-  if (attackerIids.length === 0) return { ok: false, reason: MSG.GENERIC };
-  for (const iid of attackerIids) {
-    const reason = canAttackReason(state, iid);
-    if (reason) return { ok: false, reason };
-  }
-  let s = state;
-  for (const iid of attackerIids) s = duelReducer(s, { type: 'DECLARE_ATTACKER', iid });
-  s = advanceTo(s, x => x.phase === 'COMBAT_BLOCKERS');
-
+//
+// Split out of resolveAttack at L3b so scenario mode can grade a board the
+// learner declared attackers on themselves. There is exactly one implementation
+// of best-defense analysis; both entry points below call this.
+function gradeBestDefense(s: any, attackerIids: string[]): AttackResult {
   const defenders = s.o.bf.filter((c: any) => isCre(c) && !c.tapped);
   const choices: (string | null)[][] = defenders.map((bl: any) => [
     null,
@@ -272,6 +268,69 @@ export function resolveAttack(state: any, attackerIids: string[]): AttackResult 
     worstCase: worst,
     summary: summarize(s, worst.blocks, startLife, worst.oppLifeAfter),
   };
+}
+
+// Commits the chosen attackers and walks the board to the blocker step, which
+// is what the duel screen does for itself when a learner declares attackers in
+// scenario mode. Split out so there is one definition of "a board with these
+// attackers declared", shared by resolveAttack and by the tests that need a
+// mid-combat state the engine actually produced.
+export function declareAttackers(
+  state: any,
+  attackerIids: string[],
+): { ok: false; reason: string } | { ok: true; state: any } {
+  if (attackerIids.length === 0) return { ok: false, reason: MSG.GENERIC };
+  for (const iid of attackerIids) {
+    const reason = canAttackReason(state, iid);
+    if (reason) return { ok: false, reason };
+  }
+  let s = state;
+  for (const iid of attackerIids) s = duelReducer(s, { type: 'DECLARE_ATTACKER', iid });
+  return { ok: true, state: s };
+}
+
+// Commits the chosen attackers, then grades them. Used by the bespoke lesson
+// player, which hands over an attacker list rather than a board mid-combat.
+export function resolveAttack(state: any, attackerIids: string[]): AttackResult {
+  const declared = declareAttackers(state, attackerIids);
+  if (!declared.ok) return declared;
+  const s = advanceTo(declared.state, x => x.phase === 'COMBAT_BLOCKERS');
+  return gradeBestDefense(s, attackerIids);
+}
+
+// The analysis walks duelReducer forward over the board the learner is actually
+// looking at. duelReducer is expected to return new state rather than mutate,
+// and resolveAttack above has always relied on that -- but there it runs on a
+// throwaway state, whereas here a stray mutation would corrupt a lesson in
+// progress. The walk runs on a copy instead of betting on that expectation.
+// GameState is structured-cloneable: the e2e escape hatch already round-trips
+// it through page.evaluate.
+function snapshot(state: any): any {
+  return structuredClone(state);
+}
+
+// Scenario-mode grading for OPPONENT_DEAD_THIS_TURN (Learn Mode L3b).
+//
+// The bespoke lesson player collects an attacker list and calls resolveAttack.
+// Scenario mode cannot: the learner declares attackers on the real duel screen,
+// so by the time they press Check the board already holds them and DuelCore has
+// already ruled on their legality. This reads that board and asks the harder
+// question resolveAttack asks -- does the opponent die against EVERY legal
+// block? -- rather than the easier one checkGoal asks, which is whether combat
+// happens to have resolved lethally.
+//
+// Returns null when the board is not in a gradeable shape, which the caller
+// reports as "not there yet" rather than as a failure.
+export function gradeDeclaredAttack(liveState: any): AttackResult | null {
+  const attackerIids: string[] = liveState?.attackers ?? [];
+  if (!attackerIids.length) return null;
+  // Past the blocker step there is nothing left to analyse -- the defender's
+  // choice has already been made on the board.
+  if (liveState.phase !== 'COMBAT_ATTACKERS' && liveState.phase !== 'COMBAT_BLOCKERS') return null;
+
+  let s = snapshot(liveState);
+  if (s.phase !== 'COMBAT_BLOCKERS') s = advanceTo(s, x => x.phase === 'COMBAT_BLOCKERS');
+  return gradeBestDefense(s, attackerIids);
 }
 
 export function checkGoal(state: any, goal: Goal): boolean {

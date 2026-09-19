@@ -20,6 +20,11 @@ const TAP_ONLY = '/learn.html?scenario=1.1-01';
 // allowed: ['TAP_LAND', 'CAST_SPELL', 'UNDO_MANA_TAPS'].
 const CAST_EXERCISE = '/learn.html?scenario=1.1-02';
 
+// 1.4-02: Grizzly Bears, Gray Ogre and Hill Giant vs one Wall of Wood, at 3
+// life. allowed: ['DECLARE_ATTACKER']. Goal: OPPONENT_DEAD_THIS_TURN.
+// All three attackers win; any two lose to the Wall blocking the biggest.
+const LETHAL_EXERCISE = '/learn.html?scenario=1.4-02';
+
 test.describe('@learn-scenario-1 scenario mode renders a supplied state', () => {
   test('Learn-S1: the duel screen mounts a mid-game state built by the exercise', async ({ page }) => {
     await page.goto(TAP_ONLY);
@@ -191,5 +196,66 @@ test.describe('@learn-scenario-4 Shandalar is unaffected', () => {
     await expect(page.getByTestId('scenario-overlay')).toHaveCount(0);
     await page.getByTestId('card-p-bf-0').click();
     await expect(page.getByTestId('feedback-panel')).toHaveAttribute('data-result', 'success');
+  });
+});
+
+test.describe('@learn-scenario-5 lethal attacks are graded by best defense', () => {
+  // L3b. Until this landed, scenario mode graded with checkGoal alone -- a
+  // snapshot test asking "has combat resolved lethally on this board". With
+  // only DECLARE_ATTACKER allowed the board never advances past
+  // COMBAT_ATTACKERS, so that question read false for a winning attack and a
+  // losing one alike and Unit 1.4 could not be graded here at all. Grading now
+  // asks the question resolveAttack asks: does the opponent die against every
+  // legal block?
+
+  const declareAttacker = (page: import('@playwright/test').Page, iid: string) =>
+    page.getByTestId(`bf-card-${iid}`).click({ position: { x: 40, y: 110 } });
+
+  // S14 and S15 are fixme, not failures, and not deleted: the GRADING they
+  // assert is built and unit-covered (puzzleRunner.test.ts), but a learner
+  // cannot reach it on a combat board because the attacker click never lands.
+  // Probed at both viewports on this exercise: document.elementFromPoint at a
+  // battlefield card's centre returns `banner-you`, not the card, so every
+  // click is intercepted. Layout defect in scenario mode, not a grading one,
+  // and its own prompt. See docs/LEARN_MODE.md section 8.
+  test.fixme('Learn-S14: the winning attack is graded success', async ({ page }) => {
+    await page.goto(LETHAL_EXERCISE);
+    await expect(page.getByTestId('scenario-overlay')).toBeVisible();
+    await expect(page.getByTestId('scenario-feedback')).toHaveCount(0);
+
+    // All three attackers: the Wall can only stop one.
+    await declareAttacker(page, 'p-bf-0');
+    await declareAttacker(page, 'p-bf-1');
+    await declareAttacker(page, 'p-bf-2');
+    await page.getByTestId('scenario-check-button').click();
+
+    await expect(page.getByTestId('scenario-feedback')).toHaveAttribute('data-outcome', 'success');
+  });
+
+  test.fixme('Learn-S15: an attack that loses to one block is graded fail, not success', async ({ page }) => {
+    await page.goto(LETHAL_EXERCISE);
+    await expect(page.getByTestId('scenario-overlay')).toBeVisible();
+
+    // Two attackers. Nothing blocks on the board -- the opponent never gets a
+    // turn in scenario mode -- so a snapshot check has no block to see. Best
+    // defense does: the Wall stops one and they survive at 1.
+    await declareAttacker(page, 'p-bf-0');
+    await declareAttacker(page, 'p-bf-1');
+    await page.getByTestId('scenario-check-button').click();
+
+    await expect(page.getByTestId('scenario-feedback')).toHaveAttribute('data-outcome', 'fail');
+    // The worst case is the teaching: it names the block and the life left.
+    await expect(page.getByTestId('scenario-feedback')).toContainText('Wall of Wood blocks');
+    await expect(page.getByTestId('scenario-feedback')).toContainText("They're at 1.");
+  });
+
+  test('Learn-S16: checking with no attackers declared says so', async ({ page }) => {
+    await page.goto(LETHAL_EXERCISE);
+    await expect(page.getByTestId('scenario-overlay')).toBeVisible();
+
+    await page.getByTestId('scenario-check-button').click();
+
+    await expect(page.getByTestId('scenario-feedback')).toHaveAttribute('data-outcome', 'fail');
+    await expect(page.getByTestId('scenario-feedback')).toContainText('No attackers declared');
   });
 });

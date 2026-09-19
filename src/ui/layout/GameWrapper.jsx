@@ -50,7 +50,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
           The plane of Shandalar trembles. Five mages vie for dominion, and the planeswalker Arzakon waits beyond the barrier.<br/><br/>
           You are the last hope. Build your deck. Master the arcane. Seal the fate of Shandalar.
         </div>
-        <button onClick={() => setStep("choose")} style={{
+        <button data-testid="start-game" onClick={() => setStep("choose")} style={{
           background:"linear-gradient(135deg,#1a1004,#2e1c08)",
           border:"2px solid rgba(200,160,40,.5)", color:"#f0c040",
           padding:"13px 46px", borderRadius:6, cursor:"pointer",
@@ -213,6 +213,7 @@ backgroundImage: "radial-gradient(ellipse at 50% 30%,rgba(80,40,10,.4) 0%,transp
             {'←'} Back
           </button>
           <button
+            data-testid="enter-shandalar"
             disabled={!col}
             onClick={() => {
               if (!col) return;

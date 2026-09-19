@@ -586,7 +586,9 @@ test.describe('@engine-cast-flow-ui-2 @mobile duel-controller AI loop, priority,
   // ---------------------------------------------------------------------------
   // E2E-CAST-06 (mobile 390x844): Non-targeting card opens mana mode on mobile
   // ---------------------------------------------------------------------------
-  test('E2E-CAST-06: mobile — non-targeting card shows mana mode in player Banner', async ({ page }) => {
+  test('E2E-CAST-06: mobile — non-targeting card shows mana mode in player Banner', async ({ page, hasTouch }) => {
+    // Touch-driven; hasTouch is set only on the mobile-chrome project.
+    test.skip(!hasTouch, 'Touch gestures require a touch-enabled project (mobile-chrome).');
     await page.setViewportSize(MOBILE_VIEWPORT);
     await page.route('**/sandbox-decklist.txt', route =>
       route.fulfill({ body: 'Forest x20\n', contentType: 'text/plain' })
@@ -614,7 +616,9 @@ test.describe('@engine-cast-flow-ui-2 @mobile duel-controller AI loop, priority,
   // ---------------------------------------------------------------------------
   // E2E-CAST-07 (mobile): Targeting card opens targeting mode on mobile Banner
   // ---------------------------------------------------------------------------
-  test('E2E-CAST-07: mobile — targeting card (Counterspell) shows targeting mode in Banner', async ({ page }) => {
+  test('E2E-CAST-07: mobile — targeting card (Counterspell) shows targeting mode in Banner', async ({ page, hasTouch }) => {
+    // Touch-driven; hasTouch is set only on the mobile-chrome project.
+    test.skip(!hasTouch, 'Touch gestures require a touch-enabled project (mobile-chrome).');
     await page.setViewportSize(MOBILE_VIEWPORT);
     await page.route('**/sandbox-decklist.txt', route =>
       route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })
@@ -639,7 +643,9 @@ test.describe('@engine-cast-flow-ui-2 @mobile duel-controller AI loop, priority,
   // ---------------------------------------------------------------------------
   // E2E-CAST-08 (mobile): Cancel clears the cast prompt on mobile
   // ---------------------------------------------------------------------------
-  test('E2E-CAST-08: mobile — cancel during targeting flow clears cast prompt from Banner', async ({ page }) => {
+  test('E2E-CAST-08: mobile — cancel during targeting flow clears cast prompt from Banner', async ({ page, hasTouch }) => {
+    // Touch-driven; hasTouch is set only on the mobile-chrome project.
+    test.skip(!hasTouch, 'Touch gestures require a touch-enabled project (mobile-chrome).');
     await page.setViewportSize(MOBILE_VIEWPORT);
     await page.route('**/sandbox-decklist.txt', route =>
       route.fulfill({ body: 'Island x20\n', contentType: 'text/plain' })

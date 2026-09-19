@@ -390,19 +390,57 @@ The campaign save layer is never written (`usePersistence(s, !scenario)`) and `c
 is never called, so a learner with a duel in progress does not lose it. This is the same
 rule as `learn:` vs `shandalar:` key separation, applied to the duel save.
 
-### Known limitation: combat exercises
+### Best-defense grading (L3b, 2026-09-19)
 
-Scenario mode grades with `checkGoal`, which is a snapshot test against the live state. That
-covers `MANA_IN_POOL` and `CARD_ON_BATTLEFIELD` exercises end to end -- Units 1.1 and 1.2
-work fully on the duel screen today.
+Scenario mode originally graded with `checkGoal` alone, a snapshot test against the live
+state. That covers `MANA_IN_POOL` and `CARD_ON_BATTLEFIELD` end to end -- Units 1.1 and 1.2
+have worked on the duel screen since L3 -- but it cannot grade a lethal attack.
 
-It does NOT yet reproduce the best-defense analysis in section 3. `OPPONENT_DEAD_THIS_TURN`
-exercises (Unit 1.4) render and restrict correctly, but a lethal attack is only graded
-`success` once combat has actually resolved on the board, whereas `resolveAttack` grades an
-attack against every legal block the opponent could make without playing any of them out.
-Those two are not the same question, and scenario mode answering the easier one would grade
-a losing attack as a win whenever the opponent happened not to block.
+The diagnosis in the original limitation note was half right. It warned that a snapshot check
+"would grade a losing attack as a win whenever the opponent happened not to block." The
+actual behaviour was the opposite and worse: with `allowed: ['DECLARE_ATTACKER']` and the AI
+suppressed, a scenario board **never advances past `COMBAT_ATTACKERS` at all**, so
+`checkGoal` read `false` for a winning attack and a losing one alike. Unit 1.4 was not
+mis-gradeable; it was ungradeable.
 
-Until a later slice ports best-defense grading into scenario mode, Unit 1.4 stays on the
-bespoke lesson player, which is where every shipped exercise still runs. Nothing regressed;
-the capability is simply not built yet.
+What landed:
+
+- `gradeBestDefense` is the single implementation of every-legal-block analysis, split out of
+  `resolveAttack` so both entry points share it.
+- `declareAttackers` is `resolveAttack`'s first half, exported so there is one definition of
+  "a board with these attackers declared".
+- `gradeDeclaredAttack(liveState)` is the scenario-mode entry point. It reads `s.attackers`
+  back off the live board -- the learner declared them on the real duel screen, so there is no
+  attacker list to hand over -- walks to `COMBAT_BLOCKERS`, and asks the same question
+  `resolveAttack` asks. It returns `null` when the board is not in a gradeable shape (no
+  attackers declared, or past the blocker step), which `ScenarioChrome` reports as a prompt
+  rather than a failure.
+- **The analysis runs on a `structuredClone` of the live state, not the live state.**
+  `duelReducer` is expected to return new state rather than mutate, and `resolveAttack` has
+  always relied on that -- but there it walks a throwaway state, whereas here a stray mutation
+  would corrupt a lesson in progress. `puzzleRunner.test.ts` asserts the live board is
+  byte-identical after grading.
+
+`ScenarioChrome` routes `OPPONENT_DEAD_THIS_TURN` to `gradeDeclaredAttack` and everything else
+to `checkGoal`. A non-lethal attack now reports the defender's best block as its feedback
+("Wall of Wood blocks Grizzly Bears. You deal 2. They're at 1."), which is the teaching.
+
+### Known limitation: attacker clicks do not land on a scenario combat board
+
+**Unit 1.4 still cannot move to scenario mode, for a UI reason rather than a grading one.**
+The grading above is built and unit-covered; a learner cannot reach it.
+
+On `?scenario=1.4-02`, at **both** viewports, `document.elementFromPoint` at a battlefield
+card's centre returns `banner-you`, not the card. Every attempt to click a creature to declare
+it as an attacker is intercepted, so no attackers are ever declared. Measured on desktop,
+`banner-you` also sits at `left: 296, right: 1576` against a 1280px viewport -- offset and
+overflowing, which the campaign duel screen does not do (`left: 0, right: 1070` in the
+sandbox). Suppressing the desktop right sidebar looks like the trigger, but the mobile
+viewport fails the same way, so a shared cause is more likely than two layout bugs.
+
+`tests/e2e/learn-scenario.spec.ts` Learn-S14 and Learn-S15 are `test.fixme` for exactly this:
+they assert the correct grading, they are expected to pass once the click lands, and they are
+not deleted. Learn-S16 (checking with no attackers declared) passes at both viewports and is
+what proves the grading path is wired to the chrome.
+
+Fixing the click is its own prompt, and it is a duel-UI prompt, not a Learn Mode one.

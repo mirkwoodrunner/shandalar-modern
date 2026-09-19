@@ -2,6 +2,65 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-19)
+- **Learn Mode L3b -- best-defense grading in scenario mode.** The slice L3 deferred.
+  Scenario mode can now grade `OPPONENT_DEAD_THIS_TURN` exercises; `checkGoal` still
+  handles every other goal kind. Vitest `@learn` 177 -> 184, Playwright 55 -> 57,
+  `learn:check` unchanged at 0 errors / 1 warning. No engine, duel-UI or hook file
+  touched -- the diff is four files, all under `src/learn/` and `tests/e2e/`.
+  - **L3's diagnosis of the problem was wrong, and the correction matters.** It expected a
+    snapshot check to grade losing attacks as wins. In fact, with `allowed:
+    ['DECLARE_ATTACKER']` and the AI suppressed, a scenario board never advances past
+    `COMBAT_ATTACKERS`, so `checkGoal` returned false for winning and losing attacks alike.
+    Unit 1.4 was ungradeable, not mis-graded.
+  - **One implementation of best-defense analysis, not two.** `gradeBestDefense` was split
+    out of `resolveAttack`; `declareAttackers` was split out alongside it so there is a
+    single definition of "a board with these attackers declared". `gradeDeclaredAttack`
+    reads `s.attackers` off the live board, since scenario mode has no attacker list to
+    hand over. Seven Vitest cases include an explicit agreement check against
+    `resolveAttack` on four boards.
+  - **Grading runs on a clone.** `duelReducer` is expected to be pure and `resolveAttack`
+    has always relied on it, but there it walks a throwaway state; here a stray mutation
+    would corrupt a lesson in progress. A test asserts the live board is byte-identical
+    after grading.
+  - **Blocked, and not hidden:** Unit 1.4 still cannot move to scenario mode. Attacker
+    clicks on a scenario combat board are intercepted by `banner-you` at **both** viewports
+    (`elementFromPoint` at a card's centre returns the banner), so no attacker can be
+    declared and the new grading is unreachable from the UI. Learn-S14/S15 are `test.fixme`
+    -- asserting the correct behaviour, not deleted, not counted as passes. Learn-S16 passes
+    and proves the grading path is wired. The click defect is a duel-UI prompt.
+- **Playwright baseline repair (causes 1, 2 and 4)** -- 61 of the 261 pre-existing
+  Playwright failures cleared: 56 repaired, 5 converted to honest `hasTouch` skips.
+  New baseline ~200 +/- ~3. Full diagnosis in `docs/TEST_AUDIT_LOG.md`, 2026-09-19.
+  - **Cause 1, 32 -> 0.** `overworld-visual.spec.ts` and `plaque-visibility.spec.ts`
+    both died in `beforeEach`. The audit called this one missing `data-testid`; the
+    title screen is actually a three-step flow, so the testid alone would only have
+    moved the timeout. Added `start-game` and `enter-shandalar` testids
+    (`src/ui/layout/GameWrapper.jsx`) and drove all three steps in both specs.
+  - **A stale assertion surfaced underneath and was rewritten, not deleted.** OVP-01
+    ran for the first time once its hook was fixed and asserted the
+    pre-sprite-migration icon rendering. Probed live: zero spans across all 308
+    tiles. Rewritten to the current contract; not weakened to pass.
+  - **Cause 2, 24 -> 0.** The mulligan dismissal was necessary but sufficient in
+    neither spec. Underneath it: `SANDBOX_FORCE_HAND`'s `cards` parameter takes card
+    objects and appends them unvalidated, so passing the string `'Black Lotus'` put a
+    raw string in the hand (the suite passed only when the shuffle happened to deal a
+    real Lotus -- the source of its intermittency); Black Lotus is an Artifact, so
+    `PLAY_LAND` was silently refused; and `tutor-modal.spec.ts` clicked the first hand
+    card hoping it was the Tutor. Both suites now run in ~1s per case instead of
+    timing out at 30s.
+  - **Cause 4, 5 red -> 5 skipped.** Touch-driven cases using the `page` fixture now
+    guard on `hasTouch`: skipped on `chromium`, still running on `mobile-chrome`
+    (verified on both). No coverage removed.
+  - **Attempted and reverted: `mobile-targeting.spec.ts`.** Three real defects
+    confirmed in it (its own context omits `hasTouch`; `cards`/`addManaSupport` are
+    both wrong parameter names; no mulligan dismissal), but fixing all three moved the
+    failure without clearing it. Reverted rather than shipped half-done; diagnosis
+    recorded for the next prompt.
+  - **Flagged, not fixed (protected files):** `SANDBOX_FORCE_HAND` appending unvalidated
+    entries, `PLAY_LAND` refusing silently, and the `__duelState` render-time snapshot
+    (cause 3) which is now the dominant residual bucket.
+
 ## Completed (2026-09-18)
 - **Test infrastructure cleanup** -- the three out-of-scope defects the `@engine` triage
   logged rather than fixed (`docs/TEST_AUDIT_LOG.md`, 2026-09-18, Findings 4, 5 and 6).

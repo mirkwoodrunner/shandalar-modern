@@ -398,10 +398,10 @@ once targeted passes. This is the default for every scoped change -- do not skip
 to a full-suite run because it "feels safer."
 
 **The two halves of `test:targeted -- @engine` are not equally usable (measured
-2026-09-18).** The Vitest half runs in about 15 seconds and is green. The
-Playwright half takes about 80 minutes and has **261 pre-existing failures**
-across 33 spec files, verified on a clean `origin/main` at `0fb0ecd`. Until that
-baseline is repaired:
+2026-09-18, partially repaired 2026-09-19).** The Vitest half runs in about 15
+seconds and is green. The Playwright half takes about 80 minutes and has
+**~200 pre-existing failures**, down from the 261 across 33 spec files verified
+on a clean `origin/main` at `0fb0ecd`. Until that baseline is repaired:
 
 - Run the Vitest half on every `src/engine/` change. It is fast, green, and a
   genuine gate. `npx vitest run --tags-filter engine` gives just that half.
@@ -409,7 +409,9 @@ baseline is repaired:
   spec files your change plausibly touches, and compare any failure against the
   reference baseline in `docs/TEST_AUDIT_LOG.md` (2026-09-18, Finding 3) before
   reporting it as a regression. A failure already on that list is not yours.
-- **That baseline is 261 +/- ~3, not exactly 261.** A few specs are genuinely
+  Check the 2026-09-19 entry above it too -- five spec files have since been
+  repaired and are no longer expected to fail.
+- **The baseline carries a +/- ~3 flake band.** A few specs are genuinely
   flaky on clean `origin/main` with `retries: 0` -- `overworld-sprites.spec.ts`
   fails a different test on each run. Expect churn in both directions. Re-run a
   suspect spec two or three times before calling it a regression.
@@ -417,8 +419,12 @@ baseline is repaired:
   which specs you ran and what they did.
 
 This is a known, documented gap, not licence to skip verification. The
-underlying causes are concentrated -- two of them are single-point fixes worth
-roughly 64 of the 261 -- and repairing them is its own prompt.
+underlying causes are concentrated. Causes 1, 2 and 4 were repaired on
+2026-09-19 (61 tests: 56 fixed, 5 converted to honest `hasTouch` skips). What
+remains is dominated by cause 3 -- `window.__duelState()` is a render-time
+snapshot, so a spec that dispatches and reads without waiting sees pre-dispatch
+state. That is an architectural mismatch, not a single-point fix, and it is its
+own prompt.
 
 `npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
 plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+
@@ -437,14 +443,18 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 177 Vitest passing, 55 Playwright passing |
+| `npm run test:targeted -- @learn` | 184 Vitest passing, 57 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
-| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 25 passing (13 cases x mobile-chrome + 12 x chromium; Learn-S3 is mobile-only and skips on chromium) |
+| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 27 passing, 5 skipped (Learn-S3 is mobile-only; Learn-S14/S15 are `test.fixme` at both viewports pending the attacker-click defect in `docs/LEARN_MODE.md` section 8) |
 
 Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
 17 cases) and Playwright 30 -> 55 (`learn-scenario.spec.ts`, 13 cases at both viewports,
 one of which is mobile-only).
+
+Moved at L3b (2026-09-19, best-defense grading): Vitest 177 -> 184 (7 cases on
+`gradeDeclaredAttack` in `puzzleRunner.test.ts`) and Playwright 55 -> 57 (Learn-S16 at both
+viewports; Learn-S14/S15 are `test.fixme` and counted as skips, not passes).
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

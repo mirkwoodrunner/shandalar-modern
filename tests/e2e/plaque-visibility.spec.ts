@@ -17,7 +17,11 @@ for (const vp of VIEWPORTS) {
 
     test.beforeEach(async ({ page }) => {
       await page.goto('/');
-      await page.getByRole('button', { name: /start|new game/i }).first().click();
+      // The title screen is a three-step flow: intro -> color/difficulty
+      // choice -> enter. No button here is labelled "start" or "new game".
+      await page.click('[data-testid="start-game"]');
+      await page.click('[data-testid="color-W"]');
+      await page.click('[data-testid="enter-shandalar"]');
       await page.waitForSelector('.ow-tile', { timeout: 10000 });
     });
 
