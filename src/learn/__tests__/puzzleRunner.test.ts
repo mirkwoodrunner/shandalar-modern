@@ -10,6 +10,8 @@ import {
   tryAction,
   canAttackReason,
   resolveAttack,
+  declareAttackers,
+  gradeDeclaredAttack,
   checkGoal,
   cardInfo,
   MSG,
@@ -160,6 +162,96 @@ describe('@learn-runner-3 combat grading', () => {
     const attackers = many.map((_, i) => `p-bf-${i}`);
     expect(7 ** 6).toBeGreaterThan(MAX_BLOCK_OUTCOMES);
     expect(() => resolveAttack(s, attackers)).toThrow(/LEARN_TOO_MANY_OUTCOMES/);
+  });
+
+  // --- gradeDeclaredAttack (L3b: best-defense grading for scenario mode) ------
+  // Scenario mode cannot hand over an attacker list: the learner declares
+  // attackers on the real duel screen, so grading has to read them back off the
+  // board. These assert that reading them back reaches the same verdict as
+  // resolveAttack, and that the live board survives the analysis untouched.
+
+  const declared = (setup: PuzzleSetup, attackers: string[]) => {
+    const d = declareAttackers(buildPuzzleState(setup), attackers);
+    if (!d.ok) throw new Error(`declareAttackers refused: ${d.reason}`);
+    return d.state;
+  };
+
+  it('grades a declared lethal attack read off the board', () => {
+    const setup = COMBAT({ bf: ['air_elemental'] }, { life: 4, bf: ['wall_of_wood', 'scathe_zombies'] });
+    const r = gradeDeclaredAttack(declared(setup, ['p-bf-0']));
+    expect(r).not.toBeNull();
+    expect(r!.ok && r!.lethal).toBe(true);
+  });
+
+  it('grades a declared losing attack as not lethal, with the best block named', () => {
+    const setup = COMBAT({ bf: ['grizzly_bears', 'gray_ogre', 'hill_giant'] }, { life: 3, bf: ['wall_of_wood'] });
+    const r = gradeDeclaredAttack(declared(setup, ['p-bf-0', 'p-bf-1']));
+    expect(r).not.toBeNull();
+    expect(r!.ok).toBe(true);
+    if (!r!.ok) return;
+    expect(r!.lethal).toBe(false);
+    expect(r!.worstCase.oppLifeAfter).toBe(1);
+    expect(r!.summary).toMatch(/^Wall of Wood blocks (Grizzly Bears|Gray Ogre)\. You deal 2\. They're at 1\.$/);
+  });
+
+  // The point of the port. checkGoal is a snapshot test: on a board sitting at
+  // COMBAT_ATTACKERS it reports false whatever the attack is worth, so a
+  // winning attack and a losing one are indistinguishable to it. Best-defense
+  // grading separates them.
+  it('separates a winning from a losing attack where checkGoal cannot', () => {
+    const setup = COMBAT({ bf: ['grizzly_bears', 'gray_ogre', 'hill_giant'] }, { life: 3, bf: ['wall_of_wood'] });
+    const losing = declared(setup, ['p-bf-0', 'p-bf-1']);
+    const winning = declared(setup, ['p-bf-0', 'p-bf-1', 'p-bf-2']);
+
+    expect(checkGoal(losing, { kind: 'OPPONENT_DEAD_THIS_TURN' })).toBe(false);
+    expect(checkGoal(winning, { kind: 'OPPONENT_DEAD_THIS_TURN' })).toBe(false);
+
+    expect(gradeDeclaredAttack(losing)!.ok && gradeDeclaredAttack(losing)!.lethal).toBe(false);
+    expect(gradeDeclaredAttack(winning)!.ok && gradeDeclaredAttack(winning)!.lethal).toBe(true);
+  });
+
+  it('agrees with resolveAttack on the same board and attackers', () => {
+    const cases: Array<[PuzzleSetup, string[]]> = [
+      [COMBAT({ bf: ['air_elemental', 'grizzly_bears'] }, { life: 4, bf: ['wall_of_wood', 'scathe_zombies'] }), ['p-bf-0']],
+      [COMBAT({ bf: ['craw_wurm', 'savannah_lions', 'scryb_sprites'] }, { life: 3, bf: ['pearled_unicorn'] }), ['p-bf-1', 'p-bf-2']],
+      [COMBAT({ bf: ['grizzly_bears', 'gray_ogre', 'hill_giant'] }, { life: 3, bf: ['wall_of_wood'] }), ['p-bf-0', 'p-bf-1', 'p-bf-2']],
+      [COMBAT({ bf: ['grizzly_bears'] }, { life: 2, bf: [] }), ['p-bf-0']],
+    ];
+    for (const [setup, attackers] of cases) {
+      const viaList = resolveAttack(buildPuzzleState(setup), attackers);
+      const viaBoard = gradeDeclaredAttack(declared(setup, attackers));
+      expect(viaBoard).not.toBeNull();
+      expect(viaList.ok).toBe(viaBoard!.ok);
+      if (viaList.ok && viaBoard!.ok) {
+        expect(viaBoard!.lethal).toBe(viaList.lethal);
+        expect(viaBoard!.outcomes).toBe(viaList.outcomes);
+        expect(viaBoard!.summary).toBe(viaList.summary);
+      }
+    }
+  });
+
+  it('returns null when no attackers are declared', () => {
+    const s = buildPuzzleState(COMBAT({ bf: ['grizzly_bears'] }, { life: 2, bf: [] }));
+    expect(gradeDeclaredAttack(s)).toBeNull();
+  });
+
+  it('returns null once the board is past the blocker step', () => {
+    const setup = COMBAT({ bf: ['grizzly_bears'] }, { life: 2, bf: [] });
+    const resolved = resolveAttack(buildPuzzleState(setup), ['p-bf-0']);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(gradeDeclaredAttack(resolved.worstCase.finalState)).toBeNull();
+  });
+
+  // The analysis drives duelReducer over the board the learner is looking at.
+  // If any of that leaked back, a Check press would corrupt the lesson.
+  it('leaves the live board untouched', () => {
+    const setup = COMBAT({ bf: ['grizzly_bears', 'gray_ogre'] }, { life: 3, bf: ['wall_of_wood'] });
+    const live = declared(setup, ['p-bf-0', 'p-bf-1']);
+    const before = JSON.stringify(live);
+    const r = gradeDeclaredAttack(live);
+    expect(r).not.toBeNull();
+    expect(JSON.stringify(live)).toBe(before);
   });
 
   it('cardInfo returns display data and throws on unknown ids', () => {

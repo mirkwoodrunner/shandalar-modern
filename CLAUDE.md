@@ -443,14 +443,18 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 177 Vitest passing, 55 Playwright passing |
+| `npm run test:targeted -- @learn` | 184 Vitest passing, 57 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
-| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 25 passing (13 cases x mobile-chrome + 12 x chromium; Learn-S3 is mobile-only and skips on chromium) |
+| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 27 passing, 5 skipped (Learn-S3 is mobile-only; Learn-S14/S15 are `test.fixme` at both viewports pending the attacker-click defect in `docs/LEARN_MODE.md` section 8) |
 
 Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
 17 cases) and Playwright 30 -> 55 (`learn-scenario.spec.ts`, 13 cases at both viewports,
 one of which is mobile-only).
+
+Moved at L3b (2026-09-19, best-defense grading): Vitest 177 -> 184 (7 cases on
+`gradeDeclaredAttack` in `puzzleRunner.test.ts`) and Playwright 55 -> 57 (Learn-S16 at both
+viewports; Learn-S14/S15 are `test.fixme` and counted as skips, not passes).
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

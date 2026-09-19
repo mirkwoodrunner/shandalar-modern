@@ -4,14 +4,14 @@
 // This is the piece that knows about exercises. It reads the LIVE GameState the
 // duel screen hands it, grades against the exercise's goal when the learner
 // asks, and drives the lifecycle machine. It resolves no rules of its own:
-// grading is `checkGoal` in puzzleRunner.ts, and every state change on the
-// board came from DuelCore via the screen's reducer.
+// grading is `checkGoal` / `gradeDeclaredAttack` in puzzleRunner.ts, and every
+// state change on the board came from DuelCore via the screen's reducer.
 //
 // It renders through ScenarioOverlay (src/ui/duel/), which is a dumb shell.
 // Layout lives there; what to say lives here.
 
 import { useEffect, useRef } from 'react';
-import { checkGoal } from '../engine/puzzleRunner';
+import { checkGoal, gradeDeclaredAttack } from '../engine/puzzleRunner';
 import { ScenarioOverlay } from '../../ui/duel/ScenarioOverlay';
 import type { ScenarioOverlayButton } from '../../ui/duel/ScenarioOverlay';
 import type { ScenarioMachine } from '../hooks/useScenarioMachine';
@@ -19,6 +19,7 @@ import type { EngineExercise } from '../engine/types';
 
 const NOT_IN_LESSON = "That isn't part of this lesson.";
 const NOT_YET = 'Not there yet. Look at the board and try the next step.';
+const NO_ATTACKERS = 'No attackers declared yet. Choose who attacks, then check.';
 
 export interface ScenarioChromeProps {
   exercise: EngineExercise;
@@ -55,16 +56,47 @@ export function ScenarioChrome({
 
   // evaluating -> feedback. Grading is one call into puzzleRunner; the result
   // is reported straight back to the machine, which owns what happens next.
+  //
+  // Lethal-attack exercises are graded by best defense (L3b), not by snapshot.
+  // checkGoal asks "has combat resolved lethally on this board", which would
+  // pass a losing attack whenever the opponent happened not to block. Unit 1.4
+  // is about picking attackers that win against ANY block, so it is graded by
+  // the same every-legal-block analysis the bespoke lesson player uses.
   useEffect(() => {
     if (state.phase !== 'evaluating') return;
-    let met = false;
+    let outcome: 'success' | 'fail' = 'fail';
+    let message: string = NOT_YET;
     try {
-      met = checkGoal(liveState, exercise.goal);
+      if (exercise.goal.kind === 'OPPONENT_DEAD_THIS_TURN') {
+        const graded = gradeDeclaredAttack(liveState);
+        if (graded === null) {
+          // No attackers declared, or the board has moved past the blocker
+          // step so the defender's choice is already made. The snapshot check
+          // still catches an already-resolved lethal board.
+          const met = checkGoal(liveState, exercise.goal);
+          outcome = met ? 'success' : 'fail';
+          message = met ? exercise.explanation : NO_ATTACKERS;
+        } else if (!graded.ok) {
+          message = graded.reason;
+        } else if (graded.lethal) {
+          outcome = 'success';
+          message = exercise.explanation;
+        } else {
+          // The worst case is the teaching material: it names the block that
+          // saves them and how short the attack fell.
+          message = graded.summary;
+        }
+      } else {
+        const met = checkGoal(liveState, exercise.goal);
+        outcome = met ? 'success' : 'fail';
+        message = met ? exercise.explanation : NOT_YET;
+      }
     } catch (e) {
       console.error(e);
-      met = false;
+      outcome = 'fail';
+      message = NOT_YET;
     }
-    reportEvaluation(met ? 'success' : 'fail', met ? exercise.explanation : NOT_YET);
+    reportEvaluation(outcome, message);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase]);
 

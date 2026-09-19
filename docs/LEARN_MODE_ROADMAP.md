@@ -397,12 +397,8 @@ What landed:
   13 cases, registered in the `mobile-chrome` project. This is the mitigation named under
   "Risk" below, delivered with slice one rather than deferred.
 
-Not done, and deliberately: **best-defense grading**. Scenario mode grades with `checkGoal`,
-a snapshot test, which covers Units 1.1 and 1.2 end to end. Unit 1.4's
-`OPPONENT_DEAD_THIS_TURN` exercises need `resolveAttack`'s every-legal-block analysis, which
-asks a different question than "has combat resolved lethally on this board." Porting it is
-its own slice. Until then every shipped exercise still runs on the bespoke lesson player,
-which is untouched. See `docs/LEARN_MODE.md` section 8, "Known limitation."
+Not done at L3, and deliberately: **best-defense grading**. **Landed at L3b (2026-09-19)** --
+see below.
 
 Original scope, for reference:
 
@@ -430,6 +426,23 @@ table of what Learn Mode may import from the duel UI and what stays forbidden. S
 Once it exists, every duel UI change can break lessons. `tests/e2e/learn-scenario.spec.ts`
 landed with slice one and runs at both viewports; two of its cases exist specifically to
 fail if a duel UI change breaks Shandalar or the old lesson player instead.
+
+### L3b. Best-defense grading in scenario mode (done, 2026-09-19)
+
+The slice L3 deferred. `gradeDeclaredAttack` reads declared attackers back off the live board
+and grades them against every legal block, so `OPPONENT_DEAD_THIS_TURN` exercises are gradeable
+on the duel screen. Single implementation shared with `resolveAttack`; analysis runs on a clone
+so a Check press cannot mutate the learner's board. Vitest `@learn` 177 -> 184, Playwright 55 -> 57.
+
+L3's framing of the problem was wrong in a way worth recording: it expected a snapshot check to
+grade losing attacks as wins. In practice a scenario board never advances past
+`COMBAT_ATTACKERS`, so `checkGoal` returned false for every attack, winning or losing. Unit 1.4
+was ungradeable rather than mis-graded.
+
+**Unit 1.4 still does not move to scenario mode.** A separate UI defect blocks it: attacker
+clicks on a scenario combat board are intercepted by `banner-you` at both viewports, so no
+attacker can be declared. Full diagnosis in `docs/LEARN_MODE.md` section 8. That is a duel-UI
+prompt, and it is the remaining blocker on retiring the bespoke lesson player for Unit 1.4.
 
 ### L4a. Learn card pool
 
