@@ -2,6 +2,39 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-19)
+- **Playwright baseline repair (causes 1, 2 and 4)** -- 61 of the 261 pre-existing
+  Playwright failures cleared: 56 repaired, 5 converted to honest `hasTouch` skips.
+  New baseline ~200 +/- ~3. Full diagnosis in `docs/TEST_AUDIT_LOG.md`, 2026-09-19.
+  - **Cause 1, 32 -> 0.** `overworld-visual.spec.ts` and `plaque-visibility.spec.ts`
+    both died in `beforeEach`. The audit called this one missing `data-testid`; the
+    title screen is actually a three-step flow, so the testid alone would only have
+    moved the timeout. Added `start-game` and `enter-shandalar` testids
+    (`src/ui/layout/GameWrapper.jsx`) and drove all three steps in both specs.
+  - **A stale assertion surfaced underneath and was rewritten, not deleted.** OVP-01
+    ran for the first time once its hook was fixed and asserted the
+    pre-sprite-migration icon rendering. Probed live: zero spans across all 308
+    tiles. Rewritten to the current contract; not weakened to pass.
+  - **Cause 2, 24 -> 0.** The mulligan dismissal was necessary but sufficient in
+    neither spec. Underneath it: `SANDBOX_FORCE_HAND`'s `cards` parameter takes card
+    objects and appends them unvalidated, so passing the string `'Black Lotus'` put a
+    raw string in the hand (the suite passed only when the shuffle happened to deal a
+    real Lotus -- the source of its intermittency); Black Lotus is an Artifact, so
+    `PLAY_LAND` was silently refused; and `tutor-modal.spec.ts` clicked the first hand
+    card hoping it was the Tutor. Both suites now run in ~1s per case instead of
+    timing out at 30s.
+  - **Cause 4, 5 red -> 5 skipped.** Touch-driven cases using the `page` fixture now
+    guard on `hasTouch`: skipped on `chromium`, still running on `mobile-chrome`
+    (verified on both). No coverage removed.
+  - **Attempted and reverted: `mobile-targeting.spec.ts`.** Three real defects
+    confirmed in it (its own context omits `hasTouch`; `cards`/`addManaSupport` are
+    both wrong parameter names; no mulligan dismissal), but fixing all three moved the
+    failure without clearing it. Reverted rather than shipped half-done; diagnosis
+    recorded for the next prompt.
+  - **Flagged, not fixed (protected files):** `SANDBOX_FORCE_HAND` appending unvalidated
+    entries, `PLAY_LAND` refusing silently, and the `__duelState` render-time snapshot
+    (cause 3) which is now the dominant residual bucket.
+
 ## Completed (2026-09-18)
 - **Test infrastructure cleanup** -- the three out-of-scope defects the `@engine` triage
   logged rather than fixed (`docs/TEST_AUDIT_LOG.md`, 2026-09-18, Findings 4, 5 and 6).

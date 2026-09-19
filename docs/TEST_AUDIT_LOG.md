@@ -14,6 +14,119 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-19 -- Playwright baseline repair, causes 1, 2 and 4 (learn-mode-access)
+
+Acts on the 2026-09-18 Finding 3 baseline below. **61 of the 261 pre-existing
+Playwright failures are gone: 56 repaired, 5 converted to honest skips.**
+Nothing under `src/engine/` was touched; the only `src/` change is two
+`data-testid` attributes on the title screen.
+
+**New baseline: ~200 +/- ~3.** The `+/- ~3` flake band from Finding 3 is
+unchanged and still applies.
+
+### Cause 1 (RESOLVED): title screen unreachable -- 32 failures -> 0
+
+`overworld-visual.spec.ts` (24) and `plaque-visibility.spec.ts` (8), both
+dying in `beforeEach`, both now fully green at both viewports.
+
+Finding 3 called this "one missing `data-testid`". That was half right and the
+other half mattered: the title screen is a **three-step** flow (intro ->
+color/difficulty choice -> Enter Shandalar), so a single click on any one
+control cannot reach `.ow-tile`. Adding the testid alone would have moved both
+specs from a `beforeEach` timeout to a `.ow-tile` timeout.
+
+What landed: `data-testid="start-game"` on the intro button and
+`data-testid="enter-shandalar"` on the final button
+(`src/ui/layout/GameWrapper.jsx`), plus both specs driving all three steps.
+`data-testid="color-W"` already existed.
+
+**One stale assertion surfaced underneath.** With the hook fixed, OVP-01 ran
+for the first time and failed: it asserts `.ow-tile span[style*="inline-block"]`,
+the pre-sprite-migration icon rendering. Probed against the live DOM --
+**zero spans across all 308 tiles**; structures render as `<img>` and terrain
+as `<canvas>`. `plaque-visibility.spec.ts`'s own header documents that
+migration. The case was rewritten to assert the current contract (no legacy
+spans; any structure icon present has a non-zero layout box), not deleted, and
+not weakened to pass. This is the same class as the 13 stale tests fixed on
+2026-09-18: green-looking only because it never executed.
+
+### Cause 2 (RESOLVED): undismissed mulligan modal -- 24 failures -> 0
+
+`tutor-modal.spec.ts` (12) and `lotus-cancel-undo.spec.js` (12). Both now green
+at both viewports, and both now run in ~1s per case rather than timing out at
+30s.
+
+The mulligan dismissal was necessary but **not sufficient in either spec** --
+adding it only moved each failure deeper. The real blockers were worse than
+Finding 3 recorded:
+
+1. **`SANDBOX_FORCE_HAND`'s `cards` parameter takes card OBJECTS and appends
+   them verbatim, with no validation** (`DuelCore.js`, case
+   `SANDBOX_FORCE_HAND`). `lotus-cancel-undo.spec.js` passed the string
+   `'Black Lotus'`, so a **raw string** was appended to the hand and no Lotus
+   instance was ever created. The spec's own wait then passed only when the
+   sandbox shuffle happened to deal a real Black Lotus into the opening hand --
+   which is why this suite was intermittent rather than reliably red, and why
+   a null/string entry showed up in the hand array during probing.
+   `cardIds` is the parameter that instantiates from `CARD_DB`.
+2. **Black Lotus is an Artifact, not a land.** The spec used `PLAY_LAND`, which
+   is refused for it -- and refused **silently**: nothing reaches `s.log`.
+   Since Sprint 7 a zero-cost artifact is `CAST_SPELL` then `RESOLVE_STACK`.
+3. **`tutor-modal.spec.ts` clicked the first card in hand and hoped it was
+   Demonic Tutor.** `?cards=` prepends basic lands alongside the named card, so
+   slot one is a land; on a desktop viewport that locator also resolved to a
+   card outside the viewport. Setup now injects and casts through the escape
+   hatch. The modal assertions themselves were sound and are unchanged.
+4. **Cause 3 is real and was hit directly here.** A read issued immediately
+   after `SANDBOX_FORCE_HAND` returned the pre-dispatch hand; a
+   `waitForFunction` in place of a straight-through read fixed it. This
+   confirms Finding 3's cause 3 mechanism independently.
+
+### Cause 4 (PARTIAL): `.tap()` on the no-touch `chromium` project -- 5 skipped
+
+`duel-controller.spec.ts` E2E-CAST-06/07/08 and `sandbox-targeting-modals.spec.ts`'s
+two mobile-viewport cases use the `page` fixture, so they inherit the project's
+`hasTouch` -- unset on `chromium`, so they could never run there. Each is now
+guarded on the `hasTouch` fixture: **skipped on `chromium`, still running on
+`mobile-chrome`** (verified by running both projects). This removes 5 red tests
+without removing any coverage. Precedent: `learn-scenario.spec.ts`'s Learn-S3 is
+mobile-only the same way.
+
+### Attempted and reverted: `mobile-targeting.spec.ts` (10 failures)
+
+Not fixed. Reverted rather than shipped half-done, but the diagnosis is worth
+recording because three separate defects were confirmed in it:
+
+- `const MOBILE = { viewport: {...} }` **omits `hasTouch`**. These cases build
+  their own context via `browser.newContext(MOBILE)` instead of using the
+  project's, so the `mobile-chrome` project's `hasTouch` never reaches them and
+  every `.tap()` throws on **both** projects. Finding 3 attributed this file to
+  the project config; the context is the actual cause.
+- It calls `SANDBOX_FORCE_HAND` with `cards: ['lightning_bolt']` (id string
+  into the object parameter, per cause 2 above) and `addManaSupport: true` --
+  a parameter the reducer never reads. It is `withManaSupport`. Both are silent
+  no-ops.
+- It never dismisses the mulligan modal.
+
+Fixing all three moved the failure but did not clear it: the mobile hand card
+still never appears. Something further is wrong, and it is its own prompt.
+
+### Observations logged, not fixed (protected files)
+
+Per `CLAUDE.md` -- Protected Files, these are recorded rather than repaired:
+
+- **`DuelCore.js`, `SANDBOX_FORCE_HAND`:** the `cards` branch appends
+  `action.cards` verbatim, so a malformed call corrupts the hand with a
+  non-card entry instead of being rejected. Several e2e specs pass id strings
+  to it. A shape check, or rejecting non-objects, would have turned four
+  separate silent test failures into one loud one.
+- **`DuelCore.js`, `PLAY_LAND`:** refusing a non-land writes nothing to
+  `s.log`, so the refusal is invisible to a spec and to a player.
+- **`useDuelController.ts:739`:** the `__duelState` render-time snapshot
+  (Finding 3, cause 3) is unchanged and remains the largest residual bucket.
+
+---
+
 ## 2026-09-18 -- `@engine` test infrastructure triage (engine-test-triage)
 
 Not a `test:audit` failure. This entry resolves the three findings recorded in

@@ -398,10 +398,10 @@ once targeted passes. This is the default for every scoped change -- do not skip
 to a full-suite run because it "feels safer."
 
 **The two halves of `test:targeted -- @engine` are not equally usable (measured
-2026-09-18).** The Vitest half runs in about 15 seconds and is green. The
-Playwright half takes about 80 minutes and has **261 pre-existing failures**
-across 33 spec files, verified on a clean `origin/main` at `0fb0ecd`. Until that
-baseline is repaired:
+2026-09-18, partially repaired 2026-09-19).** The Vitest half runs in about 15
+seconds and is green. The Playwright half takes about 80 minutes and has
+**~200 pre-existing failures**, down from the 261 across 33 spec files verified
+on a clean `origin/main` at `0fb0ecd`. Until that baseline is repaired:
 
 - Run the Vitest half on every `src/engine/` change. It is fast, green, and a
   genuine gate. `npx vitest run --tags-filter engine` gives just that half.
@@ -409,7 +409,9 @@ baseline is repaired:
   spec files your change plausibly touches, and compare any failure against the
   reference baseline in `docs/TEST_AUDIT_LOG.md` (2026-09-18, Finding 3) before
   reporting it as a regression. A failure already on that list is not yours.
-- **That baseline is 261 +/- ~3, not exactly 261.** A few specs are genuinely
+  Check the 2026-09-19 entry above it too -- five spec files have since been
+  repaired and are no longer expected to fail.
+- **The baseline carries a +/- ~3 flake band.** A few specs are genuinely
   flaky on clean `origin/main` with `retries: 0` -- `overworld-sprites.spec.ts`
   fails a different test on each run. Expect churn in both directions. Re-run a
   suspect spec two or three times before calling it a regression.
@@ -417,8 +419,12 @@ baseline is repaired:
   which specs you ran and what they did.
 
 This is a known, documented gap, not licence to skip verification. The
-underlying causes are concentrated -- two of them are single-point fixes worth
-roughly 64 of the 261 -- and repairing them is its own prompt.
+underlying causes are concentrated. Causes 1, 2 and 4 were repaired on
+2026-09-19 (61 tests: 56 fixed, 5 converted to honest `hasTouch` skips). What
+remains is dominated by cause 3 -- `window.__duelState()` is a render-time
+snapshot, so a spec that dispatches and reads without waiting sees pre-dispatch
+state. That is an architectural mismatch, not a single-point fix, and it is its
+own prompt.
 
 `npm test` and `npm run test:e2e` run the **entire** suite unscoped (~350+ Vitest cases
 plus ~340+ Playwright specs, doubled again by the `mobile-chrome` project -- 600-700+

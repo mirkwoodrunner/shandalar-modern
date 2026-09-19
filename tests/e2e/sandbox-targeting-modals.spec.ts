@@ -826,6 +826,12 @@ test.describe('@engine-cast-flow-ui-5 @mobile Enchant creature auras — walklan
 });
 
 test.describe('@engine-cast-flow-ui-5 @mobile tutor modal — mobile viewport', () => {
+  // This case drives the UI with a touch gesture. playwright.config.js sets
+  // hasTouch only on the mobile-chrome project, so on chromium locator.tap()
+  // throws "The page does not support tap" and the case can never run.
+  // Skipping on a no-touch project reports that honestly instead of as a
+  // failure; mobile-chrome still runs it.
+  test.skip(({ hasTouch }) => !hasTouch, 'Touch gestures require a touch-enabled project (mobile-chrome).');
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('mobile: tutor modal opens, card selectable, decline works', async ({ page }) => {
