@@ -14,6 +14,80 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-22 -- `npm run test:audit -- @learn` (Learn Mode L4a-2, Learn card pool)
+
+**Originating change:** `claude/new-session-738gmm`, commit `a2ef469`, base
+`16ec598`. Adds `tools/generate-learn-pool.mjs` and the generated
+`src/data/cardsLearn.js` (`CARD_DB_LEARN`, 27 cards); adds `PuzzleSetup.pool`
+and routes `puzzleRunner.ts`'s four `makeCardInstance` calls through it; adds a
+`CARD_DB_LEARN` case to `cardShape.test.js`; adds an oracle-drift gate to
+`scripts/learn-check.js`; plus four docs. No protected file touched. No
+exercise sets `pool: 'learn'`.
+
+Its own targeted runs were clean: `learn:check` unchanged at 0 errors /
+1 warning, `npm run test:targeted -- @learn` at its pinned 184 Vitest /
+57 Playwright, `npx vitest run --tags-filter engine` 1362 passed (1361 on base,
++1 for the new contract case). `test:audit` then randomly drew **`@mobile`**.
+
+**Result:** Vitest half `NO TESTS MATCHED` (expected -- `@mobile` is
+Playwright-only, Finding 5 below). Playwright `--grep @mobile` **FAILED**:
+184 failed, 533 passed, 7 skipped of 724.
+
+**Diagnosis: pre-existing baseline, not a side effect of this change.**
+Established by running `--grep @mobile` on this branch and on clean base
+`16ec598`, then diffing the failure sets by test name:
+
+| Run | Failed | Passed | Skipped | Total |
+|---|---|---|---|---|
+| Clean base `16ec598` | 185 | 532 | 7 | 724 |
+| Branch `a2ef469` | **184** | 533 | 7 | 724 |
+| Logged 2026-09-16 occurrence | 244 | 478 | 2 | 724 |
+
+- **181 of the failures are identical on both sides.** The branch has one
+  *fewer* failure than base. A real side effect adds failures; it does not
+  subtract them.
+- **Churn is +/-4 and runs in both directions**, inside the documented flake
+  band. Four tests fail only on base -- including
+  `overworld-sprites.spec.ts`, the spec `CLAUDE.md` names as failing a
+  different test on each run. Three fail only on the branch.
+- **The three branch-only failures do not reproduce.** Re-running
+  `henchman-visibility.spec.ts`, `sandbox-targeting-modals.spec.ts` and
+  `duel-controller.spec.ts` with `--grep @mobile` three times on the branch:
+  57, 58, 58 passed, zero failures each time. All three spec *files* already
+  appear in the shared 181-failure set, so this was different tests inside
+  already-red files, not newly-red files.
+- **Zero code-path overlap.** `cardsLearn.js` is imported only by
+  `puzzleRunner.ts` and `cardShape.test.js`; `puzzleRunner.ts` loads only
+  under the separate `learn.html` Vite entry; `types.ts` is erased at runtime;
+  the generator and `learn-check.js` ship in neither bundle. None of the
+  failing specs load `/learn.html`.
+- **The count matches the documented repair arithmetic.** The 2026-09-16
+  occurrence recorded 244 failures; the 2026-09-19 repair above fixed 56 and
+  converted 5 to honest `hasTouch` skips. 244 - 61 = 183, against 184-185
+  measured, and the skip count moved 2 -> 7, exactly those 5 conversions.
+
+**Same signature as the 2026-09-16 entry below**, which was also a
+Learn-Mode-only change whose audit drew `@mobile`: the same spec families fail
+(`ability-stack-bugs`, `power-sink-x-select`, `duel-controller`,
+`sandbox-targeting-modals`, `overworld-map-centering`, `overworld-tileset`,
+`preduel-sandbox`, `ruins`, `henchman-visibility`). That entry's root-cause
+analysis stands and is not re-derived here.
+
+**Disposition:** Reported to Chris rather than self-overridden, per the
+hard-stop policy. The full suite was **not** run. Nothing about the `@mobile`
+baseline was repaired here -- that remains its own prompt, as the 2026-09-19
+entry frames it.
+
+**Note on a separate flake, logged so it is not re-diagnosed.** The first
+`npx vitest run --tags-filter engine` run on this branch failed
+`AI.sim.test.js > is deterministic given the same initial state` with
+`expected 148 to be 151` (step counts). Three subsequent full-tag runs on the
+branch, an isolated run of that file, and two full-tag runs on clean base all
+passed. It is a determinism assertion, so it is worth knowing it can flake;
+the file is untouched by this change.
+
+---
+
 ## 2026-09-19 -- Playwright baseline repair, causes 1, 2 and 4 (learn-mode-access)
 
 Acts on the 2026-09-18 Finding 3 baseline below. **61 of the 261 pre-existing
