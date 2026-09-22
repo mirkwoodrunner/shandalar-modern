@@ -1609,7 +1609,40 @@ array of printed card definitions `id` is resolved against.
   `validateCardShape(card) -> { valid, missing }`. That field list is the intersection of what
   every entry in `CARD_DB` and `CARD_DB_PREMODERN` already carries, derived from the data, not
   assumed. `cardShape.js` is dependency-free: it states the contract and imports no pool.
-  `src/data/__tests__/cardShape.test.js` asserts both shipped pools conform.
+  `src/data/__tests__/cardShape.test.js` asserts all three shipped pools conform.
+
+## The three shipped pools (L4a-2)
+
+| Pool | Module | Entries | Role |
+|---|---|---|---|
+| `CARD_DB` | `src/data/cards.js` | Shandalar's card database | `makeCardInstance`'s default. |
+| `CARD_DB_PREMODERN` | `src/data/cardsPremodern.js` | Premodern-legal cards | Generated, `implemented:false`. |
+| `CARD_DB_LEARN` | `src/data/cardsLearn.js` | 27 curated cards | Learn Mode. Generated. |
+
+`CARD_DB_LEARN` satisfies the shared shape contract above and is asserted against
+`validateCardShape` by the same contract test as the other two. Beyond the required fields it
+carries the same optional mechanical keys `CARD_DB` uses -- `produces`, `keywords`, `effect`,
+`mod`, `activated` -- so a card drawn from it instantiates and resolves identically. Every
+`effect` key in it is verified against a `case` in `DuelCore.js` at generation time. It also
+carries one field `CARD_DB` does not: `skills`, the curriculum tags the card was selected for.
+That field is selection provenance only -- **no engine code reads it**, and nothing in the
+contract depends on it.
+
+Its oracle text is current Scryfall templating rather than `CARD_DB`'s classic wording. That is
+a deliberate property of the pool, not a divergence to reconcile; `scripts/learn-check.js` gates
+on it drifting from the locally pinned Scryfall bulk data. See `docs/LEARN_MODE.md` section 9.
+
+### `PuzzleSetup.pool` is the sanctioned selector
+
+Learn Mode does not reach into `POOLS` or import a pool anywhere outside
+`src/learn/engine/puzzleRunner.ts`. An exercise selects a pool by setting
+`PuzzleSetup.pool: 'shandalar' | 'learn'`; `puzzleRunner.ts` resolves that name through a local
+map and passes the resulting array as `makeCardInstance`'s third argument. Omitting the field
+resolves to `CARD_DB`, so every exercise authored before L4a is unchanged.
+
+This keeps the seam one-directional: the engine is handed an array, and the decision about
+*which* array belongs to the exercise data, not to the engine. No `CARD_DB` consumer became
+pool-aware, which was the condition the L4a design rested on.
 
 ## Deliberately NOT pool-aware
 

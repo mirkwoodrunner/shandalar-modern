@@ -7,8 +7,15 @@ export type CardSpec = string | { id: string; tapped?: boolean; summoningSick?: 
 
 export type SideSetup = { life?: number; hand?: CardSpec[]; bf?: CardSpec[] };
 
+// Which card database every id in this setup resolves against. Omitted means
+// 'shandalar' -- the CARD_DB behaviour every exercise had before L4a, unchanged.
+// 'learn' selects CARD_DB_LEARN (src/data/cardsLearn.js), which is self-contained:
+// a setup that opts in resolves its lands there too.
+export type PoolName = 'shandalar' | 'learn';
+
 export type PuzzleSetup = {
   phase: 'MAIN_1' | 'COMBAT_ATTACKERS';
+  pool?: PoolName;
   p: SideSetup;
   o: SideSetup;
 };

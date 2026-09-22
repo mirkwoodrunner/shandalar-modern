@@ -2,6 +2,33 @@
 
 ## Focus (priority order)
 
+## Completed (2026-09-22)
+- **Learn Mode L4a-2 -- the Learn card pool.** Closes the L4a milestone.
+  `tools/generate-learn-pool.mjs` generates `src/data/cardsLearn.js`, exporting
+  `CARD_DB_LEARN` (27 cards) and `LEARN_POOL_META`, from the pinned Scryfall bulk data.
+  `PuzzleSetup.pool: 'shandalar' | 'learn'` selects it, resolved in `puzzleRunner.ts`
+  before each of its four `makeCardInstance` calls. Defaulting to `'shandalar'` leaves all
+  45 Tier 1 exercises unchanged. `learn:check` stays at 0 errors / 1 warning, `@learn` at
+  its pinned 184 Vitest / 57 Playwright. No protected file touched.
+  - **Selection is curated, not filtered.** The opposite of `generate-premodern-pool.mjs`.
+    27 cards derived from `docs/LEARN_CURRICULUM.md`'s Tier 1-3 skill tags, covering 27
+    skills across Tier 2 units 2.1-2.5/2.7 and Tier 3 units 3.1-3.3. Each entry carries a
+    `skills` array recording why it was picked; no engine code reads it.
+  - **The generator refuses to emit a card it cannot stand behind.** Four gates, each a
+    non-zero exit with a printed diagnostic: shape (`validateCardShape`'s field list),
+    effect keys (every `effect` must match a `case` in `DuelCore.js`), keywords (a
+    six-keyword allowlist; anything else fails rather than being silently stripped), and
+    ASCII encoding.
+  - **Oracle drift gate.** `learn:check` version-stamps the pool against the pinned bulk
+    file, then compares every stored `text` against it, exiting 1 on a mismatch. Strictly
+    local -- no network call, ever. Both gates were verified to fire by deliberately
+    breaking each, not assumed.
+  - **Current Oracle templating is deliberate.** `CARD_DB_LEARN` reads `({T}: Add {W}.)`
+    where `CARD_DB` reads `T: Add W.`. Per roadmap 4.4, paper-as-currently-templated is the
+    canonical model. Not drift to reconcile.
+  - **Nothing authored against it.** No exercise sets `pool: 'learn'`; that is Tier 2/3
+    content work gated on L5.
+
 ## Completed (2026-09-19)
 - **Learn Mode L3b -- best-defense grading in scenario mode.** The slice L3 deferred.
   Scenario mode can now grade `OPPONENT_DEAD_THIS_TURN` exercises; `checkGoal` still

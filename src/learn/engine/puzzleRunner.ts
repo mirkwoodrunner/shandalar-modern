@@ -18,6 +18,8 @@ import {
 } from '../../engine/DuelCore.js';
 import { RULESETS } from '../../data/rulesets.js';
 import KEYWORDS from '../../data/keywords.js';
+import { CARD_DB } from '../../data/cards.js';
+import { CARD_DB_LEARN } from '../../data/cardsLearn.js';
 import type {
   ActionKind,
   ActionResult,
@@ -26,9 +28,23 @@ import type {
   CardSpec,
   EngineExercise,
   Goal,
+  PoolName,
   PuzzleSetup,
   Step,
 } from './types';
+
+// The card databases an exercise may resolve its ids against. Imported directly
+// from src/data/ -- the same house style as RULESETS above, and permitted because
+// puzzleRunner is the one module under src/learn/ allowed to reach src/data/.
+// Both satisfy the shared shape in src/data/cardShape.js.
+const POOLS: Record<PoolName, any[]> = { shandalar: CARD_DB, learn: CARD_DB_LEARN };
+
+// Every makeCardInstance call below routes through here. An omitted pool is
+// 'shandalar', which is CARD_DB -- makeCardInstance's own default, so behaviour
+// for every exercise authored before L4a is unchanged.
+function poolFor(pool?: PoolName): any[] {
+  return POOLS[pool ?? 'shandalar'];
+}
 
 export const MSG = {
   NOT_IN_LESSON: "That isn't part of this lesson.",
@@ -84,9 +100,9 @@ function toSpec(spec: CardSpec): { id: string; tapped?: boolean; summoningSick?:
   return typeof spec === 'string' ? { id: spec } : spec;
 }
 
-function instance(spec: CardSpec, side: 'p' | 'o', zone: 'hand' | 'bf', index: number, ts: number) {
+function instance(spec: CardSpec, side: 'p' | 'o', zone: 'hand' | 'bf', index: number, ts: number, pool?: PoolName) {
   const s = toSpec(spec);
-  const base = makeCardInstance(s.id, side);
+  const base = makeCardInstance(s.id, side, poolFor(pool));
   if (!base) throw new Error(`LEARN_UNKNOWN_CARD: ${s.id}`);
   const card = { ...base, iid: `${side}-${zone}-${index}` };
   if (zone === 'hand') return card;
@@ -113,8 +129,8 @@ export function buildPuzzleState(setup: PuzzleSetup): any {
       ...base[w],
       life: cfg.life ?? RULESETS.CONTEMPORARY.startingLife,
       lib: [],
-      hand: (cfg.hand ?? []).map((c, i) => instance(c, w, 'hand', i, 0)),
-      bf: (cfg.bf ?? []).map((c, i) => instance(c, w, 'bf', i, ++ts)),
+      hand: (cfg.hand ?? []).map((c, i) => instance(c, w, 'hand', i, 0, setup.pool)),
+      bf: (cfg.bf ?? []).map((c, i) => instance(c, w, 'bf', i, ++ts, setup.pool)),
       binderIds: [],
     };
   };
@@ -373,25 +389,25 @@ export function replay(ex: EngineExercise, steps: Step[]): ReplayResult {
 
 // Mana pool an untapped set of basic lands would produce. Used to derive
 // multiSelect answers from the engine's own canPay instead of trusting data.
-export function poolFromLands(landIds: string[]): Record<string, number> {
+export function poolFromLands(landIds: string[], cardPool?: PoolName): Record<string, number> {
   const pool: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   for (const id of landIds) {
-    const c = makeCardInstance(id, 'p');
+    const c = makeCardInstance(id, 'p', poolFor(cardPool));
     const m = c?.produces?.[0] ?? 'C';
     pool[m] = (pool[m] ?? 0) + 1;
   }
   return pool;
 }
 
-export function castableWith(landIds: string[], cardId: string): boolean {
-  const c = makeCardInstance(cardId, 'p');
-  return !!c && canPay(poolFromLands(landIds), c.cost);
+export function castableWith(landIds: string[], cardId: string, cardPool?: PoolName): boolean {
+  const c = makeCardInstance(cardId, 'p', poolFor(cardPool));
+  return !!c && canPay(poolFromLands(landIds, cardPool), c.cost);
 }
 
 // Display data for a card id, for UI that shows cards outside any GameState
 // (multiSelect lands and options). Keeps CARD_DB access inside the runner.
-export function cardInfo(cardId: string): { name: string; cost: string; type: string; text: string; power?: number; toughness?: number } {
-  const c = makeCardInstance(cardId, 'p');
+export function cardInfo(cardId: string, cardPool?: PoolName): { name: string; cost: string; type: string; text: string; power?: number; toughness?: number } {
+  const c = makeCardInstance(cardId, 'p', poolFor(cardPool));
   if (!c) throw new Error(`LEARN_UNKNOWN_CARD: ${cardId}`);
   return { name: c.name, cost: c.cost ?? '', type: c.type, text: c.text ?? '', power: c.power, toughness: c.toughness };
 }
