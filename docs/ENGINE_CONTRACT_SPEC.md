@@ -1586,4 +1586,44 @@ Both arrays are plain ID-string lists, read-only except for fetch-removal: `MARU
 
 The AI's pick is `chooseMarufFetch(binderIds, state)` in `AI.js` -- a pure, deterministic policy function (highest-cmc castable nonland, else lowest-cmc nonland, else first id), following the `chooseDiscardToLibrary` precedent, dispatched by `useDuelController`'s AI auto-resolution branch. No `Math.random()` was introduced; the pre-existing Coral Helm `discardRandom` site (and `chooseLampPick`'s all-lands fallback) remain flagged for the Milestone B seeded-RNG migration.
 
+# 18. Card Pool Parameter (`makeCardInstance` -- Learn Mode L4a)
+
+`makeCardInstance(id, controller, pool = CARD_DB)` takes an optional third argument: the
+array of printed card definitions `id` is resolved against.
+
+## Contract
+
+- **Default is `CARD_DB`.** Every existing call site passes exactly two arguments and is
+  unchanged: `buildDuelState`'s player and opponent deck construction, the tutor-fetch site,
+  the `cardIds`-to-hand action, and all four `makeCardInstance` calls in
+  `src/learn/engine/puzzleRunner.ts`. Two-argument output was verified byte-identical across
+  every `CARD_DB` id for both controllers, including the not-found case.
+- **The pool is read-only.** `makeCardInstance` only calls `pool.find(...)`; it never mutates
+  the array or its entries. The instance is a fresh shallow copy of the matched definition
+  plus the standard instance-shape defaults.
+- **Miss behavior is unchanged.** An id absent from the supplied pool returns `null`, exactly
+  as an id absent from `CARD_DB` always has. An empty pool is a legal argument and misses
+  everything.
+- **Any pool must satisfy the shared card shape.** `src/data/cardShape.js` exports
+  `REQUIRED_CARD_FIELDS` (`id`, `name`, `type`, `color`, `cmc`, `cost`, `text`, `rarity`) and
+  `validateCardShape(card) -> { valid, missing }`. That field list is the intersection of what
+  every entry in `CARD_DB` and `CARD_DB_PREMODERN` already carries, derived from the data, not
+  assumed. `cardShape.js` is dependency-free: it states the contract and imports no pool.
+  `src/data/__tests__/cardShape.test.js` asserts both shipped pools conform.
+
+## Deliberately NOT pool-aware
+
+`applyPermanentCopy` (Layer 1 copy resolution, CR 707.2) still resolves its `staticDef` against
+`CARD_DB` directly, and throws when there is no entry. This is the only other `CARD_DB.find(...)`
+in `DuelCore.js`; its two consumers are the `copyPermanentCharacteristics` case (Copy Artifact)
+and Vesuvan Doppelganger. Copy effects target *live battlefield permanents*, so making them
+pool-aware means deciding which pool a given permanent was printed from -- out of scope for L4a's
+engine seam, and left as an explicit comment at the call site rather than silently skipped.
+
+## Not changed by this seam
+
+`buildDuelState` and the `ARCHETYPES` deck lookups are untouched. Shandalar's deck-building path,
+and Learn Mode's `buildDuelState`-bypass seam in `useDuel.js` (Section 6.3), are both unaffected:
+nothing about who supplies the initial state changed, only where a card id is looked up.
+
 # End of ENGINE CONTRACT SPEC v1.1

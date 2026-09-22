@@ -96,8 +96,11 @@ export function getLifeFloor(s, who) {
 
 // --- CARD INSTANTIATION -------------------------------------------------------
 
-export function makeCardInstance(id, controller) {
-const def = CARD_DB.find(c => c.id === id);
+// `pool` lets a caller resolve `id` against an alternative card array (e.g. a
+// Learn Mode pool) while defaulting to CARD_DB, so two-argument calls are
+// unchanged. See docs/ENGINE_CONTRACT_SPEC.md -- makeCardInstance pool argument.
+export function makeCardInstance(id, controller, pool = CARD_DB) {
+const def = pool.find(c => c.id === id);
 if (!def) return null;
 return { ...def,
 iid: makeId(),
@@ -1533,6 +1536,8 @@ function findStackTarget(stack, tgt, counterItemId) {
 // -- that check is the caller's job, not this helper's.
 function applyPermanentCopy(state, sourceCardIid, targetCard, opts = {}) {
   const { typeSuffix, colorOverride } = opts;
+  // Not pool-aware: copy effects still resolve against CARD_DB only, per L4a's
+  // engine-prompt scope. Deliberate, not an oversight.
   const staticDef = CARD_DB.find(c => c.id === targetCard.id);
   if (!staticDef) throw new Error(`applyPermanentCopy: no CARD_DB entry for id="${targetCard.id}"`);
   const baseType = staticDef.type ?? '';
