@@ -444,3 +444,89 @@ not deleted. Learn-S16 (checking with no attackers declared) passes at both view
 what proves the grading path is wired to the chrome.
 
 Fixing the click is its own prompt, and it is a duel-UI prompt, not a Learn Mode one.
+
+## 9. The Learn card pool (L4a)
+
+`src/data/cardsLearn.js` exports `CARD_DB_LEARN` (27 cards) and `LEARN_POOL_META`. It is the
+second pool `makeCardInstance` can resolve against, alongside `CARD_DB` and
+`CARD_DB_PREMODERN`. Contract details live in `docs/ENGINE_CONTRACT_SPEC.md` section 18.
+
+### Where it lives and how it is regenerated
+
+| File | Role |
+|---|---|
+| `tools/generate-learn-pool.mjs` | The generator. Holds the curated card list. |
+| `src/data/cardsLearn.js` | Generated output. **Never hand-edit it.** |
+| `scryfall/oracle-cards-20260419090229.zip` | The pinned Scryfall bulk data, the only source. |
+
+Regenerate with `node tools/generate-learn-pool.mjs`. The script never makes a network call:
+it reads the pinned zip and fails loudly if that exact file is absent, naming what is present
+instead. Refreshing the pin is a deliberate, separate decision and is not part of running the
+generator. Output is idempotent apart from `LEARN_POOL_META.generatedAt`.
+
+Selection is curated, not a legality filter -- the opposite of
+`tools/generate-premodern-pool.mjs`, which takes every Premodern-legal card. The list is
+derived from `docs/LEARN_CURRICULUM.md`'s Tier 1-3 skill tags, and each entry carries a
+`skills` array recording the tags it was picked for. `skills` is selection provenance; DuelCore
+never reads it.
+
+### What the generator refuses to emit
+
+All four gates fail the run with a non-zero exit and a printed diagnostic, rather than
+emitting a card that would misbehave later:
+
+- **Shape.** Every entry must carry the `REQUIRED_CARD_FIELDS` from `src/data/cardShape.js`.
+  The authoritative assertion is `src/data/__tests__/cardShape.test.js`, which now covers
+  `CARD_DB_LEARN` alongside the other two pools.
+- **Effect keys.** Every curated `effect` and `activated.effect` must match a `case` in
+  `src/engine/DuelCore.js`. This is a textual presence check, so it catches the real failure
+  mode -- a key no case matches, which resolves as a silent no-op -- but it does not verify
+  semantics.
+- **Keywords.** Only `FLYING`, `REACH`, `DEFENDER`, `VIGILANCE`, `HASTE`, `LIFELINK` are
+  permitted. Anything else on a card fails the run instead of being silently stripped, because
+  a pool card whose printed abilities the engine drops is worse than no card. The policy-banned
+  set from `src/learn/__tests__/units.test.ts` (`TRAMPLE`, `BANDING`, `FIRST_STRIKE`,
+  `DOUBLE_STRIKE`, `DEATHTOUCH`) is therefore excluded from the pool itself, not just from
+  exercises.
+- **Encoding.** Any non-ASCII character in a name, type, cost, or text fails the run.
+
+### Current Oracle templating is the point, not drift
+
+`CARD_DB` carries Shandalar's classic-flavored wording. `CARD_DB_LEARN` carries current
+Scryfall Oracle text, pulled fresh from the pinned data. A Plains reads
+`({T}: Add {W}.)` here and `T: Add W.` in `CARD_DB`; that difference is deliberate and must not
+be "reconciled". `docs/LEARN_MODE_ROADMAP.md` section 4.4 settles why: the canonical model is
+paper Magic as currently templated, and the curriculum ends in paper documents.
+
+Ids collide with `CARD_DB` ids by design (`plains`, `grizzly_bears`, `lightning_bolt` are in
+both). The pools are separate arrays resolved separately, so collision costs nothing, and a
+pool must be self-contained -- an exercise setting `pool: 'learn'` resolves *every* id there,
+its lands included. That is why the five basics are in the list.
+
+### The drift gate in `learn:check`
+
+A frozen pool still drifts: Wizards issues errata and templating updates. `npm run learn:check`
+now runs an oracle-drift check before the per-exercise loop:
+
+1. **Version stamp.** `LEARN_POOL_META.scryfallBulkDataFile` must equal the generator's
+   `PINNED_BULK_FILE`. If someone refreshes the pin without regenerating, this reports one
+   error rather than 27 spurious drifts.
+2. **Text comparison.** Every `CARD_DB_LEARN` entry's stored `text` is compared against
+   `cleanText(oracle_text)` from the pinned bulk data. On mismatch it prints the card id and
+   both strings, and the script exits 1.
+
+Both halves reuse `generate-learn-pool.mjs`'s own loader and `cleanText`, so there is exactly
+one definition of "what the pinned data says this card reads". The check is strictly local --
+`learn:check` never makes a network call. It adds roughly six seconds to the run.
+
+### Selecting the pool from an exercise
+
+`PuzzleSetup.pool` is `'shandalar' | 'learn'`, optional, defaulting to `'shandalar'`.
+`puzzleRunner.ts` resolves it through a local `POOLS` map before each of its four
+`makeCardInstance` calls (`instance`, via `buildPuzzleState`, plus `poolFromLands`,
+`castableWith`, and `cardInfo` -- the last three take an optional trailing pool argument, since
+they are called with card ids rather than a setup). Omitting it is byte-identical to the
+pre-L4a behaviour, which is why all 45 Tier 1 exercises are unchanged.
+
+**No exercise sets `pool: 'learn'` yet.** L4a proves the pool exists, is shaped correctly, and
+can be selected. Authoring content against it is Tier 2/3 work gated on L5 runner expansion.

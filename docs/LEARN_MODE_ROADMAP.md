@@ -444,7 +444,66 @@ clicks on a scenario combat board are intercepted by `banner-you` at both viewpo
 attacker can be declared. Full diagnosis in `docs/LEARN_MODE.md` section 8. That is a duel-UI
 prompt, and it is the remaining blocker on retiring the bespoke lesson player for Unit 1.4.
 
-### L4a. Learn card pool
+### L4a. Learn card pool (done, 2026-09-22)
+
+Shipped in two slices. The engine seam is `docs/ENGINE_CONTRACT_SPEC.md` section 18; the pool
+itself is `docs/LEARN_MODE.md` section 9.
+
+What landed:
+
+- **Engine seam (L4a-1).** `makeCardInstance(id, controller, pool = CARD_DB)`. No consumer
+  became pool-aware; every existing call site passes two arguments and is unchanged. Shared
+  shape contract in `src/data/cardShape.js`, with a Vitest contract test all shipped pools pass.
+- **The pool (L4a-2).** `tools/generate-learn-pool.mjs` -> `src/data/cardsLearn.js`, exporting
+  `CARD_DB_LEARN` (**27 cards**) and `LEARN_POOL_META`. Generated from the pinned Scryfall bulk
+  data, never hand-edited, idempotent apart from the timestamp.
+- **Selection.** `PuzzleSetup.pool: 'shandalar' | 'learn'`, optional, defaulting to
+  `'shandalar'`. Resolved in `puzzleRunner.ts` before each of its four `makeCardInstance` calls.
+- **Drift gate.** `npm run learn:check` now version-stamps the pool against the pinned bulk file
+  and compares every stored oracle text against it, exiting 1 on a mismatch. Strictly local, no
+  network call, about six seconds.
+
+**Curriculum coverage: 27 skills**, all from `docs/LEARN_CURRICULUM.md`. Tier 2 units 2.1
+(`choose-a-blocker`, `chump-block`, `double-block`, `trade-or-take`), 2.3 (`identify-card-type`,
+`permanent-vs-spell`, `when-can-i-cast-this`), 2.4 (`legal-target`, `target-your-own`,
+`burn-for-lethal`), 2.5 (`stack-order`, `respond-to-a-spell`, `instant-vs-sorcery-timing`), 2.7
+(`plan-two-turns`, `hold-back-a-blocker`, `race-or-block`), and part of 2.2
+(`main-phase-timing`, `untap-and-upkeep`); Tier 3 units 3.1 (`holding-priority`), 3.2
+(`lethal-damage`, `zero-toughness`), and 3.3 (`pump-after-blocks`, `removal-after-blocks`,
+`bait-a-block`). The five basics carry Tier 1's land tags because a pool must be self-contained.
+
+Deviations from plan, all deliberate:
+
+- **Tier 1 needed nothing.** `LEARN_CURRICULUM.md` section 3 already established that the
+  Shandalar pool covers all 45 Tier 1 exercises. The list serves Tier 2 and Tier 3, and the
+  basics are in it only so a `pool: 'learn'` exercise can resolve its lands.
+- **Policy-banned keywords are excluded from the pool, not just from exercises.** `TRAMPLE`,
+  `BANDING`, `FIRST_STRIKE`, `DOUBLE_STRIKE`, `DEATHTOUCH` resolve correctly in the runner but
+  are banned by `units.test.ts`. Unit 3.4 (damage assignment) is blocked on the engine gaps in
+  `docs/LEARN_MODE.md` section 6 regardless, so a pool carrying cards no exercise may reference
+  buys nothing. When that gap closes, the fix is one edit to `ALLOWED_KEYWORDS` and a rerun.
+- **No anthem, no "can't attack or block" aura.** Glorious Anthem and Pacifism were both
+  dropped after checking the engine rather than assuming it: `layers.js` scopes `globalPump` by
+  colour or subtype only, with no "creatures you control" filter, and there is no `cantBlock`
+  aura mod to pair with the existing `cantAttack`. Unholy Strength (`enchantCreature`) carries
+  unit 2.3's enchantment example instead.
+- **Card types are covered, but 2.3 stays blocked.** The pool has a clean example of each type;
+  `multiSelect` is still cost-shaped, which is the actual blocker (section 6 of the curriculum,
+  closed by Chris). The pool does not unblock it.
+- **`skills` is a new field.** Each entry records the curriculum tags it was picked for. Engine
+  code never reads it; it exists so a future content prompt can find candidates mechanically
+  instead of re-deriving the selection.
+
+**Not done here, on purpose.** No exercise sets `pool: 'learn'`. Authoring against it is Tier
+2/3 content work gated on L5 runner expansion, which is what those tiers actually wait on.
+
+The Shandalar regression pass this milestone's risk note called for came back clean: the
+`@engine` Vitest half is green and `@learn` matches its pinned baseline exactly (184 Vitest, 57
+Playwright).
+
+---
+
+### L4a. Original plan (superseded by the entry above)
 
 Blocks Tier 3 onward. The Shandalar 901-card pool cannot teach modern Magic.
 

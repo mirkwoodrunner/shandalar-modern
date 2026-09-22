@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { CARD_DB } from '../cards.js';
 import { CARD_DB_PREMODERN } from '../cardsPremodern.js';
+import { CARD_DB_LEARN } from '../cardsLearn.js';
 import { REQUIRED_CARD_FIELDS, validateCardShape } from '../cardShape.js';
 
 describe('@engine Card shape contract', () => {
@@ -25,6 +26,13 @@ describe('@engine Card shape contract', () => {
 
   it('every CARD_DB_PREMODERN entry satisfies the shape', () => {
     const bad = CARD_DB_PREMODERN
+      .map(c => ({ id: c && c.id, ...validateCardShape(c) }))
+      .filter(r => !r.valid);
+    expect(bad).toEqual([]);
+  });
+
+  it('every CARD_DB_LEARN entry satisfies the shape', () => {
+    const bad = CARD_DB_LEARN
       .map(c => ({ id: c && c.id, ...validateCardShape(c) }))
       .filter(r => !r.valid);
     expect(bad).toEqual([]);
