@@ -14,6 +14,65 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
+## 2026-09-23 -- `npm run test:audit -- @learn` (Learn Mode L4b-2, card art wiring)
+
+**Originating change:** branch `claude/new-session-v2sf9y`, commit `c927528`.
+Wires `useCardArt`/`scryfallArt` into `src/learn/ui/LearnCard.tsx` (art strip +
+artist credit), adds one row to `CLAUDE.md`'s Learn Mode import-boundary
+table, adds `tests/e2e/learn-card-art.spec.ts` (5 cases) and registers it in
+`playwright.config.js`'s `mobile-chrome` `testMatch` array (one line added,
+nothing existing changed), plus doc updates (`docs/LEARN_MODE.md`,
+`docs/LEARN_MODE_ROADMAP.md`, `CLAUDE.md`'s pinned-baseline table). No
+protected file touched.
+
+Its own targeted run was clean and at the (updated) pinned baseline:
+`npm run test:targeted -- @learn` at 184 Vitest / 67 Playwright (57 -> 67 is
+this prompt's own +10, all in the new spec file, both viewports). `test:audit`
+then randomly drew **`@engine`**.
+
+**Result:** Vitest half `PASSED` (unrelated to this run; not re-quoted here).
+Playwright half `FAILED`: **50 failed, 583 passed, 5 skipped** of 638. Every
+one of the 50 failures is on the `mobile-chrome` project; `chromium` passed
+its entire `@engine` run clean, 0 failures.
+
+**Diagnosis: pre-existing baseline, not a side effect of this change.** The 50
+failures span exactly 10 spec files, and every one of them is already on
+Finding 3's reference baseline list of pre-existing failing spec files
+(below, in the 2026-09-18 entry): `ability-stack-bugs.spec.ts`,
+`ai-creature-evaluation-smoke.spec.ts`, `ancestral-recall-targeting.spec.ts`,
+`batch1a-desert-landwalk.spec.ts`, `batch1b-wall-destruction-sacrifice.spec.ts`,
+`card-type-line.spec.ts`, `deferral-sweep-1.spec.ts`, `duel-controller.spec.ts`,
+`mobile-targeting.spec.ts`, `power-sink-x-select.spec.js`. All ten are also
+named in the 2026-09-22 entry immediately below as part of the same
+recurring `@mobile` signature a prior Learn-Mode-only prompt (L4a-2) hit and
+confirmed pre-existing by diffing against clean base. That entry's root-cause
+analysis (Finding 3, causes 3 and 4: the stale `window.__duelState()`
+snapshot, and `.tap()` on viewports/timing sensitive to render race
+conditions) is not re-derived here.
+
+- **Zero code-path overlap.** None of the ten failing spec files navigate to
+  `/learn.html` or touch anything under `src/learn/`; this change touches
+  nothing under `src/engine/`, `src/hooks/useDuelController.ts`,
+  `src/DuelScreen.tsx`, or any other file these specs exercise. The
+  `playwright.config.js` edit is additive (one new array entry) and does not
+  alter any existing project's config, `testMatch` entry, or test behavior --
+  confirmed by `chromium`'s 100%-clean run in this same audit pass, which
+  shares the same config file.
+- **Not independently re-diffed against clean `origin/main` this time.** Unlike
+  the more thorough 2026-09-22 entry, this occurrence relies on the spec-file
+  signature match against the already-established Finding 3 / 2026-09-22
+  baseline rather than a fresh base-branch comparison run (a full `@engine`
+  Playwright half costs ~40 minutes per side). Given the exact file-list
+  overlap with two prior independent baselines and zero plausible code-path
+  connection, this is treated as sufficient evidence rather than grounds for
+  a third confirmation run.
+
+**Disposition:** Reported to Chris rather than self-overridden, per the
+hard-stop policy. The full suite (`npm test && npm run test:e2e`) was **not**
+run.
+
+---
+
 ## 2026-09-22 -- `npm run test:audit -- @learn` (Learn Mode L4a-2, Learn card pool)
 
 **Originating change:** `claude/new-session-738gmm`, commit `a2ef469`, base
