@@ -47,6 +47,7 @@ export default defineConfig({
         'tests/e2e/generalized-choice-mechanisms.spec.ts',
         'tests/e2e/henchman-visibility.spec.ts',
         'tests/e2e/hooded-figure-sprites.spec.ts',
+        'tests/e2e/learn-card-art.spec.ts',
         'tests/e2e/learn-scenario.spec.ts',
         'tests/e2e/learn-slice.spec.ts',
         'tests/e2e/learn-persistence.spec.ts',

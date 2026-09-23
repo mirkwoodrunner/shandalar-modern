@@ -250,6 +250,7 @@ Learn Mode now renders exercises on the real duel screen. What replaces it:
 | `src/hooks/useIsMobile.ts` | the breakpoint hook | `src/learn/ui/ScenarioLesson.tsx` only |
 | `src/types/duel.ts` | `DuelConfig`, `ScenarioPanelContext` | type-only imports, anywhere under `src/learn/` |
 | `src/engine/`, `src/data/` | anything | `src/learn/engine/puzzleRunner.ts` only -- unchanged |
+| `src/utils/scryfallArt.js`, `src/utils/useCardArt.js` | the utilities, as utilities | `src/learn/ui/LearnCard.tsx` only |
 
 **What stays forbidden, without exception:**
 
@@ -443,10 +444,11 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 184 Vitest passing, 57 Playwright passing |
+| `npm run test:targeted -- @learn` | 184 Vitest passing, 67 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-scenario.spec.ts` | 27 passing, 5 skipped (Learn-S3 is mobile-only; Learn-S14/S15 are `test.fixme` at both viewports pending the attacker-click defect in `docs/LEARN_MODE.md` section 8) |
+| `npx playwright test tests/e2e/learn-card-art.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 
 Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
 17 cases) and Playwright 30 -> 55 (`learn-scenario.spec.ts`, 13 cases at both viewports,
@@ -455,6 +457,11 @@ one of which is mobile-only).
 Moved at L3b (2026-09-19, best-defense grading): Vitest 177 -> 184 (7 cases on
 `gradeDeclaredAttack` in `puzzleRunner.test.ts`) and Playwright 55 -> 57 (Learn-S16 at both
 viewports; Learn-S14/S15 are `test.fixme` and counted as skips, not passes).
+
+Moved at L4b-2 (2026-09-23, card art): Playwright 57 -> 67 (`learn-card-art.spec.ts`, 5 cases
+at both viewports). No Vitest change -- this milestone's coverage is Playwright-only, per its
+own prompt. `learn-card-art.spec.ts` is also registered in `playwright.config.js`'s
+`mobile-chrome` `testMatch` list, same as the other `learn-*` spec files.
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

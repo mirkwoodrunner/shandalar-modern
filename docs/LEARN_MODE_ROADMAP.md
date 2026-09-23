@@ -553,25 +553,40 @@ regression pass on Shandalar proving nothing moved.
 Related, already logged in `docs/LEARN_MODE.md` section 6: the damage-assignment and
 deathtouch engine gaps block Units 3.4 and 3.5 independently of the pool question.
 
-### L4b. Card art
+### L4b. Card art (done)
 
-Correction to earlier planning: this is largely a reuse job, not a build. `src/utils/scryfallArt.js`
-and `src/utils/useCardArt.js` already exist and are not currently imported by `src/learn/`.
+Correction to earlier planning proved out: this was largely a reuse job, not a build.
+`src/utils/scryfallArt.js` and `src/utils/useCardArt.js` already existed; landed in two slices.
 
-What still needs doing:
+What landed:
 
-- Printing selection. `fetchOldestArt` hard-codes `lea`, `leb`, `2ed`, `3ed`, `4ed`, which is
-  correct for Shandalar and wrong for a modern Learn pool. Needs a printing-preference
-  parameter, defaulting to current behavior so Shandalar is untouched.
-- Persistent caching. The current cache is an in-memory `Map` that dies on refresh. L9's
-  offline story depends on a durable cache, so settle this here.
-- `src/learn/ui/LearnCard.tsx` is 67 lines of text rendering. Full rework, with a text-only
-  fallback that survives a failed image fetch rather than breaking the exercise.
-- Artist credit and attribution handling.
+- **Printing selection + persistent caching (L4b-1).** `fetchOldestArt` and `useCardArt` take
+  an optional `{ sets }` printing preference, defaulting to `CLASSIC_PRINTING_SETS` so Shandalar
+  is byte-identical. The in-memory `Map` cache is now backed by `localStorage['art-cache:v1']`,
+  keyed by card name (plus a printing-preference suffix for any non-default `sets`), settling
+  the durable-cache half of L9's constraint below.
+- **LearnCard wiring (L4b-2).** `src/learn/ui/LearnCard.tsx` calls
+  `useCardArt(card.name, { sets: [] })` -- straight to `cards/named?exact=`, since the Learn
+  pool's current Oracle templating (L4a) isn't guaranteed to exist in Shandalar's classic-set
+  preference. Renders a bounded-height art strip plus an `Art: {artist}` credit line when
+  Scryfall returns one; a failed or missing fetch degrades permanently to the pre-L4b
+  text-only card, matching `Card.jsx`'s `CardArtDisplay` fallback convention rather than
+  inventing a new one. `CLAUDE.md`'s Learn Mode import-boundary table gained one row scoping
+  the two utilities to `LearnCard.tsx` only. Full writeup, including a React-StrictMode race in
+  `fetchOldestArt`'s dedupe that this milestone did not need to fix (and how the Playwright
+  coverage sidesteps it), is in `docs/LEARN_MODE.md` section 9.
+- **Fan Content Policy notice.** Checked, not changed: the existing notice already covers
+  per-card art; artist credit is additive.
+- **No card individually verified against live Scryfall.** The sandboxed test/build
+  environment has no route to `scryfall.com` (`tests/e2e/raging-river.spec.ts`), so this
+  milestone could not confirm which, if any, of the 27 Learn pool cards resolve to no art in
+  practice. `cards/named?exact=` is the same lookup `generate-learn-pool.mjs` already used to
+  build `cardsLearn.js`, so a resolution gap here would be a live-fetch issue, not evidence of
+  a missing card -- but it is unverified, not confirmed clean.
 
 **Constraint on L9.** Art is the entire offline payload. Caching art for a few hundred
-exercises is a very different size problem than caching JSON. Settle art before designing
-offline.
+exercises is a very different size problem than caching JSON. Settled by L4b-1's persistent
+cache; L9 still needs to decide its own payload-size budget on top of it.
 
 ### L5. Runner expansion
 
