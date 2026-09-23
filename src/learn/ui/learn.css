@@ -153,6 +153,15 @@ body {
   font-weight: 600;
 }
 
+.learn-card-art {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin-top: 6px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
 .learn-card-type {
   color: #b8ab97;
   font-size: 0.75rem;
@@ -168,6 +177,12 @@ body {
   margin-top: 6px;
   font-weight: 600;
   text-align: right;
+}
+
+.learn-card-artist {
+  margin-top: 4px;
+  color: #b8ab97;
+  font-size: 0.7rem;
 }
 
 .learn-card-badge {

@@ -279,6 +279,7 @@ decisions. Do not duplicate roadmap content here.
   icon, so there is no Wizards logo, set symbol, or lifted mana symbol art to remove. Mana
   renders as the plain cost string. `src/learn/` imports neither `scryfallArt.js` nor
   `useCardArt.js`. Playwright: 28 -> 30.
+  (Superseded at L4b: `LearnCard.tsx` now imports both. See section 9 below.)
   The notice string could not be verified against the live Fan Content Policy page (the build
   environment blocks egress to `company.wizards.com`). Chris's call, 2026-09-18: this is a fan
   project with no intent to publish or monetise, so policy exactness is not a gate. Revisit if
@@ -530,3 +531,59 @@ pre-L4a behaviour, which is why all 45 Tier 1 exercises are unchanged.
 
 **No exercise sets `pool: 'learn'` yet.** L4a proves the pool exists, is shaped correctly, and
 can be selected. Authoring content against it is Tier 2/3 work gated on L5 runner expansion.
+
+### Card art (L4b)
+
+`src/learn/ui/LearnCard.tsx` renders art via the shared `src/utils/useCardArt.js` /
+`src/utils/scryfallArt.js` utility (the same one `src/ui/shared/Card.jsx` and
+`src/ui/Card/CardArtImage.tsx` use for Shandalar's own card art), imported under the
+narrow `CLAUDE.md` boundary-table grant added for exactly this file.
+
+It calls `useCardArt(card.name, { sets: [] })`. `{ sets: [] }` skips
+`CLASSIC_PRINTING_SETS` (`lea`/`leb`/`2ed`/`3ed`/`4ed`) and goes straight to Scryfall's
+`cards/named?exact=` lookup -- the Learn pool (`docs/ENGINE_CONTRACT_SPEC.md` section 18)
+carries current Oracle templating, and not every Learn card was printed in those five
+classic sets, so a classic-set-first search would come back empty for some of them.
+
+Fallback is `url ? <img> : nothing`, matching `Card.jsx`'s `CardArtDisplay` convention:
+`useCardArt`'s own contract keeps `url` and `loading` correlated (`loading` is only ever
+true while `url` is null), so that one condition already covers both "still loading" and
+"resolved to no art" -- no separate loading branch needed. A failed or missing fetch
+degrades permanently to the pre-L4b text-only card; there is no retry, and nothing else
+on the card shifts or hides to make room for art either way. Artist credit
+(`Art: {artist}`) renders only when Scryfall returns a non-null `artist`; it is omitted,
+not blanked, otherwise.
+
+**A known race, not something this milestone fixes.** `fetchOldestArt`'s in-flight
+dedupe (`src/utils/scryfallArt.js`) lets a second concurrent call for the same cache key
+return `{ url: null, artist: null }` immediately rather than waiting on the first call's
+real result. React 18 StrictMode double-invokes effects in dev (`npm run dev`, which is
+also what this Playwright suite runs against), so a single `useCardArt` call can race
+itself: the first effect's real fetch is still in flight when StrictMode's synthetic
+remount fires a second `fetchOldestArt` call, which hits the dedupe path and resolves to
+null before the first call's genuine result comes back -- and by the time that genuine
+result does arrive, the first effect's own closure has already been marked cancelled, so
+its `setState` is dropped. The result is silently discarded, but not lost: the real
+fetch's `writePersisted` call still runs and writes the correct entry to
+`localStorage['art-cache:v1']` regardless of which effect instance is "cancelled" --
+only the live React state misses it, and only in dev with StrictMode. `useCardArt`'s own
+initializer (`peekCachedArt`) resolves synchronously from that same persisted cache on
+mount, before any effect runs, so a page reload (or a returning visit) shows the art
+correctly. `CardArtImage.tsx` already works around this for the duel screen with a
+background poll of the shared cache; `LearnCard.tsx` does not add that, per this
+milestone's own instruction to match `CardArtDisplay`'s plainer convention instead.
+`tests/e2e/learn-card-art.spec.ts`'s success-path cases pre-seed the persisted cache
+directly (`page.addInitScript`) rather than mocking a fulfilling network response, both
+to sidestep the race deterministically and because it exercises the same synchronous
+`peekCachedArt` path a real returning visitor hits.
+
+Confirmed with the 27-card Learn pool: no card was checked individually against live
+Scryfall for this milestone (the sandboxed test environment has no route to
+scryfall.com; see `tests/e2e/raging-river.spec.ts`), but `cards/named?exact=` is the
+same lookup `generate-learn-pool.mjs` already resolved every pool card against to build
+`cardsLearn.js` in the first place, so a resolution failure here would be a live-fetch or
+Scryfall-availability issue, not a missing card.
+
+`src/learn/content.ts`'s existing Fan Content Policy notice ("Portions of the materials
+used are property of Wizards of the Coast") already covers per-card art; artist credit
+is additive and did not need a wording change.

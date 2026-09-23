@@ -3,6 +3,11 @@
 // display-only CardView (multiSelect lands/options, which carry no iid).
 
 import React from 'react';
+import useCardArt from '../../utils/useCardArt.js';
+
+// Learn pool cards use current Oracle templating (L4a) and some may not exist in the
+// classic sets Shandalar prefers, so skip the set search and go straight to cards/named.
+const LEARN_ART_SETS: string[] = [];
 
 type AnyCard = {
   iid?: string;
@@ -28,6 +33,7 @@ export function LearnCard({ card, selected = false, highlighted = false, onClick
   const hasEngineState = typeof card.iid === 'string';
   const tapped = hasEngineState ? !!card.tapped : false;
   const isCreature = !!card.type?.includes('Creature');
+  const { url: artUrl, artist } = useCardArt(card.name, { sets: LEARN_ART_SETS });
 
   const classes = ['learn-card'];
   if (tapped) classes.push('learn-card-tapped');
@@ -55,6 +61,7 @@ export function LearnCard({ card, selected = false, highlighted = false, onClick
         <span className="learn-card-name">{card.name}</span>
         {card.cost ? <span className="learn-card-cost">{card.cost}</span> : null}
       </div>
+      {artUrl && <img className="learn-card-art" src={artUrl} alt="" />}
       <div className="learn-card-type">{card.type}</div>
       {card.text ? <div className="learn-card-text">{card.text}</div> : null}
       {isCreature && (
@@ -62,6 +69,7 @@ export function LearnCard({ card, selected = false, highlighted = false, onClick
           {card.power}/{card.toughness}
         </div>
       )}
+      {artist ? <div className="learn-card-artist">Art: {artist}</div> : null}
     </div>
   );
 }
