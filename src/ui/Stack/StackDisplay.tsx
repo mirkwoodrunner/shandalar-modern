@@ -243,7 +243,7 @@ export function StackDisplay({ stack, isMobile, bottomOffset = 48, onItemClick, 
       const name = entry.card?.name;
       if (!name || fetchedRef.current.has(name)) continue;
       fetchedRef.current.add(name);
-      fetchOldestArt(name).then((url: string | null) => {
+      fetchOldestArt(name).then(({ url }: { url: string | null }) => {
         setArtUrls(prev => ({ ...prev, [name]: url }));
       });
     }
