@@ -447,7 +447,11 @@ prompt, and it is the remaining blocker on retiring the bespoke lesson player fo
 Update (2026-09-24): one of the two stacked causes is fixed (the Learn shell's 720px column was
 offsetting and overflowing the mounted duel screen -- see `docs/LEARN_MODE.md` section 8). The
 click still does not land; the remaining cause is a height-budget squeeze inside `DuelScreen.tsx`'s
-own layout, unrelated to Learn's shell, and it is still the blocker described above.
+own layout, unrelated to Learn's shell, and it is still the blocker described above. Later the
+same day the second cause was fixed too. It was a Shandalar duel-board height bug that the
+campaign also had. Desktop banners moved to a side rail and both battlefield halves now share
+the squeeze. Learn-S14/S15 pass at both viewports, and Unit 1.4 can now move to scenario mode
+(its own prompt). See `docs/LEARN_MODE.md` section 8.
 
 ### L4a. Learn card pool (done, 2026-09-22)
 

@@ -471,6 +471,85 @@ export default function DuelScreen({ config, onDuelEnd, scenarioPanel }: DuelScr
   const yourHand    = s.p.hand as unknown as CardData[];
   const mulliganHand = s.p.hand as unknown as CardData[];
 
+  // Desktop puts both info banners in a left rail beside the board instead of
+  // stacking them in the center column. Stacked, they took 176px of height
+  // from the battlefield, which at a 1280x800 viewport left the player's half
+  // 38px tall -- too short to show a single creature. See docs/MECHANICS_INDEX.md.
+  const bannerLayout = isMobile ? 'row' : 'rail';
+  // Opponent info banner
+  const oppBanner = (
+    <Banner
+      side="opp"
+      compact={isMobile}
+      layout={bannerLayout}
+      player={{
+        life: s.o.life,
+        max: config.ruleset.startingLife,
+        lifeAnim: s.o.lifeAnim,
+        mana: s.o.mana,
+        lib: s.o.lib.length,
+        gy: s.o.gy.length,
+        poisonCounters: s.o.poisonCounters,
+      }}
+      onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
+      onLifeClick={
+        playerTargetingActive
+          ? () => selectCastTarget('o')
+          : undefined
+      }
+    />
+  );
+
+  // Player info banner
+  const youBanner = (
+    <Banner
+      side="you"
+      compact={isMobile}
+      layout={bannerLayout}
+      player={{
+        life: s.p.life,
+        max: config.ruleset.startingLife,
+        lifeAnim: s.p.lifeAnim,
+        mana: s.p.mana,
+        lib: s.p.lib.length,
+        gy: s.p.gy.length,
+        poisonCounters: s.p.poisonCounters,
+      }}
+      onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
+      onLifeClick={
+        playerTargetingActive
+          ? () => selectCastTarget('p')
+          : undefined
+      }
+      castPrompt={castFlow ? (() => {
+        const sourceCard = castFlow.kind === 'spell'
+          ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
+          : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
+        const rawCost = castFlow.kind === 'spell'
+          ? sourceCard?.cost
+          : normalizeAbilityCost(castFlow.abilityId
+              ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
+              : sourceCard?.activated?.cost);
+        const cost = sourceCard ? applyCostTax(rawCost, sourceCard, s, castFlow.kind !== 'spell') : rawCost;
+        return {
+          mode: castFlow.mode ?? 'targeting',
+          targetLabel: castFlow.mode === 'targeting'
+            ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
+            : castFlow.mode === 'additionalCost'
+            ? 'Choose a creature to sacrifice'
+            : undefined,
+          canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
+          onSkip: confirmCastTargets,
+          onConfirmTargets: castFlow.mode === 'targeting' && castFlow.selectedTargets.length >= 1 ? confirmCastTargets : undefined,
+          targetsSelected: castFlow.selectedTargets.length,
+          costNeeded: cost,
+          shortfall: cost ? getManaShortfall(s.p.mana, cost, s.xVal || 0) : null,
+          onCancel: cancelCastFlow,
+        };
+      })() : undefined}
+    />
+  );
+
   // -------------------------------------------------------------------------
   // RENDER
   // -------------------------------------------------------------------------
@@ -579,32 +658,34 @@ export default function DuelScreen({ config, onDuelEnd, scenarioPanel }: DuelScr
       {/* -- MAIN LAYOUT ----------------------------------------------------- */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
+        {/* -- LEFT BANNER RAIL (desktop only) ------------------------------ */}
+        {!isMobile && (
+          <div data-testid="banner-rail" style={{
+            // Keep in sync with .desktop in src/ui/duel/ScenarioOverlay.module.css.
+            width: 'clamp(230px, 19vw, 270px)',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '8px 0',
+            borderRight: '2px solid rgba(180,140,60,.25)',
+            background: 'linear-gradient(180deg,#0e0c08,#0a0a08)',
+            overflowY: 'auto',
+          }}>
+            {oppBanner}
+            {youBanner}
+          </div>
+        )}
+
         {/* -- CENTER COLUMN ----------------------------------------------- */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: isMobile ? 'min(44px, 9vh)' : 0 }}>
 
           {/* Opponent hand (face-down) */}
           <Hand side="opp" cards={s.o.hand.length} compact={isMobile} />
 
-          {/* Opponent info banner */}
-          <Banner
-            side="opp"
-            compact={isMobile}
-            player={{
-              life: s.o.life,
-              max: config.ruleset.startingLife,
-              lifeAnim: s.o.lifeAnim,
-              mana: s.o.mana,
-              lib: s.o.lib.length,
-              gy: s.o.gy.length,
-              poisonCounters: s.o.poisonCounters,
-            }}
-            onGraveyardClick={() => openGraveyardPopover('o', 'reference')}
-            onLifeClick={
-              playerTargetingActive
-                ? () => selectCastTarget('o')
-                : undefined
-            }
-          />
+          {/* Opponent info banner: in the center column on mobile only (desktop: left rail) */}
+          {isMobile && oppBanner}
 
           {/* Battlefield: opp + phase ribbon + you */}
           <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -644,52 +725,8 @@ export default function DuelScreen({ config, onDuelEnd, scenarioPanel }: DuelScr
             })()}
           </div>
 
-          {/* Player info banner */}
-          <Banner
-            side="you"
-            compact={isMobile}
-            player={{
-              life: s.p.life,
-              max: config.ruleset.startingLife,
-              lifeAnim: s.p.lifeAnim,
-              mana: s.p.mana,
-              lib: s.p.lib.length,
-              gy: s.p.gy.length,
-              poisonCounters: s.p.poisonCounters,
-            }}
-            onGraveyardClick={() => openGraveyardPopover('p', 'reference')}
-            onLifeClick={
-              playerTargetingActive
-                ? () => selectCastTarget('p')
-                : undefined
-            }
-            castPrompt={castFlow ? (() => {
-              const sourceCard = castFlow.kind === 'spell'
-                ? (s.p.hand as any[]).find((c: any) => c.iid === castFlow.sourceIid)
-                : (s.p.bf as any[]).find((c: any) => c.iid === castFlow.sourceIid);
-              const rawCost = castFlow.kind === 'spell'
-                ? sourceCard?.cost
-                : normalizeAbilityCost(castFlow.abilityId
-                    ? (sourceCard?.activatedAbilities ?? []).find((a: any) => a.id === castFlow.abilityId)?.cost
-                    : sourceCard?.activated?.cost);
-              const cost = sourceCard ? applyCostTax(rawCost, sourceCard, s, castFlow.kind !== 'spell') : rawCost;
-              return {
-                mode: castFlow.mode ?? 'targeting',
-                targetLabel: castFlow.mode === 'targeting'
-                  ? (castFlow.requiresTarget ? 'Select target' : 'Select target (optional)')
-                  : castFlow.mode === 'additionalCost'
-                  ? 'Choose a creature to sacrifice'
-                  : undefined,
-                canSkip: castFlow.mode === 'targeting' && !castFlow.requiresTarget && castFlow.selectedTargets.length === 0,
-                onSkip: confirmCastTargets,
-                onConfirmTargets: castFlow.mode === 'targeting' && castFlow.selectedTargets.length >= 1 ? confirmCastTargets : undefined,
-                targetsSelected: castFlow.selectedTargets.length,
-                costNeeded: cost,
-                shortfall: cost ? getManaShortfall(s.p.mana, cost, s.xVal || 0) : null,
-                onCancel: cancelCastFlow,
-              };
-            })() : undefined}
-          />
+          {/* Player info banner: in the center column on mobile only (desktop: left rail) */}
+          {isMobile && youBanner}
 
           {/* Channel mana button */}
           {s.p.channelActive && s.active === 'p' && (s.phase === 'MAIN_1' || s.phase === 'MAIN_2') && s.p.life > 1 && (

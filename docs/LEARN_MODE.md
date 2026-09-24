@@ -426,60 +426,85 @@ What landed:
 to `checkGoal`. A non-lethal attack now reports the defender's best block as its feedback
 ("Wall of Wood blocks Grizzly Bears. You deal 2. They're at 1."), which is the teaching.
 
-### Known limitation: attacker clicks do not land on a scenario combat board
+### Attacker clicks on a scenario combat board (fixed 2026-09-24)
 
-**Unit 1.4 still cannot move to scenario mode, for a UI reason rather than a grading one.**
-The grading above is built and unit-covered; a learner cannot reach it.
+Unit 1.4 was blocked from scenario mode for a UI reason, not a grading one: a learner could
+not declare an attacker on the real duel screen. There were two stacked causes. Both are fixed,
+and Unit 1.4 can now move to scenario mode (its own prompt).
 
-**Update (2026-09-24): the original diagnosis was half right.** There were two stacked bugs,
-not one. The Learn-shell part is fixed; a second, deeper duel-UI bug remains and is the actual
-blocker.
-
-**Fixed: the Learn shell offset.** `LearnApp.tsx` mounted the scenario branch inside
+**Cause 1, the Learn shell offset.** `LearnApp.tsx` mounted the scenario branch inside
 `.learn-app`, the same centered 720px column used by the unit list and the bespoke lesson
 player (`max-width: 720px; margin: 0 auto; padding: 24px 16px 96px`). `DuelScreen`'s root is
-`height: 100vh; width: 100vw`, sized to the viewport but positioned whereever that column put
-it -- at a 1280px viewport it opened at `left: 296, top: 24` and ran to `right: 1576, bottom:
-824`, shifted right and overflowing the viewport bottom by 24px. At 390px it was `left: 16,
-top: 24`, similarly offset. Fix: the scenario branch now renders in `.learn-scenario-root`
-(`src/learn/ui/learn.css`), a full-bleed wrapper with no max-width, margin, or padding. Confirmed
-the duel screen root now sits at exactly `(0,0)-(1280,800)` at desktop and `(0,0)-(390,767.6)`
-at mobile, no offset, no overflow. The unit list and bespoke lesson player are unchanged --
-they still use `.learn-app`.
+`height: 100vh; width: 100vw`, sized to the viewport but positioned wherever that column put
+it. At a 1280px viewport it opened at `left: 296, top: 24` and overflowed the viewport bottom
+by 24px. Fix: the scenario branch renders in `.learn-scenario-root` (`src/learn/ui/learn.css`),
+a full-bleed wrapper with no max-width, margin, or padding. The unit list and bespoke lesson
+player still use `.learn-app`.
 
-**Not fixed, and the real blocker: `DuelScreen`'s own center-column height budget.** Even with
-the shell offset gone, `document.elementFromPoint` at a desktop battlefield card's centre still
-returns `banner-you`, not the card. Measured on `?scenario=1.4-02` post-fix at 1280x800: the
-center column's six children are the opponent hand row (70px, fixed), the opponent banner
-(88px, fixed), the entire battlefield -- both halves plus the phase ribbon -- (300.7px total,
-`flex: 1 1 0`), the player banner (88px, fixed), the action bar (51px, fixed), and the player
-hand row (158px minimum, fixed). The fixed-height rows alone (70+88+88+51+158 = 455px) leave
-only 300.7px of a 755.7px column for the *entire* battlefield. Of that, the opponent's half
-gets 198.4px and the player's half gets **62.3px** -- for creature cards that render at a fixed
-96x134px (`Half.tsx`'s `cardW`/`cardH`, unconditional, not scaled to available space). The
-result: `bf-card-p-bf-0`'s true layout box is `top: 460.9, bottom: 594.9` (134px tall) but only
-its first ~42px are inside the 62.3px-tall, `overflow: hidden` half that contains it -- the rest
-is clipped from view by that ancestor, and `elementFromPoint` at the card's geometric centre (well
-below the clip line) correctly resolves to whatever is actually painted there, which is the
-player banner sitting below. This is not caused by the Learn wrapper: it reproduces identically
-after the wrapper fix, with the same numbers modulo the 24px/296px offset that fix removed. It
-is inside `DuelScreen.tsx`'s own layout (center column, `src/DuelScreen.tsx`) and/or
-`Half.tsx`'s fixed card sizing (`src/ui/Battlefield/Half.tsx`) -- both protected files.
+**Cause 2, the desktop duel board's height budget. This was a Shandalar bug, not a Learn one.**
+The campaign duel had it too, and worse. Measured at 1280x800 before the fix:
 
-At the 390px viewport, the same root cause (severe height squeeze on the player's battlefield
-half) manifests differently: the card position no longer overlaps `banner-you`'s rect at its
-exact centre, but the test helper's click point (`position: {x: 40, y: 110}`, used by
-`declareAttacker` in `learn-scenario.spec.ts`) falls outside the clipped/visible card entirely
-(the card is only 90px tall there) and resolves to nothing (no `data-testid` ancestor) --
-still an unusable click target, just a different symptom of the same undersized half.
+| Row | Campaign sandbox | Scenario `1.4-02` |
+|---|---|---|
+| Opponent hand | 72 | 70 |
+| Opponent banner | 88 | 88 |
+| Battlefield (both halves + phase ribbon) | 272 | 300.7 |
+| Player banner | 88 | 88 |
+| Action bar | 52 | 51 |
+| Player hand | 162 | 158 |
+| Halves: opponent / ribbon / **player** | 194 / 40 / **38** | 198.4 / 40 / **62.3** |
 
-`tests/e2e/learn-scenario.spec.ts` Learn-S14 and Learn-S15 remain `test.fixme` for exactly this:
-they assert the correct grading, they are expected to pass once the click lands, and they are
-not deleted. Learn-S16 (checking with no attackers declared) passes at both viewports and is
-what proves the grading path is wired to the chrome.
+A desktop creature card is 96x134px. In a 38px or 62px `overflow: hidden` half only its row
+label (campaign) or top ~42px (scenario) showed, and a click at its centre hit `banner-you`.
+In the campaign the player could not see their own creatures at all below a viewport height of
+roughly 1000px.
 
-Fixing the remaining height-budget bug is its own prompt, and it is a duel-UI prompt (it needs
-to touch `DuelScreen.tsx` and/or `Half.tsx`, both protected files), not a Learn Mode one.
+Why the split was so lopsided: in `src/ui/Battlefield/Half.tsx` the opponent's half was
+`flexShrink: 0` with visible overflow, so it could never go below its content height (a 58px
+land row plus a 130px `minHeight` permanents area). The player's half was `flex: 1` with a zero
+basis, so it got only what was left. Every pixel of squeeze came out of the player's half.
+
+Fixing the split alone could not solve it. At 1280x800 the two halves and the ribbon need
+about 455px with full-size cards, and the campaign battlefield had 272px. Land rows, labels,
+padding and the ribbon use about 210px of that before a card is drawn. So the fix frees height
+as well as sharing it:
+
+- **Desktop banners moved to a left rail** (`src/DuelScreen.tsx`, `data-testid="banner-rail"`).
+  Both life banners now sit in a column beside the board, opponent at the top and player at the
+  bottom, instead of stacked in the center column. That returns 176px to the battlefield at
+  every height. `Banner` takes `layout="rail"` for this and `LifeTotal` takes `fill`. The
+  mobile-width `DuelScreen` path and `DuelScreenMobile` keep their banners in the column.
+- **Both halves share the squeeze** (`Half.tsx`). Both halves now start from their content
+  height and shrink in proportion to it when the battlefield is short. Only the player's half
+  grows into spare height, as before, so a tall screen lays out the same as before.
+- **The desktop lesson panel docks in the rail's empty middle**
+  (`src/ui/duel/ScenarioOverlay.module.css`). It used to sit top-left over the opponent's
+  banner. With the board moved right, that spot would have covered the opponent's first
+  creature. The panel is now no wider than the rail and covers neither banner nor any card.
+  As a side effect the opponent's life total is visible during a lesson again.
+
+After the fix at 1280x800, the player's half is 215.9px (campaign) and 238.3px (scenario), and
+the card is fully visible and clickable at its centre. Below that height (about 790px for the
+campaign, about 770px for scenario mode) the player's creature row becomes a scroll area. The
+card is partly visible and still clickable at its centre. At the default Playwright desktop
+size, 1280x720, the card is 73% visible in the campaign and 81% in scenario mode.
+
+**Mobile was never squeezed.** At 390x844, both scenario mode and the campaign's compact duel
+screen showed the player's creature in full, and `elementFromPoint` at its centre was the card.
+The failure there was the test itself. `declareAttacker` clicked at `{ x: 40, y: 110 }`, which
+is 20px below the bottom edge of the 90px-tall mobile creature card, so it could never land at
+that width. The helper now clicks the card's centre (Playwright's default), which is stricter,
+and Learn-S14/S15 pass at both viewports. No mobile layout changed.
+
+Regression locks: Learn-S17 in `tests/e2e/learn-scenario.spec.ts` (scenario `1.4-02`) and
+`tests/e2e/duel-board-height.spec.ts` (campaign sandbox duel). Both check at 1280x800 and
+390x844 that a player creature is fully inside every clipping ancestor and that
+`elementFromPoint` at its centre is the card.
+
+Neither `DuelScreen.tsx` nor `Half.tsx` is a protected file. An earlier version of this section
+said they were. They are not on the Protected Files list in `CLAUDE.md` or in
+`PROTECTED_PATTERNS` in `.claude/hooks/pre-edit-engine-guard.sh`. They are shared Shandalar duel
+UI, so a change to them is a campaign change.
 
 ## 9. The Learn card pool (L4a)
 

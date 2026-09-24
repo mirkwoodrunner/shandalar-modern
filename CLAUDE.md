@@ -444,10 +444,10 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 184 Vitest passing, 67 Playwright passing |
+| `npm run test:targeted -- @learn` | 184 Vitest passing, 73 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
-| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 27 passing, 5 skipped (Learn-S3 is mobile-only; Learn-S14/S15 are `test.fixme` at both viewports pending the attacker-click defect in `docs/LEARN_MODE.md` section 8) |
+| `npx playwright test tests/e2e/learn-scenario.spec.ts` | 33 passing, 1 skipped (Learn-S3 is mobile-only) |
 | `npx playwright test tests/e2e/learn-card-art.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 
 Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
@@ -462,6 +462,10 @@ Moved at L4b-2 (2026-09-23, card art): Playwright 57 -> 67 (`learn-card-art.spec
 at both viewports). No Vitest change -- this milestone's coverage is Playwright-only, per its
 own prompt. `learn-card-art.spec.ts` is also registered in `playwright.config.js`'s
 `mobile-chrome` `testMatch` list, same as the other `learn-*` spec files.
+
+Moved at the duel board height fix (2026-09-24): Playwright 67 -> 73. Learn-S14/S15 are no longer
+`test.fixme` and pass at both viewports (+4), and Learn-S17, the board-height regression lock,
+is new at both viewports (+2). No Vitest change.
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

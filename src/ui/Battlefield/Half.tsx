@@ -176,18 +176,23 @@ export function Half({ side, cards, selCard, selTgt, attackers, flashIids, pendi
     </div>
   );
 
+  // Height allocation. Both halves start from their content height and, when
+  // the battlefield is short, both give up space in proportion to it. The
+  // opponent's half used to be flexShrink: 0 with visible overflow (so it could
+  // never go below its content) while the player's half was flex: 1 with a zero
+  // basis (so it got only the leftover): every pixel of squeeze came out of the
+  // player's half. Only the player's half grows into spare height, as before.
   return (
     <div style={{
-      flex: isOpp ? undefined : 1,
+      flex: isOpp ? '0 1 auto' : '1 1 auto',
       background: isOpp
         ? 'linear-gradient(180deg, rgba(40,16,8,.5), rgba(20,8,6,.6))'
         : 'linear-gradient(180deg, rgba(20,28,12,.5), rgba(14,18,8,.6))',
       borderBottom: isOpp ? '1px solid rgba(120,90,40,.2)' : undefined,
       display: 'flex',
       flexDirection: 'column',
-      overflow: isOpp ? undefined : 'hidden',
-      minHeight: isOpp ? undefined : 0,
-      flexShrink: isOpp ? 0 : undefined,
+      overflow: 'hidden',
+      minHeight: 0,
     }}>
       {isOpp ? (
         <>

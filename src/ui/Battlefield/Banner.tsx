@@ -34,10 +34,13 @@ interface BannerProps {
   onGraveyardClick?: () => void;
   compact?: boolean;
   castPrompt?: CastPromptProps;
+  /** 'rail': stacked for the desktop duel's left banner rail. Default 'row'. */
+  layout?: 'row' | 'rail';
 }
 
-export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick, compact = false, castPrompt }: BannerProps) {
+export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick, compact = false, castPrompt, layout = 'row' }: BannerProps) {
   const isMobile = useIsMobile();
+  const isRail = layout === 'rail';
   const isOpp = side === 'opp';
   const manaTotal = Object.values(player.mana).reduce((a, b) => a + b, 0);
   const showPool = manaTotal > 0 || castPrompt?.mode === 'mana';
@@ -52,13 +55,15 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
       data-testid={isOpp ? 'banner-opp' : 'banner-you'}
       style={{
         flexShrink: 0,
-        padding: (isMobile || compact) ? '4px 8px' : '8px 14px',
+        padding: (isMobile || compact) ? '4px 8px' : (isRail ? 8 : '8px 14px'),
         background: bg,
         borderTop: `1px solid ${borderColor}`,
         borderBottom: `1px solid ${borderColor}`,
         display: 'flex',
         alignItems: 'center',
-        gap: (isMobile || compact) ? 8 : 16,
+        gap: (isMobile || compact) ? 8 : (isRail ? 8 : 16),
+        // Rail: stack vertically and wrap, so the banner fits a narrow column.
+        ...(isRail ? { flexWrap: 'wrap' as const, alignContent: 'flex-start' } : {}),
       }}
     >
       {onLifeClick ? (
@@ -73,6 +78,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
             cursor: 'pointer',
             padding: 0,
             animation: 'mdTargetPulse 1.2s ease-in-out infinite',
+            ...(isRail ? { flexBasis: '100%' } : {}),
           }}
         >
           <LifeTotal
@@ -81,6 +87,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
             label={isOpp ? 'Opponent' : 'You'}
             side={side}
             anim={player.lifeAnim}
+            fill={isRail}
           />
         </button>
       ) : (
@@ -91,6 +98,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
           side={side}
           anim={player.lifeAnim}
           onClick={onLifeClick}
+          fill={isRail}
         />
       )}
       <ZoneCount label="Library" count={player.lib} glyph="📚" />
@@ -116,6 +124,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
       {castPrompt && (
         <div data-testid="cast-prompt" style={{
           display: 'flex', alignItems: 'center', gap: 6,
+          ...(isRail ? { flexWrap: 'wrap' as const, flexBasis: '100%' } : {}),
           padding: '4px 8px',
           background: 'rgba(20,10,40,.6)',
           border: '1px solid rgba(100,80,180,.4)',
@@ -168,7 +177,7 @@ export function Banner({ side, player, flavorText, onLifeClick, onGraveyardClick
         </div>
       )}
 
-      <div style={{ flex: 1 }} />
+      {!isRail && <div style={{ flex: 1 }} />}
 
       {flavorText && (
         <span style={{ fontSize: 10, color: 'var(--ink-faint)', fontStyle: 'italic' }}>

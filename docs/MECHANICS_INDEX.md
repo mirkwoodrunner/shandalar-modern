@@ -1660,6 +1660,37 @@ src/ui/duel/TransmutePayModal.tsx: mana payment UI
 
 ## Bug Fix Log
 
+### Fix: desktop duel board clipped the player's creatures below ~1000px viewport height (DUEL-BOARD-HEIGHT-1)
+
+- **Real Shandalar bug, reachable in every campaign duel on a common laptop screen.** At
+  1280x800 the desktop duel's center column gave the whole battlefield 272px. The player's
+  half got 38px of it, and a 96x134 creature card was clipped to its row label. A click at the
+  card's centre hit `banner-you`. The player could not see their own creatures at any viewport
+  height below roughly 1000px. Found through Learn Mode scenario mode (Unit 1.4 attacker
+  clicks), where it showed as a 62px player half.
+- Cause 1, `src/ui/Battlefield/Half.tsx`: the opponent's half was `flexShrink: 0` with visible
+  overflow, so it never went below its content height. The player's half was `flex: 1` with a
+  zero basis, so it got only the leftover. All of the squeeze came out of the player's half.
+- Cause 2, `src/DuelScreen.tsx`: both 88px life banners were stacked in the center column.
+  Even a fair split could not fit a creature row per side at 800px. The halves plus the ribbon
+  need about 455px with full-size cards.
+- Fix (desktop only; the mobile-width `DuelScreen` path and `DuelScreenMobile` are unchanged):
+  - Both banners moved to a left rail beside the board (`data-testid="banner-rail"`, opponent at
+    the top, player at the bottom). `Banner` gained `layout="rail"`, and `LifeTotal` gained `fill`.
+    The battlefield gets 176px back at every height.
+  - Both halves start from their content height and shrink in proportion to it. Only the
+    player's half grows into spare height, as before.
+  - The desktop scenario-mode lesson panel (`src/ui/duel/ScenarioOverlay.module.css`) docks in
+    the rail's empty middle so it does not cover the board that moved right.
+- After, at 1280x800: player half 215.9px (campaign), 238.3px (scenario). Card fully visible,
+  centre click lands. Below about 790px (campaign) the player's creature row scrolls and stays
+  clickable at the card's centre. At 1280x720 the card is 73% visible.
+- Mobile (390x844) was never affected. The compact duel screen's battlefield is a scroll area
+  and the card was already fully visible there.
+- Tests: `tests/e2e/duel-board-height.spec.ts` (sandbox duel) and Learn-S17 in
+  `tests/e2e/learn-scenario.spec.ts` (scenario), both at 1280x800 and 390x844. Learn-S14/S15
+  are no longer `test.fixme`. Full write-up: `docs/LEARN_MODE.md` section 8.
+
 ### Fix: MCTS rollout spins forever on any ADVANCE_PHASE-blocking pending state (MCTS-ROLLOUT-1)
 
 - **Real engine bug, reachable in play.** `rollout()` in `src/engine/MCTS.js` looped

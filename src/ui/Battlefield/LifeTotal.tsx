@@ -10,9 +10,11 @@ interface LifeTotalProps {
   side: LifeSide;
   anim?: LifeAnim;
   onClick?: () => void;
+  /** Fill the parent's width; the life bar absorbs the slack. Banner rail layout. */
+  fill?: boolean;
 }
 
-export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalProps) {
+export function LifeTotal({ life, max, label, side, anim, onClick, fill = false }: LifeTotalProps) {
   const isMobile = useIsMobile();
   const isOpp = side === 'opp';
   const accent = isOpp ? 'var(--opp)' : 'var(--you)';
@@ -47,6 +49,7 @@ export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalPr
         borderRadius: 4,
         boxShadow: 'inset 0 1px 0 rgba(180,140,70,.15), 0 2px 6px rgba(0,0,0,.6)',
         position: 'relative',
+        ...(fill ? { width: '100%', boxSizing: 'border-box' as const } : {}),
       }}
     >
       <div style={{
@@ -83,7 +86,7 @@ export function LifeTotal({ life, max, label, side, anim, onClick }: LifeTotalPr
         }}>/{max}</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: isMobile ? 70 : 100 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...(fill ? { flex: 1, minWidth: 32 } : { minWidth: isMobile ? 70 : 100 }) }}>
         <div style={{
           height: isMobile ? 6 : 10, background: 'var(--bg-deep)', borderRadius: 2,
           border: '1px solid rgba(120,90,40,.4)',

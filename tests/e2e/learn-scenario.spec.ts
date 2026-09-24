@@ -208,17 +208,15 @@ test.describe('@learn-scenario-5 lethal attacks are graded by best defense', () 
   // asks the question resolveAttack asks: does the opponent die against every
   // legal block?
 
+  // Clicks the card's geometric centre (Playwright's default). This used to
+  // click at a fixed { x: 40, y: 110 }, which is below the bottom edge of the
+  // 90px-tall mobile creature card, so it could never land at 390px whatever
+  // the layout did. The centre is the stricter test: it is where a learner
+  // clicks, and it is the point Learn-S17 asserts is unobstructed.
   const declareAttacker = (page: import('@playwright/test').Page, iid: string) =>
-    page.getByTestId(`bf-card-${iid}`).click({ position: { x: 40, y: 110 } });
+    page.getByTestId(`bf-card-${iid}`).click();
 
-  // S14 and S15 are fixme, not failures, and not deleted: the GRADING they
-  // assert is built and unit-covered (puzzleRunner.test.ts), but a learner
-  // cannot reach it on a combat board because the attacker click never lands.
-  // Probed at both viewports on this exercise: document.elementFromPoint at a
-  // battlefield card's centre returns `banner-you`, not the card, so every
-  // click is intercepted. Layout defect in scenario mode, not a grading one,
-  // and its own prompt. See docs/LEARN_MODE.md section 8.
-  test.fixme('Learn-S14: the winning attack is graded success', async ({ page }) => {
+  test('Learn-S14: the winning attack is graded success', async ({ page }) => {
     await page.goto(LETHAL_EXERCISE);
     await expect(page.getByTestId('scenario-overlay')).toBeVisible();
     await expect(page.getByTestId('scenario-feedback')).toHaveCount(0);
@@ -232,7 +230,7 @@ test.describe('@learn-scenario-5 lethal attacks are graded by best defense', () 
     await expect(page.getByTestId('scenario-feedback')).toHaveAttribute('data-outcome', 'success');
   });
 
-  test.fixme('Learn-S15: an attack that loses to one block is graded fail, not success', async ({ page }) => {
+  test('Learn-S15: an attack that loses to one block is graded fail, not success', async ({ page }) => {
     await page.goto(LETHAL_EXERCISE);
     await expect(page.getByTestId('scenario-overlay')).toBeVisible();
 
@@ -257,5 +255,43 @@ test.describe('@learn-scenario-5 lethal attacks are graded by best defense', () 
 
     await expect(page.getByTestId('scenario-feedback')).toHaveAttribute('data-outcome', 'fail');
     await expect(page.getByTestId('scenario-feedback')).toContainText('No attackers declared');
+  });
+
+  // Regression lock for the duel board height squeeze (docs/LEARN_MODE.md
+  // section 8). At 1280x800 the player's battlefield half used to be 62px tall,
+  // so a 134px creature was clipped and a click at its centre hit banner-you.
+  // Pinned to the sizes the bug was measured at: 1280x800 desktop, 390x844
+  // mobile (the mobile-chrome project's own viewport).
+  test('Learn-S17: a player creature is fully visible and clickable at its centre', async ({ page }, testInfo) => {
+    if (testInfo.project.name !== 'mobile-chrome') {
+      await page.setViewportSize({ width: 1280, height: 800 });
+    }
+    await page.goto(LETHAL_EXERCISE);
+    await expect(page.getByTestId('scenario-overlay')).toBeVisible();
+
+    const card = page.getByTestId('bf-card-p-bf-0');
+    await expect(card).toBeVisible();
+    const probe = await card.evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      // The visible part of the card: its box intersected with every
+      // ancestor that clips (the half, its scroll area, the battlefield).
+      let top = b.top;
+      let bottom = b.bottom;
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        if (getComputedStyle(a).overflowY !== 'visible') {
+          const r = a.getBoundingClientRect();
+          top = Math.max(top, r.top);
+          bottom = Math.min(bottom, r.bottom);
+        }
+      }
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      return {
+        height: b.height,
+        visibleHeight: bottom - top,
+        centreHitsCard: !!hit && el.contains(hit),
+      };
+    });
+    expect(probe.visibleHeight).toBeGreaterThanOrEqual(probe.height - 0.5);
+    expect(probe.centreHitsCard).toBe(true);
   });
 });
