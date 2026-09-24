@@ -431,20 +431,55 @@ to `checkGoal`. A non-lethal attack now reports the defender's best block as its
 **Unit 1.4 still cannot move to scenario mode, for a UI reason rather than a grading one.**
 The grading above is built and unit-covered; a learner cannot reach it.
 
-On `?scenario=1.4-02`, at **both** viewports, `document.elementFromPoint` at a battlefield
-card's centre returns `banner-you`, not the card. Every attempt to click a creature to declare
-it as an attacker is intercepted, so no attackers are ever declared. Measured on desktop,
-`banner-you` also sits at `left: 296, right: 1576` against a 1280px viewport -- offset and
-overflowing, which the campaign duel screen does not do (`left: 0, right: 1070` in the
-sandbox). Suppressing the desktop right sidebar looks like the trigger, but the mobile
-viewport fails the same way, so a shared cause is more likely than two layout bugs.
+**Update (2026-09-24): the original diagnosis was half right.** There were two stacked bugs,
+not one. The Learn-shell part is fixed; a second, deeper duel-UI bug remains and is the actual
+blocker.
 
-`tests/e2e/learn-scenario.spec.ts` Learn-S14 and Learn-S15 are `test.fixme` for exactly this:
+**Fixed: the Learn shell offset.** `LearnApp.tsx` mounted the scenario branch inside
+`.learn-app`, the same centered 720px column used by the unit list and the bespoke lesson
+player (`max-width: 720px; margin: 0 auto; padding: 24px 16px 96px`). `DuelScreen`'s root is
+`height: 100vh; width: 100vw`, sized to the viewport but positioned whereever that column put
+it -- at a 1280px viewport it opened at `left: 296, top: 24` and ran to `right: 1576, bottom:
+824`, shifted right and overflowing the viewport bottom by 24px. At 390px it was `left: 16,
+top: 24`, similarly offset. Fix: the scenario branch now renders in `.learn-scenario-root`
+(`src/learn/ui/learn.css`), a full-bleed wrapper with no max-width, margin, or padding. Confirmed
+the duel screen root now sits at exactly `(0,0)-(1280,800)` at desktop and `(0,0)-(390,767.6)`
+at mobile, no offset, no overflow. The unit list and bespoke lesson player are unchanged --
+they still use `.learn-app`.
+
+**Not fixed, and the real blocker: `DuelScreen`'s own center-column height budget.** Even with
+the shell offset gone, `document.elementFromPoint` at a desktop battlefield card's centre still
+returns `banner-you`, not the card. Measured on `?scenario=1.4-02` post-fix at 1280x800: the
+center column's six children are the opponent hand row (70px, fixed), the opponent banner
+(88px, fixed), the entire battlefield -- both halves plus the phase ribbon -- (300.7px total,
+`flex: 1 1 0`), the player banner (88px, fixed), the action bar (51px, fixed), and the player
+hand row (158px minimum, fixed). The fixed-height rows alone (70+88+88+51+158 = 455px) leave
+only 300.7px of a 755.7px column for the *entire* battlefield. Of that, the opponent's half
+gets 198.4px and the player's half gets **62.3px** -- for creature cards that render at a fixed
+96x134px (`Half.tsx`'s `cardW`/`cardH`, unconditional, not scaled to available space). The
+result: `bf-card-p-bf-0`'s true layout box is `top: 460.9, bottom: 594.9` (134px tall) but only
+its first ~42px are inside the 62.3px-tall, `overflow: hidden` half that contains it -- the rest
+is clipped from view by that ancestor, and `elementFromPoint` at the card's geometric centre (well
+below the clip line) correctly resolves to whatever is actually painted there, which is the
+player banner sitting below. This is not caused by the Learn wrapper: it reproduces identically
+after the wrapper fix, with the same numbers modulo the 24px/296px offset that fix removed. It
+is inside `DuelScreen.tsx`'s own layout (center column, `src/DuelScreen.tsx`) and/or
+`Half.tsx`'s fixed card sizing (`src/ui/Battlefield/Half.tsx`) -- both protected files.
+
+At the 390px viewport, the same root cause (severe height squeeze on the player's battlefield
+half) manifests differently: the card position no longer overlaps `banner-you`'s rect at its
+exact centre, but the test helper's click point (`position: {x: 40, y: 110}`, used by
+`declareAttacker` in `learn-scenario.spec.ts`) falls outside the clipped/visible card entirely
+(the card is only 90px tall there) and resolves to nothing (no `data-testid` ancestor) --
+still an unusable click target, just a different symptom of the same undersized half.
+
+`tests/e2e/learn-scenario.spec.ts` Learn-S14 and Learn-S15 remain `test.fixme` for exactly this:
 they assert the correct grading, they are expected to pass once the click lands, and they are
 not deleted. Learn-S16 (checking with no attackers declared) passes at both viewports and is
 what proves the grading path is wired to the chrome.
 
-Fixing the click is its own prompt, and it is a duel-UI prompt, not a Learn Mode one.
+Fixing the remaining height-budget bug is its own prompt, and it is a duel-UI prompt (it needs
+to touch `DuelScreen.tsx` and/or `Half.tsx`, both protected files), not a Learn Mode one.
 
 ## 9. The Learn card pool (L4a)
 
