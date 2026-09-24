@@ -79,7 +79,7 @@ export function LearnApp() {
 
   if (scenarioExercise && scenarioOpen) {
     return (
-      <div className="learn-app">
+      <div className="learn-scenario-root">
         <ScenarioLesson exercise={scenarioExercise} onExit={exitScenario} />
       </div>
     );

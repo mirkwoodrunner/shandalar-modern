@@ -30,6 +30,15 @@ body {
   min-height: 100vh;
 }
 
+/* Scenario mode mounts a real duel screen (100vh/100vw, its own hit-testing
+   coordinate space). It cannot sit inside the 720px centered lesson column
+   above without its board being offset and overflowing the viewport, which
+   breaks click hit-testing on the battlefield. Full-bleed, no lesson chrome
+   padding -- ScenarioOverlay supplies its own. See docs/LEARN_MODE.md section 8. */
+.learn-scenario-root {
+  min-height: 100vh;
+}
+
 .learn-unit-list {
   display: flex;
   flex-direction: column;

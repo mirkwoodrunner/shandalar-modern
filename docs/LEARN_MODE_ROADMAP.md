@@ -444,6 +444,11 @@ clicks on a scenario combat board are intercepted by `banner-you` at both viewpo
 attacker can be declared. Full diagnosis in `docs/LEARN_MODE.md` section 8. That is a duel-UI
 prompt, and it is the remaining blocker on retiring the bespoke lesson player for Unit 1.4.
 
+Update (2026-09-24): one of the two stacked causes is fixed (the Learn shell's 720px column was
+offsetting and overflowing the mounted duel screen -- see `docs/LEARN_MODE.md` section 8). The
+click still does not land; the remaining cause is a height-budget squeeze inside `DuelScreen.tsx`'s
+own layout, unrelated to Learn's shell, and it is still the blocker described above.
+
 ### L4a. Learn card pool (done, 2026-09-22)
 
 Shipped in two slices. The engine seam is `docs/ENGINE_CONTRACT_SPEC.md` section 18; the pool
