@@ -37,6 +37,7 @@ export default defineConfig({
         'tests/e2e/damage-shields.spec.ts',
         'tests/e2e/deferral-sweep-1.spec.ts',
         'tests/e2e/deferral-sweep-2-typechange.spec.ts',
+        'tests/e2e/duel-board-height.spec.ts',
         'tests/e2e/duel-controller.spec.ts',
         'tests/e2e/dungeon-tileset.spec.ts',
         'tests/e2e/enemy-deck-audit-missing-cards.spec.ts',

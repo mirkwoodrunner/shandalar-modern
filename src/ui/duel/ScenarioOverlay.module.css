@@ -29,16 +29,21 @@
   padding: 10px 12px;
 }
 
-/* ── Desktop: docked top-left, clear of the right sidebar ─────────────────── */
+/* ── Desktop: docked in the banner rail, between the two banners ──────────── */
+/* DuelScreen's desktop layout puts both life banners in a left rail and leaves
+   its middle empty. The panel sits there, vertically centred, and is no wider
+   than the rail, so it covers neither banner nor any battlefield card. The
+   width below must match the rail's `width` in src/DuelScreen.tsx. */
 
 .desktop {
-  top: 76px;
-  left: 14px;
-  max-width: min(320px, 30vw);
+  top: 50%;
+  transform: translateY(-50%);
+  left: 8px;
+  width: calc(clamp(230px, 19vw, 270px) - 16px);
 }
 
 .desktop .panel {
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 380px);
   overflow-y: auto;
   scrollbar-width: thin;
 }

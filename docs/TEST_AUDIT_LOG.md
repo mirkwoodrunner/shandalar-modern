@@ -14,7 +14,46 @@ Cross-referenced from `CLAUDE.md` -- Targeted and audit scripts.
 
 ---
 
-## 2026-09-23 -- `npm run test:audit -- @learn` (Learn Mode L4b-2, card art wiring)
+## 2026-09-24 -- `npm run test:audit -- @learn @engine @mobile` (duel board height fix)
+
+**Originating change:** branch `claude/new-session-ba0ulx`, commit `847f2ab`.
+Desktop duel banners move to a left rail (`src/DuelScreen.tsx`, `Banner.tsx`,
+`LifeTotal.tsx`), both battlefield halves shrink in proportion (`Half.tsx`),
+the desktop scenario lesson panel docks in the rail
+(`ScenarioOverlay.module.css`). See `docs/MECHANICS_INDEX.md`,
+DUEL-BOARD-HEIGHT-1.
+
+Its own targeted runs: `@learn` 184 Vitest / 73 Playwright, all passing.
+`@engine` Vitest 1371 passing. The `@engine`/`@mobile` Playwright specs this
+change could plausibly move (15 files: targeting, combat, parity, stack,
+banner-referencing specs) had 81 failures, and all 81 also fail on clean base
+`f806d05` in a same-session diff (base had one extra, a flake in
+`sandbox-targeting-modals.spec.ts` TD-004-B).
+
+`test:audit` drew **`@overworld`**.
+
+**Result:** Vitest half `PASSED` (17 tests). Playwright half `FAILED`:
+19 failed, 123 passed, in 6 spec files: `henchman-visibility.spec.ts` (test
+5, both describes), `hooded-figure-sprites.spec.ts` (tint correctness),
+`map.spec.js` (MAP_W/MAP_H, chromium only), `overworld-map-centering.spec.ts`
+(both tests), `preduel-sandbox.spec.ts` (PD-001, PD-001M), `ruins.spec.js`
+(both tests). Each on both projects except `map.spec.js`.
+
+**Diagnosis: pre-existing baseline, not a side effect of this change.**
+
+- Re-diffed directly. The same 6 spec files were run with `src/` checked out
+  at clean base `f806d05`. The failure set was identical: 19 = 19, none
+  only-after, none only-base.
+- All 6 files are already on the logged `@overworld` baseline (see the entry
+  listing `henchman-visibility`, `hooded-figure-sprites`, `map.spec.js`,
+  `overworld-map-centering`, `overworld-sprites`, `preduel-sandbox`,
+  `ruins`).
+- No code-path overlap. None of these specs mounts the duel screen. The
+  change touches only duel UI files and one scenario-mode CSS file.
+
+**Disposition:** Reported to Chris per protocol. The full suite was not run.
+
+ -- `npm run test:audit -- @learn` (Learn Mode L4b-2, card art wiring)
 
 **Originating change:** branch `claude/new-session-v2sf9y`, commit `c927528`.
 Wires `useCardArt`/`scryfallArt` into `src/learn/ui/LearnCard.tsx` (art strip +
