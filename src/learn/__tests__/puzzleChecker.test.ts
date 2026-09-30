@@ -8,7 +8,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { UNITS } from '../data/units';
-import { checkAll, checkExercise, enumerateLines, countRejectableMoves, THEME_CHECKS, MULTI_THEME_CHECKS } from '../engine/puzzleChecker';
+import { checkAll, checkExercise, enumerateLines, countRejectableMoves, THEME_CHECKS, MULTI_THEME_CHECKS, enumerateBlocks, divisionFindings, forcedFates } from '../engine/puzzleChecker';
+import { MAX_BLOCK_OUTCOMES } from '../engine/puzzleRunner';
 import type { EngineExercise, Exercise } from '../engine/types';
 
 const ALL: Exercise[] = UNITS.flatMap(u => u.exercises);
@@ -118,5 +119,86 @@ describe('@learn-checker-2 the checker catches broken exercises', () => {
     const ex = ALL.find(e => e.id === '1.1-04') as any;
     const broken = { ...ex, options: [...ex.answer], answer: [...ex.answer] };
     expect(checksFired(broken)).toContain('theme');
+  });
+});
+
+// --- L5 slice 1: blocking ------------------------------------------------------
+
+const blockEx = (over: Partial<EngineExercise>): EngineExercise => ({ ...byId('2.1-03'), ...over } as EngineExercise);
+
+describe('@learn-checker-block blocking enumeration and the division gate', () => {
+  it('enumerates every block assignment: no block or one legal attacker per creature', () => {
+    // 2.1-01: Storm Crow and Giant Spider can block the Drake, Grizzly Bears cannot.
+    expect(enumerateBlocks(byId('2.1-01'))).toHaveLength(4);
+    // 2.1-03: two blockers, one attacker.
+    const lines = enumerateBlocks(byId('2.1-03'));
+    expect(lines).toHaveLength(4);
+    expect(lines.filter(l => l.wins)).toHaveLength(1);
+  });
+
+  it('caps the product with a named error', () => {
+    // Nine blockers that can each block four attackers: 5^9 lines.
+    const bf = Array(9).fill('grizzly_bears');
+    const ex = blockEx({
+      setup: { phase: 'COMBAT_BLOCKERS', pool: 'learn', p: { bf }, o: { bf: Array(4).fill({ id: 'hill_giant', attacking: true }) } },
+    });
+    expect(5 ** 9).toBeGreaterThan(MAX_BLOCK_OUTCOMES);
+    expect(() => enumerateBlocks(ex)).toThrow(/LEARN_CHECK_TOO_MANY_BLOCK_LINES/);
+  });
+
+  it('compares block solutions as order-insensitive sets of pairs', () => {
+    const ex = byId('2.1-03');
+    const flipped = { ...ex, solutions: [[{ type: 'BLOCK', blocks: [...(ex.solutions[0][0] as any).blocks].reverse() }]] } as EngineExercise;
+    expect(checksFired(flipped)).toEqual([]);
+    expect(checksFired({ ...ex, solutions: [] } as EngineExercise)).toContain('complete');
+  });
+
+  it('reports forced and open fates from the engine\'s power and toughness', () => {
+    const line = enumerateBlocks(byId('2.1-03')).find(l => l.wins)!;
+    const f = forcedFates(line.declared, 'o-bf-0');
+    // Hill Giant (3) into Bears (2) + Crow (2): exactly one dies, the attacker picks which.
+    expect(f.open.sort()).toEqual(['p-bf-0', 'p-bf-1']);
+    expect(f.dies).toEqual([]);
+    expect(f.survives).toEqual([]);
+  });
+
+  it('passes a goal about the attacker on a double block', () => {
+    const ex = byId('2.1-03');
+    expect(divisionFindings(ex, enumerateBlocks(ex))).toEqual([]);
+  });
+
+  it('errors when the goal names a blocker whose fate the division decides', () => {
+    const ex = blockEx({ goal: { kind: 'ALL_OF', goals: [{ kind: 'CREATURE_DIES', iid: 'o-bf-0' }, { kind: 'CREATURE_SURVIVES', iid: 'p-bf-0' }] } });
+    expect(divisionFindings(ex, enumerateBlocks(ex)).join()).toMatch(/names p-bf-0/);
+    expect(checksFired(ex)).toContain('division-invariant');
+  });
+
+  it('passes a named blocker whose fate is forced', () => {
+    // Steel Wall (0/4) cannot die to a 3-power attacker however it divides.
+    const ex = blockEx({
+      setup: { phase: 'COMBAT_BLOCKERS', pool: 'learn', p: { bf: ['grizzly_bears', 'steel_wall'] }, o: { bf: [{ id: 'hill_giant', attacking: true }] } },
+      goal: { kind: 'CREATURE_SURVIVES', iid: 'p-bf-1' },
+    });
+    expect(divisionFindings(ex, enumerateBlocks(ex))).toEqual([]);
+  });
+
+  it('the blocking theme checks fire on boards that miss the lesson', () => {
+    const theme = (ex: EngineExercise) => errorsOf(ex).filter(f => f.check === 'theme').map(f => f.detail).join();
+    // chump-block at 20 life: not blocking is fine, nothing to chump for.
+    const chump = byId('2.1-02');
+    expect(theme({ ...chump, setup: { ...chump.setup, p: { ...chump.setup.p, life: 20 } }, solutions: [[{ type: 'BLOCK', blocks: [] }], ...chump.solutions] } as EngineExercise))
+      .toMatch(/nothing to chump for/);
+    // double-block with Giant Spider: a 2-power blocker alone cannot kill Hill
+    // Giant, but swap the goal to the player surviving and one blocker is enough.
+    const dbl = byId('2.1-03');
+    expect(theme({ ...dbl, goal: { kind: 'SURVIVE_COMBAT' }, solutions: [] } as EngineExercise)).toMatch(/double block is not needed|never puts two/);
+    // trade-or-take at 20 life: both trading and taking the damage win.
+    const trade = byId('2.1-04');
+    expect(theme({ ...trade, setup: { ...trade.setup, p: { ...trade.setup.p, life: 20 } }, solutions: [[{ type: 'BLOCK', blocks: [] }], ...trade.solutions] } as EngineExercise))
+      .toMatch(/both trading and taking/);
+    // choose-a-blocker where the Crow is gone: only one creature can block.
+    const choose = byId('2.1-01');
+    expect(theme({ ...choose, setup: { ...choose.setup, p: { bf: ['giant_spider', 'grizzly_bears'] } }, solutions: [[{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }] }]] } as EngineExercise))
+      .toMatch(/two different creatures/);
   });
 });

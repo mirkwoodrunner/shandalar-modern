@@ -444,11 +444,12 @@ these numbers:
 | Command | Expected |
 |---|---|
 | `npm run learn:check` | `0 error(s), 1 warning(s).` |
-| `npm run test:targeted -- @learn` | 184 Vitest passing, 73 Playwright passing |
+| `npm run test:targeted -- @learn` | 237 Vitest passing, 93 Playwright passing |
 | `npx playwright test tests/e2e/learn-slice.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-persistence.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
 | `npx playwright test tests/e2e/learn-scenario.spec.ts` | 33 passing, 1 skipped (Learn-S3 is mobile-only) |
 | `npx playwright test tests/e2e/learn-card-art.spec.ts` | 10 passing (5 cases x chromium + mobile-chrome) |
+| `npx playwright test tests/e2e/learn-blocking.spec.ts` | 20 passing (10 cases x chromium + mobile-chrome) |
 
 Moved at L3 (2026-09-18, scenario mode): Vitest 160 -> 177 (`scenarioMachine.test.ts`,
 17 cases) and Playwright 30 -> 55 (`learn-scenario.spec.ts`, 13 cases at both viewports,
@@ -466,6 +467,13 @@ own prompt. `learn-card-art.spec.ts` is also registered in `playwright.config.js
 Moved at the duel board height fix (2026-09-24): Playwright 67 -> 73. Learn-S14/S15 are no longer
 `test.fixme` and pass at both viewports (+4), and Learn-S17, the board-height regression lock,
 is new at both viewports (+2). No Vitest change.
+
+Moved at L5 slice 1 (2026-09-30, player-side blocking): Vitest 184 -> 237 (32 runner cases on
+the `COMBAT_BLOCKERS` build path, `resolveBlocks`, combat goals, `gradeDeclaredBlocks` and the
+division arithmetic; 8 checker cases on block enumeration, the division gate and the blocking
+theme checks; 3 content rules; 10 replays of the four new exercises' solutions and wrong lines)
+and Playwright 73 -> 93 (`learn-blocking.spec.ts`, 10 cases at both viewports, registered in
+`mobile-chrome`'s `testMatch`).
 
 Pass counts only. Do not treat skip counts as baseline -- they vary with how the runner reports
 and have already been reported two different ways for the same command. Update this table in the

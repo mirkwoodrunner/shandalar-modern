@@ -36,9 +36,15 @@ interface ActionBarProps {
   showUndo?: boolean;
   showPassPriority?: boolean;
   showEndTurn?: boolean;
+  /**
+   * Scenario mode (Learn Mode L5 slice 1). Default true. Hides the blocker
+   * step's "Done" button, which advances the phase. Desktop's ActionBar
+   * carries the same prop -- keep them in step.
+   */
+  showDoneBlocking?: boolean;
 }
 
-export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers, endTurnPending = false, showUndo = true, showPassPriority = true, showEndTurn = true }: ActionBarProps) {
+export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, isPlayerTurn = true, isWaitingForAI = false, priorityWindowOpen = false, canUndo, onUndo, phase, targetingFor, pendingTarget, pendingBlocker, blockers, endTurnPending = false, showUndo = true, showPassPriority = true, showEndTurn = true, showDoneBlocking = true }: ActionBarProps) {
   const ppDisabled = isWaitingForAI || (!isPlayerTurn && !priorityWindowOpen);
   const ppLabel = isWaitingForAI ? 'Waiting...' : 'Pass Priority';
 
@@ -196,7 +202,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
             </span>
           )}
         </div>
-        <button
+        {showDoneBlocking && <button
           className={s.actionBtn}
           onClick={onEnd}
           data-testid="done-blocking-button"
@@ -209,7 +215,7 @@ export function ActionBar({ sel, onCast, onActivate, onCancel, onPass, onEnd, is
           }}
         >
           Done {'▸'}
-        </button>
+        </button>}
       </div>
     );
   }

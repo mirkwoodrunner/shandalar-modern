@@ -49,7 +49,7 @@ This section is the binding constraint on Tier 1. It was established by probing
 
 | Capability | Notes |
 |---|---|
-| Phases `MAIN_1`, `COMBAT_ATTACKERS` | `PuzzleSetup.phase`. No other entry phase exists. |
+| Phases `MAIN_1`, `COMBAT_ATTACKERS`, `COMBAT_BLOCKERS` | `PuzzleSetup.phase`. `COMBAT_BLOCKERS` (L5 slice 1) is an opponent-active board with the opponent's `attacking`-flagged creatures already declared. |
 | `TAP_LAND` | Adds `produces[0]` of that land. |
 | `PLAY_LAND` | One per puzzle; the second is rejected with `MSG.LAND_LIMIT`. |
 | `CAST_SPELL` | Any nonland card the player can pay for. Resolves through the stack. |
@@ -61,6 +61,10 @@ This section is the binding constraint on Tier 1. It was established by probing
 | Goal `MANA_IN_POOL` | Colour and amount. |
 | Goal `CARD_ON_BATTLEFIELD` | Matches on `card.id`. Creatures, artifacts, enchantments. |
 | Goal `OPPONENT_DEAD_THIS_TURN` | `checkWinConditions`. Evaluated in either phase. |
+| `DECLARE_BLOCKER` (L5 slice 1) | A `BLOCK` step commits the whole block assignment; an empty list is "don't block". Each pair is validated (untapped, attacker in combat, `canBlockDuel`, one attacker per blocker) and dispatched once. |
+| Combat goals (L5 slice 1) | `SURVIVE_COMBAT`, `LIFE_AT_LEAST`, `CREATURE_DIES { iid }`, `CREATURE_SURVIVES { iid }`, and a one-level `ALL_OF` of those. Read after combat resolves. |
+| Double blocks (L5 slice 1) | Only on boards where the grade cannot depend on how the attacker divides its damage. Enforced by the checker's `division-invariant` gate (`docs/LEARN_MODE.md` section 3a). |
+| Blocking in scenario mode (L5 slice 1) | The duel screen's two-click flow, graded by `gradeDeclaredBlocks`. Reachable by `?scenario=` only. |
 | Flying and defender | Honoured by `canBlockDuel`. The only two keywords Tier 1 may use. |
 | First strike, trample, banding, deathtouch | Resolve correctly in the runner, but banned by project policy. See below. |
 | Summoning sickness, tapped attackers | Rejected with specific, teachable messages. |
@@ -74,10 +78,14 @@ real teaching rather than a quiz.
 | Gap | Consequence | Evidence |
 |---|---|---|
 | **No phase-advance action.** | Turn structure is not gradeable. | `ActionKind` has no advance; `advanceTo` is internal to combat resolution. |
-| **Player is always the attacker.** | Blocking is not gradeable from the player's seat. | `resolveAttack` enumerates the *opponent's* blocks. |
+| **Blocking lessons are not in the lesson player.** | Unit 2.1 is `listed: false` and reachable only by `?scenario=` until lessons route into scenario mode. | The bespoke `EngineExercise.tsx` has no blocking UI. |
+| **The engine does not let anyone divide multi-block damage.** | Double-block content must pass the division gate: goals may not name a blocker whose fate the division decides. | `docs/LEARN_MODE.md` section 6. |
 | **`multiSelect` is cost-shaped.** | It cannot host a question that is not "given these lands, which of these cards can you cast". | Its fields are `lands`, `options`, `answer`. |
 | **No library or graveyard zones in setup.** | No draw, mill, tutor, or mulligan content. | `SideSetup` is `life`, `hand`, `bf`. |
 | **No instants at priority.** | No stack content. | No priority window is exposed to the learner. |
+
+**Moved, 2026-09-30 (L5 slice 1).** "Player is always the attacker" left this table:
+player-side blocking is now supported (rows above).
 
 **Correction, 2026-09-18.** Two rows previously sat in this table claiming that
 player-targeted spells silently no-op and that `TAP_LAND` could not choose a colour. The
@@ -228,6 +236,9 @@ how many defenders can block that attacker. The check then demands one attacker 
 some defenders and not others, and no attacker blockable by none -- the second half is what
 keeps it from being a `lethal-evasion` puzzle wearing a different tag.
 
+**Moved, 2026-09-30 (L5 slice 1).** "Player is always the attacker" left this table:
+player-side blocking is now supported (rows above).
+
 **Correction, 2026-09-18.** This table previously listed `lethal-first-strike` and
 `lethal-trample` as green on the strength of a runner probe showing both resolve correctly.
 That probe was right and the conclusion was wrong. `src/learn/__tests__/units.test.ts`
@@ -288,7 +299,7 @@ triggers, multi-turn), plus the player-targeting fix in section 7.
 
 | Unit | Skills | Substrate | Unblocked by |
 |---|---|---|---|
-| 2.1 Blocking | choose-a-blocker, chump-block, double-block, trade-or-take | engine | L5 player-side blocking |
+| 2.1 Blocking | choose-a-blocker, chump-block, double-block, trade-or-take | engine | L5 player-side blocking (slice 1 done; full detail below) |
 | 2.2 The turn | phase-order, main-phase-timing, untap-and-upkeep, end-step | engine | L5 phase actions |
 | 2.3 Card types | identify-card-type, permanent-vs-spell, when-can-i-cast-this | multiSelect | generalized multiSelect (section 6) |
 | 2.4 Targeting | legal-target, target-your-own, burn-for-lethal | engine | L5 targeting + section 7 fix |
@@ -296,6 +307,34 @@ triggers, multi-turn), plus the player-targeting fix in section 7.
 | 2.6 Triggers | etb-trigger, attack-trigger, upkeep-trigger | engine | L5 triggers |
 | 2.7 Multi-turn lines | plan-two-turns, hold-back-a-blocker, race-or-block | engine | L5 multi-turn puzzles |
 | 2.8 What a digital client does for you | auto-tap, auto-pass, stops-and-holds | multiSelect | generalized multiSelect |
+
+#### Unit 2.1 — Blocking (full pass, L5 slice 1)
+
+The first Tier 2 unit, and the first opponent-attacks content. Every exercise starts at
+`COMBAT_BLOCKERS` with the opponent attacking, allows only `DECLARE_BLOCKER`, and has empty
+hands. Cards come from the Learn pool (`pool: 'learn'`). Unlisted (`listed: false`) until
+lessons can route into scenario mode, since the bespoke lesson player has no blocking UI.
+
+| Skill | What it teaches | Prerequisites | Target exercises | Seeded | Capability tags |
+|---|---|---|---|---|---|
+| choose-a-blocker | Which of your creatures should block this attacker: the one that can block it at all (flying, reach) and wins the fight. | lethal-flying-defender, defender-cant-attack | 6 | 1 (2.1-01) | `COMBAT_BLOCKERS`, `CREATURE_DIES`, flying/reach legality |
+| chump-block | Block with a creature that will die, because not blocking loses the game. | choose-a-blocker | 4 | 1 (2.1-02) | `SURVIVE_COMBAT`, `LIFE_AT_LEAST` |
+| double-block | Put two creatures on one attacker so their damage adds up. | choose-a-blocker | 4 | 1 (2.1-03) | multi-block, division gate |
+| trade-or-take | Decide whether to trade creatures or take the damage, by reading your life total and the board. | chump-block | 5 | 1 (2.1-04) | `SURVIVE_COMBAT`, `LIFE_AT_LEAST`, `ALL_OF` |
+
+Prerequisite edges: choose-a-blocker comes first; chump-block and double-block both
+depend on it; trade-or-take depends on chump-block, since it is the same life-total
+reasoning with a choice added. Unit 2.1 as a whole depends on Unit 1.3 (who can attack),
+because blocking legality is the defender-side mirror of the same keywords.
+
+Content constraints beyond Tier 1's: no card whose combat handling is random
+(`coinFlipOnBlock`, banding), and a double-block goal may name only the attacker, the
+player, life, or a blocker whose fate every legal damage division agrees on. The
+`choose-a-blocker` theme check was relaxed from "every winning line uses exactly one
+blocker" to "one block is in every winning line, and some other single block loses",
+because the first form is unsatisfiable under the division gate (`docs/LEARN_MODE.md`
+section 3a). The content fill from one seeded exercise per skill to the targets above is
+a later prompt.
 
 Unit 2.8 is the placement decision the roadmap left open in section 4.4 and section 8.
 **Decided here: early Tier 2, not late Tier 1.** Reasoning: the skill teaches the *mapping*

@@ -6,11 +6,16 @@
 // versions of the plan's quality checks: solvable, wrong lines fail for the
 // stated reason, answers derived from the engine, no phantom card references,
 // and no cards that touch known combat-damage gaps.
+//
+// Card lookups are pool-aware (L5 slice 1): an exercise with setup.pool 'learn'
+// resolves its ids against CARD_DB_LEARN, everything else against CARD_DB. A
+// card missing from its pool fails loudly rather than defaulting to no keywords.
 
 import { describe, it, expect } from 'vitest';
 import { CARD_DB } from '../../data/cards.js';
+import { CARD_DB_LEARN } from '../../data/cardsLearn.js';
 import { UNITS } from '../data/units';
-import { replay, castableWith } from '../engine/puzzleRunner';
+import { replay, castableWith, randomCombatPath } from '../engine/puzzleRunner';
 import type { EngineExercise, Exercise, MultiSelectExercise } from '../engine/types';
 
 const ALL: Exercise[] = UNITS.flatMap(u => u.exercises);
@@ -23,6 +28,12 @@ const cardIds = (e: Exercise): string[] =>
     ? [...e.lands, ...e.options]
     : [...(e.setup.p.bf ?? []), ...(e.setup.p.hand ?? []), ...(e.setup.o.bf ?? []), ...(e.setup.o.hand ?? [])]
         .map(c => (typeof c === 'string' ? c : c.id));
+
+// The card database this exercise's ids resolve against. multiSelect
+// exercises carry no pool and always use CARD_DB.
+const poolOf = (e: Exercise): any[] =>
+  e.kind === 'engine' && e.setup.pool === 'learn' ? (CARD_DB_LEARN as any[]) : (CARD_DB as any[]);
+const cardOf = (e: Exercise, id: string): any => poolOf(e).find((c: any) => c.id === id);
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Keywords whose combat damage handling has known gaps under current rules
@@ -37,9 +48,9 @@ describe('@learn-units-1 exercise data integrity', () => {
     for (const u of UNITS) for (const e of u.exercises) expect(e.unit).toBe(u.id);
   });
 
-  it('every referenced card id exists in CARD_DB', () => {
+  it('every referenced card id exists in the exercise\'s own pool', () => {
     for (const e of ALL) for (const id of cardIds(e)) {
-      expect(CARD_DB.find((c: any) => c.id === id), `${e.id}: ${id}`).toBeTruthy();
+      expect(cardOf(e, id), `${e.id}: ${id}`).toBeTruthy();
     }
   });
 
@@ -52,13 +63,13 @@ describe('@learn-units-1 exercise data integrity', () => {
     for (const e of ALL) {
       const present = new Set(cardIds(e));
       const presentNames = [...present]
-        .map(id => (CARD_DB as any[]).find(c => c.id === id)?.name)
+        .map(id => cardOf(e, id)?.name)
         .filter((n): n is string => !!n)
         .sort((a, b) => b.length - a.length);
       for (const field of ['prompt', 'hint', 'explanation'] as const) {
         let rest: string = e[field];
         for (const n of presentNames) rest = rest.split(n).join(' ');
-        for (const c of CARD_DB as any[]) {
+        for (const c of poolOf(e)) {
           if (new RegExp(`\\b${escapeRe(c.name)}\\b`).test(rest)) {
             expect(present.has(c.id), `${e.id}.${field} names ${c.name}, which is not in the exercise`).toBe(true);
           }
@@ -69,9 +80,21 @@ describe('@learn-units-1 exercise data integrity', () => {
 
   it('no exercise uses a card with a keyword that has known damage-rule gaps', () => {
     for (const e of ALL) for (const id of cardIds(e)) {
-      const kws: string[] = (CARD_DB.find((c: any) => c.id === id) as any)?.keywords ?? [];
-      const bad = kws.filter(k => BLOCKED_KEYWORDS.includes(k));
+      const card = cardOf(e, id);
+      // An unknown card must fail here, not pass with no keywords.
+      expect(card, `${e.id}: ${id} is not in its pool`).toBeTruthy();
+      const bad = (card.keywords ?? []).filter((k: string) => BLOCKED_KEYWORDS.includes(k));
       expect(bad, `${e.id}: ${id}`).toEqual([]);
+    }
+  });
+
+  // A graded exercise must never depend on a coin flip. randomCombatPath is the
+  // runner's list of cards whose combat handling calls Math.random().
+  it('no exercise uses a card whose combat handling is random', () => {
+    for (const e of ALL) for (const id of cardIds(e)) {
+      const card = cardOf(e, id);
+      expect(card, `${e.id}: ${id} is not in its pool`).toBeTruthy();
+      expect(randomCombatPath(card), `${e.id}: ${id}`).toBeNull();
     }
   });
 
@@ -81,6 +104,24 @@ describe('@learn-units-1 exercise data integrity', () => {
       expect(e.setup.p.hand ?? []).toEqual([]);
       expect(e.setup.o.hand ?? []).toEqual([]);
     }
+  });
+});
+
+describe('@learn-units-3 Unit 2.1 blocking content', () => {
+  it('Unit 2.1 exercises are blocking only, with nothing in either hand', () => {
+    const blocking = ENGINE.filter(x => x.unit === '2.1');
+    expect(blocking.length).toBeGreaterThan(0);
+    for (const e of blocking) {
+      expect(e.allowed).toEqual(['DECLARE_BLOCKER']);
+      expect(e.setup.phase).toBe('COMBAT_BLOCKERS');
+      expect(e.setup.p.hand ?? []).toEqual([]);
+      expect(e.setup.o.hand ?? []).toEqual([]);
+    }
+  });
+
+  it('Unit 2.1 is unlisted until lessons can route into scenario mode', () => {
+    expect(UNITS.find(u => u.id === '2.1')?.listed).toBe(false);
+    for (const u of UNITS.filter(x => x.id.startsWith('1.'))) expect(u.listed).not.toBe(false);
   });
 });
 
