@@ -15,6 +15,11 @@ import type { EngineExercise, Unit } from './engine/types';
 
 type View = { unit: Unit; startIndex: number } | null;
 
+// The unit list skips units marked listed: false. ?scenario= still finds their
+// exercises (findScenarioLink iterates every unit), so they stay reachable by
+// deep link on the real duel screen.
+const LISTED_UNITS = UNITS.filter(u => u.listed !== false);
+
 /**
  * Scenario mode entry (Learn Mode L3): ?scenario=<exercise id> renders that
  * engine exercise on the real duel screen instead of the bespoke Learn board.
@@ -39,7 +44,9 @@ function findDeepLink(): View {
   const params = new URLSearchParams(window.location.search);
   const exId = params.get('exercise');
   if (!exId) return null;
-  for (const unit of UNITS) {
+  // An unlisted unit (listed: false) is not handed to the bespoke lesson
+  // player: it holds exercises that player cannot render (L5 slice 1 blocking).
+  for (const unit of LISTED_UNITS) {
     const idx = unit.exercises.findIndex(e => e.id === exId);
     if (idx !== -1) return { unit, startIndex: idx };
   }
@@ -95,7 +102,7 @@ export function LearnApp() {
           <p data-testid="learn-tagline" className="learn-tagline">{TAGLINE}</p>
           <p data-testid="learn-early-access" className="learn-early-access">{EARLY_ACCESS}</p>
           <p data-testid="learn-no-money" className="learn-no-money">{NO_MONEY}</p>
-          {UNITS.map(unit => (
+          {LISTED_UNITS.map(unit => (
             <button
               key={unit.id}
               data-testid={`learn-unit-${unit.id}`}

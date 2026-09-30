@@ -360,6 +360,31 @@ what it does. A screen that skipped the gate and dispatched a restricted action
 would get the same result it always would have. Restriction is pedagogy;
 legality is DuelCore's.
 
+### Amendment: opponent-active mid-combat states (Learn Mode L5 slice 1)
+
+A supplied initial state may now be **opponent-active and mid-combat**:
+`active: 'o'`, `phase: 'COMBAT_BLOCKERS'`, the opponent's attackers in
+`state.attackers`, and no blocks declared. Before this, every supplied state was
+player-active in `MAIN_1` or `COMBAT_ATTACKERS`.
+
+- The producer is still `buildPuzzleState` only. It reaches that state through
+  DuelCore itself -- `DECLARE_ATTACKER` for each attacker, then
+  `ADVANCE_PHASE` to the blocker step -- so every field on it is one
+  `duelReducer` wrote. Nothing is hand-assembled mid-combat.
+- With the AI suppressed (no `AI_TURN` in `allowedActions`), nothing drives the
+  opponent, so the board holds at `COMBAT_BLOCKERS` until the learner acts.
+  The existing AI-loop guard already skipped `COMBAT_BLOCKERS`; the stall
+  watchdog is already off under `scenarioAiSuppressed`.
+- The screens' "Done Blocking" button is now offered only when
+  `isActionAllowed('ADVANCE_PHASE')`, via a `showDoneBlocking` prop on both
+  action bars (default true). Before this it called `advancePhase` directly,
+  outside the action gate, and would have advanced a blocking lesson past the
+  blocker step. Campaign and sandbox duels render it exactly as before.
+- Unchanged: DuelCore's authority, the one-way dependency (no duel UI file
+  imports from `src/learn/`), and restriction-is-not-legality. The learner's
+  blocks still go through the gated `declareBlocker` and DuelCore's own
+  `DECLARE_BLOCKER`.
+
 ---
 
 # 7. DuelCore Execution Contract

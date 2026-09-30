@@ -612,6 +612,31 @@ targeting, then triggers, then multi-turn puzzles, then library and graveyard zo
 Exit criteria per slice. New action kinds in the runner, matching theme checks,
 `npm run learn:check` still at 0 errors.
 
+#### Slice 1, player-side blocking (done, 2026-09-30)
+
+- **Landed.** `COMBAT_BLOCKERS` entry phase (opponent active, attackers declared through
+  DuelCore), `DECLARE_BLOCKER` action kind and `BLOCK` step, `resolveBlocks` and
+  `gradeDeclaredBlocks`, combat goals (`SURVIVE_COMBAT`, `LIFE_AT_LEAST`, `CREATURE_DIES`,
+  `CREATURE_SURVIVES`, one-level `ALL_OF`), `enumerateBlocks`, the `division-invariant`
+  checker gate, a fail-fast on any `Math.random()` combat path, pool-aware card lookups in
+  `units.test.ts`, and theme checks for all four Unit 2.1 skills. Unit 2.1 is seeded with
+  one exercise per skill. No protected file changed. Details in `docs/LEARN_MODE.md`
+  sections 3, 3a, 4, 5 and 8.
+- **Checker limits.** Blocks are one committed step and never enter the main-phase search,
+  so `MAX_SEARCH_DEPTH`, `MAX_SEARCH_NODES` and `MAX_ENUM_ATTACKERS` are unchanged; Tier 1's
+  `learn:check` output is identical before and after. The block product reuses
+  `MAX_BLOCK_OUTCOMES` (5000) and errors with `LEARN_CHECK_TOO_MANY_BLOCK_LINES`.
+- **`listed: false`.** Unit 2.1 is off the unit list and out of `?exercise=`, reachable only
+  by `?scenario=`. The bespoke lesson player has no blocking UI, and the unit list backs
+  L2c's "Tier 1 only, four units" framing, which Learn-10 asserts.
+- **Damage division is gated, not fixed.** Double blocks ship only where every legal
+  division gives the same grade. The engine fix is its own engine prompt.
+- **Out of scope, next.** Routing lessons into scenario mode: letting `LessonPlayer`
+  render scenario-mode exercises, with L1 attempt records written from event handlers per
+  correction C1. That also retires the bespoke player for Unit 1.4. Unit 2.1 gets `listed`
+  when it lands. After that, the Unit 2.1 content fill to the targets in
+  `docs/LEARN_CURRICULUM.md` section 4.
+
 ### L6. Authoring pipeline
 
 The scaling unlock. Exercises are hand-written TypeScript literals and every skill tag needs a

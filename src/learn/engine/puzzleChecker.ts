@@ -7,18 +7,25 @@
 //   discriminating  does at least one legal line fail
 //   themed          does the tagged skill actually decide the outcome
 //   phantom-free    do prompt/hint/explanation only name cards in the puzzle
+//   division-invariant  (blocking) can the grade depend on how an attacker
+//                   divides its damage among two or more blockers
 
 import {
   buildPuzzleState,
   tryAction,
   canAttackReason,
   resolveAttack,
+  resolveBlocks,
+  declareBlocks,
+  blockChoices,
+  divisionInfo,
+  achievableDeathSets,
   checkGoal,
   cardInfo,
   castableWith,
 } from './puzzleRunner';
-import { MSG } from './puzzleRunner';
-import type { EngineExercise, Exercise, MultiSelectExercise, Step } from './types';
+import { MSG, MAX_BLOCK_OUTCOMES } from './puzzleRunner';
+import type { BlockPair, EngineExercise, Exercise, Goal, MultiSelectExercise, Step } from './types';
 
 export const MAX_SEARCH_NODES = 20000;
 export const MAX_SEARCH_DEPTH = 6;
@@ -26,7 +33,10 @@ export const MAX_ENUM_ATTACKERS = 8;
 
 export type Finding = { exerciseId: string; check: string; severity: 'error' | 'warn'; detail: string };
 
-export type Line = { steps: Step[]; wins: boolean };
+// Blocking lines also carry the board with the blocks declared (before damage)
+// and after combat, so the division gate and the theme checks read the same
+// states the grade came from.
+export type Line = { steps: Step[]; wins: boolean; declared?: any; final?: any };
 
 // A main-phase exercise where every legal line wins is a guided first step,
 // not a broken puzzle. Data marks those with guided: true.
@@ -119,8 +129,37 @@ export function enumerateMainLines(ex: EngineExercise): Line[] {
   return out;
 }
 
+// Every block assignment, graded. Opponent-attacks exercises only. Each
+// untapped player creature chooses "no block" or one attacker it can legally
+// block; the product is capped at MAX_BLOCK_OUTCOMES, the same cap the
+// defender-side analysis in gradeBestDefense uses, since it bounds the same
+// kind of product.
+export function enumerateBlocks(ex: EngineExercise): Line[] {
+  const base = buildPuzzleState(ex.setup);
+  const choices = blockChoices(base).map(c => [null, ...c.attackers.map(a => ({ blockerIid: c.blockerIid, attackerIid: a }))]);
+  const total = choices.reduce((n, c) => n * c.length, 1);
+  if (total > MAX_BLOCK_OUTCOMES) throw new Error(`LEARN_CHECK_TOO_MANY_BLOCK_LINES: ${ex.id} has ${total}`);
+  let combos: BlockPair[][] = [[]];
+  for (const c of choices) combos = combos.flatMap(prev => c.map(x => (x ? [...prev, x] : prev)));
+  return combos.map(blocks => {
+    const declared = declareBlocks(base, blocks);
+    const r = resolveBlocks(base, blocks);
+    if (!declared.ok || !r.ok) throw new Error(`LEARN_CHECK_BLOCK_REFUSED: ${ex.id} ${JSON.stringify(blocks)}`);
+    return {
+      steps: [{ type: 'BLOCK', blocks }] as Step[],
+      wins: checkGoal(r.finalState, ex.goal),
+      declared: declared.state,
+      final: r.finalState,
+    };
+  });
+}
+
 export function enumerateLines(ex: EngineExercise): Line[] {
-  return ex.setup.phase === 'COMBAT_ATTACKERS' ? enumerateAttacks(ex) : enumerateMainLines(ex);
+  switch (ex.setup.phase) {
+    case 'COMBAT_ATTACKERS': return enumerateAttacks(ex);
+    case 'COMBAT_BLOCKERS': return enumerateBlocks(ex);
+    default: return enumerateMainLines(ex);
+  }
 }
 
 // A main-phase exercise discriminates when the player can make a move the UI
@@ -166,6 +205,83 @@ function attackersOf(steps: Step[]): string[] | null {
   const a = steps.find(s => s.type === 'ATTACK');
   return a && a.type === 'ATTACK' ? a.attackers : null;
 }
+
+function blocksOf(steps: Step[]): BlockPair[] {
+  const b = steps.find(s => s.type === 'BLOCK');
+  return b && b.type === 'BLOCK' ? b.blocks : [];
+}
+
+const pairKey = (b: BlockPair) => `${b.blockerIid}>${b.attackerIid}`;
+const blockSetKey = (blocks: BlockPair[]) => blocks.map(pairKey).sort().join(',');
+
+// Attacker iid -> the blocker iids on it, for one line.
+function blockersByAttacker(blocks: BlockPair[]): Map<string, string[]> {
+  const m = new Map<string, string[]>();
+  for (const b of blocks) m.set(b.attackerIid, [...(m.get(b.attackerIid) ?? []), b.blockerIid]);
+  return m;
+}
+
+// --- DIVISION GATE -------------------------------------------------------------
+// CR 510.1c lets the attacking player divide a multi-blocked creature's damage
+// as they like. DuelCore picks one fixed division (lethal-then-remainder), so a
+// grade is only safe when every legal division gives the same answer. The gate
+// works per blocker: a blocker's fate is forced when it is in every achievable
+// death set or in none. A goal naming a blocker whose fate is not forced is an
+// error. Goals about the attacker, the player, or life do not depend on the
+// division, since nothing allowed in this slice tramples.
+
+function goalCreatureIids(goal: Goal): string[] {
+  if (goal.kind === 'ALL_OF') return goal.goals.flatMap(goalCreatureIids);
+  if (goal.kind === 'CREATURE_DIES' || goal.kind === 'CREATURE_SURVIVES') return [goal.iid];
+  return [];
+}
+
+// For one multi-blocked attacker on a declared board: which blockers must die,
+// which must survive, and which the attacker's controller gets to decide.
+export function forcedFates(declared: any, attackerIid: string): { dies: string[]; survives: string[]; open: string[]; modifiers: string[]; sets: string[][] } {
+  const info = divisionInfo(declared, attackerIid);
+  const sets = achievableDeathSets(info.power, info.blockers);
+  const dies: string[] = [];
+  const survives: string[] = [];
+  const open: string[] = [];
+  for (const b of info.blockers) {
+    const n = sets.filter(set => set.includes(b.iid)).length;
+    if (n === sets.length) dies.push(b.iid);
+    else if (n === 0) survives.push(b.iid);
+    else open.push(b.iid);
+  }
+  return { dies, survives, open, modifiers: info.modifiers, sets };
+}
+
+export function divisionFindings(ex: EngineExercise, lines: Line[]): string[] {
+  const named = new Set(goalCreatureIids(ex.goal));
+  const out = new Set<string>();
+  for (const line of lines) {
+    if (!line.declared) continue;
+    for (const [att, bls] of blockersByAttacker(blocksOf(line.steps))) {
+      if (bls.length < 2) continue;
+      const f = forcedFates(line.declared, att);
+      if (f.modifiers.length) {
+        out.add(`${att} blocked by ${bls.join(' + ')}: ${f.modifiers.join('; ')}. The division arithmetic only models plain damage.`);
+        continue;
+      }
+      for (const iid of f.open) {
+        if (named.has(iid)) out.add(`the goal names ${iid}, but when ${bls.join(' + ')} block ${att} its fate depends on how the attacker divides its damage`);
+      }
+    }
+  }
+  return [...out];
+}
+
+// Whether a blocker in this line dies. A single blocker's fate is the engine's;
+// a multi-blocked one counts as dying only when every legal division kills it.
+function blockerDies(line: Line, pair: BlockPair): boolean {
+  const on = blockersByAttacker(blocksOf(line.steps)).get(pair.attackerIid) ?? [];
+  if (on.length < 2) return !line.final.p.bf.some((c: any) => c.iid === pair.blockerIid);
+  return forcedFates(line.declared, pair.attackerIid).dies.includes(pair.blockerIid);
+}
+
+const attackerDies = (line: Line, iid: string) => !line.final.o.bf.some((c: any) => c.iid === iid);
 
 // --- THEME CHECKS ------------------------------------------------------------
 // One entry per skill tag. A skill with no entry is an error, so new content
@@ -317,6 +433,67 @@ export const THEME_CHECKS: Record<string, ThemeCheck> = {
   },
 };
 
+// --- BLOCKING THEMES (L5 slice 1) --------------------------------------------
+
+// Registered into THEME_CHECKS below. Each takes every line, not just winners,
+// because blocking themes are about which families of blocks win and lose.
+type BlockTheme = (ex: EngineExercise, winning: Line[], all: Line[]) => string | null;
+
+const BLOCK_THEMES: Record<string, BlockTheme> = {
+  // Adjusted from the drafted intent ("every winning line uses exactly one
+  // blocker"). Every combat goal in this slice is monotone in extra blockers
+  // unless it names a blocker whose fate the division decides, which the
+  // division gate refuses. So once two creatures can block the same attacker,
+  // adding the second to a winning single block always wins too. The check
+  // instead pins the choice itself: one specific block is in every winning
+  // line, and some other single block loses.
+  'choose-a-blocker': (ex, winning, all) => {
+    if (ex.setup.phase !== 'COMBAT_BLOCKERS') return 'not a blocking exercise';
+    const base = buildPuzzleState(ex.setup);
+    const counts = new Map<string, number>();
+    for (const c of blockChoices(base)) for (const a of c.attackers) counts.set(a, (counts.get(a) ?? 0) + 1);
+    if (![...counts.values()].some(n => n >= 2)) return 'no attacker can be blocked by two different creatures, so there is no choice of blocker';
+    const singles = all.filter(l => blocksOf(l.steps).length === 1);
+    if (!singles.some(l => l.wins)) return 'no single block wins';
+    if (!singles.some(l => !l.wins)) return 'every single block wins, so the choice of blocker never matters';
+    const common = winning
+      .map(l => new Set(blocksOf(l.steps).map(pairKey)))
+      .reduce((acc, set) => new Set([...acc].filter(k => set.has(k))));
+    return common.size ? null : 'the winning lines share no block, so no one blocker is the right choice';
+  },
+  'chump-block': (ex, winning, all) => {
+    if (ex.setup.phase !== 'COMBAT_BLOCKERS') return 'not a blocking exercise';
+    const none = all.find(l => blocksOf(l.steps).length === 0);
+    if (!none || none.wins) return 'not blocking wins, so there is nothing to chump for';
+    if (none.final.p.life > 0) return 'not blocking loses, but not by the player dying';
+    const chumps = (l: Line) => blocksOf(l.steps).some(b => blockerDies(l, b));
+    return winning.every(chumps) ? null : 'a winning line loses no blocker, so nothing is chumped';
+  },
+  'double-block': (ex, winning, all) => {
+    if (ex.setup.phase !== 'COMBAT_BLOCKERS') return 'not a blocking exercise';
+    const doubled = (l: Line) => [...blockersByAttacker(blocksOf(l.steps)).values()].some(b => b.length >= 2);
+    if (!winning.every(doubled)) return 'a winning line never puts two blockers on one attacker';
+    if (all.some(l => !doubled(l) && l.wins)) return 'a line with at most one blocker per attacker wins, so the double block is not needed';
+    // The division gate runs on every exercise; checkExercise reports it.
+    return null;
+  },
+  'trade-or-take': (ex, winning, all) => {
+    if (ex.setup.phase !== 'COMBAT_BLOCKERS') return 'not a blocking exercise';
+    const take = all.find(l => blocksOf(l.steps).length === 0);
+    const trades = all.filter(l => blocksOf(l.steps).some(b => blockerDies(l, b) && attackerDies(l, b.attackerIid)));
+    if (!take) return 'no take-the-damage line';
+    if (!trades.length) return 'no block trades a creature for the attacker';
+    const tradeWins = trades.some(l => l.wins);
+    if (tradeWins === take.wins) return tradeWins ? 'both trading and taking the damage win' : 'neither trading nor taking the damage wins';
+    void winning;
+    return null;
+  },
+};
+
+for (const [skill, check] of Object.entries(BLOCK_THEMES)) {
+  THEME_CHECKS[skill] = (ex, winning) => check(ex, winning, enumerateLines(ex));
+}
+
 export const MULTI_THEME_CHECKS: Record<string, (ex: MultiSelectExercise) => string | null> = {
   'read-costs': ex => {
     const excluded = ex.options.filter(id => !ex.answer.includes(id));
@@ -346,15 +523,31 @@ export function checkExercise(ex: Exercise): Finding[] {
   try { lines = enumerateLines(ex); }
   catch (e: any) { add('enumerate', 'error', e.message); return f; }
 
+  // Before solvability: on a board that fails the gate, which lines "win" is
+  // the engine's one division, not the rules', so no later check is trustworthy.
+  if (ex.setup.phase === 'COMBAT_BLOCKERS') {
+    for (const why of divisionFindings(ex, lines)) add('division-invariant', 'error', why);
+  }
+
   const winning = lines.filter(l => l.wins);
   if (!winning.length) { add('solvable', 'error', 'no legal line reaches the goal'); return f; }
   const losing = lines.length - winning.length;
-  const rejectable = ex.setup.phase === 'COMBAT_ATTACKERS' ? 0 : countRejectableMoves(ex);
+  const combat = ex.setup.phase === 'COMBAT_ATTACKERS' || ex.setup.phase === 'COMBAT_BLOCKERS';
+  const rejectable = combat ? 0 : countRejectableMoves(ex);
   if (losing === 0 && rejectable === 0) {
     add('discriminating', isGuided(ex) ? 'warn' : 'error', 'no legal line loses and no move is rejected, so the exercise tests nothing');
   }
 
-  if (ex.setup.phase === 'COMBAT_ATTACKERS') {
+  if (ex.setup.phase === 'COMBAT_BLOCKERS') {
+    // Order-insensitive, like attacker sets: a line is its set of pairs.
+    const listed = new Set(ex.solutions.map(s => blockSetKey(blocksOf(s))));
+    for (const w of winning) {
+      const key = blockSetKey(blocksOf(w.steps));
+      if (!listed.has(key)) add('complete', 'error', `winning block set not listed in solutions: [${key}]`);
+    }
+    const found = new Set(winning.map(w => blockSetKey(blocksOf(w.steps))));
+    for (const key of listed) if (!found.has(key)) add('complete', 'error', `listed solution is not a winning block set: [${key}]`);
+  } else if (ex.setup.phase === 'COMBAT_ATTACKERS') {
     const listed = ex.solutions.map(s => attackersOf(s) ?? []);
     for (const w of winning) {
       const set = attackersOf(w.steps) ?? [];

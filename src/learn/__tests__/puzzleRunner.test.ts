@@ -16,8 +16,15 @@ import {
   cardInfo,
   MSG,
   MAX_BLOCK_OUTCOMES,
+  resolveBlocks,
+  declareBlocks,
+  gradeDeclaredBlocks,
+  achievableDeathSets,
+  divisionInfo,
+  randomCombatPath,
+  combatModifiers,
 } from '../engine/puzzleRunner';
-import type { PuzzleSetup } from '../engine/types';
+import type { BlockPair, PuzzleSetup } from '../engine/types';
 
 const MAIN = (p: PuzzleSetup['p'], o: PuzzleSetup['o'] = { bf: [] }): PuzzleSetup => ({ phase: 'MAIN_1', p, o });
 const COMBAT = (p: PuzzleSetup['p'], o: PuzzleSetup['o']): PuzzleSetup => ({ phase: 'COMBAT_ATTACKERS', p, o });
@@ -337,3 +344,256 @@ describe('@learn-runner-tgt targeted casts and land colour choice', () => {
     expect(checkGoal(cast.state, { kind: 'CARD_ON_BATTLEFIELD', cardId: 'circle_of_protection_red' })).toBe(true);
   });
 });
+
+// --- L5 slice 1: player-side blocking ----------------------------------------
+
+const BLOCKERS = (p: PuzzleSetup['p'], o: PuzzleSetup['o']): PuzzleSetup => ({ phase: 'COMBAT_BLOCKERS', pool: 'learn', p, o });
+const blk = (blockerIid: string, attackerIid: string): BlockPair => ({ blockerIid, attackerIid });
+// Hill Giant (3/3) attacks into Grizzly Bears (2/2) and Storm Crow (1/2).
+const GIANT_BOARD = BLOCKERS({ bf: ['grizzly_bears', 'storm_crow'] }, { bf: [{ id: 'hill_giant', attacking: true }] });
+
+describe('@learn-runner-block-1 COMBAT_BLOCKERS build path', () => {
+  it('builds an opponent-active board at the blocker step with the flagged attackers declared', () => {
+    const s = buildPuzzleState(GIANT_BOARD);
+    expect(s.phase).toBe('COMBAT_BLOCKERS');
+    expect(s.active).toBe('o');
+    expect(s.attackers).toEqual(['o-bf-0']);
+    expect(s.o.bf[0]).toMatchObject({ attacking: true, tapped: true });
+    expect(s.blockers).toEqual({});
+    expect(s.p.bf.map((c: any) => c.iid)).toEqual(['p-bf-0', 'p-bf-1']);
+  });
+
+  it('builds existing phases exactly as before', () => {
+    const setup = COMBAT({ bf: ['grizzly_bears'] }, { bf: ['wall_of_wood'] });
+    const a = buildPuzzleState(setup);
+    const b = buildPuzzleState(setup);
+    expect(a.active).toBe('p');
+    expect(a.phase).toBe('COMBAT_ATTACKERS');
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+
+  it('fails fast when an attacking flag is on the player side', () => {
+    expect(() => buildPuzzleState(BLOCKERS({ bf: [{ id: 'grizzly_bears', attacking: true }] }, { bf: [{ id: 'hill_giant', attacking: true }] })))
+      .toThrow(/LEARN_ATTACKING_ON_PLAYER_SIDE/);
+  });
+
+  it('fails fast when an attacking flag appears outside COMBAT_BLOCKERS', () => {
+    expect(() => buildPuzzleState({ phase: 'COMBAT_ATTACKERS', p: { bf: ['grizzly_bears'] }, o: { bf: [{ id: 'hill_giant', attacking: true }] } }))
+      .toThrow(/LEARN_ATTACKING_OUTSIDE_BLOCKERS/);
+  });
+
+  it('fails fast when the engine refuses a flagged attacker', () => {
+    expect(() => buildPuzzleState(BLOCKERS({ bf: ['grizzly_bears'] }, { bf: [{ id: 'hill_giant', attacking: true, summoningSick: true }] })))
+      .toThrow(/LEARN_ATTACKER_REFUSED: o-bf-0/);
+  });
+
+  it('fails fast when no attacker is flagged', () => {
+    expect(() => buildPuzzleState(BLOCKERS({ bf: ['grizzly_bears'] }, { bf: ['hill_giant'] }))).toThrow(/LEARN_NO_ATTACKERS/);
+  });
+});
+
+describe('@learn-runner-block-2 resolveBlocks', () => {
+  it('resolves no blocks as a real line: the player takes the damage', () => {
+    const r = resolveBlocks(buildPuzzleState(GIANT_BOARD), []);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.finalState.p.life).toBe(17);
+    expect(r.summary).toContain('Nothing blocks.');
+  });
+
+  it('resolves a single block and reports who died', () => {
+    const r = resolveBlocks(buildPuzzleState(GIANT_BOARD), [blk('p-bf-0', 'o-bf-0')]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.finalState.p.bf.map((c: any) => c.iid)).toEqual(['p-bf-1']);
+    expect(r.summary).toContain('Grizzly Bears dies');
+  });
+
+  it('rejects a tapped blocker', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: [{ id: 'grizzly_bears', tapped: true }] }, { bf: [{ id: 'hill_giant', attacking: true }] }));
+    const r = resolveBlocks(s, [blk('p-bf-0', 'o-bf-0')]);
+    expect(r).toEqual({ ok: false, reason: MSG.tappedBlocker('Grizzly Bears') });
+  });
+
+  it('rejects a ground creature blocking a flyer', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: ['grizzly_bears'] }, { bf: [{ id: 'wind_drake', attacking: true }] }));
+    const r = resolveBlocks(s, [blk('p-bf-0', 'o-bf-0')]);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toContain("without flying or reach can't block a flyer");
+  });
+
+  it('allows reach to block a flyer', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: ['giant_spider'] }, { bf: [{ id: 'wind_drake', attacking: true }] }));
+    expect(resolveBlocks(s, [blk('p-bf-0', 'o-bf-0')]).ok).toBe(true);
+  });
+
+  it('rejects one creature blocking two attackers', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: ['giant_spider'] }, { bf: [{ id: 'hill_giant', attacking: true }, { id: 'grizzly_bears', attacking: true }] }));
+    const r = resolveBlocks(s, [blk('p-bf-0', 'o-bf-0'), blk('p-bf-0', 'o-bf-1')]);
+    expect(r).toEqual({ ok: false, reason: MSG.blockOnce('Giant Spider') });
+  });
+
+  it('rejects blocking a creature that is not attacking', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: ['giant_spider'] }, { bf: [{ id: 'hill_giant', attacking: true }, 'grizzly_bears'] }));
+    const r = resolveBlocks(s, [blk('p-bf-0', 'o-bf-1')]);
+    expect(r).toEqual({ ok: false, reason: MSG.notAttacking('Grizzly Bears') });
+  });
+
+  it('refuses a board that is not an opponent-attacks blocker step', () => {
+    const s = buildPuzzleState(COMBAT({ bf: ['grizzly_bears'] }, { bf: [] }));
+    expect(resolveBlocks(s, []).ok).toBe(false);
+  });
+
+  it('is toggle-safe: every pair is dispatched once, and a block already on the board is not re-dispatched', () => {
+    const s = buildPuzzleState(GIANT_BOARD);
+    const declared = declareBlocks(s, [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]);
+    expect(declared.ok).toBe(true);
+    if (!declared.ok) return;
+    expect(declared.state.blockers).toEqual({ 'p-bf-0': 'o-bf-0', 'p-bf-1': 'o-bf-0' });
+    // The same pairs handed over again, on a board that already holds them:
+    // a second dispatch would toggle them off, so they must survive intact.
+    const again = declareBlocks(declared.state, [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.state.blockers).toEqual({ 'p-bf-0': 'o-bf-0', 'p-bf-1': 'o-bf-0' });
+  });
+
+  it('refuses a board holding a block the list does not name', () => {
+    const s = onBoard(buildPuzzleState(GIANT_BOARD), [blk('p-bf-0', 'o-bf-0')]);
+    expect(resolveBlocks(s, []).ok).toBe(false);
+  });
+});
+
+describe('@learn-runner-block-3 combat goals', () => {
+  const after = (blocks: BlockPair[]) => {
+    const r = resolveBlocks(buildPuzzleState(GIANT_BOARD), blocks);
+    if (!r.ok) throw new Error(r.reason);
+    return r.finalState;
+  };
+
+  it('SURVIVE_COMBAT', () => {
+    const s = buildPuzzleState(BLOCKERS({ life: 3, bf: ['grizzly_bears'] }, { bf: [{ id: 'hill_giant', attacking: true }] }));
+    const dead = resolveBlocks(s, []);
+    const alive = resolveBlocks(s, [blk('p-bf-0', 'o-bf-0')]);
+    expect(dead.ok && checkGoal(dead.finalState, { kind: 'SURVIVE_COMBAT' })).toBe(false);
+    expect(alive.ok && checkGoal(alive.finalState, { kind: 'SURVIVE_COMBAT' })).toBe(true);
+  });
+
+  it('LIFE_AT_LEAST', () => {
+    expect(checkGoal(after([]), { kind: 'LIFE_AT_LEAST', amount: 17 })).toBe(true);
+    expect(checkGoal(after([]), { kind: 'LIFE_AT_LEAST', amount: 18 })).toBe(false);
+  });
+
+  it('CREATURE_DIES and CREATURE_SURVIVES are keyed by setup iid', () => {
+    const s = after([blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]);
+    expect(checkGoal(s, { kind: 'CREATURE_DIES', iid: 'o-bf-0' })).toBe(true);
+    expect(checkGoal(s, { kind: 'CREATURE_SURVIVES', iid: 'o-bf-0' })).toBe(false);
+    expect(checkGoal(after([]), { kind: 'CREATURE_SURVIVES', iid: 'p-bf-0' })).toBe(true);
+  });
+
+  it('ALL_OF needs every inner goal', () => {
+    const s = after([blk('p-bf-0', 'o-bf-0')]);
+    expect(checkGoal(s, { kind: 'ALL_OF', goals: [{ kind: 'SURVIVE_COMBAT' }, { kind: 'CREATURE_SURVIVES', iid: 'p-bf-1' }] })).toBe(true);
+    expect(checkGoal(s, { kind: 'ALL_OF', goals: [{ kind: 'SURVIVE_COMBAT' }, { kind: 'CREATURE_DIES', iid: 'o-bf-0' }] })).toBe(false);
+  });
+});
+
+describe('@learn-runner-block-4 gradeDeclaredBlocks', () => {
+  it('grades the blocks on the board without touching the live state', () => {
+    const live = onBoard(buildPuzzleState(GIANT_BOARD), [blk('p-bf-0', 'o-bf-0')]);
+    const before = JSON.stringify(live);
+    const r = gradeDeclaredBlocks(live);
+    expect(JSON.stringify(live)).toBe(before);
+    expect(r?.ok).toBe(true);
+    if (!r || !r.ok) return;
+    expect(r.blocks).toEqual([blk('p-bf-0', 'o-bf-0')]);
+    expect(live.phase).toBe('COMBAT_BLOCKERS');
+  });
+
+  it('grades an empty board as the "no blocks" line', () => {
+    const r = gradeDeclaredBlocks(buildPuzzleState(GIANT_BOARD));
+    expect(r?.ok && r.finalState.p.life).toBe(17);
+  });
+
+  it('returns null for a board that is not gradeable', () => {
+    expect(gradeDeclaredBlocks(buildPuzzleState(COMBAT({ bf: ['grizzly_bears'] }, { bf: [] })))).toBeNull();
+    expect(gradeDeclaredBlocks(null)).toBeNull();
+  });
+});
+
+describe('@learn-runner-block-5 determinism and the division arithmetic', () => {
+  it('flags cards whose combat handling calls Math.random()', () => {
+    expect(randomCombatPath(cardInfoRaw('ydwen_efreet'))).toMatch(/coin/);
+    expect(randomCombatPath(cardInfoRaw('grizzly_bears'))).toBeNull();
+  });
+
+  it('refuses to resolve a combat that includes one', () => {
+    const s = buildPuzzleState({ phase: 'COMBAT_BLOCKERS', p: { bf: ['ydwen_efreet'] }, o: { bf: [{ id: 'hill_giant', attacking: true }] } });
+    expect(() => resolveBlocks(s, [blk('p-bf-0', 'o-bf-0')])).toThrow(/LEARN_NONDETERMINISTIC_COMBAT/);
+  });
+
+  // CR 510.1c's own example: a 4/3 blocked by a 2/3 and a 1/1. Divisions
+  // 0-4, 1-3, 2-2, 3-1, 4-0 give death sets {1/1}, {2/3}, {both}; "neither
+  // dies" is not achievable.
+  it('matches the CR 510.1c example', () => {
+    const sets = achievableDeathSets(4, [{ iid: 'two-three', lethal: 3 }, { iid: 'one-one', lethal: 1 }]);
+    expect(sets.map(s => s.join('+')).sort()).toEqual(['one-one', 'one-one+two-three', 'two-three'].sort());
+  });
+
+  it('allows "nobody dies" only when the damage can be spread under every lethal', () => {
+    expect(achievableDeathSets(2, [{ iid: 'a', lethal: 2 }, { iid: 'b', lethal: 2 }]).map(s => s.join('+')).sort()).toEqual(['', 'a', 'b']);
+    expect(achievableDeathSets(3, [{ iid: 'a', lethal: 2 }, { iid: 'b', lethal: 2 }]).map(s => s.join('+')).sort()).toEqual(['a', 'b']);
+  });
+
+  // The engine picks one division. It must be one the rules allow, or the gate
+  // is reasoning about a space the engine does not live in.
+  it.each([
+    ['Hill Giant into Bears + Storm Crow', GIANT_BOARD, [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]],
+    ['CR 510.1c board: Durkwood Boars into Hurloon Minotaur + a 1/1',
+      { phase: 'COMBAT_BLOCKERS', p: { bf: ['hurloon_minotaur', 'merfolk_of_the_pearl_trident'] }, o: { bf: [{ id: 'durkwood_boars', attacking: true }] } } as PuzzleSetup,
+      [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]],
+    ['Air Elemental into Storm Crow + Wind Drake',
+      BLOCKERS({ bf: ['storm_crow', 'wind_drake'] }, { bf: [{ id: 'air_elemental', attacking: true }] }),
+      [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0')]],
+    ['Hill Giant into three blockers',
+      BLOCKERS({ bf: ['grizzly_bears', 'storm_crow', 'steel_wall'] }, { bf: [{ id: 'hill_giant', attacking: true }] }),
+      [blk('p-bf-0', 'o-bf-0'), blk('p-bf-1', 'o-bf-0'), blk('p-bf-2', 'o-bf-0')]],
+  ] as const)('%s: the engine\'s death set is an achievable one', (_label, setup, blocks) => {
+    const s = buildPuzzleState(setup);
+    const declared = declareBlocks(s, [...blocks]);
+    expect(declared.ok).toBe(true);
+    if (!declared.ok) return;
+    const info = divisionInfo(declared.state, 'o-bf-0');
+    expect(info.modifiers).toEqual([]);
+    expect(info.blockers).toHaveLength(blocks.length);
+    const sets = achievableDeathSets(info.power, info.blockers).map(x => x.join('+'));
+    const r = resolveBlocks(s, [...blocks]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const died = blocks.map(b => b.blockerIid).filter(iid => !r.finalState.p.bf.some((c: any) => c.iid === iid)).sort().join('+');
+    expect(sets).toContain(died);
+  });
+
+  it('reads combat modifiers the arithmetic does not model', () => {
+    const s = buildPuzzleState(BLOCKERS({ bf: ['grizzly_bears'] }, { bf: [{ id: 'hill_giant', attacking: true }] }));
+    const bears = s.p.bf[0];
+    expect(combatModifiers(bears, s)).toEqual([]);
+    expect(combatModifiers({ ...bears, regenerating: true }, s).join()).toMatch(/regeneration/);
+    expect(combatModifiers({ ...bears, protection: ['red'] }, s).join()).toMatch(/protection/);
+    expect(combatModifiers({ ...bears, enchantments: [{ name: 'Venom', mod: { venom: true } }] }, s).join()).toMatch(/enchanted/);
+  });
+});
+
+// A board with these blocks declared through the engine, as the duel screen
+// would leave it before Check. Learn tests reach DuelCore only via the runner.
+function onBoard(state: any, blocks: BlockPair[]): any {
+  const d = declareBlocks(state, blocks);
+  if (!d.ok) throw new Error(d.reason);
+  return d.state;
+}
+
+// Raw card data for a CARD_DB id, for the determinism predicate.
+function cardInfoRaw(id: string): any {
+  return buildPuzzleState({ phase: 'MAIN_1', p: { bf: [id] }, o: { bf: [] } }).p.bf[0];
+}

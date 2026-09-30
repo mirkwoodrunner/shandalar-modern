@@ -77,6 +77,29 @@ combination of legal blocks the opponent could make, and an attack is only marke
 the block that leaves the opponent at the highest life. The outcome cap is
 `MAX_BLOCK_OUTCOMES = 5000`; boards that would exceed it throw `LEARN_TOO_MANY_OUTCOMES`.
 
+**Blocking exercises (L5 slice 1, 2026-09-30).** The mirror image: the opponent attacks
+and the learner blocks. `setup.phase: 'COMBAT_BLOCKERS'` builds an opponent-active board
+(see section 4), and a `BLOCK` step commits the learner's whole block assignment at once.
+`resolveBlocks(state, blocks)` validates every pair before dispatching anything (untapped
+blocker, attacker in `state.attackers`, `canBlockDuel` allows it, no blocker used twice),
+dispatches `DECLARE_BLOCKER` exactly once per pair -- it is a toggle in DuelCore, so a
+second dispatch would take the block back -- confirms each pair landed in
+`state.blockers`, and walks to `COMBAT_END`. The combat goals (`SURVIVE_COMBAT`,
+`LIFE_AT_LEAST`, `CREATURE_DIES`, `CREATURE_SURVIVES`, and a one-level `ALL_OF` of those)
+are read off the resolved board. There is no opponent choice left to enumerate, so this is
+a single resolution, not a best-defense search. Refusals use teachable `MSG` entries: a
+tapped creature can't block, a creature without flying or reach can't block a flyer, a
+creature can only block one attacker.
+
+**Determinism.** Before resolving, the runner throws `LEARN_NONDETERMINISTIC_COMBAT` when
+any creature in the combat is on a `Math.random()` path. Reading `DuelCore.js` found two:
+`DECLARE_BLOCKER`'s `coinFlipOnBlock` (Ydwen Efreet), and banding, through
+`getNextBandingChoice -> createPendingChoice -> makeId` and `FORM_BAND -> makeId`. The
+combat-fired triggered abilities (`ON_ATTACKS_DECLARED`, `ON_DAMAGE_DEALT`,
+`ON_PLAYER_DAMAGED`, `ON_CREATURE_DIES`, `ON_COMBAT_BEGIN`) roll no dice. As a backstop
+for anything that reading missed, `resolveBlocks` runs with `Math.random` swapped for a
+thrower, restored in a `finally`.
+
 ## 3a. Puzzle checker
 
 `src/learn/engine/puzzleChecker.ts` is the automated content-quality gate for every
@@ -92,6 +115,7 @@ Mode and the engine. It answers five questions about each exercise before it shi
 | discriminating | Does at least one legal line lose, or one move get rejected? | puzzle that tests nothing |
 | theme | Does the tagged skill actually decide the outcome? | theme not present |
 | enumerate | Does the search terminate within its caps? | authoring blowup |
+| division-invariant | (blocking) Can the grade depend on how an attacker divides its damage? | answer the engine can't grade honestly |
 
 **How each check works.**
 
@@ -102,6 +126,44 @@ Mode and the engine. It answers five questions about each exercise before it shi
   pool, and lands played. Caps: `MAX_SEARCH_DEPTH = 6`, `MAX_SEARCH_NODES = 20000`,
   `MAX_ENUM_ATTACKERS = 8`. Exceeding a cap throws, which the checker reports as an
   `enumerate` error rather than hanging.
+  Blocking exercises (`enumerateBlocks`) give every untapped player creature the
+  choice of no block or one attacker it can legally block, and grade each assignment
+  through `resolveBlocks` plus `checkGoal`. The product is capped at
+  `MAX_BLOCK_OUTCOMES` (the same 5000 that bounds the defender-side product in
+  best-defense grading), and exceeding it throws `LEARN_CHECK_TOO_MANY_BLOCK_LINES`.
+  Blocks are one committed step, so they never enter the main-phase search:
+  `MAX_SEARCH_DEPTH`, `MAX_SEARCH_NODES` and `MAX_ENUM_ATTACKERS` did not need to change,
+  and every Tier 1 exercise's `learn:check` line is byte-identical before and after.
+- **division-invariant (blocking).** CR 510.1c lets the attacking player divide a
+  multi-blocked creature's damage as they choose. DuelCore does not ask: it assigns
+  lethal-then-remainder in one fixed order (section 6). So the engine produces one legal
+  outcome out of several, and a grade is only honest when every legal division gives
+  the same answer. For every enumerated line where one attacker has two or more
+  blockers, the gate reads power `P` and each blocker's remaining lethal damage
+  `L = toughness - damage marked` from the engine (`getPow`/`getTou`), and computes the
+  achievable death sets: `S` is achievable when the sum of `L` over `S` is at most `P`
+  (excess piles onto a member of `S`), and the empty set when `P` is at most the sum of
+  `L - 1`. A blocker's fate is forced when it is in every achievable set or in none. The
+  gate errors when the goal (including inside `ALL_OF`) names a blocker whose fate is
+  not forced. Goals about the attacker, the player, or life do not depend on the
+  division, since nothing allowed here can trample. The gate also errors when any
+  creature in that combat carries something outside the plain-damage model:
+  first strike, double strike, deathtouch, trample, banding, rampage, indestructible,
+  regeneration, protection, infect, a regeneration or damage-prevention shield,
+  all-damage prevention, unpreventable damage, `preventCombatDamageDealt`,
+  `preventDamageFromEnchanted` / `FromBlocked` / `FromWalls`, a destroy- or
+  sacrifice-at-end-of-combat effect (`blocksDestroyFilter`, `blockedByDestroyFilter`,
+  `sacrificeAtEndOfCombat`), a coin flip on block, any Aura at all (Venom, Gaseous Form,
+  Spirit Link, Demonic Torment, the Ward cycle all ride on Auras), any triggered ability
+  at all (Abu Ja'far's `ON_CREATURE_DIES` kills creatures the arithmetic thinks survive),
+  a damage redirect shield, an active Fog, and the name-keyed hooks in `resolveCombat`
+  (Giant Badger, Sengir Vampire). The list was built by reading `resolveCombat`,
+  `dmgWithShield`, `consumeCreatureDamageShields`, `checkDeath`, `DECLARE_BLOCKER` and
+  `advPhase`'s blocker and end-of-combat steps. The gate runs before the solvable check,
+  because on a board that fails it the set of "winning" lines is itself untrustworthy.
+  The CR 510.1c example (a 4/3 into a 2/3 and a 1/1: death sets {1/1}, {2/3}, {both},
+  never "neither") is a Vitest fixture, and a consistency test shows DuelCore's actual
+  death set on each fixture board is one of the achievable sets.
 - **discriminating.** Two signals, because dead ends alone are not enough. In a mana
   puzzle you can almost always tap one more land, so nothing is ever truly stuck. What
   makes those puzzles teach something is the move the UI lets you attempt and the
@@ -114,7 +176,8 @@ Mode and the engine. It answers five questions about each exercise before it shi
 - **complete.** For combat, every winning attacker set must appear in `solutions`,
   compared as a set so attacker order does not matter. This is the direct fix for
   branching variations: an explanation that names one answer when two exist is caught
-  here. For main phase, listed solutions are compared as multisets of action plus iid,
+  here. Blocking exercises compare solutions as order-insensitive sets of block pairs,
+  in both directions (a listed set that does not win is also an error). For main phase, listed solutions are compared as multisets of action plus iid,
   since tap order commutes, and a shorter win than any listed solution produces a
   warning.
 - **theme.** One entry per skill tag in `THEME_CHECKS` (engine) or
@@ -127,7 +190,21 @@ Mode and the engine. It answers five questions about each exercise before it shi
   `lethal-outnumber` (every winning set sends more attackers than they have untapped
   blockers), `summoning-sickness` (removing the sickness opens a new winning set, so
   the sickness is load-bearing), `read-costs` (excluded options include one that fails
-  on color and one that fails on total mana).
+  on color and one that fails on total mana). Blocking (L5 slice 1): `choose-a-blocker`
+  (some attacker has two possible blockers, some single block wins and some loses, and
+  one block pair is in every winning line), `chump-block` (not blocking loses by the
+  player dying, and every winning line loses a blocker), `double-block` (every winning
+  line puts two or more blockers on one attacker, and no line with at most one blocker
+  per attacker wins), `trade-or-take` (the board offers a trade and a take-the-damage
+  line, and exactly one of those families wins). "Dies" in these checks means forced to
+  die under every legal division, not just in the engine's one.
+
+  `choose-a-blocker` deviates from its drafted intent, "every winning line uses exactly
+  one blocker". Every combat goal in this slice is monotone in extra blockers unless it
+  names a blocker whose fate the division decides, and the division gate refuses that.
+  So once two creatures can block one attacker, adding the second to a winning single
+  block always wins too, and the drafted check is unsatisfiable. The check pins the
+  choice itself instead.
 
 **Known limitation.** Theme checks are hand-written per skill tag. Every new skill
 needs its own check written alongside it, in the same prompt that introduces the tag
@@ -164,8 +241,26 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
 
 - `PuzzleSetup` describes the starting phase and each side's life/hand/battlefield.
 - `EngineExercise` puzzles are graded by replaying `Step[]` sequences (`TAP_LAND`,
-  `PLAY_LAND`, `CAST_SPELL`, `UNDO_MANA_TAPS`, `ATTACK`) against a `Goal`
-  (`MANA_IN_POOL`, `CARD_ON_BATTLEFIELD`, `OPPONENT_DEAD_THIS_TURN`).
+  `PLAY_LAND`, `CAST_SPELL`, `UNDO_MANA_TAPS`, `ATTACK`, `BLOCK`) against a `Goal`
+  (`MANA_IN_POOL`, `CARD_ON_BATTLEFIELD`, `OPPONENT_DEAD_THIS_TURN`, and the combat
+  goals `SURVIVE_COMBAT`, `LIFE_AT_LEAST { amount }`, `CREATURE_DIES { iid }`,
+  `CREATURE_SURVIVES { iid }`, `ALL_OF { goals }`). `ALL_OF` holds combat goals only,
+  one level deep. Creature goals are keyed by setup iid, not card id, since a board can
+  hold two copies of a card.
+- L5 slice 1 additions. `PuzzleSetup.phase` may be `'COMBAT_BLOCKERS'`. `CardSpec`'s
+  object form takes `attacking: true`, valid only on the opponent's battlefield in a
+  `COMBAT_BLOCKERS` setup. `ActionKind` adds `'DECLARE_BLOCKER'`. The `BLOCK` step is
+  `{ type: 'BLOCK', blocks: BlockPair[] }`, committed as a whole set; an empty list is
+  the legal "don't block" line. `WrongLine.expect` adds `'goalNotMet'`, whose reason is
+  the combat summary. `Unit` adds `listed?: boolean` (default true): an unlisted unit is
+  left off the unit list and out of the `?exercise=` deep link, while tests,
+  `learn:check` and `?scenario=` still see it.
+- A `COMBAT_BLOCKERS` setup is built by laying out the board as usual, setting
+  `active: 'o'` and `phase: 'COMBAT_ATTACKERS'`, dispatching `DECLARE_ATTACKER` for every
+  flagged opponent card (confirmed in `state.attackers`), and walking to
+  `COMBAT_BLOCKERS` with `advanceTo`. It fails fast with `LEARN_ATTACKING_ON_PLAYER_SIDE`,
+  `LEARN_ATTACKING_OUTSIDE_BLOCKERS`, `LEARN_ATTACKER_REFUSED` (for example a summoning
+  sick attacker) or `LEARN_NO_ATTACKERS`. Every other phase builds exactly as before.
 - `MultiSelectExercise` puzzles ask the player to pick every castable option from a
   fixed set of untapped lands; the answer is derived from the engine's own `canPay`,
   not authored by hand.
@@ -179,19 +274,34 @@ See `src/learn/engine/types.ts` for the full type definitions. In summary:
 ## 5. Content rules (enforced by `units.test.ts`)
 
 - Every listed `solutions` line replays to the goal.
-- Every `wrongLines` entry fails for the stated reason (`rejected` or `notLethal`, with
-  the expected reason substring).
+- Every `wrongLines` entry fails for the stated reason (`rejected`, `notLethal`, or
+  `goalNotMet`, with the expected reason substring).
 - `multiSelect` answers are cross-checked against the engine's own `canPay`, not trusted
   as authored data.
 - Prompt/hint/explanation text only names cards actually present in that exercise.
 - No exercise uses a card with TRAMPLE, BANDING, FIRST_STRIKE, DOUBLE_STRIKE, or
   DEATHTOUCH (see Known engine gaps below).
+- Card lookups are pool-aware (L5 slice 1). The existence check, the name scan, and the
+  banned-keyword check all resolve ids against the exercise's own `setup.pool`
+  (`CARD_DB_LEARN` for `'learn'`, `CARD_DB` otherwise). Before this, all three read
+  `CARD_DB` only, so a Learn-pool card with a banned keyword passed silently (`find`
+  returned undefined and its keywords defaulted to none). A card missing from its pool
+  now fails loudly.
+- No exercise, in any unit, uses a card whose combat handling calls `Math.random()`
+  (`randomCombatPath` in `puzzleRunner.ts`: `coinFlipOnBlock`, banding). No existing
+  exercise was caught by this rule.
+- Unit 2.1 exercises allow only `DECLARE_BLOCKER`, use `phase: 'COMBAT_BLOCKERS'`, and
+  have empty hands on both sides, mirroring the Units 1.3/1.4 rule. Unit 2.1 is
+  `listed: false`.
 
 ## 6. Known engine gaps that block content
 
 - Attacker damage among multiple blockers auto-assigns lethal damage in list order
   instead of letting the attacker's controller divide it freely (current rules require
-  free assignment order).
+  free assignment order). **Gated, not fixed** (L5 slice 1): the checker's
+  `division-invariant` error refuses any blocking exercise whose grade could change
+  under a different legal division (section 3a). Double blocks ship only on boards where
+  it cannot. Fixing the engine is a separate engine prompt with its own approval.
 - Deathtouch is not treated as 1 lethal damage during trample/multi-block damage
   assignment.
 - Units 3.4 and 3.5 (trample and deathtouch lessons) are blocked until a ruleset-gated
@@ -287,6 +397,11 @@ decisions. Do not duplicate roadmap content here.
 
 - **L3** (done, 2026-09-18): duel UI scenario mode. See section 8 below for the built-state
   spec. Vitest `@learn`: 160 -> 177. Playwright `@learn`: 30 -> 55.
+
+- **L5 slice 1** (done, 2026-09-30): player-side blocking. `COMBAT_BLOCKERS` boards,
+  `resolveBlocks` / `gradeDeclaredBlocks`, combat goals, the division gate, and Unit 2.1
+  seeded with one exercise per skill, unlisted. See sections 3, 3a, 4, 5 and 8. Vitest
+  `@learn`: 184 -> 237. Playwright `@learn`: 73 -> 93.
 
 Next work is sequenced by `docs/LEARN_MODE_ROADMAP.md` section 5, now past milestone L3
 (duel UI scenario mode). Tier 1 is content-complete and release-framed; publishing is a
@@ -505,6 +620,37 @@ Neither `DuelScreen.tsx` nor `Half.tsx` is a protected file. An earlier version 
 said they were. They are not on the Protected Files list in `CLAUDE.md` or in
 `PROTECTED_PATTERNS` in `.claude/hooks/pre-edit-engine-guard.sh`. They are shared Shandalar duel
 UI, so a change to them is a campaign change.
+
+### Opponent-active boards and blocking (L5 slice 1, 2026-09-30)
+
+A scenario's injected state may now be an opponent-active, mid-combat board:
+`active: 'o'`, `phase: 'COMBAT_BLOCKERS'`, the opponent's attackers already in
+`state.attackers`, no blocks declared. `buildPuzzleState` produces it through DuelCore's own
+`DECLARE_ATTACKER` and `advanceTo` (section 4), so every field on it is one the engine wrote.
+With the AI suppressed, nothing moves that board except the learner.
+
+- **Declaring blocks** uses the duel screen's existing two-click flow, unchanged:
+  `useDuelController.handleBfClick` already routes blocker clicks when
+  `s.phase === 'COMBAT_BLOCKERS' && s.active !== 'p'`, and `declareBlocker` is already gated
+  under `DECLARE_BLOCKER`. Click your creature, then the attacker, to declare. The same two
+  clicks again remove the block, since `DECLARE_BLOCKER` toggles. Playwright Learn-B4/B5
+  confirm both at 1280x720 and 390x844.
+- **"Done Blocking" is hidden in scenario mode.** Before this slice it rendered on any
+  opponent-active blocker step and called `advancePhase` directly, which the scenario gate
+  does not cover. Verified: with the old wiring, Learn-B6 found the button at both
+  viewports. Both action bars now take `showDoneBlocking` (default true) and both screens
+  pass `isActionAllowed('ADVANCE_PHASE')`, the same pattern as `showPassPriority` and
+  `showEndTurn`. Campaign and sandbox duels are unchanged. The attacker-side "Done Attacking"
+  button has the same ungated wiring and is not changed here.
+- **Grading.** `ScenarioChrome` routes every combat goal to `gradeDeclaredBlocks(liveState)`,
+  which reads `state.blockers` off the live board, resolves combat on a `structuredClone`, and
+  checks the goal on the result. The live board is never touched. No blocks declared is graded
+  as the "no blocks" line -- a real answer, and the wrong one for a chump-block lesson -- not
+  as "not there yet". A losing answer's feedback is the combat summary, for example
+  "Storm Crow blocks Wind Drake. Storm Crow dies. You take no damage."
+- **Reachability.** Scenario mode is still reached only by `?scenario=<id>`. Unit 2.1 is
+  `listed: false`, so it is not on the unit list and `?exercise=` does not hand it to the
+  bespoke lesson player, which has no blocking UI.
 
 ## 9. The Learn card pool (L4a)
 

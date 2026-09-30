@@ -791,6 +791,7 @@ export default function DuelScreenMobile({ config, onDuelEnd, scenarioPanel }: D
         showUndo={isActionAllowed('UNDO_MANA_TAPS')}
         showPassPriority={isActionAllowed('ADVANCE_PHASE')}
         showEndTurn={isActionAllowed('ADVANCE_PHASE')}
+        showDoneBlocking={isActionAllowed('ADVANCE_PHASE')}
       />
 
       {/* Hand strip */}

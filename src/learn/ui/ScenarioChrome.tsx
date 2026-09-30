@@ -4,14 +4,15 @@
 // This is the piece that knows about exercises. It reads the LIVE GameState the
 // duel screen hands it, grades against the exercise's goal when the learner
 // asks, and drives the lifecycle machine. It resolves no rules of its own:
-// grading is `checkGoal` / `gradeDeclaredAttack` in puzzleRunner.ts, and every
-// state change on the board came from DuelCore via the screen's reducer.
+// grading is `checkGoal` / `gradeDeclaredAttack` / `gradeDeclaredBlocks` in
+// puzzleRunner.ts, and every state change on the board came from DuelCore via
+// the screen's reducer.
 //
 // It renders through ScenarioOverlay (src/ui/duel/), which is a dumb shell.
 // Layout lives there; what to say lives here.
 
 import { useEffect, useRef } from 'react';
-import { checkGoal, gradeDeclaredAttack } from '../engine/puzzleRunner';
+import { checkGoal, gradeDeclaredAttack, gradeDeclaredBlocks, isCombatGoal } from '../engine/puzzleRunner';
 import { ScenarioOverlay } from '../../ui/duel/ScenarioOverlay';
 import type { ScenarioOverlayButton } from '../../ui/duel/ScenarioOverlay';
 import type { ScenarioMachine } from '../hooks/useScenarioMachine';
@@ -84,6 +85,22 @@ export function ScenarioChrome({
         } else {
           // The worst case is the teaching material: it names the block that
           // saves them and how short the attack fell.
+          message = graded.summary;
+        }
+      } else if (isCombatGoal(exercise.goal)) {
+        // Blocking exercises (L5 slice 1). The learner's blocks are on the
+        // board; combat is resolved on a snapshot and the goal read from the
+        // result. No blocks declared is graded as the "no blocks" line -- a
+        // real answer, and the wrong one when a block was needed.
+        const graded = gradeDeclaredBlocks(liveState);
+        if (graded === null) {
+          message = NOT_YET;
+        } else if (!graded.ok) {
+          message = graded.reason;
+        } else if (checkGoal(graded.finalState, exercise.goal)) {
+          outcome = 'success';
+          message = exercise.explanation;
+        } else {
           message = graded.summary;
         }
       } else {

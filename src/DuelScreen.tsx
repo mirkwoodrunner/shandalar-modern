@@ -824,6 +824,7 @@ export default function DuelScreen({ config, onDuelEnd, scenarioPanel }: DuelScr
             showUndo={isActionAllowed('UNDO_MANA_TAPS')}
             showPassPriority={isActionAllowed('ADVANCE_PHASE')}
             showEndTurn={isActionAllowed('ADVANCE_PHASE')}
+            showDoneBlocking={isActionAllowed('ADVANCE_PHASE')}
           />
 
           {/* Player hand */}

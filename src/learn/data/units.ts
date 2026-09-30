@@ -614,4 +614,87 @@ export const UNITS: Unit[] = [
       },
     ],
   },
+  // Tier 2, Unit 2.1 (L5 slice 1). listed: false -- reachable only through
+  // ?scenario=<id> until lessons can route into scenario mode. The bespoke
+  // lesson player has no blocking UI, so this unit stays off the unit list.
+  {
+    id: '2.1',
+    title: 'Blocking',
+    listed: false,
+    exercises: [
+      {
+        kind: 'engine', id: '2.1-01', stableId: '2.1-01', unit: '2.1', skill: 'choose-a-blocker', title: 'Pick the right blocker',
+        prompt: 'Wind Drake is attacking you. Block so that it dies.',
+        hint: 'Wind Drake flies, so only a creature with flying or reach can block it. Which of those deals 2 damage?',
+        explanation: 'Giant Spider has reach, deals 2 damage, and has 4 toughness, so it kills Wind Drake and survives. Storm Crow can block a flyer too, but it deals only 1 and dies.',
+        setup: {
+          phase: 'COMBAT_BLOCKERS', pool: 'learn',
+          p: { bf: ['storm_crow', 'giant_spider', 'grizzly_bears'] },
+          o: { bf: [{ id: 'wind_drake', attacking: true }] },
+        },
+        allowed: ['DECLARE_BLOCKER'],
+        goal: { kind: 'CREATURE_DIES', iid: 'o-bf-0' },
+        solutions: [
+          [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-1', attackerIid: 'o-bf-0' }] }],
+          [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }, { blockerIid: 'p-bf-1', attackerIid: 'o-bf-0' }] }],
+        ],
+        wrongLines: [
+          { steps: [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }] }], expect: 'goalNotMet', reasonIncludes: 'Storm Crow dies' },
+          { steps: [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-2', attackerIid: 'o-bf-0' }] }], expect: 'rejected', reasonIncludes: "without flying or reach can't block a flyer" },
+        ],
+      },
+      {
+        kind: 'engine', id: '2.1-02', stableId: '2.1-02', unit: '2.1', skill: 'chump-block', title: 'Block to stay alive',
+        prompt: 'You are at 4 life and Air Elemental is attacking. Survive this combat.',
+        hint: 'Air Elemental deals 4. Something has to get in its way, even if it will not survive.',
+        explanation: 'Storm Crow can block a flyer. It dies, but Air Elemental deals its damage to the Crow instead of to you. Losing a creature is better than losing the game.',
+        setup: {
+          phase: 'COMBAT_BLOCKERS', pool: 'learn',
+          p: { life: 4, bf: ['storm_crow', 'grizzly_bears'] },
+          o: { bf: [{ id: 'air_elemental', attacking: true }] },
+        },
+        allowed: ['DECLARE_BLOCKER'],
+        goal: { kind: 'SURVIVE_COMBAT' },
+        solutions: [[{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }] }]],
+        wrongLines: [
+          { steps: [{ type: 'BLOCK', blocks: [] }], expect: 'goalNotMet', reasonIncludes: 'You lose' },
+          { steps: [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-1', attackerIid: 'o-bf-0' }] }], expect: 'rejected', reasonIncludes: "without flying or reach can't block a flyer" },
+        ],
+      },
+      {
+        kind: 'engine', id: '2.1-03', stableId: '2.1-03', unit: '2.1', skill: 'double-block', title: 'Two blockers at once',
+        prompt: 'Hill Giant is attacking you. Block so that it dies.',
+        hint: 'Neither of your creatures deals 3 damage alone. More than one creature can block the same attacker.',
+        explanation: 'Grizzly Bears and Storm Crow together deal 3, enough to kill Hill Giant. Hill Giant deals only 3, so it can kill one of them but not both.',
+        setup: {
+          phase: 'COMBAT_BLOCKERS', pool: 'learn',
+          p: { bf: ['grizzly_bears', 'storm_crow'] },
+          o: { bf: [{ id: 'hill_giant', attacking: true }] },
+        },
+        allowed: ['DECLARE_BLOCKER'],
+        goal: { kind: 'CREATURE_DIES', iid: 'o-bf-0' },
+        solutions: [[{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }, { blockerIid: 'p-bf-1', attackerIid: 'o-bf-0' }] }]],
+        wrongLines: [
+          { steps: [{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }] }], expect: 'goalNotMet', reasonIncludes: 'Grizzly Bears dies' },
+        ],
+      },
+      {
+        kind: 'engine', id: '2.1-04', stableId: '2.1-04', unit: '2.1', skill: 'trade-or-take', title: 'Trade or take it',
+        prompt: 'You are at 2 life and Goblin Piker is attacking. Survive this combat.',
+        hint: 'Goblin Piker deals 2. Can you afford to take that?',
+        explanation: 'Taking 2 at 2 life loses the game, so you have to block. Grizzly Bears and Goblin Piker deal 2 to each other and both die. That is a trade.',
+        setup: {
+          phase: 'COMBAT_BLOCKERS', pool: 'learn',
+          p: { life: 2, bf: ['grizzly_bears'] },
+          o: { bf: [{ id: 'goblin_piker', attacking: true }] },
+        },
+        allowed: ['DECLARE_BLOCKER'],
+        goal: { kind: 'SURVIVE_COMBAT' },
+        solutions: [[{ type: 'BLOCK', blocks: [{ blockerIid: 'p-bf-0', attackerIid: 'o-bf-0' }] }]],
+        wrongLines: [
+          { steps: [{ type: 'BLOCK', blocks: [] }], expect: 'goalNotMet', reasonIncludes: 'You lose' },
+        ],
+      },
+    ],
+  },
 ];

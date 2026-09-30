@@ -33,6 +33,12 @@ interface ActionBarProps {
   showUndo?: boolean;
   showPassPriority?: boolean;
   showEndTurn?: boolean;
+  /**
+   * Scenario mode (Learn Mode L5 slice 1). Default true. "Done Blocking"
+   * advances the phase, which a blocking lesson does not allow: the learner
+   * declares blocks and presses the lesson's own Check instead.
+   */
+  showDoneBlocking?: boolean;
 }
 
 export function ActionBar({
@@ -58,6 +64,7 @@ export function ActionBar({
   showUndo = true,
   showPassPriority = true,
   showEndTurn = true,
+  showDoneBlocking = true,
 }: ActionBarProps) {
   const inMain = MAIN_PHASES.has(phase);
 
@@ -154,7 +161,7 @@ export function ActionBar({
         </ActionButton>
       )}
 
-      {phase === 'COMBAT_BLOCKERS' && !isPlayerTurn && (
+      {phase === 'COMBAT_BLOCKERS' && !isPlayerTurn && showDoneBlocking && (
         <ActionButton
           variant="primary"
           onClick={onDoneBlocking}
